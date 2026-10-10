@@ -21,7 +21,9 @@ export function Combobox(props: {
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const shown = open ? props.options : [];
+  // With a choice made and nothing typed, there is nothing to list.
+  const listing = open && !(props.selected && props.query === '' && props.options.length === 0);
+  const shown = listing ? props.options : [];
   const choose = (option: ComboboxOption) => {
     props.onSelect(option);
     setOpen(false);
@@ -33,7 +35,7 @@ export function Combobox(props: {
       <input
         role="combobox"
         aria-label={props.label}
-        aria-expanded={open}
+        aria-expanded={listing}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
@@ -61,12 +63,15 @@ export function Combobox(props: {
             event.preventDefault();
             const option = props.options[active];
             if (option) choose(option);
-          } else if (event.key === 'Escape') {
+          } else if (event.key === 'Escape' && listing) {
+            // Only the list closes; a dialog around the field stays open.
+            event.preventDefault();
+            event.stopPropagation();
             setOpen(false);
           }
         }}
       />
-      {open && (
+      {listing && (
         <ul
           id={listId}
           role="listbox"

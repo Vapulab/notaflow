@@ -1,2 +1,4 @@
 # Copied from the Malphas design system; never reformat (pnpm malphas:check compares bytes).
 apps/web/src/malphas/
+# Generated from the official annexes, one entry per line.
+apps/server/src/data/*.json

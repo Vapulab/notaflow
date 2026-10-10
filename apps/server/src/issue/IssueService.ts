@@ -16,6 +16,7 @@ import {
   TemplateUnsupportedError,
 } from '@notaflow/provider-nacional';
 import { country, municipality } from '../data/places';
+import { serviceCode } from '../data/serviceCodes';
 import type { Database } from '../db/openDatabase';
 import { isCalendarDate, xsdDescription } from '../domain/xmlText';
 import { BACEN_CURRENCY, convertToCents, type ExchangeRateSource } from '../exchange/ptax';
@@ -49,6 +50,13 @@ export interface NewInvoiceRequest {
   issRate?: number; // hundredths; the emitter's rate when absent
   issRetained?: boolean;
   description?: string;
+  // Complete mode: replaces these fields of the saved service for this invoice only.
+  overrides?: Partial<
+    Pick<
+      NewInvoiceInput['service'],
+      'nationalTaxCode' | 'municipalTaxCode' | 'nbsCode' | 'pisCofinsCst' | 'ibsCbs' | 'export'
+    >
+  >;
 }
 
 // Sefin refusals that mean the invoice is already cancelled (E0840, confirmed in the Stage 1b acceptance).
@@ -218,10 +226,12 @@ export class IssueService {
     if (!fiscal || fiscal.simplesPercent === null) {
       throw new HttpError(409, 'fiscal_config_missing');
     }
-    const service = this.services.get(ctx, input.serviceId);
-    if (!service || service.emitterId !== emitter.id || service.archived) {
+    const saved = this.services.get(ctx, input.serviceId);
+    if (!saved || saved.emitterId !== emitter.id || saved.archived) {
       throw new HttpError(404, 'service_not_found');
     }
+    const service = { ...saved, ...input.overrides };
+    if (!serviceCode(service.nationalTaxCode)) throw new HttpError(400, 'unknown_service_code');
     const customerRow = this.customers.get(ctx, input.customerId);
     if (!customerRow || customerRow.emitterId !== emitter.id) {
       throw new HttpError(404, 'customer_not_found');

@@ -40,7 +40,7 @@ test('the owner saves the fiscal configuration; the server takes the percent fro
   expect(saved.statusCode).toBe(200);
   expect(saved.json()).toEqual({ ...body, simplesPercent: 600 });
   const read = await t.app.inject({ method: 'GET', url, headers });
-  expect(read.json()).toEqual({ ...body, simplesPercent: 600 });
+  expect(read.json()).toMatchObject({ ...body, simplesPercent: 600 });
   expect(new AuditLog(t.db).list().at(-1)).toMatchObject({
     accountId: a.accountId,
     action: 'emitter.fiscal',
@@ -101,4 +101,22 @@ test('an emitter of another account is not found', async () => {
     headers: await t.as('a@example.com'),
   });
   expect(response.statusCode).toBe(404);
+});
+
+test('the fiscal answer carries the band table, with or without a configuration', async () => {
+  const { url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  const bands = {
+    III: [600, 1120, 1350, 1600, 2100, 3300],
+    V: [1550, 1800, 1950, 2050, 2300, 3050],
+  };
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    simplesPercent: null,
+    bands,
+  });
+  await t.app.inject({ method: 'PUT', url, headers, payload: body });
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    simplesPercent: 600,
+    bands,
+  });
 });

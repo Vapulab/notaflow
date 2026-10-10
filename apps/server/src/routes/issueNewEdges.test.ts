@@ -345,3 +345,33 @@ test('a customer stored with an unknown municipality is refused before a number 
   await expectRefused(s, brazilInvoice(s), 400, 'unknown_municipality');
   expect(invoiceCount(s)).toBe(0);
 });
+
+test('complete mode overrides the service codes for one invoice only', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const response = await s.call(
+    'POST',
+    '/invoices/new',
+    brazilInvoice(s, { overrides: { nationalTaxCode: '010701', nbsCode: '115022000' } }),
+  );
+  expect(response.json()).toMatchObject({ status: 'issued' });
+  const xml = xmlOf(t, s.a, response.json<{ id: string }>().id);
+  expect(xml).toContain('<cTribNac>010701</cTribNac>');
+  expect(xml).toContain('<cNBS>115022000</cNBS>');
+  const service = await s.call('GET', `/emitters/${s.emitterId}/services`);
+  expect(service.json()).toMatchObject([{ nationalTaxCode: '010101', nbsCode: '115080000' }]);
+  const ctx = { ...s.a, role: 'owner' as const, accountStatus: 'active' as const };
+  expect(new InvoiceRepository(t.db).list(ctx, { limit: 5, offset: 0 }).items[0]).toMatchObject({
+    serviceCode: '010701',
+  });
+});
+
+test('an override with a code outside the national list is refused before a number is reserved', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await expectRefused(
+    s,
+    brazilInvoice(s, { overrides: { nationalTaxCode: '999999' } }),
+    400,
+    'unknown_service_code',
+  );
+  expect(invoiceCount(s)).toBe(0);
+});

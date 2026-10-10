@@ -30,11 +30,19 @@ The tokens switch to dark colors when the OS asks for dark, unless the page sets
 | `#/` | Home: the user's accounts |
 | `#/admin` | Platform admin |
 | `#/a/:accountId/invoices` | Invoices, filters, lookup by access key |
+| `#/a/:accountId/invoices/new` (optional `?customer=<id>`) | Nova nota: an invoice without a template, simplified mode and "Mais opções" |
 | `#/a/:accountId/invoices/:invoiceId` | Invoice detail: issue similar, cancel, verify at the Sefin |
 | `#/a/:accountId/invoices/:invoiceId/issue` | Issue similar: form with PTAX, review, result |
 | `#/a/:accountId/emitters` | Emitters, onboarding, certificate, environment, sync |
-| `#/a/:accountId/customers` | Customers |
+| `#/a/:accountId/emitters/:emitterId` | Emitter: fiscal configuration (Simples annex and band, ISS rate, IBS/CBS regime) and services |
+| `#/a/:accountId/customers` | Customers; "Novo cliente" in Brazil or abroad |
 | `#/a/:accountId/customers/:customerId` | Customer edit by hand |
 | `#/a/:accountId/members` | Members |
 
-The issue review and the cancel dialog show the environment badge, and their confirm buttons name the environment ("Emitir em PRODUÇÃO", "Cancelar em PRODUÇÃO"). The issue form keeps one `Idempotency-Key` per review. After an answer that does not say whether the invoice exists (a network error, a 5xx, or a proxy timeout such as Cloudflare's 524), the review allows only "Tentar de novo" with the same key, and the key and the reviewed values survive a reload (`sessionStorage`). A 4xx answer is definitive: the server refused before reserving a number, so the user may edit again.
+The issue review and the cancel dialog show the environment badge, and their confirm buttons name the environment ("Emitir em PRODUÇÃO", "Cancelar em PRODUÇÃO"). The issue form keeps one `Idempotency-Key` per review. After an answer that does not say whether the invoice exists (a network error, a 5xx, or a proxy timeout such as Cloudflare's 524), the review allows only "Tentar de novo" with the same key, and the key and the reviewed values survive a reload (`sessionStorage`). A 4xx answer is definitive: the server refused before reserving a number, so the user may edit again. So is a 502 `ptax_unavailable`.
+
+Both issue screens share this behavior through `components/useIssueSend.ts` (key, lock, pending send, send, verify) and `components/IssueResultView.tsx` (the rejected and unconfirmed screens).
+
+Addresses use `components/AddressFields.tsx`: the CEP fills the street, the district, and the IBGE municipality through `GET cep/:cep`; the municipality and the country are picked from the Anexo A lists, never typed as codes. The document decides the kind of address: CNPJ or CPF in Brazil, NIF or no document abroad.
+
+`Field` pairs its label and control with `for`/`id`, so a select is named by its label alone and the hint describes the control (`aria-describedby`). Owner-only controls are disabled for a member, with the reason shown once on the page.

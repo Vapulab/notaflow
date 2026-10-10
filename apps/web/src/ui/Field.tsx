@@ -1,19 +1,38 @@
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
+import {
+  cloneElement,
+  type InputHTMLAttributes,
+  isValidElement,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+  useId,
 } from 'react';
 import { INPUT_CLASSES, LABEL_CLASSES, SELECT_CLASSES } from './classes';
 
-// Malphas pairs label and control with for/id; wrapping does the same without ids to manage.
+// Malphas pairs label and control with for/id; the hint describes the control.
 export function Field(props: { label: string; hint?: string; children: ReactNode }) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const child = props.children;
+  // A single control gets the id; anything else (a combobox) names itself with aria-label.
+  const control = isValidElement<{ id?: string; 'aria-describedby'?: string }>(child)
+    ? cloneElement(child, {
+        id: child.props.id ?? id,
+        ...(props.hint ? { 'aria-describedby': hintId } : {}),
+      })
+    : child;
   return (
-    <label className="flex flex-col gap-1">
-      <span className={LABEL_CLASSES}>{props.label}</span>
-      {props.children}
-      {props.hint && <span className="text-xs text-muted">{props.hint}</span>}
-    </label>
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className={LABEL_CLASSES}>
+        {props.label}
+      </label>
+      {control}
+      {props.hint && (
+        <span id={hintId} className="text-xs text-muted">
+          {props.hint}
+        </span>
+      )}
+    </div>
   );
 }
 

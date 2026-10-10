@@ -5,6 +5,8 @@ import { meFor, renderWithMe } from '../test/renderWithMe';
 import { CertificateWarning } from './CertificateWarning';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { ERROR_TEXT, Layout } from './Layout';
+import { ApiError } from '../api';
+import { isDefinitive } from './useIssueSend';
 
 afterEach(() => cleanup());
 
@@ -61,4 +63,15 @@ test('the layout has Sair, which ends the Cloudflare Access session', () => {
   expect(screen.getByRole('link', { name: 'Sair' }).getAttribute('href')).toBe(
     '/cdn-cgi/access/logout',
   );
+});
+
+test('isDefinitive: a refusal before anything is reserved, never an unclear answer', () => {
+  expect(isDefinitive(new ApiError(400, 'invalid_amount'))).toBe(true);
+  expect(isDefinitive(new ApiError(409, 'fiscal_config_missing'))).toBe(true);
+  expect(isDefinitive(new ApiError(502, 'ptax_unavailable'))).toBe(true);
+  expect(isDefinitive(new ApiError(502, 'http_502'))).toBe(false);
+  expect(isDefinitive(new ApiError(504, 'http_504'))).toBe(false);
+  expect(isDefinitive(new ApiError(408, 'http_408'))).toBe(false);
+  expect(isDefinitive(new ApiError(429, 'http_429'))).toBe(false);
+  expect(isDefinitive(new TypeError('Failed to fetch'))).toBe(false);
 });

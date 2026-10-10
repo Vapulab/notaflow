@@ -1,39 +1,28 @@
 import { type FormEvent, useState } from 'react';
-import { api, type Customer, type PartyAddress } from '../api';
+import { api, type Customer } from '../api';
+import {
+  type AddressValue,
+  AddressFields,
+  addressFromParty,
+  toPartyAddress,
+} from '../components/AddressFields';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { routeHref } from '../router';
 import {
   Alert,
   Button,
+  buttonClasses,
   CARD_CLASSES,
   Field,
   FORM_CLASSES,
   Input,
   Link,
   SECTION_TITLE_CLASSES,
-  Select,
   Spinner,
 } from '../ui';
 
 type Text = 'name' | 'email' | 'phone' | 'municipalRegistration';
-const ADDRESS_FIELDS = [
-  'municipality',
-  'zip',
-  'country',
-  'postalCode',
-  'city',
-  'region',
-  'street',
-  'number',
-  'complement',
-  'district',
-] as const;
-type AddressField = (typeof ADDRESS_FIELDS)[number];
-const REQUIRED: Record<PartyAddress['kind'], AddressField[]> = {
-  domestic: ['municipality', 'zip', 'street', 'number', 'district'],
-  foreign: ['country', 'postalCode', 'city', 'region', 'street', 'number', 'district'],
-};
 
 export function CustomerPage(props: { accountId: string; customerId: string }) {
   const url = `/api/accounts/${encodeURIComponent(props.accountId)}/customers/${encodeURIComponent(props.customerId)}`;
@@ -43,28 +32,42 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
       <Link href={routeHref({ name: 'customers', accountId: props.accountId })} variant="muted">
         Voltar para os clientes
       </Link>
+      {customer.data && (
+        <div>
+          <Link
+            className={buttonClasses({ variant: 'primary' })}
+            href={routeHref({
+              name: 'newInvoice',
+              accountId: props.accountId,
+              customerId: props.customerId,
+            })}
+          >
+            Emitir nota
+          </Link>
+        </div>
+      )}
       {customer.error && <Alert variant="error">{errorText(customer.error)}</Alert>}
       {!customer.data && !customer.error && <Spinner />}
-      {customer.data && <CustomerForm url={url} customer={customer.data} />}
+      {customer.data && (
+        <CustomerForm accountId={props.accountId} url={url} customer={customer.data} />
+      )}
     </Layout>
   );
 }
 
-function CustomerForm({ url, customer }: { url: string; customer: Customer }) {
+function CustomerForm(props: { accountId: string; url: string; customer: Customer }) {
+  const { accountId, url, customer } = props;
   const [text, setText] = useState<Record<Text, string>>({
     name: customer.name,
     email: customer.email ?? '',
     phone: customer.phone ?? '',
     municipalRegistration: customer.municipalRegistration ?? '',
   });
-  const original = customer.address;
-  const [kind, setKind] = useState<PartyAddress['kind']>(original?.kind ?? 'domestic');
-  const [address, setAddress] = useState<Record<AddressField, string>>(
-    Object.fromEntries(ADDRESS_FIELDS.map((f) => [f, original?.[f] ?? ''])) as Record<
-      AddressField,
-      string
-    >,
-  );
+  // The document decides the kind: a CNPJ or CPF lives in Brazil, a NIF or no document abroad.
+  const kind =
+    customer.documentType === 'CNPJ' || customer.documentType === 'CPF' ? 'domestic' : 'foreign';
+  const [initialAddress] = useState(() => addressFromParty(customer.address, kind));
+  const [address, setAddress] = useState<AddressValue>(initialAddress);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
 
   function changes(): Record<string, unknown> | null {
@@ -73,15 +76,10 @@ function CustomerForm({ url, customer }: { url: string; customer: Customer }) {
       const value = text[field].trim();
       if (value && value !== ((customer[field] as string | null) ?? '')) body[field] = value;
     }
-    const filled = ADDRESS_FIELDS.filter((f) => address[f].trim() !== '');
-    const touched = ADDRESS_FIELDS.some((f) => address[f].trim() !== (original?.[f] ?? ''));
-    if (filled.length > 0 && (touched || kind !== original?.kind)) {
-      if (REQUIRED[kind].some((f) => address[f].trim() === '')) return null;
-      const fields = [...REQUIRED[kind], 'complement' as const];
-      body.address = Object.fromEntries([
-        ['kind', kind],
-        ...fields.filter((f) => address[f].trim() !== '').map((f) => [f, address[f].trim()]),
-      ]);
+    if (JSON.stringify(address) !== JSON.stringify(initialAddress)) {
+      const party = toPartyAddress(address);
+      if (!party) return null;
+      if (JSON.stringify(party) !== JSON.stringify(customer.address)) body.address = party;
     }
     return body;
   }
@@ -117,15 +115,6 @@ function CustomerForm({ url, customer }: { url: string; customer: Customer }) {
       />
     </Field>
   );
-  const addressField = (field: AddressField, label: string) => (
-    <Field label={label}>
-      <Input
-        value={address[field]}
-        onChange={(e) => setAddress((a) => ({ ...a, [field]: e.target.value }))}
-      />
-    </Field>
-  );
-
   return (
     <form onSubmit={save} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
       <p className="text-sm text-muted">
@@ -136,31 +125,7 @@ function CustomerForm({ url, customer }: { url: string; customer: Customer }) {
       {textField('phone', 'Telefone')}
       {textField('municipalRegistration', 'Inscrição municipal')}
       <h2 className={SECTION_TITLE_CLASSES}>Endereço</h2>
-      <Field label="País">
-        <Select value={kind} onChange={(e) => setKind(e.target.value as PartyAddress['kind'])}>
-          <option value="domestic">Brasil</option>
-          <option value="foreign">Exterior</option>
-        </Select>
-      </Field>
-      {kind === 'domestic' ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {addressField('municipality', 'Município (código IBGE)')}
-          {addressField('zip', 'CEP')}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {addressField('country', 'País (código ISO, ex.: US)')}
-          {addressField('postalCode', 'Código postal')}
-          {addressField('city', 'Cidade')}
-          {addressField('region', 'Estado ou região')}
-        </div>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {addressField('street', 'Logradouro')}
-        {addressField('number', 'Número')}
-        {addressField('complement', 'Complemento')}
-        {addressField('district', 'Bairro')}
-      </div>
+      <AddressFields accountId={accountId} value={address} onChange={setAddress} />
       {message && <Alert variant={message.variant}>{message.text}</Alert>}
       <div>
         <Button type="submit" variant="primary">

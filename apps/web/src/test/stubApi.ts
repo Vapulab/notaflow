@@ -8,6 +8,7 @@ const ERROR_STATUS: Record<string, number> = {
   sefin_rejected: 422,
   invalid_amount: 400,
   danfse_unavailable: 503,
+  amount_ptax_mismatch: 400,
   http_502: 502,
   http_524: 524,
 };

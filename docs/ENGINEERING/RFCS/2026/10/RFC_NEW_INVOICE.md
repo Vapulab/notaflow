@@ -1,6 +1,6 @@
 # RFC: New Invoices Without a Template, Customers, and Services
 
-**Status:** Accepted (Stage 2a, server, implemented)
+**Status:** Accepted (Stage 2a server and Stage 2b screens implemented)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -69,6 +69,8 @@ From the design session with Lincoln on 2026-10-10:
 | Customers | Brazil (CNPJ or CPF) and abroad (NIF or no NIF); the customer decides the tax treatment. |
 | Building the invoice | Approach 1: a **synthetic template**. The new invoice is built into the same `DpsTemplate` that "issue similar" reads from an XML, and goes through the existing issue path unchanged. |
 | Tax reform | A separate section; 2026 rules now, the 2027 highlight as its own stage due by December 2026. |
+| Place of service (Stage 2b review) | Always the emitter's municipality. An export done in Brazil keeps it there, with the customer's country in `cPaisResult`. A service done in person in another municipality, or abroad (`cPaisPrestacao`), is a later stage. |
+| Export support mechanisms (Stage 2b review) | A service without export details declares `mecAFComexP` and `mecAFComexT` 01 (Nenhum). The earlier invoices carried 02 (ACC for the provider, public administration for the customer), which does not fit a private customer abroad. Checked in produção restrita on 2026-10-10. "Issue similar" and the services imported by the sync also declare 01; migration `0005` sets it on the services imported before. |
 
 ## Design
 
@@ -180,6 +182,7 @@ Checked before a DPS number is reserved, each with its own error code and a Port
 | Municipality outside the IBGE table, country outside the ISO table (Anexo A) | `unknown_municipality`, `unknown_country` |
 | Export amount in reais that is not the foreign amount at the PTAX sell rate of the competence date | `amount_ptax_mismatch` with the expected amount |
 | No PTAX rate for the competence date | `ptax_unavailable` (502) |
+| CEP lookup: not 8 digits, unknown, ViaCEP down | `invalid_cep`, `cep_not_found` (404), `cep_unavailable` (502) |
 
 Customer text is trimmed, and typographic quotes and dashes become plain ones, before the check. Amounts are at most 9,999,999,999,999 cents and the Simples percent at most 99.99%, the limits of the XSD types.
 

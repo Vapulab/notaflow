@@ -5,7 +5,8 @@ import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { fileToBase64, formatDate } from '../format';
-import { Alert, Button, buttonClasses, Card, SECTION_TITLE_CLASSES } from '../ui';
+import { routeHref } from '../router';
+import { Alert, Button, buttonClasses, Card, Link, SECTION_TITLE_CLASSES } from '../ui';
 import { OnboardingForm } from './OnboardingForm';
 
 type Act = (action: () => Promise<string>) => Promise<void>;
@@ -37,6 +38,7 @@ export function EmittersPage({ accountId }: { accountId: string }) {
         <EmitterCard
           key={emitter.id}
           base={base}
+          accountId={accountId}
           emitter={emitter}
           isOwner={isOwner}
           isAdmin={isAdmin}
@@ -58,13 +60,14 @@ export function EmittersPage({ accountId }: { accountId: string }) {
 }
 
 function EmitterCard(props: {
+  accountId: string;
   base: string;
   emitter: Emitter;
   isOwner: boolean;
   isAdmin: boolean;
   act: Act;
 }) {
-  const { base, emitter, isOwner, isAdmin, act } = props;
+  const { accountId, base, emitter, isOwner, isAdmin, act } = props;
   const url = `${base}/emitters/${encodeURIComponent(emitter.id)}`;
   const sync = useAsync(() => api.get<SyncState>(`${url}/sync`), [url]);
 
@@ -123,6 +126,12 @@ function EmitterCard(props: {
         <Button variant="secondary" onClick={syncNow}>
           Sincronizar agora
         </Button>
+        <Link
+          className={buttonClasses({ variant: 'secondary' })}
+          href={routeHref({ name: 'emitter', accountId, emitterId: emitter.id })}
+        >
+          Configuração fiscal e serviços
+        </Link>
         {isOwner && (
           <>
             <label className={`${buttonClasses({ variant: 'secondary' })} cursor-pointer`}>

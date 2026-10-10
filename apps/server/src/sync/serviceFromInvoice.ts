@@ -53,8 +53,9 @@ function fiscalGroupsOf(xml: string): Partial<ServiceInput> {
           export: {
             mode: foreignTrade.mode,
             providerLink: foreignTrade.providerLink,
-            providerSupport: foreignTrade.providerSupport,
-            customerSupport: foreignTrade.customerSupport,
+            // The source invoices declared 02 (ACC, public administration); a service declares none.
+            providerSupport: '01',
+            customerSupport: '01',
             temporaryGoods: foreignTrade.temporaryGoods,
             mdic: foreignTrade.mdic,
           },

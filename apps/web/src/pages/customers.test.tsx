@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
+import { installDialogPolyfill } from '../test/dialog';
 import { stubApi } from '../test/stubApi';
 import { CustomerPage } from './CustomerPage';
 import { CustomersPage } from './CustomersPage';
@@ -50,11 +51,15 @@ test('saving sends only the changed fields', async () => {
   expect(await screen.findByText(/não sobrescreve/i)).toBeTruthy();
 });
 
-test('a domestic address sends municipality and CEP with the street fields', async () => {
-  const calls = stubApi({ '/api/accounts/acc/customers/c1': customer });
+test('a domestic address sends the municipality chosen in the list, with the street fields', async () => {
+  const calls = stubApi({
+    '/api/accounts/acc/customers/c1': customer,
+    '/api/accounts/acc/municipalities': [{ code: '3550308', name: 'São Paulo', uf: 'SP' }],
+  });
   render(<CustomerPage accountId="acc" customerId="c1" />);
   const user = userEvent.setup();
-  await user.type(await screen.findByLabelText(/município/i), '3550308');
+  await user.type(await screen.findByRole('combobox', { name: 'Município' }), 'sao paulo');
+  await user.click(await screen.findByRole('option', { name: 'São Paulo - SP' }));
   await user.type(screen.getByLabelText('CEP'), '01001000');
   await user.type(screen.getByLabelText('Logradouro'), 'Praça da Sé');
   await user.type(screen.getByLabelText('Número'), '1');
@@ -71,4 +76,31 @@ test('a domestic address sends municipality and CEP with the street fields', asy
       district: 'Sé',
     },
   });
+});
+
+test('Novo cliente opens the form in a dialog', async () => {
+  installDialogPolyfill();
+  let list = [customer];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const body: unknown = url.endsWith('/emitters')
+        ? [{ id: 'em1', companyName: 'EMPRESA', cnpj: '12345678000195', environment: 'producao' }]
+        : init?.method === 'POST'
+          ? (list = [...list, { ...customer, id: 'c2', name: 'Novo Cliente Ltda' }]).at(-1)
+          : list;
+      return new Response(JSON.stringify(body), { status: 200 });
+    }),
+  );
+  render(<CustomersPage accountId="acc" />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo cliente' }));
+  expect(screen.getByRole('dialog', { name: 'Novo cliente' })).toBeTruthy();
+});
+
+test('the customer page links to Nova nota for that customer', async () => {
+  stubApi({ '/api/accounts/acc/customers/c1': customer });
+  render(<CustomerPage accountId="acc" customerId="c1" />);
+  const link = await screen.findByRole('link', { name: 'Emitir nota' });
+  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/new?customer=c1');
 });

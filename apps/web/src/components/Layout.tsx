@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
+import { formatCents, formatDate } from '../format';
 import { routeHref, useRoute } from '../router';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, ThemeToggle } from '../ui';
@@ -58,6 +59,10 @@ export const ERROR_TEXT: Record<string, string> = {
   unknown_service_code: 'Código de serviço fora da lista nacional.',
   unknown_municipality: 'Município fora da tabela do IBGE. Escolha o município na lista.',
   unknown_country: 'País fora da tabela ISO. Escolha o país na lista.',
+  invalid_cep: 'O CEP deve ter 8 dígitos.',
+  cep_not_found: 'CEP não encontrado. Preencha o endereço e escolha o município na lista.',
+  cep_unavailable:
+    'A consulta de CEP não respondeu. Preencha o endereço e escolha o município na lista.',
   template_unreadable: 'Não foi possível reenviar esta nota com segurança. Fale com o suporte.',
   invalid_justification: 'A justificativa precisa ter de 15 a 255 caracteres.',
   invalid_address: 'Endereço incompleto.',
@@ -67,7 +72,17 @@ export const ERROR_TEXT: Record<string, string> = {
 
 export function errorText(error: unknown): string {
   if (error instanceof ApiError) {
-    return ERROR_TEXT[error.code] ?? `Erro inesperado (${error.code}).`;
+    const text = ERROR_TEXT[error.code] ?? `Erro inesperado (${error.code}).`;
+    const { expectedCents, rate, rateDate } = error.body;
+    if (error.code === 'amount_ptax_mismatch' && typeof expectedCents === 'number') {
+      const rateText = typeof rate === 'string' ? rate.replace('.', ',') : '';
+      const date = typeof rateDate === 'string' ? formatDate(`${rateDate}T12:00:00Z`) : '';
+      return `${text} Valor esperado: ${formatCents(expectedCents)} (PTAX ${rateText} de ${date}).`;
+    }
+    if (error.code === 'invalid_iss_rate' && typeof error.body.minimum === 'string') {
+      return `A alíquota mínima deste serviço é ${error.body.minimum.replace('.', ',')}%.`;
+    }
+    return text;
   }
   return 'Erro inesperado. Tente de novo.';
 }

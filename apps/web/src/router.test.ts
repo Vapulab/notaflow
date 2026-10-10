@@ -41,3 +41,27 @@ test('the issue route', () => {
     '#/a/acc/invoices/inv1/issue',
   );
 });
+
+test('the emitter page route', () => {
+  const route = { name: 'emitter', accountId: 'acc', emitterId: 'em1' } as const;
+  expect(parseRoute('#/a/acc/emitters/em1')).toEqual(route);
+  expect(routeHref(route)).toBe('#/a/acc/emitters/em1');
+});
+
+test('the new invoice route, before an invoice id, with an optional customer', () => {
+  expect(parseRoute('#/a/acc/invoices/new')).toEqual({ name: 'newInvoice', accountId: 'acc' });
+  expect(parseRoute('#/a/acc/invoices/new?customer=c1')).toEqual({
+    name: 'newInvoice',
+    accountId: 'acc',
+    customerId: 'c1',
+  });
+  expect(routeHref({ name: 'newInvoice', accountId: 'acc' })).toBe('#/a/acc/invoices/new');
+  expect(routeHref({ name: 'newInvoice', accountId: 'acc', customerId: 'c1' })).toBe(
+    '#/a/acc/invoices/new?customer=c1',
+  );
+  expect(parseRoute('#/a/acc/invoices/inv1')).toEqual({
+    name: 'invoice',
+    accountId: 'acc',
+    invoiceId: 'inv1',
+  });
+});

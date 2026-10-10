@@ -29,6 +29,7 @@ export async function createTestApp(
     onEmitterCreated?: (ctx: AccountContext, emitterId: string) => void;
     ptaxDispatcher?: Dispatcher;
     exchangeRate?: ExchangeRateSource;
+    cepDispatcher?: Dispatcher;
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -51,6 +52,7 @@ export async function createTestApp(
     verifyAccessToken: createAccessVerifier({ issuer: ISSUER, audience: AUDIENCE, jwks }),
     ...(options.logStream ? { logStream: options.logStream } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),
+    ...(options.cepDispatcher ? { cepDispatcher: options.cepDispatcher } : {}),
     // A fixed PTAX of 5.0000 unless a test brings its own; the real one is a network call.
     exchangeRate:
       options.exchangeRate ??

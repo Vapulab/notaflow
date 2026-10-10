@@ -56,6 +56,9 @@ test('issues a copy of the template with the new amounts and description', async
   });
   expect(outcome.invoice.xml).toContain('<vServMoeda>1234.00</vServMoeda>');
   expect(outcome.invoice.xml).toContain('<cClassTrib>410027</cClassTrib>');
+  // The template declares 02 (ACC, public administration); a copy declares none (01).
+  expect(outcome.invoice.xml).toContain('<mecAFComexP>01</mecAFComexP>');
+  expect(outcome.invoice.xml).toContain('<mecAFComexT>01</mecAFComexT>');
 });
 
 test('a resend of an issued DPS (E0014) ends issued through the lookup', async () => {

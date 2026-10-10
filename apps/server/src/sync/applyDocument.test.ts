@@ -141,8 +141,8 @@ test('an imported service takes the fiscal groups of the invoice XML', () => {
     export: {
       mode: '1',
       providerLink: '0',
-      providerSupport: '02',
-      customerSupport: '02',
+      providerSupport: '01',
+      customerSupport: '01',
       temporaryGoods: '1',
       mdic: '0',
     },
