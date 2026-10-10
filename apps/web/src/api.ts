@@ -217,3 +217,21 @@ export interface Customer {
   origin: 'manual' | 'imported';
   archived: boolean;
 }
+
+export interface Municipality {
+  code: string;
+  name: string;
+  uf: string;
+}
+
+export interface Country {
+  code: string;
+  name: string;
+}
+
+export interface CepAnswer {
+  zip: string;
+  street: string;
+  district: string;
+  municipality: Municipality;
+}

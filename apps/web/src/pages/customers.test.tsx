@@ -50,11 +50,15 @@ test('saving sends only the changed fields', async () => {
   expect(await screen.findByText(/não sobrescreve/i)).toBeTruthy();
 });
 
-test('a domestic address sends municipality and CEP with the street fields', async () => {
-  const calls = stubApi({ '/api/accounts/acc/customers/c1': customer });
+test('a domestic address sends the municipality chosen in the list, with the street fields', async () => {
+  const calls = stubApi({
+    '/api/accounts/acc/customers/c1': customer,
+    '/api/accounts/acc/municipalities': [{ code: '3550308', name: 'São Paulo', uf: 'SP' }],
+  });
   render(<CustomerPage accountId="acc" customerId="c1" />);
   const user = userEvent.setup();
-  await user.type(await screen.findByLabelText(/município/i), '3550308');
+  await user.type(await screen.findByRole('combobox', { name: 'Município' }), 'sao paulo');
+  await user.click(await screen.findByRole('option', { name: 'São Paulo - SP' }));
   await user.type(screen.getByLabelText('CEP'), '01001000');
   await user.type(screen.getByLabelText('Logradouro'), 'Praça da Sé');
   await user.type(screen.getByLabelText('Número'), '1');

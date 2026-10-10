@@ -17,11 +17,7 @@ const load = <T>(file: string) =>
 const MUNICIPALITIES = load<Municipality>('./municipalities.json');
 const COUNTRIES = load<Country>('./countries.json');
 
-const fold = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+const fold = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const MUNICIPALITY_INDEX = MUNICIPALITIES.map((m) => ({
   entry: m,
@@ -40,12 +36,15 @@ function search<T>(index: { entry: T; text: string }[], query: string, limit: nu
   return [...first, ...rest].slice(0, limit).map((i) => i.entry);
 }
 
+// An exact code answers that place alone; a saved address knows only its code.
 export function searchMunicipalities(query: string, limit = 20): Municipality[] {
-  return search(MUNICIPALITY_INDEX, query, limit);
+  const exact = municipality(query.trim());
+  return exact ? [exact] : search(MUNICIPALITY_INDEX, query, limit);
 }
 
 export function searchCountries(query: string, limit = 20): Country[] {
-  return search(COUNTRY_INDEX, query, limit);
+  const exact = country(query.trim());
+  return exact ? [exact] : search(COUNTRY_INDEX, query, limit);
 }
 
 export function municipality(code: string): Municipality | null {
