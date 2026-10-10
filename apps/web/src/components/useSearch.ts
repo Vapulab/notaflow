@@ -9,7 +9,8 @@ export function useSearch<T>(url: string, query: string): T[] {
     if (!text) return;
     let live = true;
     const timer = setTimeout(() => {
-      api.get<T[]>(`${url}?q=${encodeURIComponent(text)}`).then(
+      const joiner = url.includes('?') ? '&' : '?';
+      api.get<T[]>(`${url}${joiner}q=${encodeURIComponent(text)}`).then(
         (items) => {
           if (live) setFound(items);
         },

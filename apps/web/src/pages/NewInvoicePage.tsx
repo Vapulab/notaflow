@@ -1,0 +1,495 @@
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import {
+  api,
+  type Customer,
+  type Emitter,
+  type ExchangeRate,
+  type FiscalConfig,
+  type Service,
+} from '../api';
+import { EnvironmentBadge } from '../components/EnvironmentBadge';
+import { IssueResultView } from '../components/IssueResultView';
+import { Layout, errorText } from '../components/Layout';
+import { roleIn, showsEnvironment, useMe } from '../components/MeContext';
+import { NewCustomerForm } from '../components/NewCustomerForm';
+import { useAsync } from '../components/useAsync';
+import { useIssueSend } from '../components/useIssueSend';
+import { useSearch } from '../components/useSearch';
+import {
+  brasiliaToday,
+  centsInput,
+  formatCents,
+  formatCompetence,
+  formatDate,
+  formatServiceCode,
+  parseCents,
+  previousMonthEnd,
+} from '../format';
+import { routeHref } from '../router';
+import {
+  Alert,
+  Button,
+  CARD_CLASSES,
+  Card,
+  Combobox,
+  type ComboboxOption,
+  Field,
+  FORM_CLASSES,
+  Input,
+  Link,
+  Modal,
+  SECTION_TITLE_CLASSES,
+  Select,
+  Spinner,
+  Table,
+  TBody,
+  TD,
+  TH,
+  Textarea,
+} from '../ui';
+import { bandLabel } from './FiscalConfigForm';
+
+const CURRENCIES = { '220': 'USD', '978': 'EUR' } as const;
+type CurrencyCode = keyof typeof CURRENCIES;
+
+interface Form {
+  emitterId: string;
+  customer: Customer | null;
+  serviceId: string;
+  competence: string;
+  description: string;
+  brl: string;
+  currencyCode: CurrencyCode;
+  foreign: string;
+  band: string; // 1 to 6, within the emitter's annex
+}
+
+const customerOption = (c: Customer): ComboboxOption => ({
+  value: c.id,
+  label: `${c.name} (${c.document ?? 'sem documento'})`,
+});
+
+export function NewInvoicePage(props: { accountId: string; customerId?: string }) {
+  const { accountId } = props;
+  const base = `/api/accounts/${encodeURIComponent(accountId)}`;
+  const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
+  return (
+    <Layout title="Nova nota" accountId={accountId}>
+      {emitters.error && <Alert variant="error">{errorText(emitters.error)}</Alert>}
+      {!emitters.data && !emitters.error && <Spinner />}
+      {emitters.data && emitters.data.length === 0 && (
+        <Alert variant="info">
+          Cadastre um emitente antes de emitir.{' '}
+          <Link href={routeHref({ name: 'emitters', accountId })}>Ir para os emitentes</Link>
+        </Alert>
+      )}
+      {emitters.data && emitters.data.length > 0 && (
+        <NewInvoiceFlow
+          accountId={accountId}
+          emitters={emitters.data}
+          {...(props.customerId ? { customerId: props.customerId } : {})}
+        />
+      )}
+    </Layout>
+  );
+}
+
+function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; customerId?: string }) {
+  const { accountId, emitters } = props;
+  const base = `/api/accounts/${encodeURIComponent(accountId)}`;
+  const me = useMe();
+  const send = useIssueSend<Form>({ accountId, storageKey: `notaflow.newInvoice.${accountId}` });
+  const [form, setForm] = useState<Form>(
+    () =>
+      send.restored ?? {
+        emitterId: emitters[0]?.id ?? '',
+        customer: null,
+        serviceId: '',
+        competence: previousMonthEnd(brasiliaToday()),
+        description: '',
+        brl: '',
+        currencyCode: '220',
+        foreign: '',
+        band: '',
+      },
+  );
+  const set = <K extends keyof Form>(field: K, value: Form[K]) =>
+    setForm((f) => ({ ...f, [field]: value }));
+  const emitter = emitters.find((e) => e.id === form.emitterId) ?? emitters[0];
+  const emitterUrl = `${base}/emitters/${encodeURIComponent(form.emitterId)}`;
+  const fiscal = useAsync(() => api.get<FiscalConfig>(`${emitterUrl}/fiscal`), [emitterUrl]);
+  const services = useAsync(() => api.get<Service[]>(`${emitterUrl}/services`), [emitterUrl]);
+  const [customerQuery, setCustomerQuery] = useState('');
+  const found = useSearch<Customer>(
+    `${base}/customers?emitterId=${encodeURIComponent(form.emitterId)}`,
+    customerQuery,
+  );
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  // A customer from the link ("Emitir nota" on the customer page) starts selected.
+  const linked = props.customerId;
+  useEffect(() => {
+    if (!linked || send.restored) return;
+    void api.get<Customer>(`${base}/customers/${encodeURIComponent(linked)}`).then(
+      (customer) => setForm((f) => ({ ...f, emitterId: customer.emitterId, customer })),
+      () => {},
+    );
+  }, [base, linked, send.restored]);
+
+  // The emitter's band is the default until the user picks another.
+  const defaultBand = fiscal.data?.simplesBand ? String(fiscal.data.simplesBand) : '';
+  const band = form.band || defaultBand;
+
+  const customer = form.customer;
+  const abroad =
+    customer !== null && customer.documentType !== 'CNPJ' && customer.documentType !== 'CPF';
+  const service = services.data?.find((s) => s.id === form.serviceId) ?? null;
+  const brlCents = parseCents(form.brl);
+  const foreignCents = abroad ? parseCents(form.foreign) : null;
+
+  const [rate, setRate] = useState<ExchangeRate | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
+  const reviewing = useRef(send.key !== null);
+  reviewing.current = send.key !== null;
+  useEffect(() => {
+    if (!abroad || foreignCents === null || foreignCents <= 0 || !form.competence) return;
+    if (reviewing.current) return;
+    let live = true;
+    setRateLoading(true);
+    // Waits for the user to stop typing before asking the Banco Central.
+    const timer = setTimeout(() => {
+      api
+        .get<ExchangeRate>(
+          `${base}/exchange-rate?currency=${form.currencyCode}&date=${form.competence}`,
+        )
+        .then(
+          (answer) => {
+            if (!live || reviewing.current) return;
+            setRate(answer);
+            setRateError(null);
+            setForm((f) => ({
+              ...f,
+              brl: centsInput(Math.round((foreignCents * answer.rateE4) / 10_000)),
+            }));
+          },
+          (error: unknown) => {
+            if (!live) return;
+            setRate(null);
+            setRateError(errorText(error));
+          },
+        )
+        .finally(() => {
+          if (live) setRateLoading(false);
+        });
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [abroad, base, foreignCents, form.competence, form.currencyCode]);
+
+  if (send.result) {
+    return (
+      <IssueResultView
+        accountId={accountId}
+        title="Nova nota"
+        environment={emitter?.environment ?? 'producao'}
+        send={send}
+      />
+    );
+  }
+  if (!emitter) return null;
+  if (fiscal.error) return <Alert variant="error">{errorText(fiscal.error)}</Alert>;
+  if (!fiscal.data || !services.data) return <Spinner />;
+  const config = fiscal.data;
+  if (config.simplesPercent === null || !config.simplesAnnex) {
+    return roleIn(me, accountId) === 'owner' ? (
+      <Alert variant="warning">
+        Configure o Simples e o ISS do emitente antes de emitir.{' '}
+        <Link href={routeHref({ name: 'emitter', accountId, emitterId: emitter.id })}>
+          Configurar o emitente
+        </Link>
+      </Alert>
+    ) : (
+      <Alert variant="warning">
+        Peça ao dono da conta para configurar o Simples e o ISS do emitente antes de emitir.
+      </Alert>
+    );
+  }
+  const annexBands = config.bands[config.simplesAnnex];
+  const bandPercent = annexBands[Number(band) - 1] ?? null;
+  const activeServices = services.data.filter((s) => !s.archived);
+  const currency = CURRENCIES[form.currencyCode];
+
+  const valid =
+    customer !== null &&
+    customer.documentType !== 'NONE' &&
+    service !== null &&
+    form.competence !== '' &&
+    form.description.trim() !== '' &&
+    brlCents !== null &&
+    brlCents > 0 &&
+    bandPercent !== null &&
+    (!abroad || (foreignCents !== null && foreignCents > 0 && rate !== null && !rateLoading));
+
+  function chooseService(serviceId: string) {
+    const next = activeServices.find((s) => s.id === serviceId);
+    setForm((f) => ({
+      ...f,
+      serviceId,
+      // The service text fills an empty description or replaces the one the last service filled.
+      description:
+        next && (f.description.trim() === '' || f.description === service?.description)
+          ? next.description
+          : f.description,
+    }));
+  }
+
+  function review(event: FormEvent) {
+    event.preventDefault();
+    if (valid) send.startReview();
+  }
+
+  function confirm() {
+    if (!customer || !service || brlCents === null) return;
+    void send.send(form, `${base}/invoices/new`, {
+      emitterId: form.emitterId,
+      customerId: customer.id,
+      serviceId: service.id,
+      competence: form.competence,
+      serviceCents: brlCents,
+      ...(abroad && foreignCents
+        ? { foreignCurrency: form.currencyCode, foreignAmountCents: foreignCents }
+        : {}),
+      ...(band !== defaultBand && bandPercent !== null ? { simplesPercent: bandPercent } : {}),
+      description: form.description.trim(),
+    });
+  }
+
+  const issLine = abroad ? 'Exportação: sem ISS' : 'ISS no DAS (não retido)';
+
+  if (send.key) {
+    const production = emitter.environment === 'producao';
+    const namesEnvironment = showsEnvironment(me, emitter.environment);
+    const rows: [string, string][] = [
+      ['Emitente', emitter.companyName],
+      ['Cliente', customer?.name ?? ''],
+      ['Serviço', service ? `${formatServiceCode(service.nationalTaxCode)} – ${service.name}` : ''],
+      ['Competência', formatCompetence(form.competence)],
+      ['Descrição', form.description.trim()],
+      [
+        'Valor',
+        abroad && foreignCents !== null
+          ? `${formatCents(brlCents ?? 0)} (${currency} ${centsInput(foreignCents)})`
+          : formatCents(brlCents ?? 0),
+      ],
+      ['Faixa do Simples', bandPercent === null ? '' : bandLabel(Number(band), bandPercent)],
+      ['ISS', issLine],
+    ];
+    return (
+      <>
+        <EnvironmentBadge environment={emitter.environment} />
+        <Card>
+          <Table>
+            <TBody>
+              {rows.map(([label, value]) => (
+                <tr key={label}>
+                  <TH scope="row">{label}</TH>
+                  <TD>{value}</TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        </Card>
+        {send.error && <Alert variant="error">{send.error}</Alert>}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant={production && namesEnvironment ? 'danger' : 'primary'}
+            disabled={send.busy}
+            onClick={confirm}
+          >
+            {send.locked
+              ? 'Tentar de novo'
+              : !namesEnvironment
+                ? 'Emitir nota'
+                : production
+                  ? 'Emitir em PRODUÇÃO'
+                  : 'Emitir em produção restrita'}
+          </Button>
+          {!send.locked && (
+            <Button variant="secondary" disabled={send.busy} onClick={() => send.backToEdit()}>
+              Voltar e editar
+            </Button>
+          )}
+          {send.busy && <Spinner label="Emitindo" />}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <EnvironmentBadge environment={emitter.environment} />
+      <form onSubmit={review} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
+        <h2 className={SECTION_TITLE_CLASSES}>Nova nota sem modelo</h2>
+        {emitters.length > 1 && (
+          <Field label="Emitente">
+            <Select
+              value={form.emitterId}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  emitterId: e.target.value,
+                  customer: null,
+                  serviceId: '',
+                  band: '',
+                }))
+              }
+            >
+              {emitters.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.companyName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-64 flex-1">
+            <Field label="Cliente">
+              <Combobox
+                label="Cliente"
+                query={customerQuery}
+                onQueryChange={setCustomerQuery}
+                options={found.filter((c) => !c.archived).map(customerOption)}
+                selected={customer ? customerOption(customer) : null}
+                onSelect={(option) =>
+                  set(
+                    'customer',
+                    option ? (found.find((c) => c.id === option.value) ?? null) : null,
+                  )
+                }
+                placeholder="Nome ou documento"
+              />
+            </Field>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => setCreatingCustomer(true)}>
+            + Novo cliente
+          </Button>
+        </div>
+        {customer?.documentType === 'NONE' && (
+          <Alert variant="warning">
+            Um cliente sem documento ainda não pode receber nota. Cadastre o NIF do cliente.
+          </Alert>
+        )}
+        <Field label="Serviço">
+          <Select value={form.serviceId} onChange={(e) => chooseService(e.target.value)}>
+            <option value="">Escolha um serviço</option>
+            {activeServices.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({formatServiceCode(s.nationalTaxCode)})
+              </option>
+            ))}
+          </Select>
+        </Field>
+        {activeServices.length === 0 && (
+          <p className="text-sm text-muted">
+            Nenhum serviço ainda. O dono da conta cadastra os serviços na página do emitente.
+          </p>
+        )}
+        <Field label="Competência">
+          <Input
+            type="date"
+            required
+            max={brasiliaToday()}
+            value={form.competence}
+            onChange={(e) => set('competence', e.target.value)}
+          />
+        </Field>
+        <Field label="Descrição">
+          <Textarea
+            maxLength={2000}
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+          />
+        </Field>
+        {abroad && (
+          <div className="flex flex-col gap-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Moeda">
+                <Select
+                  value={form.currencyCode}
+                  onChange={(e) => set('currencyCode', e.target.value as CurrencyCode)}
+                >
+                  <option value="220">Dólar (USD)</option>
+                  <option value="978">Euro (EUR)</option>
+                </Select>
+              </Field>
+              <Field label={`Valor em ${currency}`}>
+                <Input
+                  inputMode="decimal"
+                  value={form.foreign}
+                  onChange={(e) => set('foreign', e.target.value)}
+                />
+              </Field>
+            </div>
+            {rateLoading && <p className="text-sm text-muted">Buscando a cotação PTAX…</p>}
+            {!rateLoading && rate && (
+              <p className="text-sm text-muted">
+                PTAX venda de {formatDate(`${rate.date}T12:00:00Z`)}: {rate.rate.replace('.', ',')}
+              </p>
+            )}
+            {rateError && <Alert variant="warning">{rateError}</Alert>}
+          </div>
+        )}
+        <Field label="Valor em reais">
+          <Input
+            inputMode="decimal"
+            readOnly={abroad}
+            value={form.brl}
+            onChange={(e) => set('brl', e.target.value)}
+          />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Faixa do Simples">
+            <Select value={band} onChange={(e) => set('band', e.target.value)}>
+              {annexBands.map((percent, index) => (
+                <option key={index + 1} value={String(index + 1)}>
+                  {bandLabel(index + 1, percent)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-fg">ISS</span>
+            <p className="text-sm text-muted">{issLine}</p>
+          </div>
+        </div>
+        <div>
+          <Button type="submit" variant="primary" disabled={!valid}>
+            Revisar
+          </Button>
+        </div>
+      </form>
+      <Modal
+        open={creatingCustomer}
+        title="Novo cliente"
+        onClose={() => setCreatingCustomer(false)}
+      >
+        {creatingCustomer && (
+          <NewCustomerForm
+            accountId={accountId}
+            emitters={emitters}
+            emitterId={form.emitterId}
+            onCreated={(created) => {
+              set('customer', created);
+              setCreatingCustomer(false);
+            }}
+            onCancel={() => setCreatingCustomer(false)}
+          />
+        )}
+      </Modal>
+    </>
+  );
+}
