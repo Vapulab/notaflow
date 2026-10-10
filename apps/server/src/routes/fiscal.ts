@@ -42,7 +42,7 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
       const ctx = accountContext(request, request.params.accountId);
       const config = emitters.fiscalConfig(ctx, request.params.emitterId);
       if (!config) throw new HttpError(404, 'not_found');
-      return config;
+      return { ...config, bands: SIMPLES_BANDS };
     },
   );
 

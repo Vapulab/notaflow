@@ -4,6 +4,7 @@ import { accountContext, identityOf } from '../auth/guards';
 import { BACEN_CURRENCY, fetchPtaxSell } from '../exchange/ptax';
 import { HttpError } from '../httpError';
 import type { IssueInput, IssueService, NewInvoiceRequest } from '../issue/IssueService';
+import { serviceProperties } from './serviceSchema';
 
 const DATE = '^\\d{4}-\\d{2}-\\d{2}$';
 // vServ is TSDec15V2; this keeps every amount a safe integer far below it.
@@ -45,6 +46,18 @@ const newInvoiceSchema = {
       issRate: { type: 'integer', minimum: 0, maximum: 500 },
       issRetained: { type: 'boolean' },
       description: { type: 'string', minLength: 1, maxLength: 2000 },
+      overrides: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          nationalTaxCode: serviceProperties.nationalTaxCode,
+          municipalTaxCode: serviceProperties.municipalTaxCode,
+          nbsCode: serviceProperties.nbsCode,
+          pisCofinsCst: serviceProperties.pisCofinsCst,
+          ibsCbs: serviceProperties.ibsCbs,
+          export: serviceProperties.export,
+        },
+      },
     },
   },
 } as const;

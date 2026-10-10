@@ -19,6 +19,7 @@ import { IdentityRepository } from './repos/IdentityRepository';
 import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
 import { customerRoutes } from './routes/customers';
+import { cepRoutes } from './routes/cep';
 import { fiscalRoutes } from './routes/fiscal';
 import { serviceRoutes } from './routes/services';
 import { emitterRoutes } from './routes/emitters';
@@ -46,6 +47,7 @@ export interface AppDeps {
   providerFactory?: ProviderFactory;
   issuerFactory?: IssuerFactory;
   exchangeRate?: ExchangeRateSource;
+  cepDispatcher?: Dispatcher;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
   syncRetryDelaysMs?: number[];
@@ -113,6 +115,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   customerRoutes(app, db);
   fiscalRoutes(app, db);
+  cepRoutes(app, deps.cepDispatcher ? { cepDispatcher: deps.cepDispatcher } : {});
   serviceRoutes(app, db);
   auditRoutes(app, db);
   if (deps.webRoot) registerWeb(app, deps.webRoot);

@@ -35,6 +35,7 @@ beforeAll(async () => {
   });
   params = {
     serviceId: service.id,
+    cep: '86010000',
     accountId: a.accountId,
     emitterId: emitter.id,
     userId: a.userId,

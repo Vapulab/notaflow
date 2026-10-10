@@ -180,6 +180,7 @@ Checked before a DPS number is reserved, each with its own error code and a Port
 | Municipality outside the IBGE table, country outside the ISO table (Anexo A) | `unknown_municipality`, `unknown_country` |
 | Export amount in reais that is not the foreign amount at the PTAX sell rate of the competence date | `amount_ptax_mismatch` with the expected amount |
 | No PTAX rate for the competence date | `ptax_unavailable` (502) |
+| CEP lookup: not 8 digits, unknown, ViaCEP down | `invalid_cep`, `cep_not_found` (404), `cep_unavailable` (502) |
 
 Customer text is trimmed, and typographic quotes and dashes become plain ones, before the check. Amounts are at most 9,999,999,999,999 cents and the Simples percent at most 99.99%, the limits of the XSD types.
 

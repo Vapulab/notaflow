@@ -58,6 +58,10 @@ export const ERROR_TEXT: Record<string, string> = {
   unknown_service_code: 'Código de serviço fora da lista nacional.',
   unknown_municipality: 'Município fora da tabela do IBGE. Escolha o município na lista.',
   unknown_country: 'País fora da tabela ISO. Escolha o país na lista.',
+  invalid_cep: 'O CEP deve ter 8 dígitos.',
+  cep_not_found: 'CEP não encontrado. Preencha o endereço e escolha o município na lista.',
+  cep_unavailable:
+    'A consulta de CEP não respondeu. Preencha o endereço e escolha o município na lista.',
   template_unreadable: 'Não foi possível reenviar esta nota com segurança. Fale com o suporte.',
   invalid_justification: 'A justificativa precisa ter de 15 a 255 caracteres.',
   invalid_address: 'Endereço incompleto.',
