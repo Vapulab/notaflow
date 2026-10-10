@@ -15,6 +15,7 @@ import {
   Card,
   Field,
   Input,
+  Link,
   Select,
   Table,
   TBody,
@@ -99,6 +100,14 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
 
   return (
     <Layout title="Notas" accountId={accountId}>
+      <div>
+        <Link
+          className={buttonClasses({ variant: 'primary' })}
+          href={routeHref({ name: 'newInvoice', accountId })}
+        >
+          Nova nota
+        </Link>
+      </div>
       <form
         onSubmit={lookup}
         className={`${CARD_CLASSES} flex flex-col gap-3 sm:flex-row sm:items-end`}

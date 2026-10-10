@@ -19,6 +19,11 @@ function optionsFor(account: Me['accounts'][number]): Option[] {
       text: 'Veja, filtre e baixe as notas, e use uma delas para emitir outra.',
     },
     {
+      route: { name: 'newInvoice', accountId },
+      title: 'Nova nota',
+      text: 'Emita uma nota para um cliente, sem modelo.',
+    },
+    {
       route: { name: 'emitters', accountId },
       title: 'Emitentes',
       text: 'Empresas que emitem, certificado digital e sincronização.',

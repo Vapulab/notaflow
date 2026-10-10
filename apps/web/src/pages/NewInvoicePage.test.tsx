@@ -301,3 +301,95 @@ test('a platform admin sees the environment on the confirm button', async () => 
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   expect(screen.getByRole('button', { name: 'Emitir em PRODUÇÃO' })).toBeTruthy();
 });
+
+async function openMore(user: User) {
+  await user.click(screen.getByRole('button', { name: 'Mais opções' }));
+}
+
+test('Mais opções: a CNPJ customer may retain the ISS, prefilled with the emitter rate', async () => {
+  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('ISS retido pelo cliente'));
+  expect((screen.getByLabelText('Alíquota de ISS (%)') as HTMLInputElement).value).toBe('2,00');
+  expect(screen.getByText('Mínimo para este serviço: 2,00%.')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  expect(
+    within(screen.getByRole('table')).getByText('ISS retido pelo cliente: 2,00%'),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  expect(JSON.parse(String(sent(calls)[0]?.init?.body))).toMatchObject({
+    issRetained: true,
+    issRate: 200,
+  });
+});
+
+test('Mais opções: the works subitems accept a rate below 2%', async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/services`]: [{ ...service, nationalTaxCode: '070202' }],
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('ISS retido pelo cliente'));
+  expect(screen.getByText('Mínimo para este serviço: acima de zero.')).toBeTruthy();
+});
+
+test('Mais opções: a customer abroad has no retention option', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await pickCustomer(user, 'Foreign Customer Inc');
+  await user.selectOptions(screen.getByLabelText('Serviço'), 's1');
+  await openMore(user);
+  expect(screen.queryByLabelText('ISS retido pelo cliente')).toBeNull();
+  expect(screen.getByLabelText('Modo de prestação')).toBeTruthy();
+});
+
+test('Mais opções: another Simples percent and changed service codes go as overrides', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+      [`${base}/service-codes`]: [
+        { code: '010701', description: 'Suporte técnico em informática.' },
+      ],
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.type(screen.getByLabelText('Outro percentual do Simples (%)'), '7,50');
+  await user.type(screen.getByRole('combobox', { name: 'Código nacional' }), 'suporte');
+  await user.click(
+    await screen.findByRole('option', { name: '01.07.01 – Suporte técnico em informática.' }),
+  );
+  await user.type(screen.getByLabelText('NBS'), '115022000');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  const table = within(screen.getByRole('table'));
+  expect(table.getByText('Código nacional: 01.07.01')).toBeTruthy();
+  expect(table.getByText('Percentual do Simples: 7,50%')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.simplesPercent).toBe(750);
+  expect(body.overrides).toEqual({ nationalTaxCode: '010701', nbsCode: '115022000' });
+});
+
+test('a rate under the minimum of the service shows the minimum', async () => {
+  stubApi(routes({ [`${base}/invoices/new`]: { error: 'invalid_iss_rate', minimum: '2.00' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('ISS retido pelo cliente'));
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  expect(await screen.findByText(/A alíquota mínima deste serviço é 2,00%\./)).toBeTruthy();
+});

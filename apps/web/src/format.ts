@@ -96,3 +96,10 @@ export function parsePercent(text: string): number | null {
 export function formatServiceCode(code: string): string {
   return code.replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3');
 }
+
+// A hint only, mirroring LC 116 art. 8-A on the server, which decides: 2,00% except subitems 7.02, 7.05, 16.01.
+export function issMinimumHint(nationalTaxCode: string): string {
+  return ['0702', '0705', '1601'].includes(nationalTaxCode.slice(0, 4))
+    ? 'Mínimo para este serviço: acima de zero.'
+    : 'Mínimo para este serviço: 2,00%.';
+}

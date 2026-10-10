@@ -150,3 +150,13 @@ test('a produção restrita invoice carries a Teste badge; a production one does
   expect(within(testRow).getByText('Teste')).toBeTruthy();
   expect(within(prodRow).queryByText('Teste')).toBeNull();
 });
+
+test('the invoice list links to Nova nota', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices': { items: [], total: 0 },
+    '/api/accounts/acc/emitters': [],
+  });
+  render(<InvoicesPage accountId="acc" />);
+  const link = await screen.findByRole('link', { name: 'Nova nota' });
+  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/new');
+});

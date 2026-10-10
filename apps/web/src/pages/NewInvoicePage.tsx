@@ -6,6 +6,7 @@ import {
   type ExchangeRate,
   type FiscalConfig,
   type Service,
+  type ServiceCode,
 } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
@@ -22,6 +23,7 @@ import {
   formatCompetence,
   formatDate,
   formatServiceCode,
+  issMinimumHint,
   parseCents,
   previousMonthEnd,
 } from '../format';
@@ -47,6 +49,14 @@ import {
   TH,
   Textarea,
 } from '../ui';
+import { EXPORT_LABELS, EXPORT_OPTIONS } from '../exportCodes';
+import {
+  type Complete,
+  completeBody,
+  completeFrom,
+  EXPORT_FIELDS,
+  serviceFields,
+} from './completeMode';
 import { bandLabel } from './FiscalConfigForm';
 
 const CURRENCIES = { '220': 'USD', '978': 'EUR' } as const;
@@ -62,6 +72,7 @@ interface Form {
   currencyCode: CurrencyCode;
   foreign: string;
   band: string; // 1 to 6, within the emitter's annex
+  more: Complete | null; // "Mais opções", null while closed
 }
 
 const customerOption = (c: Customer): ComboboxOption => ({
@@ -111,6 +122,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
         currencyCode: '220',
         foreign: '',
         band: '',
+        more: null,
       },
   );
   const set = <K extends keyof Form>(field: K, value: Form[K]) =>
@@ -125,6 +137,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     customerQuery,
   );
   const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [codeQuery, setCodeQuery] = useState('');
+  const foundCodes = useSearch<ServiceCode>(`${base}/service-codes`, codeQuery);
 
   // A customer from the link ("Emitir nota" on the customer page) starts selected.
   const linked = props.customerId;
@@ -222,7 +236,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const activeServices = services.data.filter((s) => !s.archived);
   const currency = CURRENCIES[form.currencyCode];
 
+  const canRetain = customer?.documentType === 'CNPJ';
+  const more = form.more;
+  const complete =
+    more && service
+      ? completeBody(more, service, { canRetain, abroad })
+      : { body: {}, changes: [] as string[] };
+  const setMore = (patch: Partial<Complete>) =>
+    setForm((f) => (f.more ? { ...f, more: { ...f.more, ...patch } } : f));
+  const effectiveCode = more?.code?.code ?? service?.nationalTaxCode ?? '';
+
   const valid =
+    complete !== null &&
     customer !== null &&
     customer.documentType !== 'NONE' &&
     service !== null &&
@@ -238,6 +263,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     setForm((f) => ({
       ...f,
       serviceId,
+      // A new service brings its own codes into "Mais opções".
+      more: f.more ? { ...f.more, ...serviceFields(next ?? null) } : null,
       // The service text fills an empty description or replaces the one the last service filled.
       description:
         next && (f.description.trim() === '' || f.description === service?.description)
@@ -264,10 +291,16 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
         : {}),
       ...(band !== defaultBand && bandPercent !== null ? { simplesPercent: bandPercent } : {}),
       description: form.description.trim(),
+      // A typed Simples percent replaces the band.
+      ...complete?.body,
     });
   }
 
-  const issLine = abroad ? 'Exportação: sem ISS' : 'ISS no DAS (não retido)';
+  const issLine = abroad
+    ? 'Exportação: sem ISS'
+    : canRetain && more?.issRetained
+      ? 'Retido pelo cliente'
+      : 'ISS no DAS (não retido)';
 
   if (send.key) {
     const production = emitter.environment === 'producao';
@@ -299,6 +332,16 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   <TD>{value}</TD>
                 </tr>
               ))}
+              {complete && complete.changes.length > 0 && (
+                <tr className="bg-warning/10">
+                  <TH scope="row">Alterado nesta nota</TH>
+                  <TD>
+                    {complete.changes.map((change) => (
+                      <div key={change}>{change}</div>
+                    ))}
+                  </TD>
+                </tr>
+              )}
             </TBody>
           </Table>
         </Card>
@@ -466,6 +509,116 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             <p className="text-sm text-muted">{issLine}</p>
           </div>
         </div>
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              setForm((f) => ({ ...f, more: f.more ? null : completeFrom(service, config) }))
+            }
+          >
+            {more ? 'Menos opções' : 'Mais opções'}
+          </Button>
+        </div>
+        {more && (
+          <div className="flex flex-col gap-4">
+            {canRetain && (
+              <label className="flex items-center gap-2 text-sm text-fg">
+                <input
+                  type="checkbox"
+                  checked={more.issRetained}
+                  onChange={(e) => setMore({ issRetained: e.target.checked })}
+                />
+                ISS retido pelo cliente
+              </label>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {canRetain && more.issRetained && (
+                <Field label="Alíquota de ISS (%)" hint={issMinimumHint(effectiveCode)}>
+                  <Input
+                    inputMode="decimal"
+                    value={more.issRate}
+                    onChange={(e) => setMore({ issRate: e.target.value })}
+                  />
+                </Field>
+              )}
+              <Field label="Outro percentual do Simples (%)" hint="Em branco: a faixa escolhida.">
+                <Input
+                  inputMode="decimal"
+                  value={more.simplesOther}
+                  onChange={(e) => setMore({ simplesOther: e.target.value })}
+                />
+              </Field>
+            </div>
+            <Field label="Código nacional">
+              <Combobox
+                label="Código nacional"
+                query={codeQuery}
+                onQueryChange={setCodeQuery}
+                options={foundCodes.map((c) => ({
+                  value: c.code,
+                  label: `${formatServiceCode(c.code)} – ${c.description}`,
+                }))}
+                selected={
+                  more.code
+                    ? {
+                        value: more.code.code,
+                        label: more.code.description
+                          ? `${formatServiceCode(more.code.code)} – ${more.code.description}`
+                          : formatServiceCode(more.code.code),
+                      }
+                    : null
+                }
+                onSelect={(option) =>
+                  setMore({
+                    code: option ? (foundCodes.find((c) => c.code === option.value) ?? null) : null,
+                  })
+                }
+                placeholder="Busque pelo nome ou pelo código"
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ['municipalTaxCode', 'Código municipal'],
+                  ['nbsCode', 'NBS'],
+                  ['pisCofinsCst', 'CST do PIS/COFINS'],
+                  ['operationCode', 'Indicador de operação (IBS/CBS)'],
+                  ['cst', 'CST do IBS/CBS'],
+                  ['classCode', 'Classificação tributária (IBS/CBS)'],
+                ] as const
+              ).map(([field, label]) => (
+                <Field key={field} label={label}>
+                  <Input
+                    value={more[field]}
+                    onChange={(e) => setMore({ [field]: e.target.value })}
+                  />
+                </Field>
+              ))}
+            </div>
+            {abroad && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {EXPORT_FIELDS.map((field) => (
+                  <Field key={field} label={EXPORT_LABELS[field]}>
+                    <Select
+                      value={more.export[field]}
+                      onChange={(e) =>
+                        setMore({ export: { ...more.export, [field]: e.target.value } })
+                      }
+                    >
+                      <option value="">Padrão do serviço</option>
+                      {EXPORT_OPTIONS[field].map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {value} – {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div>
           <Button type="submit" variant="primary" disabled={!valid}>
             Revisar

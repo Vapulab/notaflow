@@ -97,3 +97,10 @@ test('Novo cliente opens the form in a dialog', async () => {
   await user.click(await screen.findByRole('button', { name: 'Novo cliente' }));
   expect(screen.getByRole('dialog', { name: 'Novo cliente' })).toBeTruthy();
 });
+
+test('the customer page links to Nova nota for that customer', async () => {
+  stubApi({ '/api/accounts/acc/customers/c1': customer });
+  render(<CustomerPage accountId="acc" customerId="c1" />);
+  const link = await screen.findByRole('link', { name: 'Emitir nota' });
+  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/new?customer=c1');
+});

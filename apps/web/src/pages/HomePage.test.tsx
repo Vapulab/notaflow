@@ -38,3 +38,10 @@ test('an owner gets Membros and the platform admin gets the admin panel card', a
     '#/admin',
   );
 });
+
+test('the dashboard has a Nova nota card per account', async () => {
+  stubApi({ '/api/me': me('user', 'member') });
+  render(<HomePage />);
+  const card = await screen.findByRole('link', { name: /nova nota.*sem modelo/i });
+  expect(card.getAttribute('href')).toBe('#/a/acc/invoices/new');
+});

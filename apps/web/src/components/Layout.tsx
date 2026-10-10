@@ -79,6 +79,9 @@ export function errorText(error: unknown): string {
       const date = typeof rateDate === 'string' ? formatDate(`${rateDate}T12:00:00Z`) : '';
       return `${text} Valor esperado: ${formatCents(expectedCents)} (PTAX ${rateText} de ${date}).`;
     }
+    if (error.code === 'invalid_iss_rate' && typeof error.body.minimum === 'string') {
+      return `A alíquota mínima deste serviço é ${error.body.minimum.replace('.', ',')}%.`;
+    }
     return text;
   }
   return 'Erro inesperado. Tente de novo.';
