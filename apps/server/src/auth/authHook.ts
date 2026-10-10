@@ -28,6 +28,7 @@ export function registerAuth(
       }
     }
     request.identity = identity;
+    deps.identities.touchLogin(identity.userId);
   });
   // Membership and admin checks run before body validation, so a stranger gets 404, not 400.
   app.addHook('preValidation', async (request) => {

@@ -29,6 +29,7 @@ type Act = (action: () => Promise<string>) => Promise<void>;
 export function AdminPage() {
   const accounts = useAsync(() => api.get<AdminAccount[]>('/api/admin/accounts'), []);
   const audit = useAsync(() => api.get<AuditEntry[]>('/api/admin/audit?limit=100'), []);
+  const people = useAsync(() => api.get<AdminUser[]>('/api/admin/users'), []);
   const [message, setMessage] = useState<string | null>(null);
 
   const act: Act = async (action) => {
@@ -36,6 +37,7 @@ export function AdminPage() {
       setMessage(await action());
       accounts.reload();
       audit.reload();
+      people.reload();
     } catch (error) {
       setMessage(errorText(error));
     }
@@ -85,6 +87,37 @@ export function AdminPage() {
           ))}
         </TBody>
       </Table>
+      <Card>
+        <section>
+          <h2 className={SECTION_TITLE_CLASSES}>Usuários</h2>
+          <Table>
+            <THead>
+              <tr>
+                <TH>Nome</TH>
+                <TH>E-mail</TH>
+                <TH>Papel</TH>
+                <TH>Último acesso</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {people.data?.map((person) => (
+                <tr key={person.id}>
+                  <TD>{person.name}</TD>
+                  <TD>{person.email}</TD>
+                  <TD>
+                    <Badge variant={person.platformRole === 'admin' ? 'primary' : 'neutral'}>
+                      {person.platformRole === 'admin' ? 'admin' : 'usuário'}
+                    </Badge>
+                  </TD>
+                  <TD className="whitespace-nowrap">
+                    {person.lastLoginAt ? formatDateTime(person.lastLoginAt) : 'nunca'}
+                  </TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        </section>
+      </Card>
       <NewAccountForm act={act} />
       <NewUserForm act={act} />
       <SetMemberForm act={act} accounts={accounts.data ?? []} />

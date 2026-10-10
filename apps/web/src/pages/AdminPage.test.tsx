@@ -19,8 +19,20 @@ const routes = {
     { id: 'u-2', email: 'talita@example.com', name: 'Talita', platformRole: 'user' },
   ],
   '/api/admin/users': [
-    { id: 'u-1', email: 'lincoln@example.com', name: 'Lincoln', platformRole: 'admin' },
-    { id: 'u-2', email: 'talita@example.com', name: 'Talita', platformRole: 'user' },
+    {
+      id: 'u-1',
+      email: 'lincoln@example.com',
+      name: 'Lincoln',
+      platformRole: 'admin',
+      lastLoginAt: '2026-10-10T16:00:00Z',
+    },
+    {
+      id: 'u-2',
+      email: 'talita@example.com',
+      name: 'Talita',
+      platformRole: 'user',
+      lastLoginAt: null,
+    },
   ],
   '/api/admin/audit': [
     {
@@ -77,4 +89,18 @@ test('the user combobox works by keyboard', async () => {
   await user.keyboard('{ArrowDown}{Enter}');
   expect((combo as HTMLInputElement).value).toBe('Talita (talita@example.com)');
   expect(combo.getAttribute('aria-expanded')).toBe('false');
+});
+
+test('the users table shows each last access, or nunca', async () => {
+  stubApi(routes);
+  render(<AdminPage />);
+  const table = (await screen.findByRole('heading', { name: 'Usuários' })).closest(
+    'section',
+  ) as HTMLElement;
+  const lincoln = (await within(table).findByText('lincoln@example.com')).closest(
+    'tr',
+  ) as HTMLElement;
+  expect(within(lincoln).getByText('10/10/2026 13:00')).toBeTruthy();
+  const talita = within(table).getByText('talita@example.com').closest('tr') as HTMLElement;
+  expect(within(talita).getByText('nunca')).toBeTruthy();
 });

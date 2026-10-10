@@ -137,6 +137,7 @@ export interface AdminUser {
   email: string;
   name: string;
   platformRole: 'admin' | 'user';
+  lastLoginAt: string | null;
 }
 
 export interface AdminAccount {

@@ -33,6 +33,7 @@ export class AdminRepository {
         email: users.email,
         name: users.name,
         platformRole: users.platformRole,
+        lastLoginAt: users.lastLoginAt,
       })
       .from(users)
       .where(pattern ? or(like(users.email, pattern), like(users.name, pattern)) : undefined)

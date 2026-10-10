@@ -1,6 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { seedTenant, seedUser } from '../../test/fixtures';
 import { createTestApp, type TestApp } from '../../test/testApp';
+import { users } from '../db/schema';
 import { AuditLog } from '../repos/AuditLog';
 import { IdentityRepository } from '../repos/IdentityRepository';
 
@@ -155,7 +157,13 @@ test('a platform admin searches users by name or e-mail', async () => {
   ]);
   const found = await t.app.inject({ method: 'GET', url: '/api/admin/users?q=TALI', headers });
   expect(found.json()).toEqual([
-    { id: expect.any(String), email: 'talita@example.com', name: 'talita', platformRole: 'user' },
+    {
+      id: expect.any(String),
+      email: 'talita@example.com',
+      name: 'talita',
+      platformRole: 'user',
+      lastLoginAt: null,
+    },
   ]);
 });
 
@@ -167,4 +175,30 @@ test('a user who is not a platform admin cannot list users', async () => {
     headers: await t.as('owner@example.com'),
   });
   expect(response.statusCode).toBe(403);
+});
+
+test('an authenticated request records the last access, at most every 15 minutes', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
+  const lastOf = () =>
+    t.db.select({ at: users.lastLoginAt }).from(users).where(eq(users.email, 'owner@example.com')).get()?.at ?? null;
+  expect(lastOf()).toBeNull();
+  await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('owner@example.com') });
+  const first = lastOf();
+  expect(first).toBeInstanceOf(Date);
+
+  const recent = new Date(Date.now() - 60_000);
+  t.db.update(users).set({ lastLoginAt: recent }).where(eq(users.email, 'owner@example.com')).run();
+  await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('owner@example.com') });
+  expect(lastOf()?.getTime()).toBe(recent.getTime());
+
+  const old = new Date(Date.now() - 60 * 60_000);
+  t.db.update(users).set({ lastLoginAt: old }).where(eq(users.email, 'owner@example.com')).run();
+  await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('owner@example.com') });
+  expect(lastOf()?.getTime()).toBeGreaterThan(old.getTime());
+});
+
+test('the admin user list carries the last access', async () => {
+  await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('admin@example.com') });
+  const list = await t.app.inject({ method: 'GET', url: '/api/admin/users', headers: await t.as('admin@example.com') });
+  expect(list.json()).toEqual([expect.objectContaining({ email: 'admin@example.com', lastLoginAt: expect.any(String) })]);
 });

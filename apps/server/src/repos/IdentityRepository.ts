@@ -1,5 +1,5 @@
 import type { AccountRole } from '@notaflow/core';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { accounts, memberships, users } from '../db/schema';
 
@@ -43,7 +43,18 @@ export class IdentityRepository {
     };
   }
 
-  touchLogin(userId: string): void {
-    this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId)).run();
+  // Every request calls this; the condition keeps it to one write per user every 15 minutes.
+  touchLogin(userId: string, now = new Date()): void {
+    const staleBefore = new Date(now.getTime() - 15 * 60_000);
+    this.db
+      .update(users)
+      .set({ lastLoginAt: now })
+      .where(
+        and(
+          eq(users.id, userId),
+          or(isNull(users.lastLoginAt), lt(users.lastLoginAt, staleBefore)),
+        ),
+      )
+      .run();
   }
 }
