@@ -1,6 +1,6 @@
 # RFC: New Invoices Without a Template, Customers, and Services
 
-**Status:** In Review
+**Status:** Accepted (Stage 2a, server, implemented)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
