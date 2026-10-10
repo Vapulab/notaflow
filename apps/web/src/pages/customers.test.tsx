@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
+import { installDialogPolyfill } from '../test/dialog';
 import { stubApi } from '../test/stubApi';
 import { CustomerPage } from './CustomerPage';
 import { CustomersPage } from './CustomersPage';
@@ -75,4 +76,24 @@ test('a domestic address sends the municipality chosen in the list, with the str
       district: 'Sé',
     },
   });
+});
+
+test('Novo cliente opens the form in a dialog', async () => {
+  installDialogPolyfill();
+  let list = [customer];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const body: unknown = url.endsWith('/emitters')
+        ? [{ id: 'em1', companyName: 'EMPRESA', cnpj: '12345678000195', environment: 'producao' }]
+        : init?.method === 'POST'
+          ? (list = [...list, { ...customer, id: 'c2', name: 'Novo Cliente Ltda' }]).at(-1)
+          : list;
+      return new Response(JSON.stringify(body), { status: 200 });
+    }),
+  );
+  render(<CustomersPage accountId="acc" />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo cliente' }));
+  expect(screen.getByRole('dialog', { name: 'Novo cliente' })).toBeTruthy();
 });
