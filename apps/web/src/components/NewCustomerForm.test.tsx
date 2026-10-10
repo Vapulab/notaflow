@@ -189,3 +189,20 @@ test('with two emitters the form asks which one', async () => {
   const select = screen.getByLabelText('Emitente') as HTMLSelectElement;
   expect([...select.options].map((o) => o.text)).toEqual(['EMPRESA UM', 'EMPRESA DOIS']);
 });
+
+test('a municipal registration typed for Brazil is not sent for a customer abroad', async () => {
+  const calls = stubApi({
+    '/api/accounts/acc/countries': [{ code: 'US', name: 'Estados Unidos' }],
+    '/api/accounts/acc/customers': created,
+  });
+  const { user } = renderForm();
+  await user.click(screen.getByRole('radio', { name: 'Cliente no Brasil' }));
+  await user.type(screen.getByLabelText('Inscrição municipal'), '12345');
+  await user.click(screen.getByRole('radio', { name: 'Cliente no exterior' }));
+  await user.type(screen.getByLabelText('NIF'), '00-0000000');
+  await user.type(screen.getByLabelText('Nome ou razão social'), 'Foreign Customer Inc');
+  await fillForeignAddress(user);
+  await user.click(screen.getByRole('button', { name: 'Cadastrar cliente' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'POST')).toBe(true));
+  expect(posted(calls)).not.toHaveProperty('municipalRegistration');
+});

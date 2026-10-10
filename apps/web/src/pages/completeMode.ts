@@ -70,14 +70,16 @@ export function completeBody(
   const changes: string[] = [];
   if (options.canRetain && more.issRetained) {
     const rate = parsePercent(more.issRate);
-    if (rate === null) return null;
+    // LC 116 caps the ISS at 5%.
+    if (rate === null || rate > 500) return null;
     body.issRetained = true;
     body.issRate = rate;
     changes.push(`ISS retido pelo cliente: ${percentInput(rate)}%`);
   }
   if (more.simplesOther.trim()) {
     const percent = parsePercent(more.simplesOther);
-    if (percent === null || percent === 0) return null;
+    // pTotTribSN is at most 99.99.
+    if (percent === null || percent === 0 || percent > 9_999) return null;
     body.simplesPercent = percent;
     changes.push(`Percentual do Simples: ${percentInput(percent)}%`);
   }
@@ -101,12 +103,21 @@ export function completeBody(
     cst: more.cst.trim(),
     classCode: more.classCode.trim(),
   };
-  const ibsCbsDone = ibsCbs.operationCode && ibsCbs.cst && ibsCbs.classCode;
-  if (ibsCbsDone && JSON.stringify(ibsCbs) !== JSON.stringify(service.ibsCbs ?? null)) {
+  const ibsCbsValues = [ibsCbs.operationCode, ibsCbs.cst, ibsCbs.classCode];
+  const ibsCbsDone = ibsCbsValues.every(Boolean);
+  // 2026: only an export carries the group; a half-filled group is refused, not dropped.
+  if (options.abroad && !ibsCbsDone && ibsCbsValues.some(Boolean)) return null;
+  if (
+    options.abroad &&
+    ibsCbsDone &&
+    JSON.stringify(ibsCbs) !== JSON.stringify(service.ibsCbs ?? null)
+  ) {
     overrides.ibsCbs = ibsCbs;
     changes.push(`IBS/CBS: ${ibsCbs.operationCode}, CST ${ibsCbs.cst}, ${ibsCbs.classCode}`);
   }
   const exportDone = EXPORT_FIELDS.every((f) => more.export[f] !== '');
+  const exportStarted = EXPORT_FIELDS.some((f) => more.export[f] !== '');
+  if (options.abroad && exportStarted && !exportDone) return null;
   if (options.abroad && exportDone) {
     const differs = EXPORT_FIELDS.some((f) => more.export[f] !== (service.export?.[f] ?? ''));
     if (differs) {

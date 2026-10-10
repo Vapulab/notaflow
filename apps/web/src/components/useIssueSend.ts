@@ -24,6 +24,7 @@ export interface IssueSend<F> {
   restored: F | null; // the reviewed form after a reload with a pending send
   startReview(): void;
   backToEdit(): void;
+  discard(): void; // drops a pending send after the user confirmed it was not issued
   send(form: F, path: string, body: unknown): Promise<void>;
   verify(invoiceId: string): Promise<void>;
 }
@@ -61,6 +62,13 @@ export function useIssueSend<F>(options: { accountId: string; storageKey: string
     },
     backToEdit() {
       if (locked) return;
+      setResult(null);
+      setKey(null);
+    },
+    discard() {
+      clearPendingSend(storageKey);
+      setLocked(false);
+      setError(null);
       setResult(null);
       setKey(null);
     },

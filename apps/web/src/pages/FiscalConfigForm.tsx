@@ -33,8 +33,11 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (issRate === null) {
-      setMessage({ variant: 'error', text: 'Informe a alíquota de ISS, por exemplo 2,00.' });
+    if (issRate === null || issRate > 500) {
+      setMessage({
+        variant: 'error',
+        text: 'Informe a alíquota de ISS até 5,00%, por exemplo 2,00.',
+      });
       return;
     }
     setBusy(true);

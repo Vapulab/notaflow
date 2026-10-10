@@ -108,6 +108,13 @@ export function AddressFields(props: {
   const countries = useSearch<Country>(`${base}/countries`, countryQuery);
   const latest = useRef(value);
   latest.current = value;
+  // A saved CEP is not looked up again just because the field lost focus.
+  const lastZip = useRef(value.zip);
+  const filled = useRef<{ street: string; district: string; municipality: string }>({
+    street: '',
+    district: '',
+    municipality: '',
+  });
 
   // A saved address has only codes: look up the names once.
   const municipalityCode =
@@ -136,20 +143,32 @@ export function AddressFields(props: {
 
   async function lookUpCep() {
     const zip = latest.current.zip;
-    if (zip.length !== 8) return;
-    const before = latest.current;
+    if (zip.length !== 8 || zip === lastZip.current) return;
+    lastZip.current = zip;
     setCepMessage(null);
     try {
       const found = await api.get<CepAnswer>(`${base}/cep/${zip}`);
       const now = latest.current;
-      // Never overwrite what the user typed while the lookup ran.
-      onChange({
+      // Fills only what is empty or what the last lookup filled; typed text stays.
+      const free = (current: string, previous: string) =>
+        current.trim() === '' || current === previous;
+      const next = {
         ...now,
-        street: now.street === before.street ? found.street || now.street : now.street,
-        district: now.district === before.district ? found.district || now.district : now.district,
+        street: free(now.street, filled.current.street) ? found.street || now.street : now.street,
+        district: free(now.district, filled.current.district)
+          ? found.district || now.district
+          : now.district,
         municipality:
-          now.municipality === before.municipality ? found.municipality : now.municipality,
-      });
+          !now.municipality || now.municipality.code === filled.current.municipality
+            ? found.municipality
+            : now.municipality,
+      };
+      filled.current = {
+        street: next.street,
+        district: next.district,
+        municipality: next.municipality?.code ?? '',
+      };
+      onChange(next);
     } catch (error) {
       setCepMessage(errorText(error));
     }

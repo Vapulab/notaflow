@@ -76,7 +76,7 @@ export function NewCustomerForm(props: {
           ...optional('email'),
           // The server takes the phone as digits only.
           ...(text.phone.trim() ? { phone: text.phone.replace(/\D/g, '') } : {}),
-          ...optional('municipalRegistration'),
+          ...(place === 'brazil' ? optional('municipalRegistration') : {}),
           address: party,
         },
       );

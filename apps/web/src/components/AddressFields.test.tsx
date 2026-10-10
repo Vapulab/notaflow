@@ -114,3 +114,43 @@ test('toPartyAddress needs every required field', () => {
   expect(toPartyAddress({ ...full, number: ' ' })).toBeNull();
   expect(toPartyAddress({ ...full, municipality: null })).toBeNull();
 });
+
+test('passing through an unchanged CEP does not look it up again', async () => {
+  const calls = stubApi({ '/api/accounts/acc/municipalities': [londrina] });
+  const saved = addressFromParty(
+    {
+      kind: 'domestic',
+      municipality: '4113700',
+      zip: '86010000',
+      street: 'Rua Minha',
+      number: '1',
+      district: 'Jardim X (Gleba 2)',
+    },
+    'domestic',
+  );
+  render(<Harness initial={saved} />);
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText('CEP'));
+  await user.tab();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(calls.some((c) => c.url.includes('/cep/'))).toBe(false);
+  expect(latest.district).toBe('Jardim X (Gleba 2)');
+});
+
+test('a CEP lookup fills only empty fields; typed ones stay', async () => {
+  stubApi({
+    '/api/accounts/acc/cep/86010000': {
+      zip: '86010000',
+      street: 'Rua Teste',
+      district: 'Centro',
+      municipality: londrina,
+    },
+  });
+  render(<Harness initial={{ ...emptyAddress('domestic'), street: 'Rua Minha' }} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('CEP'), '86010000');
+  await user.tab();
+  await waitFor(() => expect(latest.district).toBe('Centro'));
+  expect(latest.street).toBe('Rua Minha');
+  expect(latest.municipality).toEqual(londrina);
+});

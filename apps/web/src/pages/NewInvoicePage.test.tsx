@@ -421,3 +421,74 @@ test('the result screen has one page header', async () => {
   await screen.findByText(/E1: x/);
   expect(screen.getAllByRole('banner')).toHaveLength(1);
 });
+
+test('a pending send can be discarded after a warning, and the form starts fresh', async () => {
+  stubApi(routes({ [`${base}/invoices/new`]: { error: 'http_524' } }));
+  const first = renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await screen.findByText(/pode ter sido emitida/i);
+  first.unmount();
+  renderWithMe(<NewInvoicePage accountId="acc" customerId="c2" />, meFor('user'));
+  expect(await screen.findByText(/O cliente do link foi ignorado/)).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Descartar envio pendente' }));
+  const dialog = screen.getByRole('dialog', { name: 'Descartar envio pendente' });
+  expect(within(dialog).getByRole('link', { name: 'Ver as notas' }).getAttribute('href')).toBe(
+    '#/a/acc/invoices',
+  );
+  await user.click(within(dialog).getByRole('button', { name: 'Descartar' }));
+  expect(await screen.findByLabelText('Competência')).toBeTruthy();
+  expect(sessionStorage.length).toBe(0);
+});
+
+test('the review shows the typed Simples percent in place of the band', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.type(screen.getByLabelText('Outro percentual do Simples (%)'), '7,50');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  expect(within(screen.getByRole('table')).getByText('Percentual informado: 7,50%')).toBeTruthy();
+  expect(within(screen.getByRole('table')).queryByText('Faixa 2 – 11,20%')).toBeNull();
+});
+
+test('an incomplete IBS/CBS group blocks the review with a hint', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await pickCustomer(user, 'Foreign Customer Inc');
+  await user.selectOptions(screen.getByLabelText('Serviço'), 's1');
+  await user.type(screen.getByLabelText('Valor em USD'), '100,00');
+  await screen.findByText(/PTAX venda de/);
+  await openMore(user);
+  await user.type(screen.getByLabelText('CST do IBS/CBS'), '410');
+  expect(screen.getByText(/Revise Mais opções/)).toBeTruthy();
+  expect((screen.getByRole('button', { name: 'Revisar' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+});
+
+test('a services error shows its text instead of a spinner', async () => {
+  stubApi(routes({ [`${base}/emitters/em1/services`]: { error: 'not_found' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  expect(await screen.findByText('Não encontrado.')).toBeTruthy();
+});
+
+test('a retained ISS rate above 5% blocks the review with a hint', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('ISS retido pelo cliente'));
+  const rate = screen.getByLabelText('Alíquota de ISS (%)');
+  await user.clear(rate);
+  await user.type(rate, '6,00');
+  expect(screen.getByText(/Revise Mais opções/)).toBeTruthy();
+  expect((screen.getByRole('button', { name: 'Revisar' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+});

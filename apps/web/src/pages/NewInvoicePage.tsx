@@ -8,6 +8,7 @@ import {
   type Service,
   type ServiceCode,
 } from '../api';
+import { DiscardPendingDialog } from '../components/DiscardPendingDialog';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
 import { Layout, errorText } from '../components/Layout';
@@ -25,6 +26,7 @@ import {
   formatServiceCode,
   issMinimumHint,
   parseCents,
+  percentInput,
   previousMonthEnd,
 } from '../format';
 import { routeHref } from '../router';
@@ -110,21 +112,20 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const base = `/api/accounts/${encodeURIComponent(accountId)}`;
   const me = useMe();
   const send = useIssueSend<Form>({ accountId, storageKey: `notaflow.newInvoice.${accountId}` });
-  const [form, setForm] = useState<Form>(
-    () =>
-      send.restored ?? {
-        emitterId: emitters[0]?.id ?? '',
-        customer: null,
-        serviceId: '',
-        competence: previousMonthEnd(brasiliaToday()),
-        description: '',
-        brl: '',
-        currencyCode: '220',
-        foreign: '',
-        band: '',
-        more: null,
-      },
-  );
+  const fresh = (): Form => ({
+    emitterId: emitters[0]?.id ?? '',
+    customer: null,
+    serviceId: '',
+    competence: previousMonthEnd(brasiliaToday()),
+    description: '',
+    brl: '',
+    currencyCode: '220',
+    foreign: '',
+    band: '',
+    more: null,
+  });
+  const [discarding, setDiscarding] = useState(false);
+  const [form, setForm] = useState<Form>(() => send.restored ?? fresh());
   const set = <K extends keyof Form>(field: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [field]: value }));
   const emitter = emitters.find((e) => e.id === form.emitterId) ?? emitters[0];
@@ -145,7 +146,21 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   useEffect(() => {
     if (!linked || send.restored) return;
     void api.get<Customer>(`${base}/customers/${encodeURIComponent(linked)}`).then(
-      (customer) => setForm((f) => ({ ...f, emitterId: customer.emitterId, customer })),
+      (customer) => {
+        if (customer.archived) return;
+        setForm((f) =>
+          f.emitterId === customer.emitterId
+            ? { ...f, customer }
+            : {
+                ...f,
+                emitterId: customer.emitterId,
+                customer,
+                serviceId: '',
+                band: '',
+                more: null,
+              },
+        );
+      },
       () => {},
     );
   }, [base, linked, send.restored]);
@@ -214,6 +229,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   }
   if (!emitter) return null;
   if (fiscal.error) return <Alert variant="error">{errorText(fiscal.error)}</Alert>;
+  if (services.error) return <Alert variant="error">{errorText(services.error)}</Alert>;
   if (!fiscal.data || !services.data) return <Spinner />;
   const config = fiscal.data;
   if (config.simplesPercent === null || !config.simplesAnnex) {
@@ -316,7 +332,14 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           ? `${formatCents(brlCents ?? 0)} (${currency} ${centsInput(foreignCents)})`
           : formatCents(brlCents ?? 0),
       ],
-      ['Faixa do Simples', bandPercent === null ? '' : bandLabel(Number(band), bandPercent)],
+      [
+        'Faixa do Simples',
+        complete?.body.simplesPercent !== undefined
+          ? `Percentual informado: ${percentInput(complete.body.simplesPercent)}%`
+          : bandPercent === null
+            ? ''
+            : bandLabel(Number(band), bandPercent),
+      ],
       ['ISS', issLine],
     ];
     return (
@@ -345,6 +368,22 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           </Table>
         </Card>
         {send.error && <Alert variant="error">{send.error}</Alert>}
+        {send.locked && props.customerId && send.restored && (
+          <Alert variant="info">
+            Há um envio pendente nesta conta. O cliente do link foi ignorado até você concluir ou
+            descartar este envio.
+          </Alert>
+        )}
+        <DiscardPendingDialog
+          accountId={accountId}
+          open={discarding}
+          onCancel={() => setDiscarding(false)}
+          onDiscard={() => {
+            setDiscarding(false);
+            send.discard();
+            setForm(fresh());
+          }}
+        />
         <div className="flex flex-wrap gap-3">
           <Button
             variant={production && namesEnvironment ? 'danger' : 'primary'}
@@ -362,6 +401,11 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           {!send.locked && (
             <Button variant="secondary" disabled={send.busy} onClick={() => send.backToEdit()}>
               Voltar e editar
+            </Button>
+          )}
+          {send.locked && (
+            <Button variant="secondary" disabled={send.busy} onClick={() => setDiscarding(true)}>
+              Descartar envio pendente
             </Button>
           )}
           {send.busy && <Spinner label="Emitindo" />}
@@ -386,6 +430,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   customer: null,
                   serviceId: '',
                   band: '',
+                  more: null,
                 }))
               }
             >
@@ -622,6 +667,12 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
               </div>
             )}
           </div>
+        )}
+        {more && service && complete === null && (
+          <Alert variant="warning">
+            Revise Mais opções: um percentual inválido (ISS até 5,00%, Simples até 99,99%) ou um
+            grupo incompleto (preencha todos os campos do IBS/CBS ou da exportação, ou nenhum).
+          </Alert>
         )}
         <div>
           <Button type="submit" variant="primary" disabled={!valid}>
