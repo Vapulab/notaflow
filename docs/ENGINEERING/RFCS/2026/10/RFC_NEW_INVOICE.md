@@ -97,10 +97,10 @@ The decisions that depend on the law live in one module, `taxRules(competence)`,
 
 | Customer | ISS (`tribMun`) | Federal | IBS/CBS group | Foreign trade |
 | --- | --- | --- | --- | --- |
-| Brazil | `tribISSQN` 1 (taxable), `pAliq` from the invoice, `tpRetISSQN` 1 (not retained) unless the complete mode says otherwise | PIS/COFINS CST from the service | Informative, CST and `cClassTrib` from the service, no values | none |
+| Brazil | `tribISSQN` 1 (taxable). Not retained (`tpRetISSQN` 1, the default): **no `pAliq`**, the ISS is paid in the DAS. Retained by the customer (`tpRetISSQN` 2, complete mode): `pAliq` from the invoice, prefilled with the emitter's ISS rate | PIS/COFINS CST from the service | Informative, CST and `cClassTrib` from the service, no values | none |
 | Abroad | `tribISSQN` 3 (export, immune), `cPaisResult` the customer's country, no `pAliq` | PIS/COFINS CST from the service | Informative, export CST and class from the service | `comExt` from the service defaults and the foreign amount |
 
-`pTotTribSN` is the band percent chosen on the invoice (prefilled from the emitter). Whether the Sefin accepts `pAliq` for an ME/EPP optant on a domestic invoice is not proven yet; the [produção restrita check](#testing-and-acceptance) settles it before the rules are final.
+`pTotTribSN` is the band percent chosen on the invoice (prefilled from the emitter). The ISS rate rule above comes from the [produção restrita check](#produção-restrita-check-stage-2a): the emitter's ISS rate is the default **for retained invoices**, and the screen shows it only when retention is chosen.
 
 ### Freezing what was sent
 
@@ -181,9 +181,23 @@ Sefin refusals keep the existing behavior (`rejected` with the Sefin messages; E
 4. **Screens:** the simplified mode for Brazil and abroad, "+ Novo cliente" in the dialog, the fiscal configuration.
 5. **Acceptance:** in produção restrita (invoices cancelled), then the first real invoice when Lincoln decides.
 
+## Produção restrita check (Stage 2a)
+
+On 2026-10-10, with the real certificate, invoices built without a template (no `readTemplate`) for the first emitter (Simples ME/EPP, `regApTribSN` 1):
+
+| Variant | Result |
+| --- | --- |
+| Domestic, synthetic customer CNPJ with wrong check digits | Refused, E0188 "CNPJ do tomador informado na DPS é inválido": the Sefin checks the digits |
+| Domestic, not retained, with `pAliq` 2.00 | Refused, E0625: no `pAliq` without ISS retention for an ME/EPP optant whose ISS is apportioned by the Simples |
+| Domestic, not retained, without `pAliq` | Issued, then cancelled |
+| Domestic, retained (`tpRetISSQN` 2), with `pAliq` 2.00 | Issued, then cancelled |
+| Export (country US, NIF, `comExt`, `tribISSQN` 3, IBSCBS CST 410 class 410027), built field by field | Issued, then cancelled |
+
+Issued 3, cancelled 3, none left active. All three carried PIS/COFINS CST 00 and `pTotTribSN`; the domestic ones carried no IBSCBS group.
+
 ## Open Questions
 
-- [ ] Does the Sefin accept `pAliq` on a domestic invoice of an ME/EPP Simples optant, and with which `tribISSQN`? Settled by the produção restrita check.
+- [x] Does the Sefin accept `pAliq` on a domestic invoice of an ME/EPP Simples optant? Only when the ISS is retained by the customer (`tpRetISSQN` 2); without retention it refuses `pAliq` with E0625. See [Produção restrita check (Stage 2a)](#produção-restrita-check-stage-2a).
 - [ ] The source and update path of the national service code table (`cTribNac` list) to embed.
 - [ ] The default PIS/COFINS CST and IBS/CBS class for a domestic service of a Simples optant in 2026, confirmed with the accountant or the Sefin check.
 - [ ] NT 009 rollout schedule, for the 2027 stage.
