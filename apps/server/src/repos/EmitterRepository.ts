@@ -10,6 +10,15 @@ export type NewEmitter = Omit<
   'id' | 'accountId' | 'environment' | 'provider' | 'nextDpsNumber' | 'createdAt'
 > & { environment?: Environment };
 
+export interface FiscalConfig {
+  simplesAnnex: 'III' | 'V' | null;
+  simplesBand: number | null;
+  simplesPercent: number | null; // hundredths
+  issRate: number | null; // hundredths
+  ibscbsRegime: 'inside_das' | 'regular';
+  ibscbsRegimeFrom: string | null; // YYYY-MM-DD
+}
+
 export class EmitterRepository {
   constructor(private readonly db: Database) {}
 
@@ -76,6 +85,33 @@ export class EmitterRepository {
       this.db
         .update(emitters)
         .set({ environment })
+        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .run().changes > 0
+    );
+  }
+
+  fiscalConfig(ctx: AccountContext, emitterId: string): FiscalConfig | null {
+    return (
+      this.db
+        .select({
+          simplesAnnex: emitters.simplesAnnex,
+          simplesBand: emitters.simplesBand,
+          simplesPercent: emitters.simplesPercent,
+          issRate: emitters.issRate,
+          ibscbsRegime: emitters.ibscbsRegime,
+          ibscbsRegimeFrom: emitters.ibscbsRegimeFrom,
+        })
+        .from(emitters)
+        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .get() ?? null
+    );
+  }
+
+  setFiscalConfig(ctx: AccountContext, emitterId: string, config: FiscalConfig): boolean {
+    return (
+      this.db
+        .update(emitters)
+        .set(config)
         .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
         .run().changes > 0
     );

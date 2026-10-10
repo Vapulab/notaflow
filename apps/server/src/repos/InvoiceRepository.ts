@@ -300,7 +300,8 @@ export class InvoiceRepository {
       customerName: string | null;
       serviceCode: string;
       environment: Environment;
-      templateOf: string;
+      templateOf: string | null;
+      issueTemplate?: string;
       createdBy: string;
       idempotencyKey?: string;
     },
@@ -374,6 +375,7 @@ export class InvoiceRepository {
           dpsNumber: invoices.dpsNumber,
           emitterId: invoices.emitterId,
           templateOf: invoices.templateOf,
+          issueTemplate: invoices.issueTemplate,
           competence: invoices.competence,
           serviceCents: invoices.serviceCents,
           foreignAmountCents: invoices.foreignAmountCents,
