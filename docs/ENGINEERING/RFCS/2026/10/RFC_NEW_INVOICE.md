@@ -1,6 +1,6 @@
 # RFC: New Invoices Without a Template, Customers, and Services
 
-**Status:** Accepted (Stage 2a, server, implemented)
+**Status:** Accepted (Stage 2a server and Stage 2b screens implemented)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -69,6 +69,7 @@ From the design session with Lincoln on 2026-10-10:
 | Customers | Brazil (CNPJ or CPF) and abroad (NIF or no NIF); the customer decides the tax treatment. |
 | Building the invoice | Approach 1: a **synthetic template**. The new invoice is built into the same `DpsTemplate` that "issue similar" reads from an XML, and goes through the existing issue path unchanged. |
 | Tax reform | A separate section; 2026 rules now, the 2027 highlight as its own stage due by December 2026. |
+| Place of service (Stage 2b review) | Always the emitter's municipality. An export done in Brazil keeps it there, with the customer's country in `cPaisResult`. A service done in person in another municipality, or abroad (`cPaisPrestacao`), is a later stage. |
 
 ## Design
 
