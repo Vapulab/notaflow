@@ -165,3 +165,48 @@ test('a hand edit of an imported service is kept on the next sync', () => {
     expect.objectContaining({ name: 'Consultoria', description: 'Consultoria mensal' }),
   ]);
 });
+
+test('a service with the same code and description, made by hand, blocks the import', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  repos.services.create(ctx, emitterId, {
+    name: 'Consultoria',
+    nationalTaxCode: '010101',
+    description: 'Consultoria em análise',
+  });
+  applyDocument(
+    repos,
+    ctx,
+    emitterId,
+    { kind: 'invoice', nsu: 1, invoice: providerInvoice() },
+    counts,
+  );
+  expect(repos.services.list(ctx, emitterId)).toEqual([
+    expect.objectContaining({ name: 'Consultoria', origin: 'manual' }),
+  ]);
+});
+
+test('an invoice issued by the app imports no service when the sync brings it back', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  const invoice = providerInvoice({
+    service: { nationalTaxCode: '010101', description: 'Consultoria outubro/2026' },
+  });
+  const id = repos.invoices.createPending(ctx, {
+    emitterId,
+    dpsId: invoice.dps.id,
+    dpsSeries: invoice.dps.series,
+    dpsNumber: invoice.dps.number,
+    competence: invoice.competence,
+    serviceCents: invoice.amounts.serviceCents,
+    description: invoice.service.description,
+    customerId: null,
+    customerDocument: '98765432000110',
+    customerName: 'Cliente Exemplo Ltda',
+    serviceCode: '010101',
+    environment: 'producao_restrita',
+    templateOf: null,
+    createdBy: ctx.userId,
+  });
+  repos.invoices.markIssued(ctx, id, invoice);
+  applyDocument(repos, ctx, emitterId, { kind: 'invoice', nsu: 1, invoice }, counts);
+  expect(repos.services.list(ctx, emitterId)).toEqual([]);
+});

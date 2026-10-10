@@ -109,7 +109,11 @@ test('a sync that brings an unknown invoice adopts its row instead of adding a s
     createdBy: a.userId,
   });
   invoices.markUnknown(a, id, 'timeout');
-  expect(invoices.upsertSynced(a, emitterId, invoice, null)).toEqual({ id, created: false });
+  expect(invoices.upsertSynced(a, emitterId, invoice, null)).toEqual({
+    id,
+    created: false,
+    fromApp: true,
+  });
   expect(invoices.get(a, id)).toMatchObject({
     status: 'issued',
     origin: 'app',

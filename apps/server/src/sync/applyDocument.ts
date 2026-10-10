@@ -24,9 +24,12 @@ export function applyDocument(
   if (document.kind === 'invoice') {
     const { customer } = document.invoice;
     const customerId = customer ? repos.customers.upsertImported(ctx, emitterId, customer) : null;
-    repos.invoices.upsertSynced(ctx, emitterId, document.invoice, customerId);
-    const service = serviceFromInvoice(document.invoice);
-    repos.services.importService(ctx, emitterId, service.input, service.importKey);
+    const row = repos.invoices.upsertSynced(ctx, emitterId, document.invoice, customerId);
+    // An invoice issued by the app came from a service or a template already.
+    if (!row.fromApp) {
+      const service = serviceFromInvoice(document.invoice);
+      repos.services.importService(ctx, emitterId, service.input, service.importKey);
+    }
     counts.invoices++;
   } else if (document.kind === 'event') {
     repos.invoices.recordEvent(ctx, emitterId, document.event);

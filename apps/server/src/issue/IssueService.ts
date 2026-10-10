@@ -214,8 +214,8 @@ export class IssueService {
     }
     const customer = partyOf(customerRow);
     if (!customer.document) throw new HttpError(400, 'customer_without_document');
-    const abroad = customer.document.type === 'NIF' || customer.address?.kind === 'foreign';
-    if (abroad && customer.address?.kind !== 'foreign') {
+    const abroad = customer.document.type === 'NIF';
+    if (abroad && (customer.address?.kind !== 'foreign' || customer.address.country === 'BR')) {
       throw new HttpError(400, 'customer_country_missing');
     }
     if (!abroad && customer.address?.kind !== 'domestic') {

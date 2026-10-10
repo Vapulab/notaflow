@@ -176,3 +176,46 @@ test('an emitter of another account is not found', async () => {
   const response = await post(url, brazil(other.id));
   expect(response.statusCode).toBe(404);
 });
+
+test('a customer abroad with the country BR is customer_country_missing', async () => {
+  const { emitterId, url } = withEmitter();
+  const response = await post(url, {
+    emitterId,
+    documentType: 'NIF',
+    document: '00-0000000',
+    name: 'Foreign Customer Inc',
+    address: { ...foreignAddress, country: 'BR' },
+  });
+  expect(response.statusCode).toBe(400);
+  expect(response.json()).toMatchObject({ error: 'customer_country_missing' });
+});
+
+test('an edit cannot give a Brazil customer an address abroad, or the reverse', async () => {
+  const { emitterId, url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  const brazilId = ((await post(url, brazil(emitterId))).json() as { id: string }).id;
+  const toAbroad = await t.app.inject({
+    method: 'PUT',
+    url: `${url}/${brazilId}`,
+    headers,
+    payload: { address: foreignAddress },
+  });
+  expect(toAbroad.statusCode).toBe(400);
+  expect(toAbroad.json()).toMatchObject({ error: 'invalid_address' });
+
+  const abroad = await post(url, {
+    emitterId,
+    documentType: 'NIF',
+    document: '00-0000000',
+    name: 'Foreign Customer Inc',
+    address: foreignAddress,
+  });
+  const toBrazil = await t.app.inject({
+    method: 'PUT',
+    url: `${url}/${(abroad.json() as { id: string }).id}`,
+    headers,
+    payload: { address: domesticAddress },
+  });
+  expect(toBrazil.statusCode).toBe(400);
+  expect(toBrazil.json()).toMatchObject({ error: 'invalid_address' });
+});

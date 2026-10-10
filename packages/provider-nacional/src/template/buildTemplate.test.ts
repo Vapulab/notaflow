@@ -205,6 +205,23 @@ describe('buildTemplate', () => {
     expect(() => buildTemplate({ ...abroad, customer: noAddress })).toThrow(RangeError);
   });
 
+  test('a Brazil document with an address abroad, or an address abroad in BR, is refused', () => {
+    const foreignAddress = abroad.customer.address;
+    if (foreignAddress?.kind !== 'foreign') throw new Error('fixture');
+    expect(() =>
+      buildTemplate({
+        ...domestic,
+        customer: { ...domestic.customer, address: foreignAddress },
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      buildTemplate({
+        ...abroad,
+        customer: { ...abroad.customer, address: { ...foreignAddress, country: 'BR' } },
+      }),
+    ).toThrow(RangeError);
+  });
+
   test('a customer without a document is refused', () => {
     expect(() =>
       buildTemplate({ ...abroad, customer: { ...abroad.customer, document: null } }),

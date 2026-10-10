@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { seedTenant } from '../../test/fixtures';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { AuditLog } from '../repos/AuditLog';
+import { CustomerRepository } from '../repos/CustomerRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
 let t: TestApp;
@@ -248,4 +249,34 @@ test('reconcile resends what was first sent, even after the customer was edited'
   const xml = xmlOf(s.a, id);
   expect(xml).toContain('<xNome>Cliente Teste Ltda</xNome>');
   expect(xml).not.toContain('Nome Novo Ltda');
+});
+
+test('a CNPJ customer with an address abroad is refused before anything is reserved', async () => {
+  const s = await withNewInvoiceSetup();
+  const ctx = { ...s.a, role: 'owner' as const, accountStatus: 'active' as const };
+  // A customer stored before the edit check existed.
+  new CustomerRepository(t.db).setManual(ctx, s.brazilId, {
+    address: {
+      kind: 'foreign',
+      country: 'US',
+      postalCode: '99999',
+      city: 'Testville',
+      region: 'NY',
+      street: '1 Example Street',
+      number: '1',
+      district: 'Downtown',
+    },
+  });
+  const response = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+    foreignCurrency: '220',
+    foreignAmountCents: 100,
+  });
+  expect(response.statusCode).toBe(400);
+  expect(response.json()).toMatchObject({ error: 'customer_address_incomplete' });
+  expect(new InvoiceRepository(t.db).list(ctx, { limit: 10, offset: 0 }).total).toBe(0);
 });

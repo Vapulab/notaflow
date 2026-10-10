@@ -66,7 +66,7 @@ export class ServiceRepository {
     return viewOf(row);
   }
 
-  // Insert only: a service already imported under this key, even if edited since, stays as it is.
+  // Insert only: skipped when a service has this code and description, or was imported under this key.
   importService(
     ctx: AccountContext,
     emitterId: string,
@@ -74,6 +74,18 @@ export class ServiceRepository {
     importKey: string,
   ): void {
     this.requireEmitter(ctx, emitterId);
+    const twin = this.db
+      .select({ id: services.id })
+      .from(services)
+      .where(
+        and(
+          eq(services.emitterId, emitterId),
+          eq(services.nationalTaxCode, input.nationalTaxCode),
+          eq(services.description, input.description),
+        ),
+      )
+      .get();
+    if (twin) return;
     this.db
       .insert(services)
       .values({

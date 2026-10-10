@@ -98,7 +98,7 @@ function checkNewCustomer(body: CreateBody): NewCustomer {
       throw new HttpError(400, 'customer_address_incomplete');
     }
   } else {
-    if (address?.kind !== 'foreign' || !address.country) {
+    if (address?.kind !== 'foreign' || !address.country || address.country === 'BR') {
       throw new HttpError(400, 'customer_country_missing');
     }
     if (!address.postalCode || !address.city || !address.region) {
@@ -184,6 +184,16 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
       const { address } = request.body;
       if (address && REQUIRED_BY_KIND[address.kind].some((field) => !(field in address))) {
         throw new HttpError(400, 'invalid_address');
+      }
+      if (address) {
+        const current = customers.get(ctx, request.params.customerId);
+        if (!current) throw new HttpError(404, 'not_found');
+        // The document picks the invoice rules, so the address kind must agree with it.
+        const brazil = current.documentType === 'CNPJ' || current.documentType === 'CPF';
+        const foreign = address.kind === 'foreign';
+        if (brazil === foreign || (foreign && address.country === 'BR')) {
+          throw new HttpError(400, 'invalid_address');
+        }
       }
       if (!customers.setManual(ctx, request.params.customerId, request.body)) {
         throw new HttpError(404, 'not_found');

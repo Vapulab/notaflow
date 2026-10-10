@@ -18,11 +18,11 @@ const EXPORT_DEFAULTS: NonNullable<NewInvoiceInput['service']['export']> = {
 export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
   const { emitter, service, customer } = input;
   if (input.serviceCents <= 0) throw new RangeError('The service amount must be above zero.');
-  const brazilDocument = customer.document?.type === 'CNPJ' || customer.document?.type === 'CPF';
-  const abroad = !brazilDocument || customer.address?.kind === 'foreign';
+  // The document alone picks the rules; the address must agree with it.
+  const abroad = customer.document?.type !== 'CNPJ' && customer.document?.type !== 'CPF';
   const rules = taxRules(input.competence).forCustomer(abroad);
   const address = customer.address;
-  if (abroad && address?.kind !== 'foreign') {
+  if (abroad && (address?.kind !== 'foreign' || address.country === 'BR')) {
     throw new RangeError('A customer abroad needs a foreign address.');
   }
   if (!abroad && address?.kind !== 'domestic') {

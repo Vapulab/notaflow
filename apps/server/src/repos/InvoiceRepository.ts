@@ -70,7 +70,7 @@ export class InvoiceRepository {
     emitterId: string,
     invoice: ProviderInvoice,
     customerId: string | null,
-  ): { id: string; created: boolean } {
+  ): { id: string; created: boolean; fromApp: boolean } {
     this.requireEmitter(ctx, emitterId);
     const cancelled = this.hasCancellingEvent(invoice.accessKey);
     const projection = { customerId, ...projectionOf(invoice) };
@@ -86,7 +86,7 @@ export class InvoiceRepository {
         .set({ ...projection, status })
         .where(eq(invoices.id, existing.id))
         .run();
-      return { id: existing.id, created: false };
+      return { id: existing.id, created: false, fromApp: existing.origin === 'app' };
     }
     // The row the app created for this DPS, left pending or unknown when the Sefin did not answer.
     const awaiting = this.db
@@ -108,7 +108,7 @@ export class InvoiceRepository {
       .get();
     if (awaiting && isOwnInvoice(awaiting, invoice)) {
       this.promote(awaiting.id, invoice);
-      return { id: awaiting.id, created: false };
+      return { id: awaiting.id, created: false, fromApp: true };
     }
     if (awaiting) {
       this.db
@@ -134,7 +134,7 @@ export class InvoiceRepository {
       })
       .run();
     this.linkEvents(id, invoice.accessKey);
-    return { id, created: true };
+    return { id, created: true, fromApp: false };
   }
 
   recordEvent(ctx: AccountContext, emitterId: string, event: ProviderEvent): boolean {
