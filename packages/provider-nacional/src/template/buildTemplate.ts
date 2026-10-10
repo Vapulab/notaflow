@@ -5,12 +5,12 @@ import { minimumIssRate, taxRules } from '../rules/taxRules';
 import { toDpsCustomer } from './applyTemplate';
 import type { DpsTemplate } from './readTemplate';
 
-// The values the emitters' own export invoices use, for a service saved without export details.
+// A service saved without export details: cross-border, no link, no support mechanism (01, Nenhum).
 const EXPORT_DEFAULTS: NonNullable<NewInvoiceInput['service']['export']> = {
   mode: '1',
   providerLink: '0',
-  providerSupport: '02',
-  customerSupport: '02',
+  providerSupport: '01',
+  customerSupport: '01',
   temporaryGoods: '1',
   mdic: '0',
 };

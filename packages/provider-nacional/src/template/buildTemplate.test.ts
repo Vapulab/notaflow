@@ -205,6 +205,20 @@ describe('buildTemplate', () => {
     expectValidAndInverse(template);
   });
 
+  test('a service without export details declares no foreign trade support (01) on either side', () => {
+    const { export: _export, ...plain } = abroad.service;
+    const template = buildTemplate({ ...abroad, service: plain });
+    expect(template.service.foreignTrade).toMatchObject({
+      mode: '1',
+      providerLink: '0',
+      providerSupport: '01',
+      customerSupport: '01',
+      temporaryGoods: '1',
+      mdic: '0',
+    });
+    expectValidAndInverse(template);
+  });
+
   test('an export without the foreign amount is refused', () => {
     const { foreign: _foreign, ...noForeign } = abroad;
     expect(() => buildTemplate(noForeign)).toThrow(RangeError);

@@ -70,6 +70,7 @@ From the design session with Lincoln on 2026-10-10:
 | Building the invoice | Approach 1: a **synthetic template**. The new invoice is built into the same `DpsTemplate` that "issue similar" reads from an XML, and goes through the existing issue path unchanged. |
 | Tax reform | A separate section; 2026 rules now, the 2027 highlight as its own stage due by December 2026. |
 | Place of service (Stage 2b review) | Always the emitter's municipality. An export done in Brazil keeps it there, with the customer's country in `cPaisResult`. A service done in person in another municipality, or abroad (`cPaisPrestacao`), is a later stage. |
+| Export support mechanisms (Stage 2b review) | A service without export details declares `mecAFComexP` and `mecAFComexT` 01 (Nenhum). The earlier invoices carried 02 (ACC for the provider, public administration for the customer), which does not fit a private customer abroad. Checked in produção restrita on 2026-10-10. |
 
 ## Design
 
