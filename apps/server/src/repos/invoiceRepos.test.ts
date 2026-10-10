@@ -78,7 +78,7 @@ describe('InvoiceRepository', () => {
     const first = invoices.upsertSynced(a, emitterId, providerInvoice(), null);
     const second = invoices.upsertSynced(a, emitterId, providerInvoice({ number: '43' }), null);
     expect(first.created).toBe(true);
-    expect(second).toEqual({ id: first.id, created: false });
+    expect(second).toEqual({ id: first.id, created: false, fromApp: false });
     expect(invoices.list(a, { limit: 50, offset: 0 })).toMatchObject({
       total: 1,
       items: [{ number: '43', status: 'issued' }],

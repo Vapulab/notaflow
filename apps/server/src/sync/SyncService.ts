@@ -3,6 +3,7 @@ import { NacionalHttpError } from '@notaflow/provider-nacional';
 import type { Database } from '../db/openDatabase';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { CustomerRepository } from '../repos/CustomerRepository';
+import { ServiceRepository } from '../repos/ServiceRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 import { SyncStateRepository } from '../repos/SyncStateRepository';
@@ -26,6 +27,7 @@ export class SyncService {
   private readonly running = new Set<string>();
   private readonly emitters: EmitterRepository;
   private readonly customers: CustomerRepository;
+  private readonly services: ServiceRepository;
   private readonly invoices: InvoiceRepository;
   private readonly state: SyncStateRepository;
 
@@ -41,6 +43,7 @@ export class SyncService {
   ) {
     this.emitters = new EmitterRepository(deps.db);
     this.customers = new CustomerRepository(deps.db);
+    this.services = new ServiceRepository(deps.db);
     this.invoices = new InvoiceRepository(deps.db);
     this.state = new SyncStateRepository(deps.db);
   }
@@ -81,7 +84,7 @@ export class SyncService {
         this.deps.db.transaction(() => {
           for (const document of batch.documents) {
             applyDocument(
-              { customers: this.customers, invoices: this.invoices },
+              { customers: this.customers, invoices: this.invoices, services: this.services },
               ctx,
               emitterId,
               document,

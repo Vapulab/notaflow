@@ -17,6 +17,7 @@
     "spike:sefin:cancel": "tsx --env-file=.env.local spikes/2026-10-sefin/cancel.ts",
     "fake:nacional": "tsx packages/fake-nacional/src/cli.ts",
     "spike:adn-read": "tsx --env-file=.env.local spikes/2026-10-adn-read/run.ts",
+    "spike:new-invoice": "tsx --env-file=.env.local spikes/2026-10-new-invoice/run.ts",
     "spike:template-check": "tsx spikes/2026-10-template-check/run.ts",
     "malphas:check": "node scripts/malphas-check.mjs",
     "dev:server": "tsx --env-file=apps/server/.env.local apps/server/src/main.ts",

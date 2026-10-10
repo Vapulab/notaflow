@@ -3,9 +3,11 @@ import type { Dispatcher } from 'undici';
 import { accountContext, identityOf } from '../auth/guards';
 import { BACEN_CURRENCY, fetchPtaxSell } from '../exchange/ptax';
 import { HttpError } from '../httpError';
-import type { IssueInput, IssueService } from '../issue/IssueService';
+import type { IssueInput, IssueService, NewInvoiceRequest } from '../issue/IssueService';
 
 const DATE = '^\\d{4}-\\d{2}-\\d{2}$';
+// vServ is TSDec15V2; this keeps every amount a safe integer far below it.
+const MAX_CENTS = 9_999_999_999_999;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9-]{8,100}$/;
 
 const issueSchema = {
@@ -16,13 +18,44 @@ const issueSchema = {
     properties: {
       templateInvoiceId: { type: 'string', maxLength: 64 },
       competence: { type: 'string', pattern: DATE },
-      serviceCents: { type: 'integer', minimum: 0 },
-      foreignAmountCents: { type: 'integer', minimum: 0 },
+      serviceCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
+      foreignAmountCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
       description: { type: 'string', minLength: 1, maxLength: 2000 },
       customerId: { type: 'string', maxLength: 64 },
     },
   },
 } as const;
+
+const newInvoiceSchema = {
+  body: {
+    type: 'object',
+    required: ['emitterId', 'customerId', 'serviceId', 'competence', 'serviceCents'],
+    additionalProperties: false,
+    properties: {
+      emitterId: { type: 'string', maxLength: 64 },
+      customerId: { type: 'string', maxLength: 64 },
+      serviceId: { type: 'string', maxLength: 64 },
+      competence: { type: 'string', pattern: DATE },
+      serviceCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
+      foreignCurrency: { type: 'string', pattern: '^\\d{3}$' },
+      foreignAmountCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
+      // pTotTribSN is TSDec2V2: at most 99.99.
+      simplesPercent: { type: 'integer', minimum: 1, maximum: 9_999 },
+      // LC 116/2003 caps the ISS at 5%.
+      issRate: { type: 'integer', minimum: 0, maximum: 500 },
+      issRetained: { type: 'boolean' },
+      description: { type: 'string', minLength: 1, maxLength: 2000 },
+    },
+  },
+} as const;
+
+function idempotencyKeyOf(headers: Record<string, unknown>): string | undefined {
+  const key = headers['idempotency-key'];
+  if (key !== undefined && (typeof key !== 'string' || !IDEMPOTENCY_KEY.test(key))) {
+    throw new HttpError(400, 'invalid_idempotency_key');
+  }
+  return key;
+}
 
 const rateSchema = {
   querystring: {
@@ -86,15 +119,26 @@ export function issueRoutes(
     { schema: issueSchema },
     async (request, reply) => {
       const ctx = accountContext(request, request.params.accountId, { write: true });
-      const key = request.headers['idempotency-key'];
-      if (key !== undefined && (typeof key !== 'string' || !IDEMPOTENCY_KEY.test(key))) {
-        throw new HttpError(400, 'invalid_idempotency_key');
-      }
       const { view, repeat } = await deps.issue.issue(
         ctx,
         identityOf(request).email,
         request.body,
-        key,
+        idempotencyKeyOf(request.headers),
+      );
+      return reply.status(repeat ? 200 : 201).send(view);
+    },
+  );
+
+  app.post<{ Params: { accountId: string }; Body: NewInvoiceRequest }>(
+    '/api/accounts/:accountId/invoices/new',
+    { schema: newInvoiceSchema },
+    async (request, reply) => {
+      const ctx = accountContext(request, request.params.accountId, { write: true });
+      const { view, repeat } = await deps.issue.issueNew(
+        ctx,
+        identityOf(request).email,
+        request.body,
+        idempotencyKeyOf(request.headers),
       );
       return reply.status(repeat ? 200 : 201).send(view);
     },

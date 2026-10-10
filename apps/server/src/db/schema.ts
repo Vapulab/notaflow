@@ -64,6 +64,15 @@ export const emitters = sqliteTable('emitters', {
     .default('producao_restrita'),
   dpsSeries: text('dps_series').notNull(),
   nextDpsNumber: integer('next_dps_number').notNull().default(1),
+  // Percents are integers in hundredths (6.00% = 600), like amounts in cents.
+  simplesAnnex: text('simples_annex', { enum: ['III', 'V'] }),
+  simplesBand: integer('simples_band'),
+  simplesPercent: integer('simples_percent'),
+  issRate: integer('iss_rate'),
+  ibscbsRegime: text('ibscbs_regime', { enum: ['inside_das', 'regular'] })
+    .notNull()
+    .default('inside_das'),
+  ibscbsRegimeFrom: text('ibscbs_regime_from'),
   createdAt: createdAt(),
 });
 
@@ -135,6 +144,38 @@ export const customers = sqliteTable(
   ],
 );
 
+export const services = sqliteTable(
+  'services',
+  {
+    id: id(),
+    emitterId: text('emitter_id')
+      .notNull()
+      .references(() => emitters.id),
+    name: text('name').notNull(),
+    nationalTaxCode: text('national_tax_code').notNull(),
+    municipalTaxCode: text('municipal_tax_code'),
+    nbsCode: text('nbs_code'),
+    description: text('description').notNull(),
+    pisCofinsCst: text('pis_cofins_cst'),
+    ibscbsOperationCode: text('ibscbs_operation_code'),
+    ibscbsCst: text('ibscbs_cst'),
+    ibscbsClassCode: text('ibscbs_class_code'),
+    exportMode: text('export_mode'),
+    exportProviderLink: text('export_provider_link'),
+    exportProviderSupport: text('export_provider_support'),
+    exportCustomerSupport: text('export_customer_support'),
+    exportTemporaryGoods: text('export_temporary_goods'),
+    exportMdic: text('export_mdic'),
+    origin: text('origin', { enum: ['manual', 'imported'] }).notNull(),
+    // Code and description at import time; a hand edit keeps it, so the sync never re-imports.
+    importKey: text('import_key'),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [uniqueIndex('services_emitter_import_key').on(table.emitterId, table.importKey)],
+);
+
 export const invoices = sqliteTable(
   'invoices',
   {
@@ -165,6 +206,8 @@ export const invoices = sqliteTable(
     netCents: integer('net_cents').notNull(),
     origin: text('origin', { enum: ['synced', 'app'] }).notNull(),
     templateOf: text('template_of'),
+    // The built DpsTemplate (JSON) of an invoice issued without a stored template.
+    issueTemplate: text('issue_template'),
     // Sent by the issue form; a repeat of the same key answers the first row.
     idempotencyKey: text('idempotency_key'),
     xmlGzip: blob('xml_gzip', { mode: 'buffer' }),

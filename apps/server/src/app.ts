@@ -1,6 +1,7 @@
 import type { AccountContext } from '@notaflow/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
+import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
 import { remoteAccessVerifier, type VerifyAccessToken } from './auth/accessVerifier';
 import { registerAuth } from './auth/authHook';
 import type { Config } from './config';
@@ -18,6 +19,8 @@ import { IdentityRepository } from './repos/IdentityRepository';
 import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
 import { customerRoutes } from './routes/customers';
+import { fiscalRoutes } from './routes/fiscal';
+import { serviceRoutes } from './routes/services';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
@@ -42,6 +45,7 @@ export interface AppDeps {
   logStream?: { write(line: string): void };
   providerFactory?: ProviderFactory;
   issuerFactory?: IssuerFactory;
+  exchangeRate?: ExchangeRateSource;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
   syncRetryDelaysMs?: number[];
@@ -101,9 +105,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     db,
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
+    exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),
   });
-  issueRoutes(app, { issue, ...(deps.ptaxDispatcher ? { ptaxDispatcher: deps.ptaxDispatcher } : {}) });
+  issueRoutes(app, {
+    issue,
+    ...(deps.ptaxDispatcher ? { ptaxDispatcher: deps.ptaxDispatcher } : {}),
+  });
   customerRoutes(app, db);
+  fiscalRoutes(app, db);
+  serviceRoutes(app, db);
   auditRoutes(app, db);
   if (deps.webRoot) registerWeb(app, deps.webRoot);
   return app;

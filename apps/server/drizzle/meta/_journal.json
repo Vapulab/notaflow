@@ -29,6 +29,13 @@
       "when": 1791584320616,
       "tag": "0003_invoice_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791657426936,
+      "tag": "0004_stage_2a",
+      "breakpoints": true
     }
   ]
 }

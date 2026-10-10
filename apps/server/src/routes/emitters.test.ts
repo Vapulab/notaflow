@@ -262,3 +262,14 @@ test('an emitter of another account is 404 on the environment route, also for a 
   });
   expect(response.statusCode).toBe(404);
 });
+
+test('an emitter municipality outside the IBGE table is refused', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
+  const response = await onboard(
+    a.accountId,
+    'owner@example.com',
+    body({ municipality: '9999999' }),
+  );
+  expect(response.statusCode).toBe(400);
+  expect(response.json()).toMatchObject({ error: 'unknown_municipality' });
+});

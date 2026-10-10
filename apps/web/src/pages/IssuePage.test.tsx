@@ -41,12 +41,6 @@ const emitter = {
   dpsSeries: '900',
   certificate: null,
 };
-const base = {
-  '/api/accounts/acc/invoices/inv1/draft': draft,
-  '/api/accounts/acc/emitters': [emitter],
-  '/api/accounts/acc/customers': [],
-};
-
 const rate = (date: string, rateE4: number) => ({
   currency: 'USD',
   date,
@@ -54,6 +48,20 @@ const rate = (date: string, rateE4: number) => ({
   rateE4,
   source: 'PTAX venda, fechamento',
 });
+
+// The review waits for the PTAX of the competence, as a person would.
+async function clickReview(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByText(/PTAX venda de/);
+  await user.click(screen.getByRole('button', { name: /revisar/i }));
+}
+
+// A PTAX of 2.5000 keeps the draft's 2000.00 USD at its 5000.00 BRL.
+const base = {
+  '/api/accounts/acc/exchange-rate': rate('2026-08-31', 25_000),
+  '/api/accounts/acc/invoices/inv1/draft': draft,
+  '/api/accounts/acc/emitters': [emitter],
+  '/api/accounts/acc/customers': [],
+};
 
 test('the PTAX rate is fetched when the form opens and fills the BRL amount', async () => {
   const calls = stubApi({ ...base, '/api/accounts/acc/exchange-rate': rate('2026-08-31', 54321) });
@@ -80,28 +88,25 @@ test('a new competence date fetches the rate of that date', async () => {
   expect(screen.getByText(/PTAX venda de 31\/07\/2026: 5,0000/)).toBeTruthy();
 });
 
-test('a new foreign amount refreshes the BRL amount, and a typed BRL amount stays until then', async () => {
+test('a new foreign amount refreshes the BRL amount, which is read-only for an export', async () => {
   stubApi({ ...base, '/api/accounts/acc/exchange-rate': rate('2026-08-31', 54321) });
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
   const brl = (await screen.findByDisplayValue('10.864,20')) as HTMLInputElement;
-  await user.clear(brl);
-  await user.type(brl, '9.999,99');
-  await new Promise((resolve) => setTimeout(resolve, 700));
-  expect(brl.value).toBe('9.999,99');
+  expect(brl.readOnly).toBe(true);
   const foreign = screen.getByLabelText('Valor em USD');
   await user.clear(foreign);
   await user.type(foreign, '1.000,00');
   await waitFor(() => expect(brl.value).toBe('5.432,10'));
 });
 
-test('a PTAX failure keeps the BRL amount editable and says so', async () => {
+test('without the PTAX of the competence an export cannot be reviewed', async () => {
   stubApi({ ...base, '/api/accounts/acc/exchange-rate': { error: 'ptax_unavailable' } });
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   expect(await screen.findByText(ERROR_TEXT.ptax_unavailable ?? '')).toBeTruthy();
-  const brl = screen.getByLabelText(/valor em reais/i) as HTMLInputElement;
-  expect(brl.disabled).toBe(false);
-  expect(brl.value).toBe('5.000,00');
+  expect((screen.getByRole('button', { name: /revisar/i }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
 });
 
 test('the review shows PRODUÇÃO, highlights changes, and sends one key on a retry', async () => {
@@ -114,7 +119,7 @@ test('the review shows PRODUÇÃO, highlights changes, and sends one key on a re
   const description = await screen.findByLabelText(/descrição/i);
   await user.clear(description);
   await user.type(description, 'Serviços de outubro');
-  await user.click(screen.getByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   expect(screen.getByText('PRODUÇÃO')).toBeTruthy();
   expect(screen.getByRole('row', { name: /descrição/i }).className).toContain('bg-warning/10');
   expect(screen.getByRole('row', { name: /tomador/i }).className).not.toContain('bg-warning/10');
@@ -136,7 +141,7 @@ test('an issued invoice opens its detail', async () => {
   });
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
   await waitFor(() => expect(window.location.hash).toBe('#/a/acc/invoices/new1'));
 });
@@ -148,7 +153,7 @@ test('after an uncertain send error the form cannot go back, and a retry keeps t
   });
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
   expect(await screen.findByText(/pode ter sido emitida/i)).toBeTruthy();
   expect(screen.queryByRole('button', { name: /voltar e editar/i })).toBeNull();
@@ -166,7 +171,7 @@ test('a reload after an uncertain send keeps the key and the reviewed values', a
   const calls = stubApi({ ...base, '/api/accounts/acc/invoices/issue': { error: 'http_524' } });
   const first = renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
   expect(await screen.findByText(/pode ter sido emitida/i)).toBeTruthy();
   first.unmount();
@@ -185,7 +190,7 @@ test('a validation refusal is definitive: the user can go back and edit', async 
   stubApi({ ...base, '/api/accounts/acc/invoices/issue': { error: 'invalid_amount' } });
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
   expect(await screen.findByRole('button', { name: /voltar e editar/i })).toBeTruthy();
 });
@@ -194,7 +199,7 @@ test('a customer reviews without the environment: no PRODUÇÃO, and the button 
   stubApi(base);
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('user'));
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /revisar/i }));
+  await clickReview(user);
   expect(screen.queryByText('PRODUÇÃO')).toBeNull();
   expect(screen.getByRole('button', { name: 'Emitir nota' })).toBeTruthy();
 });

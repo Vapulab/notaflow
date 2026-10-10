@@ -7,6 +7,7 @@ import { CertificateRepository } from '../repos/CertificateRepository';
 import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { type InvoiceFilter, InvoiceRepository } from '../repos/InvoiceRepository';
+import { ServiceRepository } from '../repos/ServiceRepository';
 import { applyDocument } from '../sync/applyDocument';
 import { VaultCertificateStore } from '../vault/VaultCertificateStore';
 
@@ -146,7 +147,7 @@ export function invoiceRoutes(
       const counts = { invoices: 0, events: 0, skipped: 0 };
       deps.db.transaction(() =>
         applyDocument(
-          { customers, invoices },
+          { customers, invoices, services: new ServiceRepository(deps.db) },
           ctx,
           emitter.id,
           { kind: 'invoice', nsu: 0, invoice },

@@ -26,6 +26,16 @@ A synced invoice starts as `issued` or `cancelled`. Only an invoice issued by th
    - Rejected: the row keeps the Sefin codes and messages. This is a normal answer (201 with `status: 'rejected'`), because the row exists.
    - Uncertain (timeout, 5xx, network): the row becomes `unknown`.
 
+## New invoice without a template
+
+`POST /api/accounts/:accountId/invoices/new` with the emitter, a stored customer, a stored service, the competence, the amount, and for a customer abroad the BACEN currency code and the foreign amount. Optional overrides: `simplesPercent`, `issRate`, `issRetained`, `description`. The design is in the [New Invoice RFC](../RFCS/2026/10/RFC_NEW_INVOICE.md).
+
+1. **Checks, before anything is reserved.** The emitter has a fiscal configuration (409 `fiscal_config_missing`). The service and the customer belong to the emitter (404 `service_not_found`, `customer_not_found`). A Brazil customer has a Brazilian address (`customer_address_incomplete`); a customer abroad has a foreign address (`customer_country_missing`) and a foreign amount (`invalid_amount`); a Brazil customer has none (`foreign_amount_not_allowed`). The emitter is an ME/EPP Simples optant (`emitter_not_simples`). Retention is refused for a customer abroad or a CPF (`retention_not_allowed`) and needs a rate above zero (`invalid_iss_rate`). The competence is a calendar date (`invalid_competence`) not after the issue date in Brasília, which is now minus 60 seconds. The description is not blank (`invalid_description`). Customer text is checked against the XSD when the customer is saved (`invalid_text`). The amount and the certificate are checked as above.
+2. **Build.** `buildTemplate` writes the fiscal groups from the emitter, the service, and the customer, with the rules of the competence (`taxRules`). For a Brazil customer the ISS is taxable in the municipality; `pAliq` is written only when the ISS is retained (the Sefin refuses it otherwise for an ME/EPP, E0625). For a customer abroad the invoice is an export with `comExt`. A 2027 competence is refused until the IBS/CBS stage.
+3. **Reserve.** As above. The pending row stores the built template (`issue_template`, JSON); `template_of` stays empty.
+4. **Send and outcome.** As above, with the same idempotency and E0014 behavior. An error before the DPS leaves the server (a template, XML, or signature error) is a certain refusal: the row becomes `rejected` with `local_error`, not `unknown`. When the Sefin issued but the local save fails, the answer is `unknown` and reconcile or the sync records the invoice.
+5. **Stored template.** `issue_template` carries a version. Reconcile first checks that it rebuilds the stored DPS id; otherwise it answers 422 `template_unreadable` and sends nothing.
+
 ## Idempotency
 
 The issue form sends an `Idempotency-Key` header, one per review, and keeps it after an unclear answer (see [Web UI](WEB_UI.md)). The key is stored on the pending row, unique per emitter. A repeat with the same key answers `200` with the first row's current state and reserves nothing, also when two requests arrive at the same time. Without the header, every call is a new issue.
@@ -39,7 +49,7 @@ E0014 means "an NFS-e already exists for this DPS". The issuer then looks the in
 `POST /api/accounts/:accountId/invoices/:invoiceId/reconcile`, for a `pending` or `unknown` row, always in the row's own environment (the emitter may have switched since):
 
 1. `GET /dps/{id}` at the Sefin. Found: the row becomes `issued`, after the same check as above.
-2. Not found: the app resends the **same** DPS number with a fresh issue date. The pending row keeps everything the resend needs, including the foreign amount.
+2. Not found: the app resends the **same** DPS number with a fresh issue date. The pending row keeps everything the resend needs, including the foreign amount. A new invoice resends its stored `issue_template` as it was sent; it is never rebuilt from the customer or service records, which may have changed since.
 3. Still uncertain: the row stays `unknown`.
 
 The app never resends blindly. The ADN sync can also complete an `unknown` row: an invoice with the same emitter and DPS id takes over that row instead of adding a second one, after the same `isOwnInvoice` check. When the check fails, the row becomes `rejected` with E0014 and the synced invoice gets its own row.
@@ -52,9 +62,9 @@ A cancel that the Sefin refuses because the invoice is already cancelled (codes 
 
 ## Export amount (PTAX)
 
-For an export invoice, the BRL amount is suggested from the PTAX **sell** rate of the **closing bulletin** ("Fechamento PTAX") of the Banco Central on the competence date. Without a closing bulletin on that date (a weekend or a holiday), the rate of the last business day before it is used, and the answer names that date. The user can always change the BRL amount.
+For an export invoice, the BRL amount is the foreign amount at the PTAX **sell** rate of the **closing bulletin** ("Fechamento PTAX") of the Banco Central on the competence date. Without a closing bulletin on that date (a weekend or a holiday), the rate of the last business day before it is used, and the answer names that date. The server enforces it on both issue paths: it fetches the rate of the competence date and refuses another BRL amount with 400 `amount_ptax_mismatch` (with `expectedCents`, `rate`, and `rateDate`). Without a rate nothing is issued (502 `ptax_unavailable`). The audit entry of the pending row names the rate and its date. The form shows the BRL amount read-only and reviews only with the rate loaded.
 
-Evidence: one real export invoice of the first emitter used exactly this rate. Two earlier ones match no PTAX closing rate, probably a bank contract rate. That is why the amount stays editable.
+Decision (2026-10-10, Lincoln): the BRL amount is always the PTAX of the competence date. Two early export invoices of the first emitter used a bank contract rate; NotaFlow no longer issues that way.
 
 `GET /api/accounts/:accountId/exchange-rate?currency=220&date=YYYY-MM-DD` returns the rate. Rates are integers scaled by 10 000 (`54321` for 5.4321), so no float touches money.
 

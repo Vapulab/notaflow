@@ -1,7 +1,8 @@
 node_modules/
 dist/
 coverage/
-data/
+/data/
+/apps/server/data/
 *.pfx
 *.p12
 *.pem

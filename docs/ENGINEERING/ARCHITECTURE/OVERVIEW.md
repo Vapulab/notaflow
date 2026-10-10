@@ -31,7 +31,7 @@ cloudflared ──► server (Fastify) ──► provider "nacional" ──► S
 
 **`InvoiceProvider`** is what an invoice system implements. The read side (Stage 1a) checks the connection, fetches documents since a cursor (`fetchSince`), and gets one invoice by access key. `NacionalProvider` is the national implementation.
 
-**`InvoiceIssuer`** issues a new invoice from a stored one, finds an invoice by DPS id, and cancels. `NacionalIssuer` is the national implementation. See [Invoice Lifecycle](INVOICE_LIFECYCLE.md).
+**`InvoiceIssuer`** issues a new invoice from a source, finds an invoice by DPS id, and cancels. The source is a stored NFS-e to copy (`stored`) or a template built from the emitter, the service, and the customer (`built`, from `buildTemplate`). `NacionalIssuer` is the national implementation. See [Invoice Lifecycle](INVOICE_LIFECYCLE.md).
 
 **`CertificateStore`** stores and loads tenant certificates. Each certificate is encrypted with its own data key, and `NFSE_MASTER_KEY` wraps that key. See [Certificate Vault](CERTIFICATE_VAULT.md); accounts and roles are in [Tenancy](TENANCY.md).
 
