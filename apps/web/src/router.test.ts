@@ -41,3 +41,9 @@ test('the issue route', () => {
     '#/a/acc/invoices/inv1/issue',
   );
 });
+
+test('the emitter page route', () => {
+  const route = { name: 'emitter', accountId: 'acc', emitterId: 'em1' } as const;
+  expect(parseRoute('#/a/acc/emitters/em1')).toEqual(route);
+  expect(routeHref(route)).toBe('#/a/acc/emitters/em1');
+});

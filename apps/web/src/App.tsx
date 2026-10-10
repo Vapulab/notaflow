@@ -2,6 +2,7 @@ import { MeProvider } from './components/MeContext';
 import { AdminPage } from './pages/AdminPage';
 import { CustomerPage } from './pages/CustomerPage';
 import { CustomersPage } from './pages/CustomersPage';
+import { EmitterPage } from './pages/EmitterPage';
 import { EmittersPage } from './pages/EmittersPage';
 import { HomePage } from './pages/HomePage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
@@ -23,6 +24,8 @@ function Screen() {
   switch (route.name) {
     case 'emitters':
       return <EmittersPage accountId={route.accountId} />;
+    case 'emitter':
+      return <EmitterPage accountId={route.accountId} emitterId={route.emitterId} />;
     case 'invoices':
       return <InvoicesPage accountId={route.accountId} />;
     case 'invoice':

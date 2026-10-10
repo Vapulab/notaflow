@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, type CepAnswer, type Country, type Municipality, type PartyAddress } from '../api';
 import { Alert, Combobox, type ComboboxOption, Field, Input } from '../ui';
 import { errorText } from './Layout';
+import { useSearch } from './useSearch';
 
 export interface AddressValue {
   kind: 'domestic' | 'foreign';
@@ -92,31 +93,6 @@ const countryOption = (c: Country): ComboboxOption => ({
   value: c.code,
   label: `${c.name} (${c.code})`,
 });
-
-// Search results for a combobox, asked 300 ms after the last key.
-function useSearch<T>(url: string, query: string): T[] {
-  const [found, setFound] = useState<T[]>([]);
-  useEffect(() => {
-    const text = query.trim();
-    if (!text) return;
-    let live = true;
-    const timer = setTimeout(() => {
-      api.get<T[]>(`${url}?q=${encodeURIComponent(text)}`).then(
-        (items) => {
-          if (live) setFound(items);
-        },
-        () => {
-          if (live) setFound([]);
-        },
-      );
-    }, 300);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [url, query]);
-  return query.trim() ? found : [];
-}
 
 export function AddressFields(props: {
   accountId: string;

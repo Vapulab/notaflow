@@ -8,7 +8,10 @@ import {
   formatCompetence,
   formatDate,
   formatDateTime,
+  formatServiceCode,
   parseCents,
+  parsePercent,
+  percentInput,
   previousMonthEnd,
 } from './format';
 
@@ -53,4 +56,18 @@ test('brasiliaToday is the Brasília date', () => {
 test('formatDateTime shows the Brasília date and time', () => {
   expect(formatDateTime('2026-10-10T14:11:24Z')).toBe('10/10/2026 11:11');
   expect(formatDateTime(null)).toBe('');
+});
+
+test('percents are hundredths shown with a comma', () => {
+  expect(percentInput(600)).toBe('6,00');
+  expect(percentInput(1120)).toBe('11,20');
+  expect(parsePercent('2,00')).toBe(200);
+  expect(parsePercent('2')).toBe(200);
+  expect(parsePercent('11,2')).toBe(1120);
+  expect(parsePercent('abc')).toBeNull();
+  expect(parsePercent('100,01')).toBeNull();
+});
+
+test('a national service code is shown with dots', () => {
+  expect(formatServiceCode('010701')).toBe('01.07.01');
 });

@@ -82,3 +82,17 @@ export function formatDateTime(value: string | null): string {
   if (!value) return '';
   return brasiliaDateTime.format(new Date(value)).replace(',', '');
 }
+
+// Percents are integer hundredths, like amounts in cents: 600 is 6,00%.
+export function percentInput(hundredths: number): string {
+  return centsInput(hundredths);
+}
+
+export function parsePercent(text: string): number | null {
+  const value = parseCents(text);
+  return value !== null && value <= 10_000 ? value : null;
+}
+
+export function formatServiceCode(code: string): string {
+  return code.replace(/^(\d{2})(\d{2})(\d{2})$/, '$1.$2.$3');
+}

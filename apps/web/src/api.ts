@@ -235,3 +235,45 @@ export interface CepAnswer {
   district: string;
   municipality: Municipality;
 }
+
+export interface FiscalConfig {
+  simplesAnnex: 'III' | 'V' | null;
+  simplesBand: number | null;
+  simplesPercent: number | null; // hundredths
+  issRate: number | null; // hundredths
+  ibscbsRegime: 'inside_das' | 'regular';
+  ibscbsRegimeFrom: string | null;
+  bands: { III: number[]; V: number[] };
+}
+
+export interface ServiceExport {
+  mode: '0' | '1' | '2' | '3' | '4';
+  providerLink: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+  providerSupport: string;
+  customerSupport: string;
+  temporaryGoods: '0' | '1' | '2' | '3';
+  mdic: '0' | '1';
+}
+
+export interface ServiceInput {
+  name: string;
+  nationalTaxCode: string;
+  municipalTaxCode?: string;
+  nbsCode?: string;
+  description: string;
+  pisCofinsCst?: string;
+  ibsCbs?: { operationCode: string; cst: string; classCode: string };
+  export?: ServiceExport;
+}
+
+export interface Service extends ServiceInput {
+  id: string;
+  emitterId: string;
+  origin: 'manual' | 'imported';
+  archived: boolean;
+}
+
+export interface ServiceCode {
+  code: string;
+  description: string;
+}

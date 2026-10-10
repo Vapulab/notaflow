@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeAll, expect, test } from 'vitest';
 import { installDialogPolyfill } from '../test/dialog';
-import { Badge, Button, buttonClasses, Field, Input, Modal } from './index';
+import { Badge, Button, buttonClasses, Field, Input, Modal, Select } from './index';
 
 beforeAll(() => installDialogPolyfill());
 afterEach(() => cleanup());
@@ -17,6 +17,20 @@ test('button classes are the Malphas ones', () => {
 test('a Button is type button unless told otherwise', () => {
   render(<Button>Salvar</Button>);
   expect(screen.getByRole('button', { name: 'Salvar' }).getAttribute('type')).toBe('button');
+});
+
+test('a Field names a select by its label alone, and describes it with the hint', () => {
+  render(
+    <Field label="Faixa" hint="A faixa do mês anterior.">
+      <Select>
+        <option>Faixa 1</option>
+      </Select>
+    </Field>,
+  );
+  const select = screen.getByLabelText('Faixa');
+  expect(select.tagName).toBe('SELECT');
+  expect(select.getAttribute('aria-describedby')).toBeTruthy();
+  expect(screen.getByRole('combobox', { name: 'Faixa' })).toBe(select);
 });
 
 test('a Field label names its control', () => {
