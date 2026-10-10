@@ -1,7 +1,7 @@
 import type { NewInvoiceInput } from '@notaflow/core';
 import type { ForeignTrade } from '../dps/types';
 import { percentText } from '../rules/simplesBands';
-import { taxRules } from '../rules/taxRules';
+import { minimumIssRate, taxRules } from '../rules/taxRules';
 import { toDpsCustomer } from './applyTemplate';
 import type { DpsTemplate } from './readTemplate';
 
@@ -32,6 +32,13 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
   const retained = !abroad && input.issRetained === true;
   if (retained && input.issRate === undefined) {
     throw new RangeError('A retained ISS needs the ISS rate.');
+  }
+  if (
+    retained &&
+    input.issRate !== undefined &&
+    input.issRate < minimumIssRate(service.nationalTaxCode)
+  ) {
+    throw new RangeError('The ISS rate is below the legal minimum for this service.');
   }
   // The Sefin refuses pAliq from a Simples ME/EPP unless the ISS is retained (E0625).
   const issRatePercent =

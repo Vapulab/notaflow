@@ -10,6 +10,7 @@ import type {
 import {
   type DpsTemplate,
   formatBrasiliaDate,
+  minimumIssRate,
   parseNfseXml,
   readTemplate,
   TemplateUnsupportedError,
@@ -254,7 +255,12 @@ export class IssueService {
         throw new HttpError(400, 'retention_not_allowed');
       }
       if (issRate === undefined) throw new HttpError(409, 'fiscal_config_missing');
-      if (issRate <= 0) throw new HttpError(400, 'invalid_iss_rate');
+      const minimum = minimumIssRate(service.nationalTaxCode);
+      if (issRate < minimum) {
+        throw new HttpError(400, 'invalid_iss_rate', undefined, {
+          minimum: (minimum / 100).toFixed(2),
+        });
+      }
     }
     // Last of the checks: it is a network call.
     const ptax = foreign

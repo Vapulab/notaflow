@@ -300,3 +300,30 @@ test('without the PTAX an export is not issued', async () => {
   expect(own.fake.issuedCount()).toBe(0);
   await own.close();
 });
+
+test('a retained ISS below 2% is refused, except for the services the law exempts', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const low = await s.call(
+    'POST',
+    '/invoices/new',
+    brazilInvoice(s, { issRetained: true, issRate: 150 }),
+  );
+  expect(low.statusCode).toBe(400);
+  expect(low.json()).toMatchObject({ error: 'invalid_iss_rate', minimum: '2.00' });
+  const works = await s.call('POST', `/emitters/${s.emitterId}/services`, {
+    name: 'Obra',
+    nationalTaxCode: '070202',
+    description: 'Execução de obra por empreitada',
+  });
+  const allowed = await s.call(
+    'POST',
+    '/invoices/new',
+    brazilInvoice(s, {
+      serviceId: works.json<{ id: string }>().id,
+      issRetained: true,
+      issRate: 150,
+    }),
+  );
+  expect(allowed.json()).toMatchObject({ status: 'issued' });
+  expect(xmlOf(t, s.a, allowed.json<{ id: string }>().id)).toContain('<pAliq>1.50</pAliq>');
+});

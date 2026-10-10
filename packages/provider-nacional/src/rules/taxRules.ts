@@ -23,3 +23,10 @@ export function taxRules(competence: string): RuleSet {
   if (competence < '2027-01-01') return rules2026;
   throw new RangeError('NotaFlow has no tax rules for 2027 yet (IBS/CBS, NT 009).');
 }
+
+// LC 116/2003, art. 8-A: 2.00% at least, except subitems 7.02, 7.05, and 16.01; in hundredths.
+const BELOW_MINIMUM_ALLOWED = ['0702', '0705', '1601'];
+
+export function minimumIssRate(nationalTaxCode: string): number {
+  return BELOW_MINIMUM_ALLOWED.includes(nationalTaxCode.slice(0, 4)) ? 1 : 200;
+}

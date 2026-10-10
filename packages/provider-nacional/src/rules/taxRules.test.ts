@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { taxRules } from './taxRules';
+import { minimumIssRate, taxRules } from './taxRules';
 
 describe('taxRules', () => {
   test('in 2026 a Brazil customer is taxable in the municipality and may use the ISS rate', () => {
@@ -24,5 +24,18 @@ describe('taxRules', () => {
 
   test('a competence that is not a date is refused', () => {
     expect(() => taxRules('31/10/2026')).toThrow(RangeError);
+  });
+});
+
+describe('minimumIssRate', () => {
+  test('is 2.00% for a service of the general list', () => {
+    expect(minimumIssRate('010101')).toBe(200);
+    expect(minimumIssRate('170101')).toBe(200);
+  });
+
+  test('is any rate above zero for subitems 7.02, 7.05, and 16.01 (LC 116, art. 8-A, paragraph 1)', () => {
+    expect(minimumIssRate('070201')).toBe(1);
+    expect(minimumIssRate('070502')).toBe(1);
+    expect(minimumIssRate('160104')).toBe(1);
   });
 });
