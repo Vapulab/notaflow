@@ -1,11 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import type { AccountContext, InvoiceParty } from '@notaflow/core';
+import type { AccountContext, InvoiceParty, PartyAddress } from '@notaflow/core';
 import { and, eq, like, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { customers, emitters } from '../db/schema';
 
 export type CustomerRow = typeof customers.$inferSelect;
 export type ManualField = 'name' | 'email' | 'phone' | 'municipalRegistration' | 'address';
+
+export interface NewCustomer {
+  documentType: 'CNPJ' | 'CPF' | 'NIF' | 'NONE';
+  document: string | null;
+  name: string;
+  municipalRegistration?: string;
+  email?: string;
+  phone?: string;
+  address: PartyAddress;
+}
 
 export class CustomerRepository {
   constructor(private readonly db: Database) {}
@@ -57,6 +67,49 @@ export class CustomerRepository {
       .where(eq(customers.id, existing.id))
       .run();
     return existing.id;
+  }
+
+  // null when the emitter already has a customer with this document.
+  createManual(ctx: AccountContext, emitterId: string, input: NewCustomer): CustomerRow | null {
+    this.requireEmitter(ctx, emitterId);
+    if (input.document !== null) {
+      const existing = this.db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(
+            eq(customers.emitterId, emitterId),
+            eq(customers.documentType, input.documentType),
+            eq(customers.document, input.document),
+          ),
+        )
+        .get();
+      if (existing) return null;
+    }
+    const typed = {
+      name: input.name,
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      municipalRegistration: input.municipalRegistration ?? null,
+      address: input.address,
+    };
+    // Every typed field is manual, so a later sync of the same document keeps it.
+    const manualFields = Object.entries(typed)
+      .filter(([, value]) => value !== null)
+      .map(([field]) => field);
+    return this.db
+      .insert(customers)
+      .values({
+        id: randomUUID(),
+        emitterId,
+        documentType: input.documentType,
+        document: input.document,
+        origin: 'manual',
+        manualFields,
+        ...typed,
+      })
+      .returning()
+      .get();
   }
 
   setManual(
