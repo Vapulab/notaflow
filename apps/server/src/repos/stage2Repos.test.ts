@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { seedTenant } from '../../test/fixtures';
 import { type Database, openDatabase } from '../db/openDatabase';
@@ -143,4 +144,28 @@ test('a pending invoice keeps its built template and has no template_of', () => 
     templateOf: null,
     issueTemplate: '{"serviceCents":123400}',
   });
+});
+
+test('migration 0005 sets the export support of imported services to 01, and only theirs', () => {
+  const { a, emitterId } = setup();
+  const services = new ServiceRepository(db);
+  services.importService(a, emitterId, service, '010701|Desenvolvimento de software');
+  const manual = services.create(a, emitterId, {
+    ...service,
+    name: 'Manual',
+    description: 'Outro',
+  });
+  // Rows written before the migration: the import used to keep the 02 of the source invoice.
+  db.$client.exec(
+    "UPDATE services SET export_provider_support = '02', export_customer_support = '02'",
+  );
+  const sql = readFileSync(
+    new URL('../../drizzle/0005_force_export_support_01.sql', import.meta.url),
+    'utf8',
+  );
+  db.$client.exec(sql.replaceAll('--> statement-breakpoint', ''));
+  const byName = Object.fromEntries(services.list(a, emitterId).map((s) => [s.name, s.export]));
+  expect(byName.Desenvolvimento).toMatchObject({ providerSupport: '01', customerSupport: '01' });
+  expect(byName.Manual).toMatchObject({ providerSupport: '02', customerSupport: '02' });
+  expect(manual.origin).toBe('manual');
 });
