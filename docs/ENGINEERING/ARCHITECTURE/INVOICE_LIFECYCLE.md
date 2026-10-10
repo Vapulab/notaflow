@@ -26,6 +26,15 @@ A synced invoice starts as `issued` or `cancelled`. Only an invoice issued by th
    - Rejected: the row keeps the Sefin codes and messages. This is a normal answer (201 with `status: 'rejected'`), because the row exists.
    - Uncertain (timeout, 5xx, network): the row becomes `unknown`.
 
+## New invoice without a template
+
+`POST /api/accounts/:accountId/invoices/new` with the emitter, a stored customer, a stored service, the competence, the amount, and for a customer abroad the BACEN currency code and the foreign amount. Optional overrides: `simplesPercent`, `issRate`, `issRetained`, `description`. The design is in the [New Invoice RFC](../RFCS/2026/10/RFC_NEW_INVOICE.md).
+
+1. **Checks, before anything is reserved.** The emitter has a fiscal configuration (409 `fiscal_config_missing`). The service and the customer belong to the emitter (404 `service_not_found`, `customer_not_found`). A Brazil customer has a Brazilian address (`customer_address_incomplete`); a customer abroad has a foreign address (`customer_country_missing`) and a foreign amount (`invalid_amount`). The amount, the competence, and the certificate are checked as above.
+2. **Build.** `buildTemplate` writes the fiscal groups from the emitter, the service, and the customer, with the rules of the competence (`taxRules`). For a Brazil customer the ISS is taxable in the municipality; `pAliq` is written only when the ISS is retained (the Sefin refuses it otherwise for an ME/EPP, E0625). For a customer abroad the invoice is an export with `comExt`. A 2027 competence is refused until the IBS/CBS stage.
+3. **Reserve.** As above. The pending row stores the built template (`issue_template`, JSON); `template_of` stays empty.
+4. **Send and outcome.** As above, with the same idempotency and E0014 behavior.
+
 ## Idempotency
 
 The issue form sends an `Idempotency-Key` header, one per review, and keeps it after an unclear answer (see [Web UI](WEB_UI.md)). The key is stored on the pending row, unique per emitter. A repeat with the same key answers `200` with the first row's current state and reserves nothing, also when two requests arrive at the same time. Without the header, every call is a new issue.
@@ -39,7 +48,7 @@ E0014 means "an NFS-e already exists for this DPS". The issuer then looks the in
 `POST /api/accounts/:accountId/invoices/:invoiceId/reconcile`, for a `pending` or `unknown` row, always in the row's own environment (the emitter may have switched since):
 
 1. `GET /dps/{id}` at the Sefin. Found: the row becomes `issued`, after the same check as above.
-2. Not found: the app resends the **same** DPS number with a fresh issue date. The pending row keeps everything the resend needs, including the foreign amount.
+2. Not found: the app resends the **same** DPS number with a fresh issue date. The pending row keeps everything the resend needs, including the foreign amount. A new invoice resends its stored `issue_template` as it was sent; it is never rebuilt from the customer or service records, which may have changed since.
 3. Still uncertain: the row stays `unknown`.
 
 The app never resends blindly. The ADN sync can also complete an `unknown` row: an invoice with the same emitter and DPS id takes over that row instead of adding a second one, after the same `isOwnInvoice` check. When the check fails, the row becomes `rejected` with E0014 and the synced invoice gets its own row.
