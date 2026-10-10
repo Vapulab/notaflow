@@ -66,6 +66,27 @@ export class ServiceRepository {
     return viewOf(row);
   }
 
+  // Insert only: a service already imported under this key, even if edited since, stays as it is.
+  importService(
+    ctx: AccountContext,
+    emitterId: string,
+    input: ServiceInput,
+    importKey: string,
+  ): void {
+    this.requireEmitter(ctx, emitterId);
+    this.db
+      .insert(services)
+      .values({
+        id: randomUUID(),
+        emitterId,
+        ...columnsOf(input),
+        origin: 'imported',
+        importKey,
+      })
+      .onConflictDoNothing({ target: [services.emitterId, services.importKey] })
+      .run();
+  }
+
   update(ctx: AccountContext, serviceId: string, input: ServiceInput): boolean {
     if (!this.row(ctx, serviceId)) return false;
     this.db

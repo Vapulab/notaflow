@@ -198,6 +198,6 @@ Issued 3, cancelled 3, none left active. All three carried PIS/COFINS CST 00 and
 ## Open Questions
 
 - [x] Does the Sefin accept `pAliq` on a domestic invoice of an ME/EPP Simples optant? Only when the ISS is retained by the customer (`tpRetISSQN` 2); without retention it refuses `pAliq` with E0625. See [Produção restrita check (Stage 2a)](#produção-restrita-check-stage-2a).
-- [ ] The source and update path of the national service code table (`cTribNac` list) to embed.
+- [x] The source and update path of the national service code table (`cTribNac` list) to embed. Source: Anexo B v1.01 of 2026-01-22 (sheet `LISTA.SERV.NAC.`, 338 codes) from the NFS-e [Documentação Atual](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual). It is `apps/server/src/data/serviceCodes.json`. A new Anexo B version is converted again and committed.
 - [ ] The default PIS/COFINS CST and IBS/CBS class for a domestic service of a Simples optant in 2026, confirmed with the accountant or the Sefin check.
 - [ ] NT 009 rollout schedule, for the 2027 stage.

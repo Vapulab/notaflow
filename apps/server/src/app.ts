@@ -18,6 +18,8 @@ import { IdentityRepository } from './repos/IdentityRepository';
 import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
 import { customerRoutes } from './routes/customers';
+import { fiscalRoutes } from './routes/fiscal';
+import { serviceRoutes } from './routes/services';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
@@ -102,8 +104,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
   });
-  issueRoutes(app, { issue, ...(deps.ptaxDispatcher ? { ptaxDispatcher: deps.ptaxDispatcher } : {}) });
+  issueRoutes(app, {
+    issue,
+    ...(deps.ptaxDispatcher ? { ptaxDispatcher: deps.ptaxDispatcher } : {}),
+  });
   customerRoutes(app, db);
+  fiscalRoutes(app, db);
+  serviceRoutes(app, db);
   auditRoutes(app, db);
   if (deps.webRoot) registerWeb(app, deps.webRoot);
   return app;

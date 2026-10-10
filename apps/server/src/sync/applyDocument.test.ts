@@ -4,7 +4,9 @@ import { providerEvent, providerInvoice } from '../../test/providerData';
 import { type Database, openDatabase } from '../db/openDatabase';
 import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
+import { readFileSync } from 'node:fs';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
+import { ServiceRepository } from '../repos/ServiceRepository';
 import { type ApplyCounts, applyDocument } from './applyDocument';
 
 let db: Database;
@@ -24,7 +26,11 @@ function setup() {
     specialRegime: '0',
     dpsSeries: '900',
   }).id;
-  const repos = { customers: new CustomerRepository(db), invoices: new InvoiceRepository(db) };
+  const repos = {
+    customers: new CustomerRepository(db),
+    invoices: new InvoiceRepository(db),
+    services: new ServiceRepository(db),
+  };
   const counts: ApplyCounts = { invoices: 0, events: 0, skipped: 0 };
   return { ctx, emitterId, repos, counts };
 }
@@ -86,4 +92,76 @@ test('a skipped document only counts', () => {
     counts,
   );
   expect(counts).toEqual({ invoices: 0, events: 0, skipped: 1 });
+});
+
+const exportXml = readFileSync(
+  new URL(
+    '../../../../packages/provider-nacional/test/fixtures/NFSE_EXPORT_FULL.xml',
+    import.meta.url,
+  ),
+  'utf8',
+);
+
+test('invoices with the same service code and description import one service', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  for (const [nsu, accessKey] of [
+    [1, '35503082212345678000195000000000004226100000000420'],
+    [2, '35503082212345678000195000000000004326100000000430'],
+  ] as const) {
+    applyDocument(
+      repos,
+      ctx,
+      emitterId,
+      { kind: 'invoice', nsu, invoice: providerInvoice({ accessKey }) },
+      counts,
+    );
+  }
+  expect(repos.services.list(ctx, emitterId)).toEqual([
+    expect.objectContaining({
+      name: 'Consultoria em análise',
+      nationalTaxCode: '010101',
+      description: 'Consultoria em análise',
+      origin: 'imported',
+    }),
+  ]);
+});
+
+test('an imported service takes the fiscal groups of the invoice XML', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  const invoice = providerInvoice({
+    xml: exportXml,
+    service: { nationalTaxCode: '010701', description: 'Serviços de TI para tomador no exterior' },
+  });
+  applyDocument(repos, ctx, emitterId, { kind: 'invoice', nsu: 1, invoice }, counts);
+  expect(repos.services.list(ctx, emitterId)[0]).toMatchObject({
+    nationalTaxCode: '010701',
+    nbsCode: '115080000',
+    pisCofinsCst: '00',
+    ibsCbs: { operationCode: '100302', cst: '410', classCode: '410027' },
+    export: {
+      mode: '1',
+      providerLink: '0',
+      providerSupport: '02',
+      customerSupport: '02',
+      temporaryGoods: '1',
+      mdic: '0',
+    },
+  });
+});
+
+test('a hand edit of an imported service is kept on the next sync', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  const document = { kind: 'invoice' as const, nsu: 1, invoice: providerInvoice() };
+  applyDocument(repos, ctx, emitterId, document, counts);
+  const [service] = repos.services.list(ctx, emitterId);
+  if (!service) throw new Error('no service');
+  repos.services.update(ctx, service.id, {
+    ...service,
+    name: 'Consultoria',
+    description: 'Consultoria mensal',
+  });
+  applyDocument(repos, ctx, emitterId, document, counts);
+  expect(repos.services.list(ctx, emitterId)).toEqual([
+    expect.objectContaining({ name: 'Consultoria', description: 'Consultoria mensal' }),
+  ]);
 });

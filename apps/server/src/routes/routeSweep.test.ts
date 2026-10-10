@@ -5,6 +5,7 @@ import { providerInvoice } from '../../test/providerData';
 import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
+import { ServiceRepository } from '../repos/ServiceRepository';
 
 let t: TestApp;
 let params: Record<string, string>;
@@ -27,7 +28,13 @@ beforeAll(async () => {
     document: { type: 'CNPJ', value: '98765432000110' },
     name: 'Cliente Exemplo Ltda',
   });
+  const service = new ServiceRepository(t.db).create(a, emitter.id, {
+    name: 'Consultoria',
+    nationalTaxCode: '010101',
+    description: 'Consultoria',
+  });
   params = {
+    serviceId: service.id,
     accountId: a.accountId,
     emitterId: emitter.id,
     userId: a.userId,
