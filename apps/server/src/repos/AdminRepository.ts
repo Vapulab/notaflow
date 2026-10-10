@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountRole, AdminContext } from '@notaflow/core';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, like, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { accounts, memberships, users } from '../db/schema';
 
@@ -21,6 +21,23 @@ export class AdminRepository {
       .leftJoin(memberships, eq(memberships.accountId, accounts.id))
       .groupBy(accounts.id)
       .orderBy(accounts.name)
+      .all();
+  }
+
+  // For the admin's user picker: by name or e-mail, at most 50.
+  listUsers(_ctx: AdminContext, search?: string) {
+    const pattern = search ? `%${search.toLowerCase()}%` : null;
+    return this.db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        platformRole: users.platformRole,
+      })
+      .from(users)
+      .where(pattern ? or(like(users.email, pattern), like(users.name, pattern)) : undefined)
+      .orderBy(users.name)
+      .limit(50)
       .all();
   }
 

@@ -141,3 +141,30 @@ test('the audit log is readable by a platform admin, newest first', async () => 
   const two = accounts.json<{ id: string; name: string }[]>().find((x) => x.name === 'Two');
   expect(entries[0]).toMatchObject({ action: 'account.create', entity: two?.id });
 });
+
+test('a platform admin searches users by name or e-mail', async () => {
+  seedUser(t.db, 'talita@example.com');
+  seedUser(t.db, 'lincoln@example.com');
+  const headers = await t.as('admin@example.com');
+  const all = await t.app.inject({ method: 'GET', url: '/api/admin/users', headers });
+  expect(all.statusCode).toBe(200);
+  expect(all.json<{ email: string }[]>().map((u) => u.email).sort()).toEqual([
+    'admin@example.com',
+    'lincoln@example.com',
+    'talita@example.com',
+  ]);
+  const found = await t.app.inject({ method: 'GET', url: '/api/admin/users?q=TALI', headers });
+  expect(found.json()).toEqual([
+    { id: expect.any(String), email: 'talita@example.com', name: 'talita', platformRole: 'user' },
+  ]);
+});
+
+test('a user who is not a platform admin cannot list users', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
+  const response = await t.app.inject({
+    method: 'GET',
+    url: '/api/admin/users',
+    headers: await t.as('owner@example.com'),
+  });
+  expect(response.statusCode).toBe(403);
+});

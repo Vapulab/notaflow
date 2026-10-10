@@ -1,8 +1,8 @@
-import { type FormEvent, useState } from 'react';
-import { type AdminAccount, api, type AuditEntry } from '../api';
+import { type FormEvent, useEffect, useState } from 'react';
+import { type AdminAccount, type AdminUser, api, type AuditEntry } from '../api';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
-import { formatDate } from '../format';
+import { formatDateTime } from '../format';
 import {
   Alert,
   Badge,
@@ -84,13 +84,13 @@ export function AdminPage() {
       </Table>
       <NewAccountForm act={act} />
       <NewUserForm act={act} />
-      <SetMemberForm act={act} />
+      <SetMemberForm act={act} accounts={accounts.data ?? []} />
       <Card>
         <h2 className={SECTION_TITLE_CLASSES}>Auditoria (últimas 100)</h2>
         <ul className="flex flex-col gap-1 text-sm">
           {audit.data?.map((entry) => (
             <li key={entry.id}>
-              {formatDate(entry.at)} {entry.userEmail}: {entry.action} {entry.entity} (
+              {formatDateTime(entry.at)} {entry.userEmail}: {entry.action} {entry.entity} (
               {entry.result}){entry.detail && ` ${entry.detail}`}
             </li>
           ))}
@@ -169,28 +169,76 @@ function NewUserForm({ act }: { act: Act }) {
   );
 }
 
-function SetMemberForm({ act }: { act: Act }) {
+function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }) {
   const [accountId, setAccountId] = useState('');
+  const [search, setSearch] = useState('');
+  const [found, setFound] = useState<AdminUser[]>([]);
   const [userId, setUserId] = useState('');
   const [role, setRole] = useState<'owner' | 'member'>('owner');
+
+  // Searches as the admin types, after a short pause.
+  useEffect(() => {
+    let live = true;
+    const timer = setTimeout(() => {
+      const query = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : '';
+      api.get<AdminUser[]>(`/api/admin/users${query}`).then(
+        (users) => {
+          if (!live) return;
+          setFound(users);
+          setUserId((current) => (users.some((u) => u.id === current) ? current : ''));
+        },
+        () => {
+          if (live) setFound([]);
+        },
+      );
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [search]);
+
   function submit(event: FormEvent) {
     event.preventDefault();
+    const account = accounts.find((a) => a.id === accountId);
+    const person = found.find((u) => u.id === userId);
     void act(async () => {
       await api.put(
         `/api/admin/accounts/${encodeURIComponent(accountId)}/members/${encodeURIComponent(userId)}`,
         { role },
       );
-      return 'Vínculo salvo.';
+      return `${person?.name ?? 'Usuário'} agora é ${role === 'owner' ? 'dono' : 'membro'} de ${account?.name ?? 'a conta'}.`;
     });
   }
   return (
     <form onSubmit={submit} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
       <h2 className={SECTION_TITLE_CLASSES}>Vincular usuário a uma conta</h2>
-      <Field label="Id da conta">
-        <Input required value={accountId} onChange={(e) => setAccountId(e.target.value)} />
+      <Field label="Conta">
+        <Select required value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <option value="" disabled>
+            Escolha a conta
+          </option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+        </Select>
       </Field>
-      <Field label="Id do usuário">
-        <Input required value={userId} onChange={(e) => setUserId(e.target.value)} />
+      <Field label="Buscar usuário" hint="Pelo nome ou pelo e-mail.">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} />
+      </Field>
+      <Field label="Usuário">
+        <Select required value={userId} onChange={(e) => setUserId(e.target.value)}>
+          <option value="" disabled>
+            {found.length === 0 ? 'Nenhum usuário encontrado' : 'Escolha o usuário'}
+          </option>
+          {found.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.name} ({person.email})
+            </option>
+          ))}
+        </Select>
       </Field>
       <Field label="Papel">
         <Select value={role} onChange={(e) => setRole(e.target.value as 'owner' | 'member')}>

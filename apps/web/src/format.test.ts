@@ -7,6 +7,7 @@ import {
   formatCents,
   formatCompetence,
   formatDate,
+  formatDateTime,
   parseCents,
   previousMonthEnd,
 } from './format';
@@ -47,4 +48,9 @@ test('previousMonthEnd, parseCents, and centsInput', () => {
 
 test('brasiliaToday is the Brasília date', () => {
   expect(brasiliaToday(new Date('2026-10-10T02:00:00Z'))).toBe('2026-10-09');
+});
+
+test('formatDateTime shows the Brasília date and time', () => {
+  expect(formatDateTime('2026-10-10T14:11:24Z')).toBe('10/10/2026 11:11');
+  expect(formatDateTime(null)).toBe('');
 });
