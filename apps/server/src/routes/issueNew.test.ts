@@ -1,6 +1,7 @@
-import { makeTestCertificate } from '@notaflow/test-kit';
-import { afterEach, beforeEach, expect, test } from 'vitest';
-import { seedTenant } from '../../test/fixtures';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { invoices } from '../db/schema';
+import { COMPETENCE, withNewInvoiceSetup, xmlOf } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { AuditLog } from '../repos/AuditLog';
 import { CustomerRepository } from '../repos/CustomerRepository';
@@ -12,95 +13,8 @@ beforeEach(async () => {
 });
 afterEach(() => t.close());
 
-const COMPETENCE = '2026-10-01';
-
-// An onboarded emitter with a fiscal configuration, one service, and a Brazil and a foreign customer.
-async function withNewInvoiceSetup(options: { fiscal?: boolean } = {}) {
-  const a = seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
-  const cert = makeTestCertificate({ cnpj: '12345678000195' });
-  const headers = await t.as('owner@example.com');
-  const base = `/api/accounts/${a.accountId}`;
-  const call = async (method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
-    t.app.inject({ method, url: `${base}${url}`, headers, ...(payload ? { payload } : {}) });
-
-  const onboard = await call('POST', '/emitters', {
-    pfxBase64: cert.pfx.toString('base64'),
-    password: cert.password,
-    municipality: '4113700',
-    simplesNacional: '3',
-    simplesRegime: '1',
-    specialRegime: '0',
-    dpsSeries: '900',
-  });
-  expect(onboard.statusCode).toBe(201);
-  const emitterId = onboard.json<{ id: string }>().id;
-  if (options.fiscal !== false) {
-    const fiscal = await call('PUT', `/emitters/${emitterId}/fiscal`, {
-      simplesAnnex: 'III',
-      simplesBand: 1,
-      issRate: 200,
-      ibscbsRegime: 'inside_das',
-    });
-    expect(fiscal.statusCode).toBe(200);
-  }
-  const service = await call('POST', `/emitters/${emitterId}/services`, {
-    name: 'Desenvolvimento',
-    nationalTaxCode: '010101',
-    nbsCode: '115080000',
-    description: 'Desenvolvimento de software',
-    pisCofinsCst: '00',
-    ibsCbs: { operationCode: '100302', cst: '410', classCode: '410027' },
-  });
-  expect(service.statusCode).toBe(201);
-  const brazil = await call('POST', '/customers', {
-    emitterId,
-    documentType: 'CNPJ',
-    document: '11222333000181',
-    name: 'Cliente Teste Ltda',
-    address: {
-      kind: 'domestic',
-      municipality: '4113700',
-      zip: '86010000',
-      street: 'Rua Teste',
-      number: '1',
-      district: 'Centro',
-    },
-  });
-  const abroad = await call('POST', '/customers', {
-    emitterId,
-    documentType: 'NIF',
-    document: '00-0000000',
-    name: 'Foreign Customer Inc',
-    address: {
-      kind: 'foreign',
-      country: 'US',
-      postalCode: '99999',
-      city: 'Testville',
-      region: 'NY',
-      street: '1 Example Street',
-      number: '1',
-      district: 'Downtown',
-    },
-  });
-  return {
-    a,
-    call,
-    emitterId,
-    serviceId: service.json<{ id: string }>().id,
-    brazilId: brazil.json<{ id: string }>().id,
-    abroadId: abroad.json<{ id: string }>().id,
-  };
-}
-
-function xmlOf(a: { accountId: string; userId: string }, invoiceId: string): string {
-  return (
-    new InvoiceRepository(t.db).xml({ ...a, role: 'owner', accountStatus: 'active' }, invoiceId) ??
-    ''
-  );
-}
-
 test('a Brazil invoice is issued with the service and the Simples percent, without pAliq', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
     customerId: s.brazilId,
@@ -111,7 +25,7 @@ test('a Brazil invoice is issued with the service and the Simples percent, witho
   expect(response.statusCode).toBe(201);
   const view = response.json<{ id: string; status: string }>();
   expect(view.status).toBe('issued');
-  const xml = xmlOf(s.a, view.id);
+  const xml = xmlOf(t, s.a, view.id);
   expect(xml).toContain('<xDescServ>Desenvolvimento de software</xDescServ>');
   expect(xml).toContain('<pTotTribSN>6.00</pTotTribSN>');
   expect(xml).toContain('<tpRetISSQN>1</tpRetISSQN>');
@@ -120,7 +34,7 @@ test('a Brazil invoice is issued with the service and the Simples percent, witho
 });
 
 test('a retained ISS takes the emitter ISS rate, and the overrides replace the defaults', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
     customerId: s.brazilId,
@@ -131,7 +45,7 @@ test('a retained ISS takes the emitter ISS rate, and the overrides replace the d
     simplesPercent: 1120,
     description: 'Sprint de outubro',
   });
-  const xml = xmlOf(s.a, response.json<{ id: string }>().id);
+  const xml = xmlOf(t, s.a, response.json<{ id: string }>().id);
   expect(xml).toContain('<tpRetISSQN>2</tpRetISSQN>');
   expect(xml).toContain('<pAliq>2.00</pAliq>');
   expect(xml).toContain('<pTotTribSN>11.20</pTotTribSN>');
@@ -139,7 +53,7 @@ test('a retained ISS takes the emitter ISS rate, and the overrides replace the d
 });
 
 test('an export invoice is issued with comExt in the foreign currency', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
     customerId: s.abroadId,
@@ -150,7 +64,7 @@ test('an export invoice is issued with comExt in the foreign currency', async ()
     foreignAmountCents: 123400,
   });
   expect(response.json()).toMatchObject({ status: 'issued' });
-  const xml = xmlOf(s.a, response.json<{ id: string }>().id);
+  const xml = xmlOf(t, s.a, response.json<{ id: string }>().id);
   expect(xml).toContain('<tribISSQN>3</tribISSQN>');
   expect(xml).toContain('<tpMoeda>220</tpMoeda>');
   expect(xml).toContain('<vServMoeda>1234.00</vServMoeda>');
@@ -158,7 +72,7 @@ test('an export invoice is issued with comExt in the foreign currency', async ()
 });
 
 test('a customer abroad without the foreign amount is invalid_amount', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
     customerId: s.abroadId,
@@ -171,7 +85,7 @@ test('a customer abroad without the foreign amount is invalid_amount', async () 
 });
 
 test('without a fiscal configuration nothing is reserved', async () => {
-  const s = await withNewInvoiceSetup({ fiscal: false });
+  const s = await withNewInvoiceSetup(t, { fiscal: false });
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
     customerId: s.brazilId,
@@ -189,7 +103,7 @@ test('without a fiscal configuration nothing is reserved', async () => {
 });
 
 test('a service or customer of another emitter is not found', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   for (const [ids, error] of [
     [{ serviceId: 'missing', customerId: s.brazilId }, 'service_not_found'],
     [{ serviceId: s.serviceId, customerId: 'missing' }, 'customer_not_found'],
@@ -206,7 +120,7 @@ test('a service or customer of another emitter is not found', async () => {
 });
 
 test('the same Idempotency-Key twice issues once', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const headers = await t.as('owner@example.com');
   const send = () =>
     t.app.inject({
@@ -229,7 +143,7 @@ test('the same Idempotency-Key twice issues once', async () => {
 });
 
 test('reconcile resends what was first sent, even after the customer was edited', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   t.fake.next('issue', { kind: 'reply', status: 503, body: 'down' });
   const issued = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
@@ -246,13 +160,13 @@ test('reconcile resends what was first sent, even after the customer was edited'
   const reconciled = await s.call('POST', `/invoices/${id}/reconcile`, {});
   expect(reconciled.json()).toMatchObject({ id, status: 'issued' });
   expect(new AuditLog(t.db).list().some((e) => e.detail?.startsWith('resent'))).toBe(true);
-  const xml = xmlOf(s.a, id);
+  const xml = xmlOf(t, s.a, id);
   expect(xml).toContain('<xNome>Cliente Teste Ltda</xNome>');
   expect(xml).not.toContain('Nome Novo Ltda');
 });
 
 test('a CNPJ customer with an address abroad is refused before anything is reserved', async () => {
-  const s = await withNewInvoiceSetup();
+  const s = await withNewInvoiceSetup(t);
   const ctx = { ...s.a, role: 'owner' as const, accountStatus: 'active' as const };
   // A customer stored before the edit check existed.
   new CustomerRepository(t.db).setManual(ctx, s.brazilId, {
@@ -279,4 +193,86 @@ test('a CNPJ customer with an address abroad is refused before anything is reser
   expect(response.statusCode).toBe(400);
   expect(response.json()).toMatchObject({ error: 'customer_address_incomplete' });
   expect(new InvoiceRepository(t.db).list(ctx, { limit: 10, offset: 0 }).total).toBe(0);
+});
+
+test('retention is refused for a customer abroad or a CPF, and needs a rate above zero', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const cpf = await s.call('POST', '/customers', {
+    emitterId: s.emitterId,
+    documentType: 'CPF',
+    document: '11144477735',
+    name: 'Pessoa Teste',
+    address: {
+      kind: 'domestic',
+      municipality: '4113700',
+      zip: '86010000',
+      street: 'Rua Teste',
+      number: '1',
+      district: 'Centro',
+    },
+  });
+  const cases = [
+    [
+      { customerId: s.abroadId, foreignCurrency: '220', foreignAmountCents: 100 },
+      'retention_not_allowed',
+    ],
+    [{ customerId: cpf.json<{ id: string }>().id }, 'retention_not_allowed'],
+    [{ customerId: s.brazilId, issRate: 0 }, 'invalid_iss_rate'],
+  ] as const;
+  for (const [extra, error] of cases) {
+    const response = await s.call('POST', '/invoices/new', {
+      emitterId: s.emitterId,
+      serviceId: s.serviceId,
+      competence: COMPETENCE,
+      serviceCents: 123400,
+      issRetained: true,
+      ...extra,
+    });
+    expect(response.statusCode, error).toBe(400);
+    expect(response.json()).toMatchObject({ error });
+  }
+  const ctx = { ...s.a, role: 'owner' as const, accountStatus: 'active' as const };
+  expect(new InvoiceRepository(t.db).list(ctx, { limit: 10, offset: 0 }).total).toBe(0);
+});
+
+test('reconcile refuses an unreadable stored template before it audits or sends anything', async () => {
+  const s = await withNewInvoiceSetup(t);
+  t.fake.next('issue', { kind: 'reply', status: 503, body: 'down' });
+  const issued = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+  });
+  const { id } = issued.json<{ id: string }>();
+  for (const broken of ['{not json', JSON.stringify({ version: 9, template: {} })]) {
+    t.db.update(invoices).set({ issueTemplate: broken }).where(eq(invoices.id, id)).run();
+    const reconciled = await s.call('POST', `/invoices/${id}/reconcile`, {});
+    expect(reconciled.statusCode).toBe(422);
+    expect(reconciled.json()).toMatchObject({ error: 'template_unreadable' });
+  }
+  expect(new AuditLog(t.db).list().some((e) => e.detail?.startsWith('resent'))).toBe(false);
+  expect(t.fake.issuedCount()).toBe(0);
+});
+
+test('a local save failure after the Sefin issued answers unknown, not an error', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const spy = vi.spyOn(InvoiceRepository.prototype, 'markIssued').mockImplementationOnce(() => {
+    throw new Error('disk full');
+  });
+  const response = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+  });
+  spy.mockRestore();
+  expect(response.statusCode).toBe(201);
+  expect(response.json()).toMatchObject({ status: 'unknown' });
+  const { id } = response.json<{ id: string }>();
+  expect(new AuditLog(t.db).list().at(-1)).toMatchObject({ entity: id, result: 'error' });
+  const reconciled = await s.call('POST', `/invoices/${id}/reconcile`, {});
+  expect(reconciled.json()).toMatchObject({ status: 'issued' });
 });

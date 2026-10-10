@@ -219,3 +219,26 @@ test('an edit cannot give a Brazil customer an address abroad, or the reverse', 
   expect(toBrazil.statusCode).toBe(400);
   expect(toBrazil.json()).toMatchObject({ error: 'invalid_address' });
 });
+
+test('typed text is trimmed and typographic quotes become plain ones; other characters are refused', async () => {
+  const { emitterId, url } = withEmitter();
+  const created = await post(url, {
+    ...brazil(emitterId),
+    name: '  Cliente Teste Ltda ',
+    address: { ...domesticAddress, street: 'Rua Teste ', district: 'D’Ávila' },
+  });
+  expect(created.statusCode).toBe(201);
+  expect(created.json()).toMatchObject({
+    name: 'Cliente Teste Ltda',
+    address: { street: 'Rua Teste', district: "D'Ávila" },
+  });
+  const refused = await post(url, {
+    emitterId,
+    documentType: 'NIF',
+    document: '00-0000000',
+    name: 'Foreign Customer Inc',
+    address: { ...foreignAddress, street: 'ul. Łódzka' },
+  });
+  expect(refused.statusCode).toBe(400);
+  expect(refused.json()).toMatchObject({ error: 'invalid_text', detail: 'address.street' });
+});

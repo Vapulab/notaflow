@@ -16,6 +16,7 @@ export interface FakeNacional {
   urls: { sefin: string; adn: string };
   next(route: FakeRoute, outcome: FakeOutcome): void;
   reset(): void;
+  issuedCount(): number;
   close(): Promise<void>;
 }
 
@@ -287,6 +288,9 @@ export async function startFakeNacional(
     urls: { sefin: `${base}/SefinNacional`, adn: `${base}/adn` },
     next(route, outcome) {
       queue.set(route, [...(queue.get(route) ?? []), outcome]);
+    },
+    issuedCount() {
+      return state.invoices.size;
     },
     reset() {
       state = new FakeState();

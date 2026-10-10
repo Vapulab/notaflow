@@ -170,6 +170,15 @@ Checked before a DPS number is reserved, each with its own error code and a Port
 | Zero or negative amount | `invalid_amount` |
 | Competence after today | `competence_after_issue` |
 | Foreign customer without a foreign amount | `invalid_amount` |
+| Brazil customer with a foreign amount | `foreign_amount_not_allowed` |
+| Competence that is not a calendar date | `invalid_competence` |
+| Blank description, or control characters in it | `invalid_description` |
+| Customer text the XSD refuses (outside Latin-1, a line break) | `invalid_text` with the field |
+| Emitter that is not an ME/EPP Simples optant (`opSimpNac` 3) | `emitter_not_simples` |
+| ISS retained for a customer abroad or a CPF | `retention_not_allowed` |
+| ISS retained with a rate of zero | `invalid_iss_rate` |
+
+Customer text is trimmed, and typographic quotes and dashes become plain ones, before the check. Amounts are at most 9,999,999,999,999 cents and the Simples percent at most 99.99%, the limits of the XSD types.
 
 Sefin refusals keep the existing behavior (`rejected` with the Sefin messages; E0014 through the ownership check).
 
@@ -194,6 +203,17 @@ On 2026-10-10, with the real certificate, invoices built without a template (no 
 | Export (country US, NIF, `comExt`, `tribISSQN` 3, IBSCBS CST 410 class 410027), built field by field | Issued, then cancelled |
 
 Issued 3, cancelled 3, none left active. All three carried PIS/COFINS CST 00 and `pTotTribSN`; the domestic ones carried no IBSCBS group.
+
+**Pre-PR check through the server's code path** (`spikes/2026-10-new-invoice/issuerPath.ts`: `buildTemplate`, `NacionalIssuer.issue`, the lookup by DPS id, a resend of the same DPS, and cancel), on 2026-10-10:
+
+| Case | Result |
+| --- | --- |
+| CNPJ customer in Brazil, ISS not retained | Issued; amount, description, customer, competence, `pTotTribSN`, and `tpRetISSQN` 1 as built |
+| CPF customer in Brazil | Issued, same checks |
+| CNPJ customer, ISS retained with `pAliq` 2.00 | Issued, `tpRetISSQN` 2 |
+| Export in USD with IBSCBS 410/410027 | Issued, `vServMoeda` as built |
+
+Each invoice was found by the DPS id the server stores, and a resend of the same DPS came back as the same invoice (E0014 recovery). Issued 4, cancelled 4.
 
 ## Open Questions
 

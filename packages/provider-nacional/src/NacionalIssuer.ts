@@ -34,27 +34,41 @@ export class NacionalIssuer implements InvoiceIssuer {
   ) {}
 
   buildTemplate(input: NewInvoiceInput): string {
-    return JSON.stringify(buildTemplate(input));
+    return JSON.stringify({ version: BUILT_TEMPLATE_VERSION, template: buildTemplate(input) });
   }
 
   dpsId(series: string, number: number, source: IssueSource): string {
     const template = templateOf(source);
-    return buildDpsId({ municipality: template.emitterMunicipality, cnpj: template.provider.cnpj, series, number });
+    return buildDpsId({
+      municipality: template.emitterMunicipality,
+      cnpj: template.provider.cnpj,
+      series,
+      number,
+    });
   }
 
   async issue(request: IssueRequest): Promise<IssueOutcome> {
-    const input = applyTemplate(templateOf(request.source), {
-      ...request,
-      environment: this.deps.environment,
-      appVersion: this.deps.appVersion,
-    });
-    const { id, xml } = buildDpsXml(input);
-    const signed = await this.signer.sign({
-      xml,
-      elementName: 'infDPS',
-      certificate: this.deps.certificate,
-      profile: 'rsa-sha256-exc-c14n',
-    });
+    let id: string;
+    let signed: string;
+    try {
+      const input = applyTemplate(templateOf(request.source), {
+        ...request,
+        environment: this.deps.environment,
+        appVersion: this.deps.appVersion,
+      });
+      const dps = buildDpsXml(input);
+      id = dps.id;
+      signed = await this.signer.sign({
+        xml: dps.xml,
+        elementName: 'infDPS',
+        certificate: this.deps.certificate,
+        profile: 'rsa-sha256-exc-c14n',
+      });
+    } catch (error) {
+      // Nothing reached the Sefin, so this is a certain refusal, not an uncertain send.
+      const message = error instanceof Error ? error.message : String(error);
+      return { kind: 'rejected', errors: [{ code: 'local_error', message }] };
+    }
     const result = await this.deps.client.issue(signed);
     if (result.kind === 'issued') return { kind: 'issued', invoice: parseNfseXml(result.nfseXml) };
     if (result.kind === 'uncertain') return { kind: 'uncertain', reason: result.reason };
@@ -76,7 +90,11 @@ export class NacionalIssuer implements InvoiceIssuer {
     return parseNfseXml(await this.deps.client.getNfse(lookup.accessKey));
   }
 
-  async cancel(accessKey: string, reason: '1' | '2' | '9', justification: string): Promise<CancelOutcome> {
+  async cancel(
+    accessKey: string,
+    reason: '1' | '2' | '9',
+    justification: string,
+  ): Promise<CancelOutcome> {
     const { xml } = buildCancelEventXml({
       environment: this.deps.environment,
       requestedAt: new Date(Date.now() - 60_000),
@@ -94,14 +112,25 @@ export class NacionalIssuer implements InvoiceIssuer {
     });
     const result = await this.deps.client.registerEvent(accessKey, signed);
     if (result.kind === 'rejected') {
-      return { kind: 'rejected', error: { code: result.error.codigo, message: result.error.descricao } };
+      return {
+        kind: 'rejected',
+        error: { code: result.error.codigo, message: result.error.descricao },
+      };
     }
     return { kind: 'cancelled', event: result.eventXml ? readEvent(result.eventXml) : null };
   }
 }
 
+// Stored on pending rows; a shape change needs a new version, so an older row is never resent wrong.
+const BUILT_TEMPLATE_VERSION = 1;
+
 function templateOf(source: IssueSource): DpsTemplate {
-  return source.kind === 'stored' ? readTemplate(source.xml) : (JSON.parse(source.template) as DpsTemplate);
+  if (source.kind === 'stored') return readTemplate(source.xml);
+  const built = JSON.parse(source.template) as { version?: unknown; template?: DpsTemplate };
+  if (built.version !== BUILT_TEMPLATE_VERSION || !built.template) {
+    throw new Error(`Unsupported built template version: ${String(built.version)}`);
+  }
+  return built.template;
 }
 
 // The Sefin registered the event; an XML the parser cannot read must not hide that.

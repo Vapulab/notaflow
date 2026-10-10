@@ -1,5 +1,9 @@
 import type { ProviderInvoice } from '@notaflow/core';
-import { readTemplate } from '@notaflow/provider-nacional';
+import {
+  NfseParseError,
+  readTemplate,
+  TemplateUnsupportedError,
+} from '@notaflow/provider-nacional';
 import type { ServiceInput } from '../repos/ServiceRepository';
 
 export function serviceFromInvoice(invoice: ProviderInvoice): {
@@ -24,8 +28,9 @@ function fiscalGroupsOf(xml: string): Partial<ServiceInput> {
   let template;
   try {
     template = readTemplate(xml);
-  } catch {
-    return {};
+  } catch (error) {
+    if (error instanceof TemplateUnsupportedError || error instanceof NfseParseError) return {};
+    throw error;
   }
   const { municipalTaxCode, nbsCode, foreignTrade } = template.service;
   const cst = template.tax.pisCofins?.cst;

@@ -4,6 +4,7 @@ import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { isValidCnpj, isValidCpf } from '../domain/documents';
+import { xsdString } from '../domain/xmlText';
 import { AuditLog } from '../repos/AuditLog';
 import {
   CustomerRepository,
@@ -81,6 +82,33 @@ type CreateBody = Omit<NewCustomer, 'document' | 'address'> & {
 };
 
 // The kind (Brazil or abroad) follows from the document; each kind needs the address the DPS needs.
+const ADDRESS_TEXT = ['street', 'number', 'complement', 'district', 'city', 'region', 'postalCode'];
+
+// The DPS writes these fields as TSString; text the XSD refuses is caught here, not after a DPS number.
+function cleanText<
+  T extends { name?: string; municipalRegistration?: string; address?: PartyAddress },
+>(body: T): T {
+  const clean = (value: string, field: string) => {
+    const text = xsdString(value);
+    if (text === null) throw new HttpError(400, 'invalid_text', field);
+    return text;
+  };
+  const out: T = { ...body };
+  if (out.name !== undefined) out.name = clean(out.name, 'name');
+  if (out.municipalRegistration !== undefined) {
+    out.municipalRegistration = clean(out.municipalRegistration, 'municipalRegistration');
+  }
+  if (out.address) {
+    const address: Record<string, unknown> = { ...out.address };
+    for (const field of ADDRESS_TEXT) {
+      const value = address[field];
+      if (typeof value === 'string') address[field] = clean(value, `address.${field}`);
+    }
+    out.address = address as unknown as PartyAddress;
+  }
+  return out;
+}
+
 function checkNewCustomer(body: CreateBody): NewCustomer {
   const { emitterId: _emitterId, document, address, ...rest } = body;
   const brazil = body.documentType === 'CNPJ' || body.documentType === 'CPF';
@@ -131,7 +159,7 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
       const created = customers.createManual(
         ctx,
         request.body.emitterId,
-        checkNewCustomer(request.body),
+        checkNewCustomer(cleanText(request.body)),
       );
       if (!created) throw new HttpError(409, 'customer_exists');
       audit.record({
@@ -181,7 +209,8 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
     { schema: editSchema },
     async (request) => {
       const ctx = accountContext(request, request.params.accountId, { write: true });
-      const { address } = request.body;
+      const body = cleanText(request.body);
+      const { address } = body;
       if (address && REQUIRED_BY_KIND[address.kind].some((field) => !(field in address))) {
         throw new HttpError(400, 'invalid_address');
       }
@@ -195,7 +224,7 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
           throw new HttpError(400, 'invalid_address');
         }
       }
-      if (!customers.setManual(ctx, request.params.customerId, request.body)) {
+      if (!customers.setManual(ctx, request.params.customerId, body)) {
         throw new HttpError(404, 'not_found');
       }
       audit.record({

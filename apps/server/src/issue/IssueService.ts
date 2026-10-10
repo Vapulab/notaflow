@@ -15,6 +15,7 @@ import {
   TemplateUnsupportedError,
 } from '@notaflow/provider-nacional';
 import type { Database } from '../db/openDatabase';
+import { isCalendarDate, xsdDescription } from '../domain/xmlText';
 import { BACEN_CURRENCY } from '../exchange/ptax';
 import { HttpError } from '../httpError';
 import type { IssuerFactory } from '../providers/providerFactory';
@@ -122,8 +123,7 @@ export class IssueService {
       throw new HttpError(400, 'invalid_amount');
     }
     const now = this.now();
-    if (input.competence > formatBrasiliaDate(now))
-      throw new HttpError(400, 'competence_after_issue');
+    checkCompetence(input.competence, now);
     const customer = input.customerId ? this.customerParty(ctx, input.customerId) : undefined;
     if (customer && !customer.document) throw new HttpError(400, 'customer_without_document');
     const emitter = this.emitters.get(ctx, state.emitterId);
@@ -133,7 +133,7 @@ export class IssueService {
     const issuer = this.deps.issuerFactory({ environment: emitter.environment, certificate });
 
     const templateCustomer = template.customer;
-    const description = input.description ?? template.service.description;
+    const description = checkDescription(input.description) ?? template.service.description;
     const pending = this.deps.db.transaction(() => {
       // A second request with the same key may have passed the first check while this one awaited.
       const raced = repeated();
@@ -199,6 +199,8 @@ export class IssueService {
       idempotencyKey ? this.invoices.findByIdempotencyKey(ctx, emitter.id, idempotencyKey) : null;
     const earlier = repeated();
     if (earlier) return { view: this.view(ctx, earlier), repeat: true };
+    // The builder writes the Simples total percent, which only an ME/EPP optant has.
+    if (emitter.simplesNacional !== '3') throw new HttpError(409, 'emitter_not_simples');
 
     const fiscal = this.emitters.fiscalConfig(ctx, emitter.id);
     if (!fiscal || fiscal.simplesPercent === null) {
@@ -227,22 +229,28 @@ export class IssueService {
         ? { currencyCode: input.foreignCurrency, amountCents: input.foreignAmountCents }
         : null;
     if (abroad && !foreign) throw new HttpError(400, 'invalid_amount');
+    if (!abroad && (input.foreignCurrency || input.foreignAmountCents)) {
+      throw new HttpError(400, 'foreign_amount_not_allowed');
+    }
     if (foreign && !BACEN_CURRENCY[foreign.currencyCode]) {
       throw new HttpError(400, 'unsupported_currency');
     }
     const now = this.now();
-    if (input.competence > formatBrasiliaDate(now)) {
-      throw new HttpError(400, 'competence_after_issue');
-    }
+    checkCompetence(input.competence, now);
     const issRate = input.issRate ?? fiscal.issRate ?? undefined;
-    if (input.issRetained && !abroad && issRate === undefined) {
-      throw new HttpError(409, 'fiscal_config_missing');
+    if (input.issRetained) {
+      // Only a Brazilian legal entity withholds the ISS; an export has no ISS to withhold.
+      if (abroad || customer.document.type === 'CPF') {
+        throw new HttpError(400, 'retention_not_allowed');
+      }
+      if (issRate === undefined) throw new HttpError(409, 'fiscal_config_missing');
+      if (issRate <= 0) throw new HttpError(400, 'invalid_iss_rate');
     }
     const certificate = await this.deps.certificates.loadActive(ctx, emitter.id);
     if (!certificate) throw new HttpError(409, 'no_active_certificate');
     const issuer = this.deps.issuerFactory({ environment: emitter.environment, certificate });
 
-    const description = input.description ?? service.description;
+    const description = checkDescription(input.description) ?? service.description;
     const newInvoice: NewInvoiceInput = {
       competence: input.competence,
       emitter: {
@@ -378,6 +386,15 @@ export class IssueService {
         recovered: true,
       });
     }
+    const { source, customer } = this.resendSource(ctx, state);
+    // The stored source must still rebuild the same DPS id, or the resend would not be this invoice.
+    let sameDps = false;
+    try {
+      sameDps = issuer.dpsId(state.dpsSeries, state.dpsNumber, source) === state.dpsId;
+    } catch {
+      sameDps = false;
+    }
+    if (!sameDps) throw new HttpError(422, 'template_unreadable');
     // Only now is a resend safe, and it reuses the same DPS number.
     this.audit.record({
       userEmail: actor,
@@ -387,7 +404,6 @@ export class IssueService {
       result: 'ok',
       detail: `resent DPS ${state.dpsNumber}`,
     });
-    const { source, customer } = this.resendSource(ctx, state);
     const outcome = await this.send(issuer, {
       source,
       series: state.dpsSeries,
@@ -515,10 +531,21 @@ export class IssueService {
         audit('refused', `dps number taken by ${invoice.accessKey}`);
         return { id: invoiceId, status: 'rejected', errors };
       }
-      this.deps.db.transaction(() => {
-        this.invoices.markIssued(ctx, invoiceId, invoice);
-        if (invoice.customer) this.customers.upsertImported(ctx, emitterId, invoice.customer);
-      });
+      try {
+        this.deps.db.transaction(() => {
+          this.invoices.markIssued(ctx, invoiceId, invoice);
+          if (invoice.customer) this.customers.upsertImported(ctx, emitterId, invoice.customer);
+        });
+      } catch (error) {
+        // The Sefin issued it; the row stays pending, and reconcile or the sync records it.
+        const message = error instanceof Error ? error.message : String(error);
+        try {
+          audit('error', `issued ${invoice.accessKey}, local save failed: ${message}`);
+        } catch {
+          // The database is failing; the pending row still leads to reconcile.
+        }
+        return { id: invoiceId, status: 'unknown' };
+      }
       audit('ok', `issued ${invoice.accessKey}`);
       return {
         id: invoiceId,
@@ -566,6 +593,21 @@ export class IssueService {
   private now(): Date {
     return this.deps.now ? this.deps.now() : new Date();
   }
+}
+
+// dhEmi is now minus 60 seconds, so the competence is checked against that date in Brasília.
+function checkCompetence(competence: string, now: Date): void {
+  if (!isCalendarDate(competence)) throw new HttpError(400, 'invalid_competence');
+  if (competence > formatBrasiliaDate(new Date(now.getTime() - 60_000))) {
+    throw new HttpError(400, 'competence_after_issue');
+  }
+}
+
+function checkDescription(description: string | undefined): string | undefined {
+  if (description === undefined) return undefined;
+  const clean = xsdDescription(description);
+  if (clean === null) throw new HttpError(400, 'invalid_description');
+  return clean;
 }
 
 export function partyOf(row: CustomerRow): InvoiceParty {

@@ -14,9 +14,22 @@ let templateXml: string;
 
 beforeEach(async () => {
   fake = await startFakeNacional();
-  const client = new NacionalClient({ environment: 'producao_restrita', dispatcher: new Agent(), urls: fake.urls, timeoutMs: 300 });
-  issuer = new NacionalIssuer({ client, certificate, environment: 'producao_restrita', appVersion: 'notaflow-test' });
-  templateXml = readFileSync(new URL('../../provider-nacional/test/fixtures/NFSE_EXPORT_FULL.xml', import.meta.url), 'utf8');
+  const client = new NacionalClient({
+    environment: 'producao_restrita',
+    dispatcher: new Agent(),
+    urls: fake.urls,
+    timeoutMs: 300,
+  });
+  issuer = new NacionalIssuer({
+    client,
+    certificate,
+    environment: 'producao_restrita',
+    appVersion: 'notaflow-test',
+  });
+  templateXml = readFileSync(
+    new URL('../../provider-nacional/test/fixtures/NFSE_EXPORT_FULL.xml', import.meta.url),
+    'utf8',
+  );
 });
 afterEach(() => fake.close());
 
@@ -60,17 +73,28 @@ test('a timeout is uncertain, and findIssued then finds the invoice', async () =
   expect(await issuer.findIssued(issuer.dpsId('900', 99, stored))).toBeNull();
 });
 
-test('an export template without a foreign amount is refused before sending', async () => {
+test('an export template without a foreign amount is rejected locally, before sending', async () => {
   const { foreignAmountCents: _ignored, ...withoutForeign } = request(4);
-  await expect(issuer.issue(withoutForeign)).rejects.toThrow(RangeError);
+  const outcome = await issuer.issue(withoutForeign);
+  expect(outcome).toMatchObject({ kind: 'rejected', errors: [{ code: 'local_error' }] });
+  expect(fake.issuedCount()).toBe(0);
 });
 
 test('cancel registers the event and returns it parsed', async () => {
   const issued = await issuer.issue(request(5));
   if (issued.kind !== 'issued') throw new Error('not issued');
-  const cancelled = await issuer.cancel(issued.invoice.accessKey, '1', 'Valor do serviço incorreto');
-  expect(cancelled).toMatchObject({ kind: 'cancelled', event: { code: '101101', reasonCode: '1' } });
-  expect(await issuer.cancel(issued.invoice.accessKey, '1', 'Valor do serviço incorreto')).toMatchObject({
+  const cancelled = await issuer.cancel(
+    issued.invoice.accessKey,
+    '1',
+    'Valor do serviço incorreto',
+  );
+  expect(cancelled).toMatchObject({
+    kind: 'cancelled',
+    event: { code: '101101', reasonCode: '1' },
+  });
+  expect(
+    await issuer.cancel(issued.invoice.accessKey, '1', 'Valor do serviço incorreto'),
+  ).toMatchObject({
     kind: 'rejected',
   });
 });
@@ -78,7 +102,11 @@ test('cancel registers the event and returns it parsed', async () => {
 test('a registered cancel whose event XML does not parse is still cancelled', async () => {
   const issued = await issuer.issue(request(6));
   if (issued.kind !== 'issued') throw new Error('not issued');
-  fake.next('event', { kind: 'reply', status: 201, body: { eventoXmlGZipB64: gzipBase64('<evento>unexpected</evento>') } });
+  fake.next('event', {
+    kind: 'reply',
+    status: 201,
+    body: { eventoXmlGZipB64: gzipBase64('<evento>unexpected</evento>') },
+  });
   expect(await issuer.cancel(issued.invoice.accessKey, '1', 'Valor do serviço incorreto')).toEqual({
     kind: 'cancelled',
     event: null,
@@ -88,12 +116,25 @@ test('a registered cancel whose event XML does not parse is still cancelled', as
 test('issues a Brazil invoice built without a stored template and finds it by DPS id', async () => {
   const template = issuer.buildTemplate({
     competence: '2026-10-01',
-    emitter: { cnpj: certificate.cnpj, municipality: '4113700', simplesNacional: '3', simplesRegime: '1', specialRegime: '0' },
+    emitter: {
+      cnpj: certificate.cnpj,
+      municipality: '4113700',
+      simplesNacional: '3',
+      simplesRegime: '1',
+      specialRegime: '0',
+    },
     service: { nationalTaxCode: '010701', description: 'Desenvolvimento de software' },
     customer: {
       document: { type: 'CNPJ', value: '11222333000181' },
       name: 'Cliente Teste Ltda',
-      address: { kind: 'domestic', municipality: '4113700', zip: '86010000', street: 'Rua Teste', number: '1', district: 'Centro' },
+      address: {
+        kind: 'domestic',
+        municipality: '4113700',
+        zip: '86010000',
+        street: 'Rua Teste',
+        number: '1',
+        district: 'Centro',
+      },
     },
     serviceCents: 123400,
     simplesPercent: 600,
@@ -114,5 +155,22 @@ test('issues a Brazil invoice built without a stored template and finds it by DP
     customer: { document: { type: 'CNPJ', value: '11222333000181' } },
   });
   expect(outcome.invoice.xml).toContain('<pTotTribSN>6.00</pTotTribSN>');
-  expect((await issuer.findIssued(issuer.dpsId('900', 7, source)))?.accessKey).toBe(outcome.invoice.accessKey);
+  expect((await issuer.findIssued(issuer.dpsId('900', 7, source)))?.accessKey).toBe(
+    outcome.invoice.accessKey,
+  );
+});
+
+test('a built template of an unknown version is refused, never sent', async () => {
+  const template = JSON.stringify({ version: 2, template: {} });
+  expect(() => issuer.dpsId('900', 8, { kind: 'built', template })).toThrow(/version/);
+  await expect(
+    issuer.issue({
+      source: { kind: 'built', template },
+      series: '900',
+      number: 8,
+      issuedAt: new Date(Date.now() - 60_000),
+      competence: '2026-10-01',
+      serviceCents: 100,
+    }),
+  ).resolves.toMatchObject({ kind: 'rejected', errors: [{ code: 'local_error' }] });
 });

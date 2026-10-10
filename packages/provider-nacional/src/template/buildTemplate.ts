@@ -70,7 +70,8 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       pisCofins: { cst: service.pisCofinsCst ?? '00', retention: '0' },
       simplesTotalPercent: percentText(input.simplesPercent),
     },
-    ...(service.ibsCbs
+    // 2026: the group is optional for the Simples; a service's codes describe its export.
+    ...(abroad && service.ibsCbs
       ? {
           ibsCbs: {
             purpose: '0',

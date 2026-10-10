@@ -6,6 +6,8 @@ import { HttpError } from '../httpError';
 import type { IssueInput, IssueService, NewInvoiceRequest } from '../issue/IssueService';
 
 const DATE = '^\\d{4}-\\d{2}-\\d{2}$';
+// vServ is TSDec15V2; this keeps every amount a safe integer far below it.
+const MAX_CENTS = 9_999_999_999_999;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9-]{8,100}$/;
 
 const issueSchema = {
@@ -16,8 +18,8 @@ const issueSchema = {
     properties: {
       templateInvoiceId: { type: 'string', maxLength: 64 },
       competence: { type: 'string', pattern: DATE },
-      serviceCents: { type: 'integer', minimum: 0 },
-      foreignAmountCents: { type: 'integer', minimum: 0 },
+      serviceCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
+      foreignAmountCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
       description: { type: 'string', minLength: 1, maxLength: 2000 },
       customerId: { type: 'string', maxLength: 64 },
     },
@@ -34,10 +36,11 @@ const newInvoiceSchema = {
       customerId: { type: 'string', maxLength: 64 },
       serviceId: { type: 'string', maxLength: 64 },
       competence: { type: 'string', pattern: DATE },
-      serviceCents: { type: 'integer', minimum: 0 },
+      serviceCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
       foreignCurrency: { type: 'string', pattern: '^\\d{3}$' },
-      foreignAmountCents: { type: 'integer', minimum: 0 },
-      simplesPercent: { type: 'integer', minimum: 1, maximum: 10_000 },
+      foreignAmountCents: { type: 'integer', minimum: 0, maximum: MAX_CENTS },
+      // pTotTribSN is TSDec2V2: at most 99.99.
+      simplesPercent: { type: 'integer', minimum: 1, maximum: 9_999 },
       // LC 116/2003 caps the ISS at 5%.
       issRate: { type: 'integer', minimum: 0, maximum: 500 },
       issRetained: { type: 'boolean' },
