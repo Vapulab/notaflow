@@ -14,6 +14,6 @@ export function meFor(platformRole: 'admin' | 'user', role: 'owner' | 'member' =
 }
 
 // Renders a screen as a given user, as the MeProvider of the app would.
-export function renderWithMe(ui: ReactNode, me: Me) {
+export function renderWithMe(ui: ReactNode, me: Me | null) {
   return render(<MeContext.Provider value={me}>{ui}</MeContext.Provider>);
 }

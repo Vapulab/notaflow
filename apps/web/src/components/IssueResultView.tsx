@@ -2,13 +2,11 @@ import type { Environment } from '../api';
 import { routeHref } from '../router';
 import { Alert, Button, Link, Spinner } from '../ui';
 import { EnvironmentBadge } from './EnvironmentBadge';
-import { Layout } from './Layout';
 import type { IssueSend } from './useIssueSend';
 
-// The screens after a rejected or an unconfirmed send, shared by both issue pages.
+// The screens after a rejected or an unconfirmed send, shared by both issue pages; the page draws the Layout.
 export function IssueResultView(props: {
   accountId: string;
-  title: string;
   environment: Environment;
   send: IssueSend<unknown>;
 }) {
@@ -16,7 +14,7 @@ export function IssueResultView(props: {
   const { result } = send;
   if (!result) return null;
   return (
-    <Layout title={props.title} accountId={accountId}>
+    <>
       <EnvironmentBadge environment={props.environment} />
       {result.status === 'rejected' ? (
         <Alert variant="error">
@@ -54,6 +52,6 @@ export function IssueResultView(props: {
         </Link>
         {send.busy && <Spinner label="Verificando" />}
       </div>
-    </Layout>
+    </>
   );
 }

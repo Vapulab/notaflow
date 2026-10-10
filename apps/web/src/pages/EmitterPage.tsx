@@ -29,7 +29,10 @@ export function EmitterPage(props: { accountId: string; emitterId: string }) {
   const emitterUrl = `${base}/emitters/${encodeURIComponent(emitterId)}`;
   const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
   const fiscal = useAsync(() => api.get<FiscalConfig>(`${emitterUrl}/fiscal`), [emitterUrl]);
-  const canEdit = roleIn(useMe(), accountId) === 'owner';
+  const me = useMe();
+  const canEdit = roleIn(me, accountId) === 'owner';
+  // The notice waits for the role; an owner must not see it while /api/me loads.
+  const showNotice = me !== null && !canEdit;
   const emitter = emitters.data?.find((e) => e.id === emitterId);
 
   return (
@@ -38,7 +41,7 @@ export function EmitterPage(props: { accountId: string; emitterId: string }) {
         Voltar para os emitentes
       </Link>
       {emitter && <EnvironmentBadge environment={emitter.environment} />}
-      {!canEdit && <Alert variant="info">{OWNER_ONLY_TEXT}</Alert>}
+      {showNotice && <Alert variant="info">{OWNER_ONLY_TEXT}</Alert>}
       {fiscal.error && <Alert variant="error">{errorText(fiscal.error)}</Alert>}
       {!fiscal.data && !fiscal.error && <Spinner />}
       {fiscal.data && (

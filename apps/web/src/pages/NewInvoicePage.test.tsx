@@ -393,3 +393,31 @@ test('a rate under the minimum of the service shows the minimum', async () => {
   await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
   expect(await screen.findByText(/A alíquota mínima deste serviço é 2,00%\./)).toBeTruthy();
 });
+
+test('Mais opções shows the IBS/CBS fields only for a customer abroad', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  expect(screen.queryByLabelText('CST do IBS/CBS')).toBeNull();
+});
+
+test('the result screen has one page header', async () => {
+  stubApi(
+    routes({
+      [`${base}/invoices/new`]: {
+        id: 'new1',
+        status: 'rejected',
+        errors: [{ code: 'E1', message: 'x' }],
+      },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await screen.findByText(/E1: x/);
+  expect(screen.getAllByRole('banner')).toHaveLength(1);
+});

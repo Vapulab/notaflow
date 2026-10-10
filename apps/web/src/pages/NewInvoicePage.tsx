@@ -207,7 +207,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     return (
       <IssueResultView
         accountId={accountId}
-        title="Nova nota"
         environment={emitter?.environment ?? 'producao'}
         send={send}
       />
@@ -583,9 +582,14 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   ['municipalTaxCode', 'Código municipal'],
                   ['nbsCode', 'NBS'],
                   ['pisCofinsCst', 'CST do PIS/COFINS'],
-                  ['operationCode', 'Indicador de operação (IBS/CBS)'],
-                  ['cst', 'CST do IBS/CBS'],
-                  ['classCode', 'Classificação tributária (IBS/CBS)'],
+                  // 2026: a Brazil invoice of a Simples optant carries no IBS/CBS group.
+                  ...(abroad
+                    ? ([
+                        ['operationCode', 'Indicador de operação (IBS/CBS)'],
+                        ['cst', 'CST do IBS/CBS'],
+                        ['classCode', 'Classificação tributária (IBS/CBS)'],
+                      ] as const)
+                    : []),
                 ] as const
               ).map(([field, label]) => (
                 <Field key={field} label={label}>

@@ -181,12 +181,9 @@ function IssueFlow(props: {
 
   if (send.result) {
     return (
-      <IssueResultView
-        accountId={accountId}
-        title="Emitir parecida"
-        environment={emitter.environment}
-        send={send}
-      />
+      <Layout title="Emitir parecida" accountId={accountId}>
+        <IssueResultView accountId={accountId} environment={emitter.environment} send={send} />
+      </Layout>
     );
   }
 

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeAll, expect, test } from 'vitest';
 import { installDialogPolyfill } from '../test/dialog';
-import { Badge, Button, buttonClasses, Field, Input, Modal, Select } from './index';
+import { Badge, Button, buttonClasses, Combobox, Field, Input, Modal, Select } from './index';
 
 beforeAll(() => installDialogPolyfill());
 afterEach(() => cleanup());
@@ -55,4 +55,34 @@ test('the Modal opens, shows its title, and closes from its button', () => {
   expect(screen.getByRole('dialog', { name: 'Cancelar nota' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
   expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+function ComboHost(props: { selected: boolean }) {
+  return (
+    <Combobox
+      label="Município"
+      query=""
+      onQueryChange={() => {}}
+      options={[]}
+      selected={props.selected ? { value: '1', label: 'Londrina - PR' } : null}
+      onSelect={() => {}}
+    />
+  );
+}
+
+test('a combobox with a choice and no search opens no empty list', () => {
+  render(<ComboHost selected />);
+  fireEvent.focus(screen.getByRole('combobox'));
+  expect(screen.queryByRole('listbox')).toBeNull();
+});
+
+test('Escape closes the open list and stops there, so a dialog around it stays open', () => {
+  render(<ComboHost selected={false} />);
+  const input = screen.getByRole('combobox');
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'lon' } });
+  expect(screen.getByRole('listbox')).toBeTruthy();
+  const notPrevented = fireEvent.keyDown(input, { key: 'Escape' });
+  expect(notPrevented).toBe(false);
+  expect(screen.queryByRole('listbox')).toBeNull();
 });

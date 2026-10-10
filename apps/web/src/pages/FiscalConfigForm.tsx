@@ -28,6 +28,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
   const [from, setFrom] = useState(config.ibscbsRegimeFrom ?? '');
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [configured, setConfigured] = useState(config.simplesPercent !== null);
   const issRate = parsePercent(iss);
 
   async function save(event: FormEvent) {
@@ -45,6 +46,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
         ibscbsRegime: regime,
         ...(from ? { ibscbsRegimeFrom: from } : {}),
       });
+      setConfigured(true);
       setMessage({ variant: 'info', text: 'Configuração salva.' });
     } catch (error) {
       setMessage({ variant: 'error', text: errorText(error) });
@@ -56,7 +58,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
   return (
     <form onSubmit={save} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
       <h2 className={SECTION_TITLE_CLASSES}>Configuração fiscal</h2>
-      {config.simplesPercent === null && (
+      {!configured && (
         <Alert variant="warning">
           Sem esta configuração não é possível emitir uma nota sem modelo.
         </Alert>

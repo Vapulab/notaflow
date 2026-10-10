@@ -165,3 +165,33 @@ test('editing keeps the service fields, and archiving sends archived', async () 
     archived: true,
   });
 });
+
+test('while the user is still loading, the owner-only notice does not show', async () => {
+  stubApi(routes());
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, null);
+  await screen.findByLabelText('Faixa');
+  expect(
+    screen.queryByText('Só o dono da conta altera a configuração fiscal e os serviços.'),
+  ).toBeNull();
+});
+
+test('the missing-configuration warning goes away once the owner saves', async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/fiscal`]: {
+        ...fiscal,
+        simplesAnnex: null,
+        simplesBand: null,
+        simplesPercent: null,
+        issRate: null,
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  expect(await screen.findByText(/Sem esta configuração/)).toBeTruthy();
+  await user.type(screen.getByLabelText('Alíquota de ISS (%)'), '2,00');
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  expect(await screen.findByText('Configuração salva.')).toBeTruthy();
+  expect(screen.queryByText(/Sem esta configuração/)).toBeNull();
+});
