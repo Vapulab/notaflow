@@ -68,3 +68,17 @@ const plainAmount = new Intl.NumberFormat('pt-BR', {
 export function centsInput(cents: number): string {
   return plainAmount.format(cents / 100);
 }
+
+const brasiliaDateTime = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+export function formatDateTime(value: string | null): string {
+  if (!value) return '';
+  return brasiliaDateTime.format(new Date(value)).replace(',', '');
+}

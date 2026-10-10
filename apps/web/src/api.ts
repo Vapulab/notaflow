@@ -132,6 +132,13 @@ export interface Member {
   role: 'owner' | 'member';
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  platformRole: 'admin' | 'user';
+}
+
 export interface AdminAccount {
   id: string;
   name: string;

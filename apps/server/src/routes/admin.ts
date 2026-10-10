@@ -14,6 +14,20 @@ export function adminRoutes(app: FastifyInstance, db: Database): void {
 
   app.get('/api/admin/accounts', async (request) => admin.listAccounts(adminContext(request)));
 
+  app.get<{ Querystring: { q?: string } }>(
+    '/api/admin/users',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { q: { type: 'string', maxLength: 100 } },
+        },
+      },
+    },
+    async (request) => admin.listUsers(adminContext(request), request.query.q?.trim() || undefined),
+  );
+
   app.post<{ Body: { name: string } }>(
     '/api/admin/accounts',
     {
