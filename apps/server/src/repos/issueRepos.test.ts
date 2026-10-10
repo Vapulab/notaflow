@@ -29,7 +29,11 @@ function setup() {
 test('reserveDpsNumber hands out 1, 2, 3 and never the same number twice', () => {
   const { a, b, emitterId } = setup();
   const emitters = new EmitterRepository(db);
-  const numbers = [emitters.reserveDpsNumber(a, emitterId), emitters.reserveDpsNumber(a, emitterId), emitters.reserveDpsNumber(a, emitterId)];
+  const numbers = [
+    emitters.reserveDpsNumber(a, emitterId),
+    emitters.reserveDpsNumber(a, emitterId),
+    emitters.reserveDpsNumber(a, emitterId),
+  ];
   expect(numbers).toEqual([1, 2, 3]);
   expect(() => emitters.reserveDpsNumber(b, emitterId)).toThrow(/not found/);
 });
@@ -106,7 +110,11 @@ test('a sync that brings an unknown invoice adopts its row instead of adding a s
   });
   invoices.markUnknown(a, id, 'timeout');
   expect(invoices.upsertSynced(a, emitterId, invoice, null)).toEqual({ id, created: false });
-  expect(invoices.get(a, id)).toMatchObject({ status: 'issued', origin: 'app', accessKey: invoice.accessKey });
+  expect(invoices.get(a, id)).toMatchObject({
+    status: 'issued',
+    origin: 'app',
+    accessKey: invoice.accessKey,
+  });
   expect(invoices.list(a, { limit: 10, offset: 0 }).total).toBe(1);
 });
 
@@ -144,6 +152,18 @@ test('a sync never adopts an invoice of another system that took the same DPS nu
 });
 
 test('isOwnInvoice ignores line endings and outer spaces in the description', () => {
-  const row = { competence: '2026-09-30', serviceCents: 150000, description: ' Consultoria\r\nem análise ', customerDocument: '98765432000110' };
-  expect(isOwnInvoice(row, providerInvoice({ service: { nationalTaxCode: '010101', description: 'Consultoria\nem análise' } }))).toBe(true);
+  const row = {
+    competence: '2026-09-30',
+    serviceCents: 150000,
+    description: ' Consultoria\r\nem análise ',
+    customerDocument: '98765432000110',
+  };
+  expect(
+    isOwnInvoice(
+      row,
+      providerInvoice({
+        service: { nationalTaxCode: '010101', description: 'Consultoria\nem análise' },
+      }),
+    ),
+  ).toBe(true);
 });
