@@ -3,3 +3,4 @@ export { Alert, Badge, Button, Card, Link, Spinner, Table, TBody, TD, TH, THead 
 export { Field, Input, Select, Textarea } from './Field';
 export { Modal } from './Modal';
 export { Avatar, initialsOf, ThemeToggle } from './ThemeAvatar';
+export { Combobox, type ComboboxOption } from './Combobox';
