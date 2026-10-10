@@ -21,7 +21,7 @@ beforeEach(async () => {
 afterEach(() => fake.close());
 
 const request = (number: number) => ({
-  templateXml,
+  source: { kind: 'stored' as const, xml: templateXml },
   series: '900',
   number,
   issuedAt: new Date(Date.now() - 60_000),
@@ -54,9 +54,10 @@ test('a resend of an issued DPS (E0014) ends issued through the lookup', async (
 test('a timeout is uncertain, and findIssued then finds the invoice', async () => {
   fake.next('issue', { kind: 'delay', ms: 600 });
   expect((await issuer.issue(request(3))).kind).toBe('uncertain');
-  const dpsId = issuer.dpsId('900', 3, templateXml);
+  const stored = { kind: 'stored' as const, xml: templateXml };
+  const dpsId = issuer.dpsId('900', 3, stored);
   expect((await issuer.findIssued(dpsId))?.dps.number).toBe(3);
-  expect(await issuer.findIssued(issuer.dpsId('900', 99, templateXml))).toBeNull();
+  expect(await issuer.findIssued(issuer.dpsId('900', 99, stored))).toBeNull();
 });
 
 test('an export template without a foreign amount is refused before sending', async () => {
@@ -82,4 +83,36 @@ test('a registered cancel whose event XML does not parse is still cancelled', as
     kind: 'cancelled',
     event: null,
   });
+});
+
+test('issues a Brazil invoice built without a stored template and finds it by DPS id', async () => {
+  const template = issuer.buildTemplate({
+    competence: '2026-10-01',
+    emitter: { cnpj: certificate.cnpj, municipality: '4113700', simplesNacional: '3', simplesRegime: '1', specialRegime: '0' },
+    service: { nationalTaxCode: '010701', description: 'Desenvolvimento de software' },
+    customer: {
+      document: { type: 'CNPJ', value: '11222333000181' },
+      name: 'Cliente Teste Ltda',
+      address: { kind: 'domestic', municipality: '4113700', zip: '86010000', street: 'Rua Teste', number: '1', district: 'Centro' },
+    },
+    serviceCents: 123400,
+    simplesPercent: 600,
+  });
+  const source = { kind: 'built' as const, template };
+  const outcome = await issuer.issue({
+    source,
+    series: '900',
+    number: 7,
+    issuedAt: new Date(Date.now() - 60_000),
+    competence: '2026-10-01',
+    serviceCents: 123400,
+  });
+  expect(outcome.kind).toBe('issued');
+  if (outcome.kind !== 'issued') return;
+  expect(outcome.invoice).toMatchObject({
+    amounts: { serviceCents: 123400 },
+    customer: { document: { type: 'CNPJ', value: '11222333000181' } },
+  });
+  expect(outcome.invoice.xml).toContain('<pTotTribSN>6.00</pTotTribSN>');
+  expect((await issuer.findIssued(issuer.dpsId('900', 7, source)))?.accessKey).toBe(outcome.invoice.accessKey);
 });

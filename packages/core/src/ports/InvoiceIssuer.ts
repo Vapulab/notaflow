@@ -1,7 +1,10 @@
 import type { InvoiceParty, ProviderEvent, ProviderInvoice } from '../domain/ProviderInvoice';
 
+// stored: an NFS-e the new invoice copies; built: the opaque template from buildTemplate.
+export type IssueSource = { kind: 'stored'; xml: string } | { kind: 'built'; template: string };
+
 export interface IssueRequest {
-  templateXml: string; // the stored NFS-e the new invoice copies
+  source: IssueSource;
   series: string;
   number: number;
   issuedAt: Date;
@@ -60,7 +63,8 @@ export type CancelOutcome =
   | { kind: 'rejected'; error: { code: string; message: string } };
 
 export interface InvoiceIssuer {
-  dpsId(series: string, number: number, templateXml: string): string;
+  buildTemplate(input: NewInvoiceInput): string;
+  dpsId(series: string, number: number, source: IssueSource): string;
   issue(request: IssueRequest): Promise<IssueOutcome>;
   findIssued(dpsId: string): Promise<ProviderInvoice | null>;
   cancel(accessKey: string, reason: '1' | '2' | '9', justification: string): Promise<CancelOutcome>;

@@ -122,7 +122,7 @@ export class IssueService {
       const number = this.emitters.reserveDpsNumber(ctx, emitter.id);
       const id = this.invoices.createPending(ctx, {
         emitterId: emitter.id,
-        dpsId: issuer.dpsId(emitter.dpsSeries, number, xml),
+        dpsId: issuer.dpsId(emitter.dpsSeries, number, { kind: 'stored', xml }),
         dpsSeries: emitter.dpsSeries,
         dpsNumber: number,
         competence: input.competence,
@@ -151,7 +151,7 @@ export class IssueService {
     if (pending.number === null) return { view: this.view(ctx, pending.id), repeat: true };
 
     const outcome = await this.send(issuer, {
-      templateXml: xml,
+      source: { kind: 'stored', xml },
       series: emitter.dpsSeries,
       number: pending.number,
       // The Sefin refuses a future dhEmi, and clocks drift.
@@ -232,7 +232,7 @@ export class IssueService {
         ? this.customerParty(ctx, state.customerId)
         : undefined;
     const outcome = await this.send(issuer, {
-      templateXml: template.xml,
+      source: { kind: 'stored', xml: template.xml },
       series: state.dpsSeries,
       number: state.dpsNumber,
       issuedAt: new Date(this.now().getTime() - 60_000),

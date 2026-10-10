@@ -4,6 +4,8 @@ import type {
   InvoiceIssuer,
   IssueOutcome,
   IssueRequest,
+  IssueSource,
+  NewInvoiceInput,
   ProviderEvent,
   ProviderInvoice,
 } from '@notaflow/core';
@@ -16,7 +18,8 @@ import { isDuplicateDps, type NacionalClient } from './http/NacionalClient';
 import { parseEventXml } from './parse/parseEventXml';
 import { parseNfseXml } from './parse/parseNfseXml';
 import { applyTemplate } from './template/applyTemplate';
-import { readTemplate } from './template/readTemplate';
+import { buildTemplate } from './template/buildTemplate';
+import { type DpsTemplate, readTemplate } from './template/readTemplate';
 
 export class NacionalIssuer implements InvoiceIssuer {
   private readonly signer = new NodeSigner();
@@ -30,13 +33,17 @@ export class NacionalIssuer implements InvoiceIssuer {
     },
   ) {}
 
-  dpsId(series: string, number: number, templateXml: string): string {
-    const template = readTemplate(templateXml);
+  buildTemplate(input: NewInvoiceInput): string {
+    return JSON.stringify(buildTemplate(input));
+  }
+
+  dpsId(series: string, number: number, source: IssueSource): string {
+    const template = templateOf(source);
     return buildDpsId({ municipality: template.emitterMunicipality, cnpj: template.provider.cnpj, series, number });
   }
 
   async issue(request: IssueRequest): Promise<IssueOutcome> {
-    const input = applyTemplate(readTemplate(request.templateXml), {
+    const input = applyTemplate(templateOf(request.source), {
       ...request,
       environment: this.deps.environment,
       appVersion: this.deps.appVersion,
@@ -91,6 +98,10 @@ export class NacionalIssuer implements InvoiceIssuer {
     }
     return { kind: 'cancelled', event: result.eventXml ? readEvent(result.eventXml) : null };
   }
+}
+
+function templateOf(source: IssueSource): DpsTemplate {
+  return source.kind === 'stored' ? readTemplate(source.xml) : (JSON.parse(source.template) as DpsTemplate);
 }
 
 // The Sefin registered the event; an XML the parser cannot read must not hide that.
