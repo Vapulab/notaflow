@@ -45,12 +45,14 @@ test('linking picks the account by name and finds the user by name, then sends t
     'form',
   ) as HTMLElement;
   await user.selectOptions(within(form).getByLabelText(/^conta/i), 'acc-2');
-  await user.type(within(form).getByLabelText(/buscar usuário/i), 'tal');
-  await waitFor(() =>
-    expect(within(form).getByRole('option', { name: /talita@example.com/ })).toBeTruthy(),
-  );
+  // One field: type to search, then pick from the list right below it.
+  const combo = within(form).getByRole('combobox', { name: /usuário/i });
+  expect(within(form).queryByLabelText(/buscar usuário/i)).toBeNull();
+  await user.type(combo, 'tal');
+  const option = await within(form).findByRole('option', { name: /talita@example.com/ });
   expect(within(form).queryByRole('option', { name: /lincoln@example.com/ })).toBeNull();
-  await user.selectOptions(within(form).getByLabelText(/^usuário/i), 'u-2');
+  await user.click(option);
+  expect((combo as HTMLInputElement).value).toBe('Talita (talita@example.com)');
   await user.selectOptions(within(form).getByLabelText(/^papel/i), 'member');
   await user.click(within(form).getByRole('button', { name: 'Salvar' }));
   await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
@@ -63,4 +65,16 @@ test('the audit log shows the time of each entry', async () => {
   stubApi(routes);
   render(<AdminPage />);
   expect(await screen.findByText(/10\/10\/2026 11:11/)).toBeTruthy();
+});
+
+test('the user combobox works by keyboard', async () => {
+  stubApi(routes);
+  render(<AdminPage />);
+  const user = userEvent.setup();
+  const combo = await screen.findByRole('combobox', { name: /usuário/i });
+  await user.type(combo, 'tal');
+  await screen.findByRole('option', { name: /talita@example.com/ });
+  await user.keyboard('{ArrowDown}{Enter}');
+  expect((combo as HTMLInputElement).value).toBe('Talita (talita@example.com)');
+  expect(combo.getAttribute('aria-expanded')).toBe('false');
 });

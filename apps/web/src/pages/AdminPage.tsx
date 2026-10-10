@@ -8,6 +8,9 @@ import {
   Badge,
   Button,
   CARD_CLASSES,
+  Combobox,
+  type ComboboxOption,
+  LABEL_CLASSES,
   Card,
   Field,
   FORM_CLASSES,
@@ -173,7 +176,7 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
   const [accountId, setAccountId] = useState('');
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<AdminUser[]>([]);
-  const [userId, setUserId] = useState('');
+  const [chosen, setChosen] = useState<ComboboxOption | null>(null);
   const [role, setRole] = useState<'owner' | 'member'>('owner');
 
   // Searches as the admin types, after a short pause.
@@ -185,7 +188,6 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
         (users) => {
           if (!live) return;
           setFound(users);
-          setUserId((current) => (users.some((u) => u.id === current) ? current : ''));
         },
         () => {
           if (live) setFound([]);
@@ -201,6 +203,8 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
   function submit(event: FormEvent) {
     event.preventDefault();
     const account = accounts.find((a) => a.id === accountId);
+    if (!chosen) return;
+    const userId = chosen.value;
     const person = found.find((u) => u.id === userId);
     void act(async () => {
       await api.put(
@@ -225,21 +229,22 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
           ))}
         </Select>
       </Field>
-      <Field label="Buscar usuário" hint="Pelo nome ou pelo e-mail.">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} />
-      </Field>
-      <Field label="Usuário">
-        <Select required value={userId} onChange={(e) => setUserId(e.target.value)}>
-          <option value="" disabled>
-            {found.length === 0 ? 'Nenhum usuário encontrado' : 'Escolha o usuário'}
-          </option>
-          {found.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.name} ({person.email})
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <div className="flex flex-col gap-1">
+        <span className={LABEL_CLASSES}>Usuário</span>
+        <Combobox
+          label="Usuário"
+          query={search}
+          onQueryChange={setSearch}
+          options={found.map((person) => ({
+            value: person.id,
+            label: `${person.name} (${person.email})`,
+          }))}
+          selected={chosen}
+          onSelect={setChosen}
+          placeholder="Digite o nome ou o e-mail"
+          emptyText="Nenhum usuário encontrado"
+        />
+      </div>
       <Field label="Papel">
         <Select value={role} onChange={(e) => setRole(e.target.value as 'owner' | 'member')}>
           <option value="owner">Dono</option>
@@ -247,7 +252,7 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
         </Select>
       </Field>
       <div>
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" disabled={!accountId || !chosen}>
           Salvar
         </Button>
       </div>
