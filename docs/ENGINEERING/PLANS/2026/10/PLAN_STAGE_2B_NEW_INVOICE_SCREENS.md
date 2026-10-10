@@ -21,9 +21,9 @@
 - Every server route goes through the guards and the route sweep (`routeSweep.test.ts`).
 - No TypeScript non-null assertions. No AI attribution in commits.
 
-## Decisions to confirm at plan review
+## Decisions (confirmed at plan review)
 
-1. **Complete mode.** The RFC lists service codes, place of service, ISS treatment and retention, PIS/COFINS, IBS/CBS, and export details. This plan adds the per-invoice overrides for the national code (from the code search), the municipal code, NBS, PIS/COFINS CST, IBS/CBS, and the export details (Task 1). **The place of service stays the emitter's municipality.** A different place moves the ISS to another municipality (LC 116, art. 3) and needs rules this plan does not have. It is a later stage if an emitter needs it.
+1. **Complete mode.** The RFC lists service codes, place of service, ISS treatment and retention, PIS/COFINS, IBS/CBS, and export details. This plan adds the per-invoice overrides for the national code (from the code search), the municipal code, NBS, PIS/COFINS CST, IBS/CBS, and the export details (Task 1). **The place of service stays the emitter's municipality.** A different place moves the ISS to another municipality (LC 116, art. 3) and needs rules this plan does not have. It is a later stage if an emitter needs it. Confirmed with Lincoln on 2026-10-10: an export (for example IT services to a US company, done in Brazil) keeps the place of service in the emitter's municipality, and the customer's country goes to `cPaisResult`; Stage 2a already writes it so. Only a service done in person in another municipality, or abroad (`cPaisPrestacao`), changes the place.
 2. **CEP.** The address form fills the street, the district, and the IBGE municipality from the CEP through ViaCEP, called by the server (`GET cep/:cep`), so the browser's content policy stays as it is. When ViaCEP is down, the user picks the municipality in the list.
 3. **Simples band per invoice.** The band list shows the six bands of the emitter's annex with their percents, and the emitter's band is the default. In complete mode the user can also type another percent.
 
