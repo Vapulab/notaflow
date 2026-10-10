@@ -3,6 +3,7 @@ import { issueExportOnFake } from '../../test/fakeInvoices';
 import { COMPETENCE, withNewInvoiceSetup, xmlOf } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { AuditLog } from '../repos/AuditLog';
+import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
@@ -326,4 +327,21 @@ test('a retained ISS below 2% is refused, except for the services the law exempt
   );
   expect(allowed.json()).toMatchObject({ status: 'issued' });
   expect(xmlOf(t, s.a, allowed.json<{ id: string }>().id)).toContain('<pAliq>1.50</pAliq>');
+});
+
+test('a customer stored with an unknown municipality is refused before a number is reserved', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const ctx = { ...s.a, role: 'owner' as const, accountStatus: 'active' as const };
+  new CustomerRepository(t.db).setManual(ctx, s.brazilId, {
+    address: {
+      kind: 'domestic',
+      municipality: '9999999',
+      zip: '86010000',
+      street: 'Rua Teste',
+      number: '1',
+      district: 'Centro',
+    },
+  });
+  await expectRefused(s, brazilInvoice(s), 400, 'unknown_municipality');
+  expect(invoiceCount(s)).toBe(0);
 });

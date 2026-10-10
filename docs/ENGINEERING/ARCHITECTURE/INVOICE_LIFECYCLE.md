@@ -62,9 +62,9 @@ A cancel that the Sefin refuses because the invoice is already cancelled (codes 
 
 ## Export amount (PTAX)
 
-For an export invoice, the BRL amount is suggested from the PTAX **sell** rate of the **closing bulletin** ("Fechamento PTAX") of the Banco Central on the competence date. Without a closing bulletin on that date (a weekend or a holiday), the rate of the last business day before it is used, and the answer names that date. The user can always change the BRL amount.
+For an export invoice, the BRL amount is the foreign amount at the PTAX **sell** rate of the **closing bulletin** ("Fechamento PTAX") of the Banco Central on the competence date. Without a closing bulletin on that date (a weekend or a holiday), the rate of the last business day before it is used, and the answer names that date. The server enforces it on both issue paths: it fetches the rate of the competence date and refuses another BRL amount with 400 `amount_ptax_mismatch` (with `expectedCents`, `rate`, and `rateDate`). Without a rate nothing is issued (502 `ptax_unavailable`). The audit entry of the pending row names the rate and its date. The form shows the BRL amount read-only and reviews only with the rate loaded.
 
-Evidence: one real export invoice of the first emitter used exactly this rate. Two earlier ones match no PTAX closing rate, probably a bank contract rate. That is why the amount stays editable.
+Decision (2026-10-10, Lincoln): the BRL amount is always the PTAX of the competence date. Two early export invoices of the first emitter used a bank contract rate; NotaFlow no longer issues that way.
 
 `GET /api/accounts/:accountId/exchange-rate?currency=220&date=YYYY-MM-DD` returns the rate. Rates are integers scaled by 10 000 (`54321` for 5.4321), so no float touches money.
 

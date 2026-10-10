@@ -242,3 +242,50 @@ test('typed text is trimmed and typographic quotes become plain ones; other char
   expect(refused.statusCode).toBe(400);
   expect(refused.json()).toMatchObject({ error: 'invalid_text', detail: 'address.street' });
 });
+
+test('a municipality outside the IBGE table or a country outside ISO is refused', async () => {
+  const { emitterId, url } = withEmitter();
+  const badCity = await post(url, {
+    ...brazil(emitterId),
+    address: { ...domesticAddress, municipality: '9999999' },
+  });
+  expect(badCity.statusCode).toBe(400);
+  expect(badCity.json()).toMatchObject({ error: 'unknown_municipality' });
+  const badCountry = await post(url, {
+    emitterId,
+    documentType: 'NIF',
+    document: '00-0000000',
+    name: 'Foreign Customer Inc',
+    address: { ...foreignAddress, country: 'XX' },
+  });
+  expect(badCountry.statusCode).toBe(400);
+  expect(badCountry.json()).toMatchObject({ error: 'unknown_country' });
+  const id = ((await post(url, brazil(emitterId))).json() as { id: string }).id;
+  const edit = await t.app.inject({
+    method: 'PUT',
+    url: `${url}/${id}`,
+    headers: await t.as('a@example.com'),
+    payload: { address: { ...domesticAddress, municipality: '9999999' } },
+  });
+  expect(edit.json()).toMatchObject({ error: 'unknown_municipality' });
+});
+
+test('members search municipalities and countries for the address form', async () => {
+  const { url } = withEmitter({ role: 'member' });
+  const headers = await t.as('a@example.com');
+  const base = url.replace(/\/customers$/, '');
+  const cities = await t.app.inject({
+    method: 'GET',
+    url: `${base}/municipalities?q=londrina`,
+    headers,
+  });
+  expect(cities.json()[0]).toEqual({ code: '4113700', name: 'Londrina', uf: 'PR' });
+  const countries = await t.app.inject({
+    method: 'GET',
+    url: `${base}/countries?q=estados unidos`,
+    headers,
+  });
+  expect(countries.json()).toEqual(
+    expect.arrayContaining([{ code: 'US', name: expect.any(String) }]),
+  );
+});

@@ -127,7 +127,9 @@ function IssueFlow(props: {
   const valid =
     brlCents !== null &&
     brlCents > 0 &&
-    (!draft.foreign || (foreignCents !== null && foreignCents > 0)) &&
+    // An export is in reais at the PTAX of the competence; the server refuses any other amount.
+    (!draft.foreign ||
+      (foreignCents !== null && foreignCents > 0 && rate !== null && !rateLoading)) &&
     form.competence !== '' &&
     form.description.trim() !== '';
   const set = (field: keyof Form) => (value: string) => setForm((f) => ({ ...f, [field]: value }));
@@ -393,6 +395,7 @@ function IssueFlow(props: {
         <Field label="Valor em reais">
           <Input
             inputMode="decimal"
+            readOnly={draft.foreign !== null}
             value={form.brl}
             onChange={(e) => set('brl')(e.target.value)}
           />

@@ -1,6 +1,7 @@
 import type { PartyAddress } from '@notaflow/core';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
+import { country, municipality, searchCountries, searchMunicipalities } from '../data/places';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { isValidCnpj, isValidCpf } from '../domain/documents';
@@ -109,6 +110,16 @@ function cleanText<
   return out;
 }
 
+// The DPS needs an IBGE municipality and an ISO country the Sefin knows.
+function checkPlace(address: PartyAddress | undefined): void {
+  if (address?.kind === 'domestic' && address.municipality && !municipality(address.municipality)) {
+    throw new HttpError(400, 'unknown_municipality');
+  }
+  if (address?.kind === 'foreign' && address.country && !country(address.country)) {
+    throw new HttpError(400, 'unknown_country');
+  }
+}
+
 function checkNewCustomer(body: CreateBody): NewCustomer {
   const { emitterId: _emitterId, document, address, ...rest } = body;
   const brazil = body.documentType === 'CNPJ' || body.documentType === 'CPF';
@@ -121,6 +132,7 @@ function checkNewCustomer(body: CreateBody): NewCustomer {
           ? document !== undefined
           : document === undefined;
   if (!validDocument) throw new HttpError(400, 'invalid_document');
+  checkPlace(address);
   if (brazil) {
     if (address?.kind !== 'domestic' || !address.municipality || !address.zip) {
       throw new HttpError(400, 'customer_address_incomplete');
@@ -149,6 +161,32 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
   const customers = new CustomerRepository(db);
   const emitters = new EmitterRepository(db);
   const audit = new AuditLog(db);
+
+  const searchSchema = {
+    querystring: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { q: { type: 'string', maxLength: 100 } },
+    },
+  } as const;
+
+  app.get<{ Params: { accountId: string }; Querystring: { q?: string } }>(
+    '/api/accounts/:accountId/municipalities',
+    { schema: searchSchema },
+    async (request) => {
+      accountContext(request, request.params.accountId);
+      return searchMunicipalities(request.query.q ?? '');
+    },
+  );
+
+  app.get<{ Params: { accountId: string }; Querystring: { q?: string } }>(
+    '/api/accounts/:accountId/countries',
+    { schema: searchSchema },
+    async (request) => {
+      accountContext(request, request.params.accountId);
+      return searchCountries(request.query.q ?? '');
+    },
+  );
 
   app.post<{ Params: { accountId: string }; Body: CreateBody }>(
     '/api/accounts/:accountId/customers',
@@ -211,6 +249,7 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
       const ctx = accountContext(request, request.params.accountId, { write: true });
       const body = cleanText(request.body);
       const { address } = body;
+      checkPlace(address);
       if (address && REQUIRED_BY_KIND[address.kind].some((field) => !(field in address))) {
         throw new HttpError(400, 'invalid_address');
       }

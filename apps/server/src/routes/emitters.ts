@@ -2,6 +2,7 @@ import type { AccountContext, CertificateMaterial } from '@notaflow/core';
 import { CertificateError, loadCertificate } from '@notaflow/signer-node';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
+import { municipality } from '../data/places';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import type { ProviderFactory } from '../providers/providerFactory';
@@ -105,6 +106,7 @@ export function emitterRoutes(
       const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
       const actor = identityOf(request).email;
       const { pfxBase64, password, ...fiscal } = request.body;
+      if (!municipality(fiscal.municipality)) throw new HttpError(400, 'unknown_municipality');
       const { pfx, material } = openPfx(pfxBase64, password);
 
       const refuseDuplicate = () => {

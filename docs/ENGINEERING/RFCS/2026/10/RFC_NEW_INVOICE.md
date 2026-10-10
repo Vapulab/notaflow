@@ -176,7 +176,10 @@ Checked before a DPS number is reserved, each with its own error code and a Port
 | Customer text the XSD refuses (outside Latin-1, a line break) | `invalid_text` with the field |
 | Emitter that is not an ME/EPP Simples optant (`opSimpNac` 3) | `emitter_not_simples` |
 | ISS retained for a customer abroad or a CPF | `retention_not_allowed` |
-| ISS retained with a rate of zero | `invalid_iss_rate` |
+| ISS retained below the legal minimum of the service: 2.00%, or above zero for subitems 7.02, 7.05, and 16.01 (LC 116, art. 8-A) | `invalid_iss_rate` with the minimum |
+| Municipality outside the IBGE table, country outside the ISO table (Anexo A) | `unknown_municipality`, `unknown_country` |
+| Export amount in reais that is not the foreign amount at the PTAX sell rate of the competence date | `amount_ptax_mismatch` with the expected amount |
+| No PTAX rate for the competence date | `ptax_unavailable` (502) |
 
 Customer text is trimmed, and typographic quotes and dashes become plain ones, before the check. Amounts are at most 9,999,999,999,999 cents and the Simples percent at most 99.99%, the limits of the XSD types.
 

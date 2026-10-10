@@ -15,6 +15,7 @@ import {
   readTemplate,
   TemplateUnsupportedError,
 } from '@notaflow/provider-nacional';
+import { country, municipality } from '../data/places';
 import type { Database } from '../db/openDatabase';
 import { isCalendarDate, xsdDescription } from '../domain/xmlText';
 import { BACEN_CURRENCY, convertToCents, type ExchangeRateSource } from '../exchange/ptax';
@@ -233,6 +234,13 @@ export class IssueService {
     }
     if (!abroad && customer.address?.kind !== 'domestic') {
       throw new HttpError(400, 'customer_address_incomplete');
+    }
+    const address = customer.address;
+    if (address?.kind === 'domestic' && !municipality(address.municipality)) {
+      throw new HttpError(400, 'unknown_municipality');
+    }
+    if (address?.kind === 'foreign' && !country(address.country)) {
+      throw new HttpError(400, 'unknown_country');
     }
     if (input.serviceCents <= 0) throw new HttpError(400, 'invalid_amount');
     const foreign =
