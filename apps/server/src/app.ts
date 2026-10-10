@@ -1,6 +1,7 @@
 import type { AccountContext } from '@notaflow/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
+import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
 import { remoteAccessVerifier, type VerifyAccessToken } from './auth/accessVerifier';
 import { registerAuth } from './auth/authHook';
 import type { Config } from './config';
@@ -44,6 +45,7 @@ export interface AppDeps {
   logStream?: { write(line: string): void };
   providerFactory?: ProviderFactory;
   issuerFactory?: IssuerFactory;
+  exchangeRate?: ExchangeRateSource;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
   syncRetryDelaysMs?: number[];
@@ -103,6 +105,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     db,
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
+    exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),
   });
   issueRoutes(app, {
     issue,

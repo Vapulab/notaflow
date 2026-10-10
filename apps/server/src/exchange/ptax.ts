@@ -31,7 +31,9 @@ export async function fetchPtaxSell(options: {
       await response.body.dump();
       throw new Error(`The PTAX service answered ${response.statusCode}.`);
     }
-    const body = (await response.body.json()) as { value?: { tipoBoletim: string; cotacaoVenda: number }[] };
+    const body = (await response.body.json()) as {
+      value?: { tipoBoletim: string; cotacaoVenda: number }[];
+    };
     const closing = body.value?.find((bulletin) => bulletin.tipoBoletim === 'Fechamento PTAX');
     if (closing) {
       return {
@@ -44,6 +46,13 @@ export async function fetchPtaxSell(options: {
     day.setUTCDate(day.getUTCDate() - 1);
   }
   throw new Error(`No PTAX closing rate for ${options.currency} up to ${options.date}.`);
+}
+
+export type ExchangeRateSource = (currency: string, date: string) => Promise<PtaxRate>;
+
+export function ptaxSource(dispatcher?: Dispatcher): ExchangeRateSource {
+  return (currency, date) =>
+    fetchPtaxSell({ currency, date, ...(dispatcher ? { dispatcher } : {}) });
 }
 
 export function convertToCents(foreignCents: number, rateE4: number): number {

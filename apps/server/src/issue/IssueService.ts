@@ -16,7 +16,7 @@ import {
 } from '@notaflow/provider-nacional';
 import type { Database } from '../db/openDatabase';
 import { isCalendarDate, xsdDescription } from '../domain/xmlText';
-import { BACEN_CURRENCY } from '../exchange/ptax';
+import { BACEN_CURRENCY, convertToCents, type ExchangeRateSource } from '../exchange/ptax';
 import { HttpError } from '../httpError';
 import type { IssuerFactory } from '../providers/providerFactory';
 import { AuditLog } from '../repos/AuditLog';
@@ -72,6 +72,7 @@ export class IssueService {
       db: Database;
       certificates: VaultCertificateStore;
       issuerFactory: IssuerFactory;
+      exchangeRate: ExchangeRateSource;
       now?: () => Date;
     },
   ) {
@@ -124,6 +125,15 @@ export class IssueService {
     }
     const now = this.now();
     checkCompetence(input.competence, now);
+    const ptax =
+      template.service.foreignTrade && input.foreignAmountCents
+        ? await this.checkPtax(
+            template.service.foreignTrade.currency,
+            input.competence,
+            input.foreignAmountCents,
+            input.serviceCents,
+          )
+        : null;
     const customer = input.customerId ? this.customerParty(ctx, input.customerId) : undefined;
     if (customer && !customer.document) throw new HttpError(400, 'customer_without_document');
     const emitter = this.emitters.get(ctx, state.emitterId);
@@ -163,7 +173,7 @@ export class IssueService {
         action: 'invoice.issue',
         entity: id,
         result: 'ok',
-        detail: 'pending',
+        detail: ptax ? `pending, ${ptax}` : 'pending',
       });
       return { id, number };
     });
@@ -246,6 +256,15 @@ export class IssueService {
       if (issRate === undefined) throw new HttpError(409, 'fiscal_config_missing');
       if (issRate <= 0) throw new HttpError(400, 'invalid_iss_rate');
     }
+    // Last of the checks: it is a network call.
+    const ptax = foreign
+      ? await this.checkPtax(
+          foreign.currencyCode,
+          input.competence,
+          foreign.amountCents,
+          input.serviceCents,
+        )
+      : null;
     const certificate = await this.deps.certificates.loadActive(ctx, emitter.id);
     if (!certificate) throw new HttpError(409, 'no_active_certificate');
     const issuer = this.deps.issuerFactory({ environment: emitter.environment, certificate });
@@ -317,7 +336,9 @@ export class IssueService {
         action: 'invoice.issue',
         entity: id,
         result: 'ok',
-        detail: 'pending, built without a template',
+        detail: ptax
+          ? `pending, built without a template, ${ptax}`
+          : 'pending, built without a template',
       });
       return { id, number };
     });
@@ -489,6 +510,37 @@ export class IssueService {
         ? this.customerParty(ctx, state.customerId)
         : undefined;
     return { source: { kind: 'stored', xml: template.xml }, ...(customer ? { customer } : {}) };
+  }
+
+  // The amount in reais of an export is the foreign amount at the PTAX sell rate of the competence date.
+  private async checkPtax(
+    currencyCode: string,
+    competence: string,
+    foreignCents: number,
+    serviceCents: number,
+  ): Promise<string> {
+    const currency = BACEN_CURRENCY[currencyCode];
+    if (!currency) throw new HttpError(400, 'unsupported_currency');
+    let rate;
+    try {
+      rate = await this.deps.exchangeRate(currency, competence);
+    } catch (error) {
+      throw new HttpError(
+        502,
+        'ptax_unavailable',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const expectedCents = convertToCents(foreignCents, rate.rateE4);
+    const rateText = (rate.rateE4 / 10_000).toFixed(4);
+    if (serviceCents !== expectedCents) {
+      throw new HttpError(400, 'amount_ptax_mismatch', undefined, {
+        expectedCents,
+        rate: rateText,
+        rateDate: rate.date,
+      });
+    }
+    return `PTAX ${rateText} of ${rate.date}`;
   }
 
   private async send(

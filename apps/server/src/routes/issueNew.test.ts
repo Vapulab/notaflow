@@ -59,7 +59,7 @@ test('an export invoice is issued with comExt in the foreign currency', async ()
     customerId: s.abroadId,
     serviceId: s.serviceId,
     competence: COMPETENCE,
-    serviceCents: 670321,
+    serviceCents: 617000,
     foreignCurrency: '220',
     foreignAmountCents: 123400,
   });
@@ -78,7 +78,7 @@ test('a customer abroad without the foreign amount is invalid_amount', async () 
     customerId: s.abroadId,
     serviceId: s.serviceId,
     competence: COMPETENCE,
-    serviceCents: 670321,
+    serviceCents: 617000,
   });
   expect(response.statusCode).toBe(400);
   expect(response.json()).toMatchObject({ error: 'invalid_amount' });

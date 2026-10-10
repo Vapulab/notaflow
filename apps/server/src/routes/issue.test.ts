@@ -38,7 +38,7 @@ test('issue similar: pending, then issued with a new DPS number and the new amou
     payload: {
       templateInvoiceId,
       competence: '2026-09-30',
-      serviceCents: 670321,
+      serviceCents: 617000,
       foreignAmountCents: 123400,
       description: 'Serviços de setembro',
     },
@@ -53,7 +53,7 @@ test('issue similar: pending, then issued with a new DPS number and the new amou
   });
   expect(detail.json()).toMatchObject({
     status: 'issued',
-    serviceCents: 670321,
+    serviceCents: 617000,
     description: 'Serviços de setembro',
     origin: 'app',
   });
@@ -152,7 +152,7 @@ test('a DPS number used outside the app is never taken as the new invoice', asyn
     payload: {
       templateInvoiceId,
       competence: '2026-09-30',
-      serviceCents: 670321,
+      serviceCents: 617000,
       foreignAmountCents: 123400,
     },
   });
@@ -190,7 +190,7 @@ test('a DPS number used outside the app for the same amount but another customer
   await issueExportOnFake(t.fake, {
     number: 7,
     competence: '2026-09-30',
-    amounts: { serviceCents: 670321 },
+    amounts: { serviceCents: 617000 },
     customer: { document: { type: 'NIF', value: '99-9999999' }, name: 'Another Customer LLC' },
   });
   const response = await t.app.inject({
@@ -200,8 +200,8 @@ test('a DPS number used outside the app for the same amount but another customer
     payload: {
       templateInvoiceId,
       competence: '2026-09-30',
-      serviceCents: 670321,
-      foreignAmountCents: 200000,
+      serviceCents: 617000,
+      foreignAmountCents: 123400,
     },
   });
   expect(response.json()).toMatchObject({ status: 'rejected', errors: [{ code: 'E0014' }] });
@@ -216,7 +216,7 @@ test('a direct issue is ours even when the Sefin normalizes the description', as
     payload: {
       templateInvoiceId,
       competence: '2026-09-30',
-      serviceCents: 670321,
+      serviceCents: 617000,
       foreignAmountCents: 123400,
       description: 'Linha 1\r\nLinha 2 ',
     },
@@ -233,7 +233,7 @@ test('the same Idempotency-Key twice issues once and answers the same invoice', 
     payload: {
       templateInvoiceId,
       competence: '2026-09-30',
-      serviceCents: 670321,
+      serviceCents: 617000,
       foreignAmountCents: 123400,
     },
   };
@@ -287,4 +287,25 @@ test('a malformed Idempotency-Key is 400', async () => {
     },
   });
   expect(response.json()).toEqual({ error: 'invalid_idempotency_key' });
+});
+
+test('issue similar also takes the amount in reais from the PTAX of the competence', async () => {
+  const { a, headers, templateInvoiceId } = await withTemplate(t);
+  const send = (serviceCents: number) =>
+    t.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${a.accountId}/invoices/issue`,
+      headers,
+      payload: {
+        templateInvoiceId,
+        competence: '2026-09-30',
+        serviceCents,
+        foreignAmountCents: 200,
+      },
+    });
+  const wrong = await send(999);
+  expect(wrong.statusCode).toBe(400);
+  // The test app's PTAX is 5.0000: 2.00 USD = 10.00 BRL.
+  expect(wrong.json()).toMatchObject({ error: 'amount_ptax_mismatch', expectedCents: 1000 });
+  expect((await send(1000)).json()).toMatchObject({ status: 'issued' });
 });

@@ -28,7 +28,7 @@ const exportInvoice = (s: Setup, extra: object = {}) => ({
   customerId: s.abroadId,
   serviceId: s.serviceId,
   competence: COMPETENCE,
-  serviceCents: 670321,
+  serviceCents: 617000,
   foreignCurrency: '220',
   foreignAmountCents: 123400,
   ...extra,
@@ -244,7 +244,7 @@ test('E0014: an invoice at the DPS number that matches ours is adopted; another 
   await issueExportOnFake(t.fake, {
     number: 2,
     competence: COMPETENCE,
-    amounts: { serviceCents: 670321 },
+    amounts: { serviceCents: 617000 },
     service: {
       municipality: '4113700',
       nationalTaxCode: '010101',
@@ -253,4 +253,50 @@ test('E0014: an invoice at the DPS number that matches ours is adopted; another 
   });
   const ours = await s.call('POST', '/invoices/new', exportInvoice(s));
   expect(ours.json()).toMatchObject({ status: 'issued', accessKey: expect.any(String) });
+});
+
+test('an export amount in reais must be the foreign amount at the PTAX of the competence', async () => {
+  const dates: string[] = [];
+  const own = await createTestApp({
+    exchangeRate: async (currency, date) => {
+      dates.push(`${currency} ${date}`);
+      return { currency, date: '2026-09-30', rateE4: 54321, source: 'PTAX venda, fechamento' };
+    },
+  });
+  const s = await withNewInvoiceSetup(own);
+  const wrong = await s.call('POST', '/invoices/new', exportInvoice(s, { serviceCents: 600000 }));
+  expect(wrong.statusCode).toBe(400);
+  // 1234.00 USD x 5.4321 = 6703.21 BRL
+  expect(wrong.json()).toMatchObject({
+    error: 'amount_ptax_mismatch',
+    expectedCents: 670321,
+    rate: '5.4321',
+    rateDate: '2026-09-30',
+  });
+  expect(own.fake.issuedCount()).toBe(0);
+  const right = await s.call('POST', '/invoices/new', exportInvoice(s, { serviceCents: 670321 }));
+  expect(right.json()).toMatchObject({ status: 'issued' });
+  expect(dates).toEqual([`USD ${COMPETENCE}`, `USD ${COMPETENCE}`]);
+  expect(
+    new AuditLog(own.db).list().some((e) => e.detail?.includes('PTAX 5.4321 of 2026-09-30')),
+  ).toBe(true);
+  await own.close();
+});
+
+test('without the PTAX an export is not issued', async () => {
+  const own = await createTestApp({
+    exchangeRate: async () => {
+      throw new Error('olinda down');
+    },
+  });
+  const s = await withNewInvoiceSetup(own);
+  const response = await s.call(
+    'POST',
+    '/invoices/new',
+    exportInvoice(s, { serviceCents: 617000 }),
+  );
+  expect(response.statusCode).toBe(502);
+  expect(response.json()).toMatchObject({ error: 'ptax_unavailable' });
+  expect(own.fake.issuedCount()).toBe(0);
+  await own.close();
 });

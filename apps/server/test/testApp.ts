@@ -2,6 +2,7 @@ import type { AccountContext } from '@notaflow/core';
 import { type FakeNacional, startFakeNacional } from '@notaflow/fake-nacional';
 import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
+import type { ExchangeRateSource } from '../src/exchange/ptax';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { buildApp } from '../src/app';
 import { createAccessVerifier } from '../src/auth/accessVerifier';
@@ -27,6 +28,7 @@ export async function createTestApp(
     logStream?: { write(line: string): void };
     onEmitterCreated?: (ctx: AccountContext, emitterId: string) => void;
     ptaxDispatcher?: Dispatcher;
+    exchangeRate?: ExchangeRateSource;
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -49,6 +51,15 @@ export async function createTestApp(
     verifyAccessToken: createAccessVerifier({ issuer: ISSUER, audience: AUDIENCE, jwks }),
     ...(options.logStream ? { logStream: options.logStream } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),
+    // A fixed PTAX of 5.0000 unless a test brings its own; the real one is a network call.
+    exchangeRate:
+      options.exchangeRate ??
+      (async (currency, date) => ({
+        currency,
+        date,
+        rateE4: 50_000,
+        source: 'PTAX venda, fechamento',
+      })),
     // Tests sync explicitly; a background sync could outlive the in-memory database.
     onEmitterCreated: options.onEmitterCreated ?? (() => {}),
     // Production waits 1, 5, and 15 seconds; a test would hit its own timeout.
