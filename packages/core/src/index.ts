@@ -15,6 +15,7 @@ export type {
   InvoiceIssuer,
   IssueOutcome,
   IssueRequest,
+  NewInvoiceInput,
 } from './ports/InvoiceIssuer';
 export { isSyncInvoice } from './ports/InvoiceProvider';
 export type { InvoiceProvider, SyncBatch, SyncDocument } from './ports/InvoiceProvider';

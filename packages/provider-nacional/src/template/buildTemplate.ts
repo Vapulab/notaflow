@@ -1,0 +1,97 @@
+import type { NewInvoiceInput } from '@notaflow/core';
+import type { ForeignTrade } from '../dps/types';
+import { percentText } from '../rules/simplesBands';
+import { taxRules } from '../rules/taxRules';
+import { toDpsCustomer } from './applyTemplate';
+import type { DpsTemplate } from './readTemplate';
+
+// The values the emitters' own export invoices use, for a service saved without export details.
+const EXPORT_DEFAULTS: NonNullable<NewInvoiceInput['service']['export']> = {
+  mode: '1',
+  providerLink: '0',
+  providerSupport: '02',
+  customerSupport: '02',
+  temporaryGoods: '1',
+  mdic: '0',
+};
+
+export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
+  const { emitter, service, customer } = input;
+  if (input.serviceCents <= 0) throw new RangeError('The service amount must be above zero.');
+  const brazilDocument = customer.document?.type === 'CNPJ' || customer.document?.type === 'CPF';
+  const abroad = !brazilDocument || customer.address?.kind === 'foreign';
+  const rules = taxRules(input.competence).forCustomer(abroad);
+  const address = customer.address;
+  if (abroad && address?.kind !== 'foreign') {
+    throw new RangeError('A customer abroad needs a foreign address.');
+  }
+  if (!abroad && address?.kind !== 'domestic') {
+    throw new RangeError('A Brazil customer needs a Brazilian address.');
+  }
+
+  const retained = !abroad && input.issRetained === true;
+  if (retained && input.issRate === undefined) {
+    throw new RangeError('A retained ISS needs the ISS rate.');
+  }
+  // The Sefin refuses pAliq from a Simples ME/EPP unless the ISS is retained (E0625).
+  const issRatePercent =
+    retained && rules.usesIssRate && input.issRate !== undefined
+      ? percentText(input.issRate)
+      : undefined;
+
+  return {
+    emitterMunicipality: emitter.municipality,
+    provider: {
+      cnpj: emitter.cnpj,
+      ...(emitter.municipalRegistration
+        ? { municipalRegistration: emitter.municipalRegistration }
+        : {}),
+      ...(emitter.phone ? { phone: emitter.phone } : {}),
+      ...(emitter.email ? { email: emitter.email } : {}),
+      simplesNacional: emitter.simplesNacional,
+      ...(emitter.simplesRegime ? { simplesRegime: emitter.simplesRegime } : {}),
+      specialRegime: emitter.specialRegime,
+    },
+    customer: toDpsCustomer(customer),
+    service: {
+      municipality: emitter.municipality,
+      nationalTaxCode: service.nationalTaxCode,
+      ...(service.municipalTaxCode ? { municipalTaxCode: service.municipalTaxCode } : {}),
+      description: service.description,
+      ...(service.nbsCode ? { nbsCode: service.nbsCode } : {}),
+      ...(rules.foreignTrade ? { foreignTrade: foreignTradeOf(input) } : {}),
+    },
+    serviceCents: input.serviceCents,
+    tax: {
+      issqnTaxation: rules.issqnTaxation,
+      ...(address?.kind === 'foreign' ? { resultCountry: address.country } : {}),
+      issRetention: retained ? '2' : '1',
+      ...(issRatePercent ? { issRatePercent } : {}),
+      pisCofins: { cst: service.pisCofinsCst ?? '00', retention: '0' },
+      simplesTotalPercent: percentText(input.simplesPercent),
+    },
+    ...(service.ibsCbs
+      ? {
+          ibsCbs: {
+            purpose: '0',
+            finalConsumer: customer.document?.type === 'CPF' ? '1' : '0',
+            operationCode: service.ibsCbs.operationCode,
+            destination: '0',
+            cst: service.ibsCbs.cst,
+            classCode: service.ibsCbs.classCode,
+          },
+        }
+      : {}),
+  };
+}
+
+function foreignTradeOf(input: NewInvoiceInput): ForeignTrade {
+  if (!input.foreign || input.foreign.amountCents <= 0) {
+    throw new RangeError('An export invoice needs the amount in the foreign currency.');
+  }
+  return {
+    ...(input.service.export ?? EXPORT_DEFAULTS),
+    currency: input.foreign.currencyCode,
+    amountInCurrencyCents: input.foreign.amountCents,
+  };
+}
