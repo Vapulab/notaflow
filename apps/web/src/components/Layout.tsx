@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
+import { formatCents, formatDate } from '../format';
 import { routeHref, useRoute } from '../router';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, ThemeToggle } from '../ui';
@@ -71,7 +72,14 @@ export const ERROR_TEXT: Record<string, string> = {
 
 export function errorText(error: unknown): string {
   if (error instanceof ApiError) {
-    return ERROR_TEXT[error.code] ?? `Erro inesperado (${error.code}).`;
+    const text = ERROR_TEXT[error.code] ?? `Erro inesperado (${error.code}).`;
+    const { expectedCents, rate, rateDate } = error.body;
+    if (error.code === 'amount_ptax_mismatch' && typeof expectedCents === 'number') {
+      const rateText = typeof rate === 'string' ? rate.replace('.', ',') : '';
+      const date = typeof rateDate === 'string' ? formatDate(`${rateDate}T12:00:00Z`) : '';
+      return `${text} Valor esperado: ${formatCents(expectedCents)} (PTAX ${rateText} de ${date}).`;
+    }
+    return text;
   }
   return 'Erro inesperado. Tente de novo.';
 }

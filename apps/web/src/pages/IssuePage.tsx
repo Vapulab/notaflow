@@ -1,17 +1,11 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import {
-  ApiError,
-  api,
-  type Customer,
-  type Draft,
-  type Emitter,
-  type ExchangeRate,
-  type IssueResult,
-} from '../api';
+import { api, type Customer, type Draft, type Emitter, type ExchangeRate } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
+import { IssueResultView } from '../components/IssueResultView';
 import { Layout, errorText } from '../components/Layout';
 import { showsEnvironment, useMe } from '../components/MeContext';
 import { useAsync } from '../components/useAsync';
+import { useIssueSend } from '../components/useIssueSend';
 import {
   brasiliaToday,
   centsInput,
@@ -21,7 +15,6 @@ import {
   parseCents,
   previousMonthEnd,
 } from '../format';
-import { routeHref } from '../router';
 import {
   Alert,
   Button,
@@ -30,7 +23,6 @@ import {
   Field,
   FORM_CLASSES,
   Input,
-  Link,
   SECTION_TITLE_CLASSES,
   Select,
   Spinner,
@@ -100,10 +92,9 @@ function IssueFlow(props: {
 }) {
   const { accountId, base, draft, emitter, customers } = props;
   const storageKey = `notaflow-issue-${draft.templateInvoiceId}`;
-  // A send that may have reached the Sefin survives a reload, with its key and values.
-  const [pendingSend] = useState(() => readPendingSend(storageKey));
+  const send = useIssueSend<Form>({ accountId, storageKey });
   const [form, setForm] = useState<Form>(
-    pendingSend?.form ?? {
+    send.restored ?? {
       competence: previousMonthEnd(brasiliaToday()),
       brl: centsInput(draft.serviceCents),
       foreign: draft.foreign ? centsInput(draft.foreign.amountCents) : '',
@@ -114,13 +105,6 @@ function IssueFlow(props: {
   const [rate, setRate] = useState<ExchangeRate | null>(null);
   const [rateError, setRateError] = useState<string | null>(null);
   const [rateLoading, setRateLoading] = useState(false);
-  // One key per review: a retry of the same confirmation must not issue twice.
-  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(pendingSend?.key ?? null);
-  // After an answer that does not say whether the invoice exists, only a retry with the same key is safe.
-  const [locked, setLocked] = useState(pendingSend !== null);
-  const [busy, setBusy] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(pendingSend ? UNCERTAIN_TEXT : null);
-  const [result, setResult] = useState<IssueResult | null>(null);
 
   const brlCents = parseCents(form.brl);
   const foreignCents = draft.foreign ? parseCents(form.foreign) : null;
@@ -139,8 +123,8 @@ function IssueFlow(props: {
   const namesEnvironment = showsEnvironment(useMe(), emitter.environment);
 
   // The review shows reviewed values; a rate arriving then must not change them.
-  const reviewing = useRef(idempotencyKey !== null);
-  reviewing.current = idempotencyKey !== null;
+  const reviewing = useRef(send.key !== null);
+  reviewing.current = send.key !== null;
   const currencyCode = draft.foreign?.currencyCode;
   useEffect(() => {
     if (!currencyCode || foreignCents === null || foreignCents <= 0 || !form.competence) return;
@@ -180,114 +164,33 @@ function IssueFlow(props: {
   function review(event: FormEvent) {
     event.preventDefault();
     if (!valid) return;
-    setSendError(null);
-    setIdempotencyKey(crypto.randomUUID());
+    send.startReview();
   }
 
-  async function confirm() {
-    if (!idempotencyKey || brlCents === null) return;
-    setBusy(true);
-    setSendError(null);
-    writePendingSend(storageKey, { key: idempotencyKey, form });
-    try {
-      const answer = await api.post<IssueResult>(
-        `${base}/invoices/issue`,
-        {
-          templateInvoiceId: draft.templateInvoiceId,
-          competence: form.competence,
-          serviceCents: brlCents,
-          ...(foreignCents ? { foreignAmountCents: foreignCents } : {}),
-          description: form.description.trim(),
-          ...(form.customerId ? { customerId: form.customerId } : {}),
-        },
-        { 'idempotency-key': idempotencyKey },
-      );
-      clearPendingSend(storageKey);
-      setLocked(false);
-      if (answer.status === 'issued') {
-        window.location.hash = routeHref({ name: 'invoice', accountId, invoiceId: answer.id });
-        return;
-      }
-      setResult(answer);
-    } catch (error) {
-      if (isDefinitive(error)) {
-        clearPendingSend(storageKey);
-        setLocked(false);
-        setSendError(errorText(error));
-      } else {
-        setLocked(true);
-        setSendError(UNCERTAIN_TEXT);
-      }
-    } finally {
-      setBusy(false);
-    }
+  function confirm() {
+    if (brlCents === null) return;
+    void send.send(form, `${base}/invoices/issue`, {
+      templateInvoiceId: draft.templateInvoiceId,
+      competence: form.competence,
+      serviceCents: brlCents,
+      ...(foreignCents ? { foreignAmountCents: foreignCents } : {}),
+      description: form.description.trim(),
+      ...(form.customerId ? { customerId: form.customerId } : {}),
+    });
   }
 
-  async function verify(id: string) {
-    setBusy(true);
-    try {
-      const answer = await api.post<IssueResult>(
-        `${base}/invoices/${encodeURIComponent(id)}/reconcile`,
-        {},
-      );
-      if (answer.status === 'issued') {
-        window.location.hash = routeHref({ name: 'invoice', accountId, invoiceId: id });
-        return;
-      }
-      setResult(answer);
-    } catch (error) {
-      setSendError(errorText(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (result) {
+  if (send.result) {
     return (
-      <Layout title="Emitir parecida" accountId={accountId}>
-        <EnvironmentBadge environment={emitter.environment} />
-        {result.status === 'rejected' ? (
-          <Alert variant="error">
-            <div className="flex flex-col gap-1">
-              <strong>A Sefin recusou a nota.</strong>
-              {result.errors?.map((e) => (
-                <span key={`${e.code}-${e.message}`}>
-                  {e.code}: {e.message}
-                </span>
-              ))}
-            </div>
-          </Alert>
-        ) : (
-          <Alert variant="warning">
-            A Sefin não confirmou. Não emita de novo; verifique o resultado.
-          </Alert>
-        )}
-        {sendError && <Alert variant="error">{sendError}</Alert>}
-        <div className="flex flex-wrap gap-3">
-          {result.status === 'rejected' ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setResult(null);
-                setIdempotencyKey(null);
-              }}
-            >
-              Voltar e editar
-            </Button>
-          ) : (
-            <Button variant="primary" disabled={busy} onClick={() => void verify(result.id)}>
-              Verificar agora
-            </Button>
-          )}
-          <Link href={routeHref({ name: 'invoice', accountId, invoiceId: result.id })}>
-            Ver a nota
-          </Link>
-        </div>
-      </Layout>
+      <IssueResultView
+        accountId={accountId}
+        title="Emitir parecida"
+        environment={emitter.environment}
+        send={send}
+      />
     );
   }
 
-  if (idempotencyKey) {
+  if (send.key) {
     const rows: { label: string; before: string; after: string }[] = [
       {
         label: 'Competência',
@@ -334,14 +237,14 @@ function IssueFlow(props: {
             </TBody>
           </Table>
         </Card>
-        {sendError && <Alert variant="error">{sendError}</Alert>}
+        {send.error && <Alert variant="error">{send.error}</Alert>}
         <div className="flex flex-wrap gap-3">
           <Button
             variant={production ? 'danger' : 'primary'}
-            disabled={busy}
-            onClick={() => void confirm()}
+            disabled={send.busy}
+            onClick={confirm}
           >
-            {locked
+            {send.locked
               ? 'Tentar de novo'
               : !namesEnvironment
                 ? 'Emitir nota'
@@ -349,12 +252,12 @@ function IssueFlow(props: {
                   ? 'Emitir em PRODUÇÃO'
                   : 'Emitir em produção restrita'}
           </Button>
-          {!locked && (
-            <Button variant="secondary" disabled={busy} onClick={() => setIdempotencyKey(null)}>
+          {!send.locked && (
+            <Button variant="secondary" disabled={send.busy} onClick={() => send.backToEdit()}>
               Voltar e editar
             </Button>
           )}
-          {busy && <Spinner label="Emitindo" />}
+          {send.busy && <Spinner label="Emitindo" />}
         </div>
       </Layout>
     );
@@ -428,48 +331,4 @@ function IssueFlow(props: {
       </form>
     </Layout>
   );
-}
-
-const UNCERTAIN_TEXT =
-  'Não houve resposta clara. A nota pode ter sido emitida: tente de novo aqui, sem emitir outra.';
-
-// A 4xx answer means the server refused before reserving a DPS number; anything else may have issued.
-function isDefinitive(error: unknown): boolean {
-  return (
-    error instanceof ApiError &&
-    error.status >= 400 &&
-    error.status < 500 &&
-    error.status !== 408 &&
-    error.status !== 429
-  );
-}
-
-interface PendingSend {
-  key: string;
-  form: Form;
-}
-
-function readPendingSend(storageKey: string): PendingSend | null {
-  try {
-    const raw = sessionStorage.getItem(storageKey);
-    return raw ? (JSON.parse(raw) as PendingSend) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writePendingSend(storageKey: string, value: PendingSend): void {
-  try {
-    sessionStorage.setItem(storageKey, JSON.stringify(value));
-  } catch {
-    // Without storage, a reload loses the key; the server state is still safe.
-  }
-}
-
-function clearPendingSend(storageKey: string): void {
-  try {
-    sessionStorage.removeItem(storageKey);
-  } catch {
-    // Nothing to clear.
-  }
 }

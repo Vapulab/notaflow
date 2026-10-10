@@ -203,3 +203,32 @@ test('a customer reviews without the environment: no PRODUÇÃO, and the button 
   expect(screen.queryByText('PRODUÇÃO')).toBeNull();
   expect(screen.getByRole('button', { name: 'Emitir nota' })).toBeTruthy();
 });
+
+test('a PTAX failure on send is definitive: nothing was reserved, the user can go back', async () => {
+  stubApi({ ...base, '/api/accounts/acc/invoices/issue': { error: 'ptax_unavailable' } });
+  renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const user = userEvent.setup();
+  await clickReview(user);
+  await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
+  expect(await screen.findByRole('button', { name: /voltar e editar/i })).toBeTruthy();
+  expect(screen.getByText(ERROR_TEXT.ptax_unavailable ?? '')).toBeTruthy();
+  expect(sessionStorage.length).toBe(0);
+});
+
+test('a PTAX mismatch on send shows the expected amount and the rate', async () => {
+  stubApi({
+    ...base,
+    '/api/accounts/acc/invoices/issue': {
+      error: 'amount_ptax_mismatch',
+      expectedCents: 670321,
+      rate: '5.4321',
+      rateDate: '2026-09-30',
+    },
+  });
+  renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const user = userEvent.setup();
+  await clickReview(user);
+  await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
+  expect(await screen.findByText(/6\.703,21.*5,4321 de 30\/09\/2026/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: /voltar e editar/i })).toBeTruthy();
+});
