@@ -3,14 +3,26 @@ import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { emitters, syncState } from '../db/schema';
 
-export type SyncStateRow = typeof syncState.$inferSelect;
+export type SyncStateRow = Pick<
+  typeof syncState.$inferSelect,
+  'emitterId' | 'environment' | 'lastNsu' | 'lastRunAt' | 'lastSuccessAt' | 'lastError'
+>;
+
+const CURSOR = {
+  emitterId: syncState.emitterId,
+  environment: syncState.environment,
+  lastNsu: syncState.lastNsu,
+  lastRunAt: syncState.lastRunAt,
+  lastSuccessAt: syncState.lastSuccessAt,
+  lastError: syncState.lastError,
+};
 
 export class SyncStateRepository {
   constructor(private readonly db: Database) {}
 
   get(ctx: AccountContext, emitterId: string, environment: Environment): SyncStateRow {
     const row = this.db
-      .select({ state: syncState })
+      .select({ state: CURSOR })
       .from(syncState)
       .innerJoin(emitters, eq(emitters.id, syncState.emitterId))
       .where(

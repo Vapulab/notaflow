@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountRole, AdminContext } from '@notaflow/core';
-import { count, eq, like, or } from 'drizzle-orm';
+import { count, eq, like, or, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { accounts, memberships, users } from '../db/schema';
 
@@ -75,7 +75,12 @@ export class AdminRepository {
     this.db
       .insert(memberships)
       .values({ id: randomUUID(), accountId, userId, role })
-      .onConflictDoUpdate({ target: [memberships.userId, memberships.accountId], set: { role } })
+      .onConflictDoUpdate({
+        target: [memberships.userId, memberships.accountId],
+        // The unique index counts only active memberships.
+        targetWhere: sql`deleted_at IS NULL`,
+        set: { role },
+      })
       .run();
     return true;
   }

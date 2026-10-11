@@ -1,11 +1,28 @@
 import { sql } from 'drizzle-orm';
 import { blob, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+// Business tables are never deleted from (a trigger refuses it): removal sets deleted_at.
+// A migration that rebuilds a table must recreate its <table>_no_delete trigger; a test checks it.
 const id = () => text('id').primaryKey();
 const createdAt = () =>
   integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .default(sql`(unixepoch() * 1000)`);
+
+const updatedAt = () =>
+  integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`);
+
+// Who and when for a business row; a null *_by means the system (the sync, the scheduler).
+const changedAt = () =>
+  integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date());
+const authors = () => ({ createdBy: text('created_by'), updatedBy: text('updated_by') });
+const removal = () => ({
+  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
+  deletedBy: text('deleted_by'),
+});
+const active = sql`deleted_at IS NULL`;
 
 export const accounts = sqliteTable('accounts', {
   id: id(),
@@ -15,18 +32,28 @@ export const accounts = sqliteTable('accounts', {
     .default('active'),
   plan: text('plan').notNull().default(''),
   createdAt: createdAt(),
+  updatedAt: changedAt(),
+  ...authors(),
+  ...removal(),
 });
 
-export const users = sqliteTable('users', {
-  id: id(),
-  email: text('email').notNull().unique(),
-  name: text('name').notNull(),
-  platformRole: text('platform_role', { enum: ['admin', 'user'] })
-    .notNull()
-    .default('user'),
-  lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
-  createdAt: createdAt(),
-});
+export const users = sqliteTable(
+  'users',
+  {
+    id: id(),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    platformRole: text('platform_role', { enum: ['admin', 'user'] })
+      .notNull()
+      .default('user'),
+    lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (table) => [uniqueIndex('users_email_active').on(table.email).where(active)],
+);
 
 export const memberships = sqliteTable(
   'memberships',
@@ -40,41 +67,53 @@ export const memberships = sqliteTable(
       .references(() => accounts.id),
     role: text('role', { enum: ['owner', 'member'] }).notNull(),
     createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
   },
-  (table) => [uniqueIndex('memberships_user_account').on(table.userId, table.accountId)],
+  (table) => [
+    uniqueIndex('memberships_user_account').on(table.userId, table.accountId).where(active),
+  ],
 );
 
-export const emitters = sqliteTable('emitters', {
-  id: id(),
-  accountId: text('account_id')
-    .notNull()
-    .references(() => accounts.id),
-  cnpj: text('cnpj').notNull().unique(),
-  companyName: text('company_name').notNull(),
-  municipalRegistration: text('municipal_registration'),
-  municipality: text('municipality').notNull(),
-  simplesNacional: text('simples_nacional', { enum: ['1', '2', '3'] }).notNull(),
-  simplesRegime: text('simples_regime', { enum: ['1', '2', '3'] }),
-  specialRegime: text('special_regime').notNull(),
-  provider: text('provider', { enum: ['nacional'] })
-    .notNull()
-    .default('nacional'),
-  environment: text('environment', { enum: ['producao', 'producao_restrita'] })
-    .notNull()
-    .default('producao_restrita'),
-  dpsSeries: text('dps_series').notNull(),
-  nextDpsNumber: integer('next_dps_number').notNull().default(1),
-  // Percents are integers in hundredths (6.00% = 600), like amounts in cents.
-  simplesAnnex: text('simples_annex', { enum: ['III', 'V'] }),
-  simplesBand: integer('simples_band'),
-  simplesPercent: integer('simples_percent'),
-  issRate: integer('iss_rate'),
-  ibscbsRegime: text('ibscbs_regime', { enum: ['inside_das', 'regular'] })
-    .notNull()
-    .default('inside_das'),
-  ibscbsRegimeFrom: text('ibscbs_regime_from'),
-  createdAt: createdAt(),
-});
+export const emitters = sqliteTable(
+  'emitters',
+  {
+    id: id(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    cnpj: text('cnpj').notNull(),
+    companyName: text('company_name').notNull(),
+    municipalRegistration: text('municipal_registration'),
+    municipality: text('municipality').notNull(),
+    simplesNacional: text('simples_nacional', { enum: ['1', '2', '3'] }).notNull(),
+    simplesRegime: text('simples_regime', { enum: ['1', '2', '3'] }),
+    specialRegime: text('special_regime').notNull(),
+    provider: text('provider', { enum: ['nacional'] })
+      .notNull()
+      .default('nacional'),
+    environment: text('environment', { enum: ['producao', 'producao_restrita'] })
+      .notNull()
+      .default('producao_restrita'),
+    dpsSeries: text('dps_series').notNull(),
+    nextDpsNumber: integer('next_dps_number').notNull().default(1),
+    // Percents are integers in hundredths (6.00% = 600), like amounts in cents.
+    simplesAnnex: text('simples_annex', { enum: ['III', 'V'] }),
+    simplesBand: integer('simples_band'),
+    simplesPercent: integer('simples_percent'),
+    issRate: integer('iss_rate'),
+    ibscbsRegime: text('ibscbs_regime', { enum: ['inside_das', 'regular'] })
+      .notNull()
+      .default('inside_das'),
+    ibscbsRegimeFrom: text('ibscbs_regime_from'),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (table) => [uniqueIndex('emitters_cnpj_active').on(table.cnpj).where(active)],
+);
 
 export const certificates = sqliteTable('certificates', {
   id: id(),
@@ -94,6 +133,9 @@ export const certificates = sqliteTable('certificates', {
     .notNull()
     .references(() => users.id),
   uploadedAt: createdAt(),
+  updatedAt: changedAt(),
+  ...authors(),
+  ...removal(),
 });
 
 export const auditLog = sqliteTable('audit_log', {
@@ -106,11 +148,6 @@ export const auditLog = sqliteTable('audit_log', {
   detail: text('detail'),
   at: createdAt(),
 });
-
-const updatedAt = () =>
-  integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`);
 
 export const customers = sqliteTable(
   'customers',
@@ -134,13 +171,13 @@ export const customers = sqliteTable(
       .default(sql`'[]'`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
+    ...authors(),
+    ...removal(),
   },
   (table) => [
-    uniqueIndex('customers_emitter_document').on(
-      table.emitterId,
-      table.documentType,
-      table.document,
-    ),
+    uniqueIndex('customers_emitter_document')
+      .on(table.emitterId, table.documentType, table.document)
+      .where(active),
   ],
 );
 
@@ -172,8 +209,12 @@ export const services = sqliteTable(
     archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
+    ...authors(),
+    ...removal(),
   },
-  (table) => [uniqueIndex('services_emitter_import_key').on(table.emitterId, table.importKey)],
+  (table) => [
+    uniqueIndex('services_emitter_import_key').on(table.emitterId, table.importKey).where(active),
+  ],
 );
 
 export const invoices = sqliteTable(
@@ -215,6 +256,8 @@ export const invoices = sqliteTable(
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
+    updatedBy: text('updated_by'),
+    ...removal(),
   },
   (table) => [
     uniqueIndex('invoices_emitter_idempotency_key').on(table.emitterId, table.idempotencyKey),
@@ -237,6 +280,9 @@ export const invoiceEvents = sqliteTable(
     xmlGzip: blob('xml_gzip', { mode: 'buffer' }).notNull(),
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
+    updatedAt: changedAt(),
+    updatedBy: text('updated_by'),
+    ...removal(),
   },
   (table) => [uniqueIndex('invoice_events_key_code').on(table.accessKey, table.code)],
 );
@@ -252,6 +298,10 @@ export const syncState = sqliteTable(
     lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
     lastSuccessAt: integer('last_success_at', { mode: 'timestamp_ms' }),
     lastError: text('last_error'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
   },
   (table) => [primaryKey({ columns: [table.emitterId, table.environment] })],
 );

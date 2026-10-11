@@ -95,7 +95,8 @@ export class ServiceRepository {
         origin: 'imported',
         importKey,
       })
-      .onConflictDoNothing({ target: [services.emitterId, services.importKey] })
+      // Any unique index: Drizzle 0.45 cannot write the WHERE of a partial index for DO NOTHING.
+      .onConflictDoNothing()
       .run();
   }
 
