@@ -39,7 +39,7 @@ test('an issued invoice links to issue similar', async () => {
   stubApi({ '/api/accounts/acc/invoices/inv1': issuedInvoice });
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const link = await screen.findByRole('link', { name: 'Emitir parecida' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/inv1/issue');
+  expect(link.getAttribute('href')).toBe('/app/acc/notas/inv1/emitir');
 });
 
 test('cancel in production names the environment and needs a 15-character justification', async () => {

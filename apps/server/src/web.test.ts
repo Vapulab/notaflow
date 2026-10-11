@@ -54,3 +54,24 @@ test('an unknown /api path still needs authentication, also when percent-encoded
   expect((await app.inject({ url: '/api/nao-existe' })).statusCode).toBe(401);
   expect((await app.inject({ url: '/%61pi/nao-existe' })).statusCode).toBe(401);
 });
+
+test.each([
+  '/app',
+  '/app/x/notas',
+  '/app/x/notas/nova?cliente=c',
+  '/entrar',
+  '/cadastro',
+  '/recuperar-senha',
+  '/admin',
+])('a reload on %s serves the app', async (url) => {
+  const response = await app.inject({ url });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toContain('text/html');
+  expect(response.body).toContain('id="root"');
+});
+
+test('an /api path never falls back to the app page', async () => {
+  const response = await app.inject({ url: '/api/nothing' });
+  expect(response.statusCode).toBe(401);
+  expect(response.headers['content-type']).toContain('application/json');
+});

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ApiError, api, type IssueResult } from '../api';
-import { routeHref } from '../router';
+import { navigate } from '../router';
 import { errorText } from './Layout';
 
 export const UNCERTAIN_TEXT =
@@ -46,7 +46,7 @@ export function useIssueSend<F>(options: { accountId: string; storageKey: string
   const base = `/api/accounts/${encodeURIComponent(accountId)}`;
 
   const open = (invoiceId: string) => {
-    window.location.hash = routeHref({ name: 'invoice', accountId, invoiceId });
+    navigate({ name: 'invoice', accountId, invoiceId });
   };
 
   return {

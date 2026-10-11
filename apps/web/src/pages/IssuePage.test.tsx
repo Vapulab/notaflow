@@ -20,7 +20,7 @@ afterEach(() => {
   sessionStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  window.location.hash = '';
+  window.history.replaceState(null, '', '/');
 });
 
 const draft = {
@@ -143,7 +143,9 @@ test('an issued invoice opens its detail', async () => {
   const user = userEvent.setup();
   await clickReview(user);
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
-  await waitFor(() => expect(window.location.hash).toBe('#/a/acc/invoices/new1'));
+  await waitFor(() =>
+    expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/new1'),
+  );
 });
 
 test('after an uncertain send error the form cannot go back, and a retry keeps the key', async () => {

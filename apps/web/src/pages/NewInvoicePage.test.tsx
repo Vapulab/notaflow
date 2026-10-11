@@ -21,7 +21,7 @@ afterEach(() => {
   sessionStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  window.location.hash = '';
+  window.history.replaceState(null, '', '/');
 });
 
 const emitter = {
@@ -145,7 +145,7 @@ test('without a fiscal configuration the owner gets a link and a member is told 
   );
   const owner = renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
   const link = await screen.findByRole('link', { name: 'Configurar o emitente' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/emitters/em1');
+  expect(link.getAttribute('href')).toBe('/app/acc/emitentes/em1');
   expect(screen.queryByLabelText('Competência')).toBeNull();
   owner.unmount();
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user', 'member'));
@@ -171,7 +171,9 @@ test('a Brazil invoice: the service fills the description, and the default band 
   expect(within(review).getByText('Cliente Teste Ltda')).toBeTruthy();
   expect(within(review).getByText('Faixa 2 – 11,20%')).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
-  await waitFor(() => expect(window.location.hash).toBe('#/a/acc/invoices/new1'));
+  await waitFor(() =>
+    expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/new1'),
+  );
   const [post] = sent(calls);
   expect(new Headers(post?.init?.headers).get('idempotency-key')).toBe(KEY);
   expect(JSON.parse(String(post?.init?.body))).toEqual({
@@ -436,7 +438,7 @@ test('a pending send can be discarded after a warning, and the form starts fresh
   await user.click(screen.getByRole('button', { name: 'Descartar envio pendente' }));
   const dialog = screen.getByRole('dialog', { name: 'Descartar envio pendente' });
   expect(within(dialog).getByRole('link', { name: 'Ver as notas' }).getAttribute('href')).toBe(
-    '#/a/acc/invoices',
+    '/app/acc/notas',
   );
   await user.click(within(dialog).getByRole('button', { name: 'Descartar' }));
   expect(await screen.findByLabelText('Competência')).toBeTruthy();

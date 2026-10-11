@@ -30,7 +30,7 @@ test('the customer list links each customer and searches by name or document', a
   const calls = stubApi({ '/api/accounts/acc/customers': [customer] });
   render(<CustomersPage accountId="acc" />);
   const link = await screen.findByRole('link', { name: 'Cliente Exemplo Ltda' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/customers/c1');
+  expect(link.getAttribute('href')).toBe('/app/acc/clientes/c1');
   const user = userEvent.setup();
   await user.type(screen.getByLabelText(/pesquisar/i), 'Exemplo');
   await waitFor(() => expect(calls.some((c) => c.url.endsWith('?q=Exemplo'))).toBe(true));
@@ -102,5 +102,5 @@ test('the customer page links to Nova nota for that customer', async () => {
   stubApi({ '/api/accounts/acc/customers/c1': customer });
   render(<CustomerPage accountId="acc" customerId="c1" />);
   const link = await screen.findByRole('link', { name: 'Emitir nota' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/new?customer=c1');
+  expect(link.getAttribute('href')).toBe('/app/acc/notas/nova?cliente=c1');
 });

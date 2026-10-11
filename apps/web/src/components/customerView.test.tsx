@@ -10,7 +10,7 @@ import { Layout } from './Layout';
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  window.location.hash = '';
+  window.history.replaceState(null, '', '/');
 });
 
 test('a customer never sees the production badge; a test invoice is still marked', () => {
