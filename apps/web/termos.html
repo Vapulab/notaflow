@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Termos de uso do NotaFlow</title>
+    <meta name="description" content="As regras de uso do NotaFlow, o serviço de emissão de NFS-e pelo sistema nacional." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/termos" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/site.ts"></script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <header class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-5">
+      <a href="/" class="font-display text-xl font-semibold text-primary">NotaFlow</a>
+      <button
+        type="button"
+        data-theme-toggle
+        title="Alternar entre tema claro e escuro"
+        aria-label="Alternar entre tema claro e escuro"
+        class="rounded border border-border px-2 py-1 text-sm text-muted hover:text-fg focus:outline-none focus:ring-2 focus:ring-primary/50"
+      >
+        <span class="dark:hidden" aria-hidden="true">☾</span>
+        <span class="hidden dark:inline" aria-hidden="true">☀</span>
+      </button>
+    </header>
+
+    <main class="legal-text mx-auto max-w-3xl px-5 pb-20">
+      <h1 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Termos de uso</h1>
+      <p class="text-sm text-muted">Versão de 11 de outubro de 2026.</p>
+
+      <p>
+        Estes termos regem o uso do NotaFlow, um serviço on-line para emitir, copiar, consultar e
+        cancelar a Nota Fiscal de Serviço eletrônica (NFS-e) pelo sistema nacional. Ao criar uma
+        conta ou continuar a usar o serviço, você declara que leu e aceita estes termos e a
+        <a href="/privacidade">Política de privacidade</a>.
+      </p>
+
+      <h2>1. Quem oferece o serviço</h2>
+      <p>
+        O NotaFlow é oferecido por TALITA PIRES DALCORTIVO CONSULTORIA EM TECNOLOGIA DA INFORMACAO
+        LTDA, nome fantasia Vapulab, CNPJ 67.819.917/0001-93, com sede na Rua Alexander Graham Bell,
+        434, Parque Jamaica, Londrina/PR, CEP 86063-250 ("Vapulab", "nós"). Contato:
+        <a href="mailto:contato@vapulab.com">contato@vapulab.com</a>.
+      </p>
+
+      <h2>2. O que o NotaFlow faz</h2>
+      <ul>
+        <li>Emite NFS-e no sistema nacional da NFS-e, em nome do emitente cadastrado, com o certificado digital dele.</li>
+        <li>Copia uma nota que já existe para emitir outra parecida.</li>
+        <li>Cancela uma nota, quando o sistema nacional permite.</li>
+        <li>Importa do sistema nacional as notas do emitente e os clientes delas.</li>
+        <li>Calcula a alíquota do Simples Nacional e o ISS retido pelas tabelas da Lei Complementar 123/2006, a partir da receita que você informa, e converte valores em moeda estrangeira pela PTAX do Banco Central.</li>
+      </ul>
+      <p>
+        O NotaFlow não é um escritório de contabilidade e não presta orientação tributária, contábil
+        ou jurídica. Ele não apura o Simples Nacional, não gera guias e não substitui o seu contador.
+      </p>
+
+      <h2>3. Quem pode usar</h2>
+      <ul>
+        <li>Pessoas maiores de 18 anos e capazes, que usam o serviço em nome de uma empresa.</li>
+        <li>Quem cadastra um emitente declara que tem poderes para representar a empresa e para usar o certificado digital dela.</li>
+        <li>O serviço atende hoje empresas optantes pelo Simples Nacional (ME e EPP) em municípios que emitem pelo sistema nacional da NFS-e.</li>
+      </ul>
+
+      <h2>4. A sua conta</h2>
+      <ul>
+        <li>Os dados do cadastro devem ser verdadeiros e atualizados.</li>
+        <li>Você é responsável por guardar a senha, os códigos e as passkeys, e pelo que é feito com o seu acesso. Avise-nos logo em <a href="mailto:contato@vapulab.com">contato@vapulab.com</a> se suspeitar de uso indevido.</li>
+        <li>O dono de uma conta pode convidar membros. O dono responde pelos acessos que concede e pode pedir a remoção de um membro pelo contato.</li>
+      </ul>
+
+      <h2>5. O certificado digital</h2>
+      <p>
+        Ao enviar o certificado A1 do emitente, você nos autoriza a usá-lo somente para assinar e
+        enviar ao sistema nacional os documentos que você ou um membro da sua conta pedir (emissão
+        e cancelamento), e para consultar no sistema nacional as notas do emitente. Não usamos o
+        certificado para nenhuma outra finalidade.
+      </p>
+      <p>
+        O certificado e a senha ficam cifrados. Você pode trocar o certificado a qualquer momento. Para revogar o uso, peça a remoção do
+        emitente pelo contato.
+        Quando o certificado vence, as emissões param até você enviar um novo.
+      </p>
+
+      <h2>6. As suas responsabilidades sobre as notas</h2>
+      <ul>
+        <li>Cada nota é emitida a partir dos dados que você informa ou confirma: cliente, serviço, valor, competência, receita dos últimos 12 meses e as opções da nota. Confira a revisão antes de emitir.</li>
+        <li>A nota emitida é um documento fiscal da sua empresa. As obrigações tributárias dela, inclusive a apuração e o pagamento dos tributos, são da sua empresa.</li>
+        <li>As alíquotas calculadas seguem as tabelas da lei para os dados informados. Mudanças na sua atividade, no anexo do Simples ou na receita podem mudar o resultado. Em caso de dúvida, confirme com a sua contabilidade.</li>
+        <li>É proibido usar o NotaFlow para emitir nota sem a prestação real do serviço, em nome de empresa que você não representa, ou para qualquer fraude.</li>
+      </ul>
+
+      <h2>7. Disponibilidade</h2>
+      <p>
+        Trabalhamos para que o serviço fique disponível, mas ele pode parar para manutenção ou por
+        falha nossa ou de terceiros. A emissão depende do sistema nacional da NFS-e, que é mantido
+        pelo governo e pode ficar fora do ar. Quando o sistema nacional não confirma uma emissão, o
+        NotaFlow consulta o resultado antes de tentar de novo, para evitar nota em duplicidade.
+      </p>
+
+      <h2>8. Preço</h2>
+      <p>
+        O NotaFlow é gratuito por enquanto. Se passarmos a cobrar, avisaremos por e-mail com pelo
+        menos 30 dias de antecedência, com o preço e as condições. A cobrança só começa se você
+        concordar; sem a concordância, você pode exportar o que precisar e encerrar a conta.
+      </p>
+
+      <h2>9. Uso aceitável</h2>
+      <ul>
+        <li>Não tente acessar contas, dados ou sistemas que não são seus, nem testar a segurança do serviço sem a nossa autorização por escrito.</li>
+        <li>Não sobrecarregue o serviço com acessos automatizados fora do uso normal.</li>
+        <li>Não use o serviço para atividade ilegal.</li>
+      </ul>
+
+      <h2>10. Suspensão e encerramento</h2>
+      <ul>
+        <li>Você pode encerrar a sua conta a qualquer momento pelo contato.</li>
+        <li>Podemos suspender ou encerrar uma conta que viole estes termos ou a lei, ou para proteger o serviço e outros usuários. Quando for possível, avisamos antes e dizemos o motivo.</li>
+        <li>As notas emitidas continuam válidas no sistema nacional, que é a fonte oficial delas. Os dados guardados pelo NotaFlow seguem a <a href="/privacidade">Política de privacidade</a>.</li>
+      </ul>
+
+      <h2>11. Responsabilidade</h2>
+      <p>
+        Respondemos pelos danos que causarmos, nos termos da lei. Não respondemos por dados
+        incorretos informados pelo usuário, por decisões tributárias da empresa, por falhas ou
+        indisponibilidade do sistema nacional da NFS-e, nem por uso indevido de acesso que o usuário
+        não protegeu. Nada nestes termos limita direitos que a lei garante e que não podem ser
+        afastados por contrato.
+      </p>
+
+      <h2>12. Propriedade intelectual</h2>
+      <p>
+        O NotaFlow, a sua marca e o seu código pertencem à Vapulab. Os dados que você coloca no
+        serviço continuam seus.
+      </p>
+
+      <h2>13. Mudanças nestes termos</h2>
+      <p>
+        Podemos mudar estes termos. Quando a mudança for relevante, avisamos por e-mail ou no próprio
+        serviço, e a nova versão só vale para você depois que você a aceitar. Se não concordar, você
+        pode encerrar a conta.
+      </p>
+
+      <h2>14. Lei e foro</h2>
+      <p>
+        Estes termos seguem a lei brasileira. Fica eleito o foro da comarca de Londrina/PR, salvo
+        quando a lei garantir a você o foro do seu domicílio.
+      </p>
+    </main>
+
+    <footer class="border-t border-border">
+      <div
+        class="mx-auto flex max-w-3xl flex-col gap-4 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>NotaFlow, um produto Vapulab.</p>
+        <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Rodapé">
+          <a class="hover:text-fg" href="/">Início</a>
+          <a class="hover:text-fg" href="/privacidade">Política de privacidade</a>
+          <a class="hover:text-fg" href="mailto:contato@vapulab.com">Contato</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
