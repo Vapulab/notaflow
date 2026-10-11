@@ -375,3 +375,17 @@ test('an override with a code outside the national list is refused before a numb
   );
   expect(invoiceCount(s)).toBe(0);
 });
+
+test('the ISS share of the band is the law, even below 2%', async () => {
+  const s = await withNewInvoiceSetup(t);
+  // RBT12 just above R$ 180.000,00: Anexo III band 2, effective 6.00%, ISS share 32%, so 1.92%.
+  const fiscal = await s.call('PUT', `/emitters/${s.emitterId}/fiscal`, {
+    simplesAnnex: 'III',
+    simplesRbt12Cents: 18_000_001,
+    ibscbsRegime: 'inside_das',
+  });
+  expect(fiscal.json()).toMatchObject({ issRate: 192 });
+  const response = await s.call('POST', '/invoices/new', brazilInvoice(s, { issRetained: true }));
+  expect(response.json()).toMatchObject({ status: 'issued' });
+  expect(xmlOf(t, s.a, response.json<{ id: string }>().id)).toContain('<pAliq>1.92</pAliq>');
+});

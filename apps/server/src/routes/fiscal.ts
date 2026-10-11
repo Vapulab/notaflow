@@ -1,4 +1,4 @@
-import { percentText, simplesBand, simplesRate } from '@notaflow/provider-nacional';
+import { percentText, simplesBand, simplesIssRate, simplesRate } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
@@ -9,7 +9,7 @@ import { EmitterRepository } from '../repos/EmitterRepository';
 interface FiscalBody {
   simplesAnnex: 'III' | 'V';
   simplesRbt12Cents: number;
-  issRate: number;
+  issRate?: number; // only in band 6, where the ISS goes outside the DAS
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom?: string;
 }
@@ -21,7 +21,7 @@ const fiscalSchema = {
   body: {
     type: 'object',
     additionalProperties: false,
-    required: ['simplesAnnex', 'simplesRbt12Cents', 'issRate', 'ibscbsRegime'],
+    required: ['simplesAnnex', 'simplesRbt12Cents', 'ibscbsRegime'],
     properties: {
       simplesAnnex: { enum: ['III', 'V'] },
       simplesRbt12Cents: { type: 'integer', minimum: 0, maximum: RBT12_LIMIT },
@@ -35,11 +35,12 @@ const fiscalSchema = {
 
 type Params = { accountId: string; emitterId: string };
 
-// The rates of pTotTribSN for a revenue: the effective rate, and the one of an export.
+// The rates of a revenue: pTotTribSN (the effective rate, and the one of an export) and the retained ISS.
 export function simplesRates(annex: 'III' | 'V', rbt12Cents: number) {
   return {
     domestic: simplesRate(annex, rbt12Cents, { export: false }),
     export: simplesRate(annex, rbt12Cents, { export: true }),
+    iss: simplesIssRate(annex, rbt12Cents),
   };
 }
 
@@ -96,13 +97,15 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
       const band = simplesBand(body.simplesRbt12Cents);
       if (band === null) throw new HttpError(400, 'outside_simples');
       const rates = simplesRates(body.simplesAnnex, body.simplesRbt12Cents);
+      const issRate = rates.iss ?? body.issRate;
+      if (issRate === undefined) throw new HttpError(400, 'iss_rate_required');
       const config = {
         simplesAnnex: body.simplesAnnex,
         simplesBand: band,
         simplesPercent: rates.domestic,
         simplesRbt12Cents: body.simplesRbt12Cents,
         simplesRbt12At: new Date(),
-        issRate: body.issRate,
+        issRate,
         ibscbsRegime: body.ibscbsRegime,
         ibscbsRegimeFrom: body.ibscbsRegimeFrom ?? null,
       };
@@ -118,7 +121,7 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
         detail:
           `${body.simplesAnnex}/${band} ${percentText(rates.domestic)}% ` +
           `(export ${percentText(rates.export)}%), ` +
-          `ISS ${percentText(body.issRate)}%, ${body.ibscbsRegime}` +
+          `ISS ${percentText(issRate)}%, ${body.ibscbsRegime}` +
           (body.ibscbsRegimeFrom ? ` from ${body.ibscbsRegimeFrom}` : ''),
       });
       return { ...config, rates };

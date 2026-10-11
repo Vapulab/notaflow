@@ -6,12 +6,14 @@ export interface SimplesRates {
   band: number;
   domestic: number; // hundredths
   export: number; // hundredths
+  iss: number | null; // hundredths; null in band 6, where the ISS goes outside the DAS
 }
 
 export const RBT12_LABEL = 'Receita bruta dos últimos 12 meses (R$)';
 
 export function ratesLine(rates: SimplesRates): string {
-  return `Faixa ${rates.band} · alíquota efetiva ${percentInput(rates.domestic)}% · exportação ${percentInput(rates.export)}%`;
+  const iss = rates.iss === null ? 'ISS fora do DAS' : `ISS retido ${percentInput(rates.iss)}%`;
+  return `Faixa ${rates.band} · alíquota efetiva ${percentInput(rates.domestic)}% · exportação ${percentInput(rates.export)}% · ${iss}`;
 }
 
 // The rate of a month comes from the 12 months before it, so a revenue informed before this month is old.

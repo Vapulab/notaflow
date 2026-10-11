@@ -28,6 +28,7 @@ import {
   formatServiceCode,
   issMinimumHint,
   parseCents,
+  parsePercent,
   percentInput,
   previousMonthEnd,
 } from '../format';
@@ -265,7 +266,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const more = form.more;
   const complete =
     more && service
-      ? completeBody(more, service, { canRetain, abroad })
+      ? completeBody(more, service, { canRetain, abroad, bandIss: config.rates.iss })
       : { body: {}, changes: [] as string[] };
   const setMore = (patch: Partial<Complete>) =>
     setForm((f) => (f.more ? { ...f, more: { ...f.more, ...patch } } : f));
@@ -602,7 +603,14 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               {canRetain && more.issRetained && (
-                <Field label="Alíquota de ISS (%)" hint={issMinimumHint(effectiveCode)}>
+                <Field
+                  label="Alíquota de ISS (%)"
+                  hint={
+                    config.rates.iss !== null && parsePercent(more.issRate) === config.rates.iss
+                      ? `Parcela do ISS na faixa ${config.simplesBand ?? ''} do Simples Nacional.`
+                      : issMinimumHint(effectiveCode)
+                  }
+                >
                   <AmountInput
                     unit="%"
                     value={more.issRate}

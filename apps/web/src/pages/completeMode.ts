@@ -27,9 +27,10 @@ export interface Complete {
 }
 
 export function completeFrom(service: Service | null, config: FiscalConfig): Complete {
+  const retainedRate = config.rates?.iss ?? config.issRate;
   return {
     issRetained: false,
-    issRate: config.issRate === null ? '' : percentInput(config.issRate),
+    issRate: retainedRate === null ? '' : percentInput(retainedRate),
     simplesOther: '',
     ...serviceFields(service),
   };
@@ -64,7 +65,8 @@ export interface CompleteBody {
 export function completeBody(
   more: Complete,
   service: Service,
-  options: { canRetain: boolean; abroad: boolean },
+  // bandIss: the ISS share of the band, which the server applies when no rate is sent.
+  options: { canRetain: boolean; abroad: boolean; bandIss: number | null },
 ): { body: CompleteBody; changes: string[] } | null {
   const body: CompleteBody = {};
   const changes: string[] = [];
@@ -73,7 +75,7 @@ export function completeBody(
     // LC 116 caps the ISS at 5%.
     if (rate === null || rate > 500) return null;
     body.issRetained = true;
-    body.issRate = rate;
+    if (rate !== options.bandIss) body.issRate = rate;
     changes.push(`ISS retido pelo cliente: ${percentInput(rate)}%`);
   }
   if (more.simplesOther.trim()) {

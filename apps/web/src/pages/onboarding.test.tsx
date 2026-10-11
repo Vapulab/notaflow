@@ -327,7 +327,6 @@ test('the fiscal step shows the activity and asks only the revenue and the payro
   expect(JSON.parse(String(put?.init?.body))).toEqual({
     simplesAnnex: 'III',
     simplesRbt12Cents: 25_000_000,
-    issRate: 200,
     ibscbsRegime: 'inside_das',
   });
 });

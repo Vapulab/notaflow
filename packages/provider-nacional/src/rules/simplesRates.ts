@@ -46,21 +46,35 @@ export function simplesBand(rbt12Cents: number): number | null {
   return index === -1 ? null : index + 1;
 }
 
-// The rate for pTotTribSN, in hundredths: the effective rate, without ISS, Cofins, and PIS on an export.
-export function simplesRate(
-  annex: SimplesAnnex,
-  rbt12Cents: number,
-  options: { export: boolean },
-): number {
+function effectiveRate(annex: SimplesAnnex, rbt12Cents: number) {
   const number = simplesBand(rbt12Cents);
   const row = number === null ? undefined : TABLES[annex][number - 1];
-  if (!row)
+  if (number === null || !row)
     throw new RangeError('A revenue above R$ 4,800,000.00 is outside the Simples Nacional.');
   // A company with no revenue yet pays the nominal rate of band 1.
   const effective =
     rbt12Cents === 0
       ? row.rate / 100
       : (((rbt12Cents * row.rate) / 10_000 - row.deduction) / rbt12Cents) * 100;
+  return { number, row, effective };
+}
+
+// The retained ISS rate in hundredths (CGSN 140, art. 27): the effective ISS share of the band.
+// Null in band 6, where the ISS goes outside the DAS at the municipal rate.
+export function simplesIssRate(annex: SimplesAnnex, rbt12Cents: number): number | null {
+  const { number, row, effective } = effectiveRate(annex, rbt12Cents);
+  if (row.share.iss === 0) return null;
+  if (annex === 'III' && number === 5 && effective > III_BAND5_CAP.threshold) return 500;
+  return Math.round((effective * row.share.iss) / 100 + 1e-9);
+}
+
+// The rate for pTotTribSN, in hundredths: the effective rate, without ISS, Cofins, and PIS on an export.
+export function simplesRate(
+  annex: SimplesAnnex,
+  rbt12Cents: number,
+  options: { export: boolean },
+): number {
+  const { number, row, effective } = effectiveRate(annex, rbt12Cents);
   let percent = effective;
   if (options.export) {
     if (annex === 'III' && number === 5 && effective > III_BAND5_CAP.threshold) {

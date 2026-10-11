@@ -32,6 +32,6 @@ export type {
 } from './http/NacionalClient';
 export { buildTemplate } from './template/buildTemplate';
 export { percentText, SIMPLES_BANDS } from './rules/simplesBands';
-export { type SimplesAnnex, simplesBand, simplesRate } from './rules/simplesRates';
+export { type SimplesAnnex, simplesBand, simplesIssRate, simplesRate } from './rules/simplesRates';
 export { minimumIssRate, taxRules } from './rules/taxRules';
 export type { CustomerRules, RuleSet } from './rules/taxRules';
