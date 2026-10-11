@@ -32,9 +32,10 @@ export async function startAnalytics(config: AnalyticsConfig | null): Promise<vo
   }
 }
 
-// Only the internal user id: never the e-mail or the name.
+// The internal id only, set as the id: identify() would merge a new anonymous id on every page load.
 export function identifyUser(userId: string): void {
-  client?.identify(userId);
+  if (!client || client.get_distinct_id() === userId) return;
+  client.reset({ bootstrap: { distinctID: userId, isIdentifiedID: true } });
 }
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | boolean>): void {

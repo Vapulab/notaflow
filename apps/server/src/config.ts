@@ -18,6 +18,8 @@ export interface Config {
   signup: { open: boolean; limitPerIpPerDay: number };
   // The project key is public by design: the browser sends it with every event.
   posthog: { token: string; host: string } | null;
+  // Only behind the Cloudflare tunnel: then cf-connecting-ip is the real client IP.
+  trustCloudflareIp: boolean;
   nacionalUrls?: { sefin: string; adn: string };
 }
 
@@ -100,6 +102,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('NACIONAL_FAKE_URL is not allowed with NODE_ENV=production');
   }
 
+  const trustCloudflareIp = env.TRUST_CLOUDFLARE_IP ?? 'false';
+  if (trustCloudflareIp !== 'true' && trustCloudflareIp !== 'false') {
+    problems.push('TRUST_CLOUDFLARE_IP must be true or false');
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
   return {
     nodeEnv: nodeEnv as Config['nodeEnv'],
@@ -120,6 +127,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
         ? null
         : { siteKey: turnstile[0], secretKey: turnstile[1] },
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
+    trustCloudflareIp: trustCloudflareIp === 'true',
     posthog: env.POSTHOG_TOKEN
       ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }
       : null,

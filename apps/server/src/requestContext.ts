@@ -19,10 +19,14 @@ const PRIVATE = [
   /^f[cd]/i,
 ];
 
-// The tunnel reaches the app from the private Docker network; only then is Cloudflare's header trusted.
-export function clientIp(remoteAddress: string, cfConnectingIp: string | undefined): string {
+// Cloudflare's header is trusted only when configured and the request comes from the private Docker network.
+export function clientIp(
+  remoteAddress: string,
+  cfConnectingIp: string | undefined,
+  trustCloudflare: boolean,
+): string {
   const remote = remoteAddress.replace(/^::ffff:/, '');
-  const behindTunnel = PRIVATE.some((range) => range.test(remote));
+  const behindTunnel = trustCloudflare && PRIVATE.some((range) => range.test(remote));
   if (behindTunnel && cfConnectingIp && isIP(cfConnectingIp)) return cfConnectingIp;
   return remote;
 }

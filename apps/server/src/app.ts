@@ -39,6 +39,7 @@ import { EmitterOnboarding } from './emitters/EmitterOnboarding';
 import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
+import { registerSecurityHeaders } from './securityHeaders';
 import { registerWeb } from './web';
 
 declare module 'fastify' {
@@ -111,6 +112,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       ip: clientIp(
         request.socket.remoteAddress ?? request.ip,
         typeof cf === 'string' ? cf : undefined,
+        config.trustCloudflareIp,
       ),
       userAgent: request.headers['user-agent'] ?? null,
       requestId: request.id,
@@ -192,6 +194,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
   });
   auditRoutes(app, db);
+  registerSecurityHeaders(app, {
+    appOrigin: config.appOrigin,
+    posthogHost: config.posthog?.host ?? null,
+    webRoot: deps.webRoot,
+  });
   if (deps.webRoot) registerWeb(app, deps.webRoot);
   return app;
 }

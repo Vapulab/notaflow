@@ -5,6 +5,7 @@ const posthog = vi.hoisted(() => ({
   identify: vi.fn(),
   capture: vi.fn(),
   reset: vi.fn(),
+  get_distinct_id: vi.fn(() => ''),
 }));
 vi.mock('posthog-js', () => ({ default: posthog }));
 
@@ -37,8 +38,16 @@ test('without a token nothing loads, and events go nowhere', async () => {
   expect(posthog.capture).not.toHaveBeenCalled();
 });
 
-test('a user is known by the internal id alone', async () => {
+test('a user is known by the internal id alone, set as the id, so page loads do not pile up merged ids', async () => {
   await startAnalytics({ token: 'phc_x', host: 'https://us.i.posthog.com' });
+  posthog.get_distinct_id = vi.fn(() => 'anon-1');
   identifyUser('u1');
-  expect(posthog.identify).toHaveBeenCalledWith('u1');
+  expect(posthog.reset).toHaveBeenCalledWith({
+    bootstrap: { distinctID: 'u1', isIdentifiedID: true },
+  });
+  expect(posthog.identify).not.toHaveBeenCalled();
+  // Already that user: nothing to do.
+  posthog.get_distinct_id = vi.fn(() => 'u1');
+  identifyUser('u1');
+  expect(posthog.reset).toHaveBeenCalledTimes(1);
 });

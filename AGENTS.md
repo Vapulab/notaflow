@@ -31,6 +31,8 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 
 [docs/README.md](docs/README.md) lists every category. Start with the [Architecture Overview](docs/ENGINEERING/ARCHITECTURE/OVERVIEW.md).
 
+A change to the architecture (a new external system, container, server component, queue, worker, or deployment piece) updates its C4 diagram in the same PR: the `.mmd` source and its PNG in [diagrams/](docs/ENGINEERING/ARCHITECTURE/diagrams/README.md).
+
 ## Commands
 
 | Command | What it does |
