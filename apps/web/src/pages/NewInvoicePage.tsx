@@ -31,6 +31,7 @@ import {
   previousMonthEnd,
 } from '../format';
 import { routeHref } from '../router';
+import { ServiceDialog } from './ServiceDialog';
 import {
   Alert,
   Button,
@@ -142,6 +143,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const foundCodes = useSearch<ServiceCode>(`${base}/service-codes`, codeQuery);
   const suggestedCodes = useSuggestedCodes(base, form.emitterId);
   const typingCode = codeQuery.trim() !== '';
+  const [registering, setRegistering] = useState<ServiceCode | null>(null);
 
   // A customer from the link ("Emitir nota" on the customer page) starts selected.
   const linked = props.customerId;
@@ -250,6 +252,12 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     abroad ? ', exportação sem ISS, PIS e COFINS' : ''
   })`;
   const activeServices = services.data.filter((s) => !s.archived);
+  // Only the owner registers services; a code already registered is not suggested again.
+  const registered = new Set(activeServices.map((s) => s.nationalTaxCode));
+  const suggestions =
+    roleIn(me, accountId) === 'owner'
+      ? suggestedCodes.codes.filter((c) => !registered.has(c.code))
+      : [];
   const currency = CURRENCIES[form.currencyCode];
 
   const canRetain = customer?.documentType === 'CNPJ';
@@ -274,12 +282,21 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     (!abroad || (foreignCents !== null && foreignCents > 0 && rate !== null && !rateLoading));
 
   function chooseService(serviceId: string) {
+    const suggestion = suggestions.find((c) => `suggested:${c.code}` === serviceId);
+    if (suggestion) {
+      setRegistering(suggestion);
+      return;
+    }
     const next = activeServices.find((s) => s.id === serviceId);
+    applyService(serviceId, next ?? null);
+  }
+
+  function applyService(serviceId: string, next: Service | null) {
     setForm((f) => ({
       ...f,
       serviceId,
       // A new service brings its own codes into "Mais opções".
-      more: f.more ? { ...f.more, ...serviceFields(next ?? null) } : null,
+      more: f.more ? { ...f.more, ...serviceFields(next) } : null,
       // The service text fills an empty description or replaces the one the last service filled.
       description:
         next && (f.description.trim() === '' || f.description === service?.description)
@@ -474,6 +491,15 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 {s.name} ({formatServiceCode(s.nationalTaxCode)})
               </option>
             ))}
+            {suggestions.length > 0 && (
+              <optgroup label={SUGGESTED_HEADING}>
+                {suggestions.map((c) => (
+                  <option key={c.code} value={`suggested:${c.code}`}>
+                    Cadastrar: {formatServiceCode(c.code)} – {c.description}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </Select>
         </Field>
         {activeServices.length === 0 && (
@@ -704,6 +730,20 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           />
         )}
       </Modal>
+      {registering && (
+        <ServiceDialog
+          accountId={accountId}
+          emitterId={form.emitterId}
+          service={null}
+          initialCode={registering}
+          onClose={() => setRegistering(null)}
+          onSaved={(created) => {
+            setRegistering(null);
+            services.reload();
+            if (created) applyService(created.id, created);
+          }}
+        />
+      )}
     </>
   );
 }

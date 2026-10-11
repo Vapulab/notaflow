@@ -532,3 +532,53 @@ test('Mais opções: a code suggested by the CNAEs can be chosen before any typi
   const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
   expect(body.overrides).toEqual({ nationalTaxCode: '010201' });
 });
+
+function withSuggestion() {
+  const services = [service];
+  const created = { ...service, id: 's2', name: 'Programação', nationalTaxCode: '010201' };
+  return routes({
+    [`${base}/emitters/em1/services`]: (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        services.push(created);
+        return created;
+      }
+      return services;
+    },
+    [`${base}/emitters/em1/service-codes/suggested`]: {
+      cnaes: ['6201501'],
+      codes: [{ code: '010201', description: 'Programação.' }],
+    },
+  });
+}
+
+test('Serviço: the owner registers a code suggested by the CNAEs, and it goes into the invoice', async () => {
+  const calls = stubApi(withSuggestion());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.selectOptions(
+    await screen.findByLabelText('Serviço'),
+    screen.getByRole('option', { name: 'Cadastrar: 01.02.01 – Programação.' }),
+  );
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByRole('combobox', { name: 'Código nacional' })).toHaveProperty(
+    'value',
+    '01.02.01 – Programação.',
+  );
+  await user.type(within(dialog).getByLabelText('Nome'), 'Programação');
+  await user.click(within(dialog).getByRole('button', { name: 'Salvar serviço' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() => expect(screen.getByLabelText('Serviço')).toHaveProperty('value', 's2'));
+  const post = calls.find((c) => c.init?.method === 'POST');
+  expect(JSON.parse(String(post?.init?.body))).toMatchObject({
+    name: 'Programação',
+    nationalTaxCode: '010201',
+    description: 'Programação.',
+  });
+});
+
+test('Serviço: a member, who cannot register services, sees no suggestions there', async () => {
+  stubApi(withSuggestion());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user', 'member'));
+  await screen.findByLabelText('Serviço');
+  expect(screen.queryByRole('option', { name: /^Cadastrar:/ })).toBeNull();
+});

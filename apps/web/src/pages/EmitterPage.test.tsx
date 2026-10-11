@@ -231,3 +231,25 @@ test("before typing, the code field suggests the codes of the company's CNAEs, m
   ).toBeTruthy();
   expect(within(dialog).getByRole('option', { name: '01.02.01 – Programação.' })).toBeTruthy();
 });
+
+test('a code suggested before any typing is the code the new service saves', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [{ code: '010201', description: 'Programação.' }],
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo serviço' }));
+  const dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('combobox', { name: 'Código nacional' }));
+  await user.click(await within(dialog).findByRole('option', { name: '01.02.01 – Programação.' }));
+  await user.type(within(dialog).getByLabelText('Nome'), 'Programação');
+  await user.click(within(dialog).getByRole('button', { name: 'Salvar serviço' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'POST')).toBe(true));
+  const post = calls.find((c) => c.init?.method === 'POST');
+  expect(JSON.parse(String(post?.init?.body))).toMatchObject({ nationalTaxCode: '010201' });
+});

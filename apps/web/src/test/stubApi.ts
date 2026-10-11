@@ -20,6 +20,7 @@ export interface StubCall {
 }
 
 // Answers by the longest matching URL prefix; a body with an `error` field is an error answer.
+// A function route answers by method or by state, such as a list that grows after a POST.
 export function stubApi(routes: Record<string, unknown>): StubCall[] {
   const calls: StubCall[] = [];
   vi.stubGlobal(
@@ -29,7 +30,8 @@ export function stubApi(routes: Record<string, unknown>): StubCall[] {
       const key = Object.keys(routes)
         .filter((prefix) => url.startsWith(prefix))
         .sort((a, b) => b.length - a.length)[0];
-      const body = key ? routes[key] : { error: 'not_found' };
+      const route = key ? routes[key] : { error: 'not_found' };
+      const body: unknown = typeof route === 'function' ? route(url, init) : route;
       const error =
         typeof body === 'object' && body !== null && 'error' in body ? String(body.error) : null;
       return new Response(JSON.stringify(body), {
