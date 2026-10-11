@@ -39,8 +39,9 @@ export class CertificateRepository {
         )
         .get();
       if (!emitter) throw new Error('Emitter not found in this account.');
+      // Crypto-shredding: the replaced certificate keeps its row, but its data key is destroyed.
       tx.update(certificates)
-        .set({ active: false, ...touched(ctx) })
+        .set({ active: false, wrappedKey: Buffer.alloc(0), ...touched(ctx) })
         .where(eq(certificates.emitterId, emitterId))
         .run();
       const id = randomUUID();
