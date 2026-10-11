@@ -6,6 +6,7 @@ import { registerAuth } from './auth/authHook';
 import { registerAuthRoutes } from './auth/authRoutes';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
+import { MailOutbox } from './mail/outbox';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
 import { handleError } from './httpError';
@@ -31,6 +32,7 @@ import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
 import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
+import { adminMailRoutes } from './routes/adminMail';
 import { memberRoutes } from './routes/members';
 import { onboardingRoutes } from './routes/onboarding';
 import { EmitterOnboarding } from './emitters/EmitterOnboarding';
@@ -43,6 +45,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     routeList: { method: string; url: string }[];
     syncService: SyncService;
+    mailOutbox: MailOutbox;
     auth: Auth;
   }
 }
@@ -117,11 +120,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   app.setErrorHandler(handleError);
 
-  const mailer =
+  const transport =
     deps.mailer ??
     (config.mail.resendApiKey
       ? resendMailer({ apiKey: config.mail.resendApiKey, from: config.mail.from })
       : consoleMailer((line) => app.log.info(line)));
+  // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
+  const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
+  app.decorate('mailOutbox', outbox);
+  const mailer = outbox.mailer();
   const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
   app.decorate('auth', auth);
   registerAuth(app, { config, identities: new IdentityRepository(db), auth });
@@ -151,7 +158,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   publicConfigRoutes(app, config);
   meRoutes(app, db);
   adminRoutes(app, db);
-  memberRoutes(app, { db, mailer, appOrigin: config.appOrigin });
+  memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });
+  adminMailRoutes(app, { db, outbox });
   onboardingRoutes(app, {
     db,
     emitterOnboarding: new EmitterOnboarding({

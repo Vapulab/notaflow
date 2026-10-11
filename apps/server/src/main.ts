@@ -8,6 +8,7 @@ import { SyncTargetRepository } from './repos/SyncTargetRepository';
 import { runAllOnce, startScheduler } from './sync/scheduler';
 
 const SYNC_INTERVAL_MS = 30 * 60_000;
+const MAIL_INTERVAL_MS = 30_000;
 
 try {
   const config = loadConfig(process.env);
@@ -29,6 +30,11 @@ try {
       }),
     SYNC_INTERVAL_MS,
     (error) => app.log.error({ err: error }, 'scheduled sync failed'),
+  );
+  startScheduler(
+    () => app.mailOutbox.deliverDue(),
+    MAIL_INTERVAL_MS,
+    (error) => app.log.error({ err: error }, 'mail outbox run failed'),
   );
 } catch (error) {
   if (error instanceof ConfigError) {

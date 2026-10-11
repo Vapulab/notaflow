@@ -80,6 +80,22 @@ The app has its own login (Better Auth, stage 3b): e-mail code, Google, password
 
 Cloudflare Access protected the hostname until the stage 3b cut-over. After it, the hostname is public; the tunnel, the WAF, and Turnstile stay.
 
+## E-mail outbox
+
+Every e-mail goes through the `mail_outbox` table before Resend.
+
+- **When a send fails:** the e-mail waits and is retried after 1, 5, 30, and 120 minutes. A worker in the server checks the table every 30 seconds.
+- **After the fifth failure:** the e-mail becomes `failed` (the dead letter), and the log has a line at error level with `gave up after 5 attempts`.
+- **Login codes:** they are never retried after their 10 minutes.
+- **What the table keeps:** the body of a sent e-mail, and of a dead code, is erased.
+- **Resending by hand:** the platform admin sees the dead letters under "E-mails não entregues" in `/admin` and can resend an invite or a welcome e-mail.
+
+To list the dead letters from the VPS:
+
+```sh
+docker exec -w /repo/apps/server notaflow-app-1 node -e "const D=require('better-sqlite3');const db=new D(process.env.DATABASE_PATH,{readonly:true});console.log(db.prepare(\"select id, kind, created_at, attempts, last_error from mail_outbox where status='failed'\").all())"
+```
+
 ## The tunnel
 
 The tunnel is shared. Before an edit, copy `config.yml` with a date suffix; after `docker compose restart tunnel` in `/opt/northub`, check that `https://vapulab.com`, `https://northub.tech`, and `https://notaflow.vapulab.com/api/health` still answer.

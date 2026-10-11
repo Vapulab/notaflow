@@ -2,14 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
-import type { Mailer } from '../mail/mailer';
+import type { MailOutbox } from '../mail/outbox';
 import { inviteEmail } from '../mail/templates';
 import { AuditLog } from '../repos/AuditLog';
 import { MemberRepository } from '../repos/MemberRepository';
 
 export function memberRoutes(
   app: FastifyInstance,
-  deps: { db: Database; mailer: Mailer; appOrigin: string },
+  deps: { db: Database; outbox: MailOutbox; appOrigin: string },
 ): void {
   const { db } = deps;
   const members = new MemberRepository(db);
@@ -41,21 +41,18 @@ export function memberRoutes(
       const identity = identityOf(request);
       const accountName =
         identity.memberships.find((m) => m.accountId === ctx.accountId)?.accountName ?? '';
-      let emailSent = true;
-      try {
-        await deps.mailer({
+      // False when the first attempt failed: the outbox retries it in the next minutes.
+      const emailSent = await deps.outbox.send(
+        {
           to: request.body.email.toLowerCase(),
           ...inviteEmail({
             inviter: identity.name ? `${identity.name} (${identity.email})` : identity.email,
             accountName,
             loginUrl: `${deps.appOrigin}/entrar`,
           }),
-        });
-      } catch (error) {
-        // The member exists either way; the owner learns that the e-mail did not go and can tell them.
-        emailSent = false;
-        request.log.warn({ err: error }, 'invite e-mail failed');
-      }
+        },
+        'invite',
+      );
       audit.record({
         userEmail: identityOf(request).email,
         accountId: ctx.accountId,

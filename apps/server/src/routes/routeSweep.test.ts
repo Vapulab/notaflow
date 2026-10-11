@@ -41,6 +41,7 @@ beforeAll(async () => {
     userId: a.userId,
     invoiceId: invoice.id,
     customerId: customerId ?? '',
+    id: '1', // a mail outbox row
   };
 });
 afterAll(() => t.close());

@@ -121,6 +121,7 @@ export function AdminPage() {
       <NewAccountForm act={act} />
       <NewUserForm act={act} />
       <SetMemberForm act={act} accounts={accounts.data ?? []} />
+      <FailedMail />
       <Card>
         <h2 className={SECTION_TITLE_CLASSES}>Auditoria (últimas 100)</h2>
         <ul className="flex flex-col gap-1 text-sm">
@@ -290,5 +291,81 @@ function SetMemberForm({ act, accounts }: { act: Act; accounts: AdminAccount[] }
         </Button>
       </div>
     </form>
+  );
+}
+
+interface FailedMailRow {
+  id: number;
+  kind: 'code' | 'invite' | 'welcome' | 'notice';
+  to: string;
+  subject: string;
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+}
+
+// The outbox gave up on these after its retries; a login code is useless once expired.
+function FailedMail() {
+  const failed = useAsync(() => api.get<FailedMailRow[]>('/api/admin/mail/failed'), []);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function retry(id: number) {
+    try {
+      const answer = await api.post<{ sent: boolean }>(`/api/admin/mail/${id}/retry`, {});
+      setMessage(
+        answer.sent ? 'E-mail reenviado.' : 'O reenvio falhou de novo. Ele volta para a fila.',
+      );
+      failed.reload();
+    } catch (error) {
+      setMessage(errorText(error));
+    }
+  }
+
+  return (
+    <Card>
+      <section aria-labelledby="failed-mail" className="flex flex-col gap-3">
+        <h2 id="failed-mail" className={SECTION_TITLE_CLASSES}>
+          E-mails não entregues
+        </h2>
+        {message && <Alert variant="info">{message}</Alert>}
+        {failed.data?.length === 0 && (
+          <p className="text-sm text-muted">Nenhum. Tudo foi entregue.</p>
+        )}
+        {failed.data && failed.data.length > 0 && (
+          <Table>
+            <THead>
+              <tr>
+                <TH>Para</TH>
+                <TH>Assunto</TH>
+                <TH>Tentativas</TH>
+                <TH>Último erro</TH>
+                <TH>Criado em</TH>
+                <TH>Ação</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {failed.data.map((row) => (
+                <tr key={row.id}>
+                  <TD>{row.to}</TD>
+                  <TD>{row.subject}</TD>
+                  <TD>{row.attempts}</TD>
+                  <TD>{row.lastError ?? ''}</TD>
+                  <TD>{formatDateTime(row.createdAt)}</TD>
+                  <TD>
+                    {row.kind === 'code' ? (
+                      <span className="text-sm text-muted">Código expirado, não se reenvia</span>
+                    ) : (
+                      <Button variant="secondary" size="sm" onClick={() => void retry(row.id)}>
+                        Reenviar
+                      </Button>
+                    )}
+                  </TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </section>
+    </Card>
   );
 }
