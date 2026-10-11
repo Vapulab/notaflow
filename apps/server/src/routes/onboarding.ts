@@ -253,6 +253,7 @@ export function onboardingRoutes(
               : {}),
             specialRegime: advanced.specialRegime ?? '0',
             dpsSeries: advanced.dpsSeries ?? '900',
+            cnaes: [...(draft.cnae ? [draft.cnae] : []), ...(draft.secondaryCnaes ?? [])],
           },
           {
             expectedCnpj: draft.cnpj,

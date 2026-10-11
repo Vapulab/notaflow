@@ -1,0 +1,1 @@
+ALTER TABLE `emitters` ADD `cnaes` text;

@@ -45,6 +45,14 @@ function simplesOption(simples: unknown, mei: unknown): '1' | '2' | '3' {
 const text = (value: unknown): string | null =>
   value === null || value === undefined || value === '' ? null : String(value);
 
+// The CNAE codes of a list of activities, as seven digits; BrasilAPI sends code 0 for none.
+function cnaeCodes(list: unknown, key: string): string[] {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((item) => String((item as Record<string, unknown>)[key] ?? '').padStart(7, '0'))
+    .filter((code) => /^\d{7}$/.test(code) && code !== '0000000');
+}
+
 function fromBrasilApi(cnpj: string, body: Record<string, unknown>) {
   return {
     status: String(body.descricao_situacao_cadastral ?? ''),
@@ -56,6 +64,7 @@ function fromBrasilApi(cnpj: string, body: Record<string, unknown>) {
       uf: String(body.uf ?? ''),
       cnae: text(body.cnae_fiscal),
       cnaeDescription: text(body.cnae_fiscal_descricao),
+      secondaryCnaes: cnaeCodes(body.cnaes_secundarios, 'codigo'),
       simplesNacional: simplesOption(body.opcao_pelo_simples, body.opcao_pelo_mei),
       source: 'brasilapi',
     } satisfies CnpjDraft,
@@ -77,6 +86,7 @@ function fromCnpja(cnpj: string, body: Record<string, unknown>) {
       uf: String(address.state ?? ''),
       cnae: text((body.mainActivity as { id?: unknown } | undefined)?.id),
       cnaeDescription: text((body.mainActivity as { text?: unknown } | undefined)?.text),
+      secondaryCnaes: cnaeCodes(body.sideActivities, 'id'),
       simplesNacional: simplesOption(optant(company.simples), optant(company.simei)),
       source: 'cnpja',
     } satisfies CnpjDraft,

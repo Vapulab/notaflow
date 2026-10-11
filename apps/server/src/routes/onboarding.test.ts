@@ -179,6 +179,7 @@ describe('the card step', () => {
         uf: 'PR',
         cnae: '6201501',
         cnaeDescription: null,
+        secondaryCnaes: [],
         simplesNacional: '3',
         source: 'brasilapi',
       },
@@ -354,6 +355,10 @@ describe('the card step', () => {
       },
     ]);
     expect(stepOf(accountId)).toBe('fiscal');
+    // The card's activities stay with the emitter, for the service suggestions.
+    expect(c.db.$client.prepare('SELECT cnaes FROM emitters').get()).toEqual({
+      cnaes: JSON.stringify(['6201501']),
+    });
   });
 
   test('two certificates at once make one emitter; the other is told it exists', async () => {

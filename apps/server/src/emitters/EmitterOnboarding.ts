@@ -18,6 +18,7 @@ export interface NewEmitterInput {
   simplesRegime?: '1' | '2' | '3';
   specialRegime: string;
   dpsSeries: string;
+  cnaes?: string[]; // from the CNPJ card, main first
 }
 
 export interface EmitterOnboardingDeps {
@@ -60,7 +61,7 @@ export class EmitterOnboarding {
     options: { expectedCnpj?: string; inTransaction?: () => void } = {},
   ) {
     const { emitters, certificates, audit, deps } = this;
-    const { pfxBase64, password, ...fiscal } = input;
+    const { pfxBase64, password, cnaes, ...fiscal } = input;
     if (!municipality(fiscal.municipality)) throw new HttpError(400, 'unknown_municipality');
     const { pfx, material } = openPfx(pfxBase64, password);
 
@@ -130,6 +131,7 @@ export class EmitterOnboarding {
           environment: 'producao',
           cnpj: material.cnpj,
           companyName: companyNameOf(material),
+          ...(cnaes && cnaes.length > 0 ? { cnaes: JSON.stringify(cnaes) } : {}),
         });
         certificates.addActive(ctx, created.id, sealed, {
           cnpj: material.cnpj,
