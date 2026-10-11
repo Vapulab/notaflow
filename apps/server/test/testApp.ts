@@ -5,7 +5,7 @@ import type { Dispatcher } from 'undici';
 import type { ExchangeRateSource } from '../src/exchange/ptax';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app';
-import { createAuth } from '../src/auth/betterAuth';
+import { type AuthDeps, createAuth } from '../src/auth/betterAuth';
 import type { MailMessage } from '../src/mail/mailer';
 import { users } from '../src/db/schema';
 import { nacionalIssuerFactory } from '../src/providers/providerFactory';
@@ -33,6 +33,7 @@ export async function createTestApp(
     exchangeRate?: ExchangeRateSource;
     cepDispatcher?: Dispatcher;
     env?: Record<string, string>;
+    googleUserInfo?: AuthDeps['googleUserInfo'];
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -52,7 +53,13 @@ export async function createTestApp(
   const mailer = async (message: MailMessage) => {
     mail.push(message);
   };
-  const auth = createAuth({ config, db, mailer, testUtils: true });
+  const auth = createAuth({
+    config,
+    db,
+    mailer,
+    testUtils: true,
+    ...(options.googleUserInfo ? { googleUserInfo: options.googleUserInfo } : {}),
+  });
   const app = buildApp({
     config,
     db,

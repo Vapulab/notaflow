@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { passkey } from '@better-auth/passkey';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import type { GoogleOptions } from 'better-auth/social-providers';
 import { APIError } from 'better-auth/api';
 import { captcha, emailOTP, haveIBeenPwned, testUtils } from 'better-auth/plugins';
 import { and, count, eq, gte, isNotNull } from 'drizzle-orm';
@@ -17,6 +19,7 @@ import {
 import type { Mailer } from '../mail/mailer';
 import { codeEmail } from '../mail/templates';
 import { AuditLog } from '../repos/AuditLog';
+import { authAuditHooks, recordGoogleLinked } from './authAudit';
 import { requestContext } from '../requestContext';
 
 // The server sets it from the request context on every call; a client's own value is dropped.
@@ -28,6 +31,8 @@ export interface AuthDeps {
   mailer: Mailer;
   // Tests only: adds the test-utils plugin (sessions without a login flow).
   testUtils?: boolean;
+  // Tests only: Google's profile, instead of reading it from the ID token.
+  googleUserInfo?: GoogleOptions['getUserInfo'];
   log?: (message: string) => void;
 }
 
@@ -106,7 +111,23 @@ export function createAuth(deps: AuthDeps) {
       expiresIn: 60 * 60 * 24 * 30,
       updateAge: 60 * 60 * 24,
     },
-    account: { modelName: 'authAccounts' },
+    account: {
+      modelName: 'authAccounts',
+      // Google links to an existing user only when Google says the e-mail is verified.
+      accountLinking: { enabled: true, trustedProviders: [] },
+    },
+    ...(config.google
+      ? {
+          socialProviders: {
+            google: {
+              clientId: config.google.clientId,
+              clientSecret: config.google.clientSecret,
+              ...(deps.googleUserInfo ? { getUserInfo: deps.googleUserInfo } : {}),
+            },
+          },
+        }
+      : {}),
+    hooks: authAuditHooks(db, audit),
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
@@ -155,9 +176,22 @@ export function createAuth(deps: AuthDeps) {
           },
         },
       },
+      account: {
+        create: {
+          after: async (account) => {
+            recordGoogleLinked(db, audit, account);
+          },
+        },
+      },
     },
     plugins: [
       codeLogin,
+      passkey({
+        rpID: new URL(config.appOrigin).hostname,
+        rpName: 'NotaFlow',
+        origin: config.appOrigin,
+        schema: { passkey: { modelName: 'authPasskeys' } },
+      }),
       haveIBeenPwned({
         customPasswordCompromisedMessage:
           'Esta senha apareceu em vazamentos conhecidos. Escolha outra.',
