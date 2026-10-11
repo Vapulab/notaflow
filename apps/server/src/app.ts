@@ -31,6 +31,8 @@ import { issueRoutes } from './routes/issue';
 import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { memberRoutes } from './routes/members';
+import { onboardingRoutes } from './routes/onboarding';
+import { EmitterOnboarding } from './emitters/EmitterOnboarding';
 import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
@@ -52,6 +54,7 @@ export interface AppDeps {
   issuerFactory?: IssuerFactory;
   exchangeRate?: ExchangeRateSource;
   cepDispatcher?: Dispatcher;
+  cnpjDispatcher?: Dispatcher;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
   syncRetryDelaysMs?: number[];
@@ -145,9 +148,19 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
   publicConfigRoutes(app, config);
-  meRoutes(app);
+  meRoutes(app, db);
   adminRoutes(app, db);
   memberRoutes(app, db);
+  onboardingRoutes(app, {
+    db,
+    emitterOnboarding: new EmitterOnboarding({
+      db,
+      masterKey: config.masterKey,
+      providerFactory,
+      onEmitterCreated,
+    }),
+    ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
+  });
   emitterRoutes(app, { db, masterKey: config.masterKey, providerFactory, onEmitterCreated });
   syncRoutes(app, { db, sync: syncService });
   invoiceRoutes(app, { db, masterKey: config.masterKey, providerFactory });

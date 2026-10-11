@@ -11,6 +11,7 @@ import { IssuePage } from './pages/IssuePage';
 import { MembersPage } from './pages/MembersPage';
 import { LoginPage } from './pages/LoginPage';
 import { NewInvoicePage } from './pages/NewInvoicePage';
+import { OnboardingPage } from './pages/onboarding/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResetPage } from './pages/ResetPage';
 import { SignupPage } from './pages/SignupPage';
@@ -64,6 +65,8 @@ function Screen({ route }: { route: Route }) {
       return <AdminPage />;
     case 'profile':
       return <ProfilePage />;
+    case 'onboarding':
+      return <OnboardingPage {...(route.accountId ? { accountId: route.accountId } : {})} />;
     default:
       return <HomePage />;
   }

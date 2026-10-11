@@ -103,3 +103,9 @@ export function issMinimumHint(nationalTaxCode: string): string {
     ? 'Mínimo para este serviço: acima de zero.'
     : 'Mínimo para este serviço: 2,00%.';
 }
+
+// 12.345.678/0001-95; letters are allowed (the alphanumeric CNPJ from 2026).
+export function formatCnpj(cnpj: string): string {
+  const match = /^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/.exec(cnpj);
+  return match ? `${match[1]}.${match[2]}.${match[3]}/${match[4]}-${match[5]}` : cnpj;
+}

@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { stubApi } from '../test/stubApi';
+import * as tour from '../tour/tour';
 import { HomePage } from './HomePage';
+
+vi.mock('../tour/tour', () => ({ startTour: vi.fn() }));
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState(null, '', '/');
 });
 
 const me = (platformRole: 'admin' | 'user', role: 'owner' | 'member') => ({
@@ -14,7 +18,7 @@ const me = (platformRole: 'admin' | 'user', role: 'owner' | 'member') => ({
   email: 'pessoa@example.com',
   name: 'Pessoa',
   platformRole,
-  accounts: [{ id: 'acc', name: 'Vapulab', role, status: 'active' }],
+  accounts: [{ id: 'acc', name: 'Vapulab', role, status: 'active', onboardingStep: 'done' }],
 });
 
 test('the dashboard shows each option of the account as a card link', async () => {
@@ -44,4 +48,114 @@ test('the dashboard has a Nova nota card per account', async () => {
   render(<HomePage />);
   const card = await screen.findByRole('link', { name: /nova nota.*sem modelo/i });
   expect(card.getAttribute('href')).toBe('/app/acc/notas/nova');
+});
+
+const account = (id: string, step: string, role: 'owner' | 'member' = 'owner') => ({
+  id,
+  name: `Conta ${id}`,
+  role,
+  status: 'active',
+  onboardingStep: step,
+});
+const meWith = (accounts: object[], platformRole: 'admin' | 'user' = 'user') => ({
+  userId: 'u1',
+  email: 'pessoa@example.com',
+  name: 'Pessoa',
+  platformRole,
+  accounts,
+});
+
+test('a user without an account starts onboarding', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': meWith([]) });
+  render(<HomePage />);
+  await waitFor(() => expect(window.location.pathname).toBe('/app/comecar'));
+});
+
+test('a platform admin without an account stays on the home page', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': meWith([], 'admin') });
+  render(<HomePage />);
+  expect(await screen.findByText('Painel do administrador')).toBeTruthy();
+  expect(window.location.pathname).toBe('/app');
+});
+
+test('the owner of one unfinished account goes back to its step', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': meWith([account('acc', 'certificate')]) });
+  render(<HomePage />);
+  await waitFor(() => expect(window.location.pathname).toBe('/app/comecar/acc'));
+});
+
+test('with a finished account and an unfinished one, the home offers to continue', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': meWith([account('a1', 'done'), account('a2', 'card')]) });
+  render(<HomePage />);
+  const link = await screen.findByRole('link', { name: /Continuar cadastro/ });
+  expect(link.getAttribute('href')).toBe('/app/comecar/a2');
+  expect(window.location.pathname).toBe('/app');
+});
+
+test('a member of an unfinished account waits for the owner', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': meWith([account('acc', 'card', 'member')]) });
+  render(<HomePage />);
+  expect(await screen.findByText('O dono da conta ainda está concluindo o cadastro.')).toBeTruthy();
+  expect(window.location.pathname).toBe('/app');
+});
+
+test('the first visit to a finished account starts the tour, and closing it is remembered', async () => {
+  window.history.replaceState(null, '', '/app');
+  const calls = stubApi({
+    '/api/me': {
+      ...meWith([{ ...account('acc', 'done'), needsFiscalConfig: true }]),
+      tourSeenAt: null,
+    },
+    '/api/me/tour-seen': {},
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
+  const options = vi.mocked(tour.startTour).mock.calls[0]?.[0];
+  expect(options?.needsFiscalConfig).toBe(true);
+  expect(document.querySelector('[data-tour="nova-nota"]')).not.toBeNull();
+  options?.onDone();
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === '/api/me/tour-seen' && c.init?.method === 'POST')).toBe(
+      true,
+    ),
+  );
+});
+
+test('a seen tour does not start again, unless asked with ?tour=1', async () => {
+  vi.mocked(tour.startTour).mockClear();
+  window.history.replaceState(null, '', '/app');
+  stubApi({
+    '/api/me': { ...meWith([account('acc', 'done')]), tourSeenAt: '2026-10-11T00:00:00Z' },
+  });
+  render(<HomePage />);
+  await screen.findByText('Nova nota');
+  expect(tour.startTour).not.toHaveBeenCalled();
+  cleanup();
+  window.history.replaceState(null, '', '/app?tour=1');
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
+});
+
+test('a user without a name yet is greeted without a dangling comma', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': { ...meWith([account('acc', 'done')]), name: '', tourSeenAt: 'x' } });
+  render(<HomePage />);
+  expect(await screen.findByRole('heading', { level: 1, name: 'Olá!' })).toBeTruthy();
+});
+
+test('after a replay asked by ?tour=1, the address goes back to /app', async () => {
+  vi.mocked(tour.startTour).mockClear();
+  window.history.replaceState(null, '', '/app?tour=1');
+  stubApi({
+    '/api/me': { ...meWith([account('acc', 'done')]), tourSeenAt: '2026-10-11T00:00:00Z' },
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
+  await waitFor(() => expect(window.location.search).toBe(''));
+  expect(tour.startTour).toHaveBeenCalledOnce();
 });

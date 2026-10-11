@@ -9,7 +9,7 @@ export function meFor(platformRole: 'admin' | 'user', role: 'owner' | 'member' =
     email: 'pessoa@example.com',
     name: 'Pessoa',
     platformRole,
-    accounts: [{ id: 'acc', name: 'A', role, status: 'active' }],
+    accounts: [{ id: 'acc', name: 'A', role, status: 'active', onboardingStep: 'done' }],
   };
 }
 

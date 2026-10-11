@@ -33,7 +33,7 @@ cloudflared ──► server (Fastify) ──► provider "nacional" ──► S
 
 **`InvoiceIssuer`** issues a new invoice from a source, finds an invoice by DPS id, and cancels. The source is a stored NFS-e to copy (`stored`) or a template built from the emitter, the service, and the customer (`built`, from `buildTemplate`). `NacionalIssuer` is the national implementation. See [Invoice Lifecycle](INVOICE_LIFECYCLE.md).
 
-**`CertificateStore`** stores and loads tenant certificates. Each certificate is encrypted with its own data key, and `NFSE_MASTER_KEY` wraps that key. See [Certificate Vault](CERTIFICATE_VAULT.md); accounts and roles are in [Tenancy](TENANCY.md).
+**`CertificateStore`** stores and loads tenant certificates. Each certificate is encrypted with its own data key, and `NFSE_MASTER_KEY` wraps that key. See [Certificate Vault](CERTIFICATE_VAULT.md); accounts and roles are in [Tenancy](TENANCY.md), and signup in [Onboarding](ONBOARDING.md).
 
 ## Rules that hold across packages
 

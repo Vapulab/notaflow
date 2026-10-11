@@ -1,6 +1,6 @@
 # RFC: Open Signup, Own Login, Guided Onboarding, and Soft Delete
 
-**Status:** Accepted (Stage 3a and 3b implemented); Stage 3b plan: [PLAN_STAGE_3B_LOGIN_AND_ROUTES](../../../PLANS/2026/10/PLAN_STAGE_3B_LOGIN_AND_ROUTES.md)
+**Status:** Accepted (Stages 3a, 3b, and 3c implemented); Stage 3b plan: [PLAN_STAGE_3B_LOGIN_AND_ROUTES](../../../PLANS/2026/10/PLAN_STAGE_3B_LOGIN_AND_ROUTES.md)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -266,9 +266,9 @@ The page has these sections:
 
 ## Open Questions
 
-- [ ] BrasilAPI CNPJ fields and limits. A spike confirms that the answer has the IBGE municipality code and the Simples and MEI options, and its rate limits. A second public source is a fallback.
-- [ ] The card layout. Two or three real cards of Lincoln's companies, read locally and never committed, confirm the text PDF layout of the Receita site.
+- [x] BrasilAPI CNPJ fields and limits: the answer has `codigo_municipio_ibge`, `opcao_pelo_simples`, and `opcao_pelo_mei`, and no rate-limit headers. CNPJá open is the fallback.
+- [x] The card layout: a real card of Lincoln's, read locally and not committed, is a one-page text PDF with each label on its own line and its value on the next.
 - [x] Better Auth versions and plugins: `better-auth@1.7.7` and `@better-auth/passkey@1.7.7`, with the plugins `emailOTP`, `haveIBeenPwned`, `captcha` (Turnstile), and `passkey`, on the Drizzle SQLite adapter.
 - [ ] Google OAuth consent screen: app name, logo, the privacy and terms URLs, and whether Google verification is needed for the scopes `openid email profile`.
-- [ ] The default DPS series for a new emitter.
+- [x] The default DPS series for a new emitter: `900`, under "Opções avançadas".
 - [ ] Legal texts: a review with a Brazilian law skill (to find at stage 3d; if none is installed, recommend one), then Lincoln's review and a lawyer.

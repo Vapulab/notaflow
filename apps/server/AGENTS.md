@@ -6,6 +6,7 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 
 - Entry: `src/main.ts` (`pnpm dev:server`); app wiring: `src/app.ts`; config: `src/config.ts`
 - Database: `src/db/schema.ts`; migrations in `drizzle/` (`pnpm --filter @notaflow/server exec drizzle-kit generate --name <name>`)
+- Onboarding: `src/routes/onboarding.ts`, `src/onboarding/` (card reader worker, CNPJ lookup), `src/emitters/EmitterOnboarding.ts`
 - Login: Better Auth in `src/auth/betterAuth.ts`, mounted at `/api/auth/*` by `src/auth/authRoutes.ts`; `src/auth/authHook.ts` turns the session into an identity; e-mail in `src/mail/`
 - Tests: `test/testApp.ts` builds the app on an in-memory database, logs in with `t.as(email)` (a real session cookie), collects sent e-mail in `t.mail`, and starts the fake national system
 - Local run: copy `.env.example` to `.env.local`, then `pnpm fake:nacional`, `pnpm seed:admin <email> <name>`, and `pnpm dev:server`
@@ -13,6 +14,7 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 ## Documentation Index
 
 - [Tenancy](../../docs/ENGINEERING/ARCHITECTURE/TENANCY.md) - accounts, roles, guards, and the route sweep
+- [Onboarding](../../docs/ENGINEERING/ARCHITECTURE/ONBOARDING.md) - steps, the CNPJ card reader, the public lookup, and the ownership check
 - [ADN Sync](../../docs/ENGINEERING/ARCHITECTURE/SYNC.md) - cursor, retries, and document rules
 - [Invoice Lifecycle](../../docs/ENGINEERING/ARCHITECTURE/INVOICE_LIFECYCLE.md) - issue, E0014, reconcile, cancel, and the PTAX rule
 - [New Invoice RFC](../../docs/ENGINEERING/RFCS/2026/10/RFC_NEW_INVOICE.md) - fiscal configuration, services, customers by hand, `POST invoices/new`, and the tax reform

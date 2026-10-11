@@ -1,19 +1,24 @@
 import type { AccountRole } from '@notaflow/core';
-import { and, eq, isNull, lt, or, type SQL } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, type SQL, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { notDeleted } from '../db/stamps';
-import { accounts, memberships, users } from '../db/schema';
+import type { OnboardingStep } from '../onboarding/types';
+import { accounts, emitters, memberships, users } from '../db/schema';
 
 export interface Identity {
   userId: string;
   email: string;
   name: string;
   platformRole: 'admin' | 'user';
+  tourSeenAt: Date | null;
   memberships: {
     accountId: string;
     accountName: string;
     role: AccountRole;
     accountStatus: 'active' | 'suspended';
+    onboardingStep: OnboardingStep;
+    // An active emitter of the account has no Simples configuration yet (the tour points to it).
+    needsFiscalConfig: boolean;
   }[];
 }
 
@@ -42,6 +47,8 @@ export class IdentityRepository {
         accountName: accounts.name,
         role: memberships.role,
         accountStatus: accounts.status,
+        onboardingStep: accounts.onboardingStep,
+        needsFiscalConfig: sql<number>`exists (select 1 from ${emitters} where ${emitters.accountId} = ${accounts.id} and ${emitters.deletedAt} is null and ${emitters.simplesPercent} is null)`,
       })
       .from(memberships)
       .innerJoin(accounts, eq(accounts.id, memberships.accountId))
@@ -52,8 +59,20 @@ export class IdentityRepository {
       email: user.email,
       name: user.name,
       platformRole: user.platformRole,
-      memberships: rows,
+      tourSeenAt: user.tourSeenAt,
+      memberships: rows.map((row) => ({
+        ...row,
+        needsFiscalConfig: Boolean(row.needsFiscalConfig),
+      })),
     };
+  }
+
+  markTourSeen(userId: string, now = new Date()): void {
+    this.db
+      .update(users)
+      .set({ tourSeenAt: now, updatedAt: now, updatedBy: userId })
+      .where(eq(users.id, userId))
+      .run();
   }
 
   // Every request calls this; the condition keeps it to one write per user every 15 minutes.

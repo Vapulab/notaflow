@@ -1,0 +1,395 @@
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import {
+  api,
+  ApiError,
+  type CnpjDraft,
+  type Emitter,
+  type FiscalConfig,
+  type InvoicePage,
+  type OnboardingState,
+} from '../../api';
+import { errorText } from '../../components/Layout';
+import { useAsync } from '../../components/useAsync';
+import { fileToBase64, formatCnpj } from '../../format';
+import { navigate } from '../../router';
+import {
+  Alert,
+  Button,
+  CARD_CLASSES,
+  Field,
+  FORM_CLASSES,
+  Input,
+  SECTION_TITLE_CLASSES,
+  Select,
+  Spinner,
+} from '../../ui';
+import { FiscalConfigForm } from '../FiscalConfigForm';
+
+const SIMPLES_TEXT: Record<CnpjDraft['simplesNacional'], string> = {
+  '1': 'Não optante',
+  '2': 'MEI',
+  '3': 'Optante (ME ou EPP)',
+};
+
+type OnDone = (state: OnboardingState) => void;
+const accountUrl = (accountId: string) => `/api/accounts/${encodeURIComponent(accountId)}`;
+
+function Panel(props: { title: string; children: ReactNode }) {
+  return (
+    <div className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
+      <h2 className={SECTION_TITLE_CLASSES}>{props.title}</h2>
+      {props.children}
+    </div>
+  );
+}
+
+// One request at a time per step, with its error.
+function useStepAction() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (failure) {
+      setError(failure);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, run };
+}
+
+function StepError({ error }: { error: unknown }) {
+  return error ? <Alert variant="error">{errorText(error)}</Alert> : null;
+}
+
+export function CompanyStep() {
+  const [name, setName] = useState('');
+  const { busy, error, run } = useStepAction();
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void run(async () => {
+      const { accountId } = await api.post<{ accountId: string }>('/api/onboarding/account', {
+        name: name.trim(),
+      });
+      // A full load: /api/me must now list the new account.
+      navigate({ name: 'onboarding', accountId }, { replace: true });
+    });
+  };
+  return (
+    <Panel title="Nome da empresa">
+      <StepError error={error} />
+      <form className={FORM_CLASSES} onSubmit={submit}>
+        <Field label="Nome da empresa" hint="Você pode mudar depois.">
+          <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} />
+        </Field>
+        <div>
+          <Button type="submit" variant="primary" disabled={busy}>
+            Continuar
+          </Button>
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
+// prefix is .../onboarding for the first emitter, or .../emitters/new for another one.
+export function CardStep(props: { prefix: string; onDone: OnDone }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [typing, setTyping] = useState(false);
+  const [cnpj, setCnpj] = useState('');
+  const { busy, error, run } = useStepAction();
+  const finish = (answer: { draft: CnpjDraft; municipalityName: string | null }) =>
+    props.onDone({
+      step: 'certificate',
+      draft: answer.draft,
+      municipalityName: answer.municipalityName,
+    });
+
+  const sendCard = (event: FormEvent) => {
+    event.preventDefault();
+    if (!file) return;
+    void run(async () => {
+      // The server refuses it too; this saves uploading a large file for nothing.
+      if (file.size > 2 * 1024 * 1024) throw new ApiError(413, 'card_too_large');
+      finish(
+        await api.post(`${props.prefix}/card`, {
+          pdfBase64: await fileToBase64(file),
+          fileName: file.name,
+        }),
+      );
+    });
+  };
+  const sendCnpj = (event: FormEvent) => {
+    event.preventDefault();
+    void run(async () => finish(await api.post(`${props.prefix}/cnpj`, { cnpj })));
+  };
+
+  return (
+    <Panel title="Cartão CNPJ">
+      <p className="text-sm text-muted">
+        Baixe o comprovante de inscrição no site da Receita Federal e envie o PDF. Conferimos os
+        dados na consulta pública do CNPJ.
+      </p>
+      <StepError error={error} />
+      {typing ? (
+        <form className={FORM_CLASSES} onSubmit={sendCnpj}>
+          <Field label="CNPJ">
+            <Input
+              value={cnpj}
+              onChange={(e) => setCnpj(e.target.value)}
+              autoCapitalize="characters"
+              required
+              maxLength={18}
+            />
+          </Field>
+          <div>
+            <Button type="submit" variant="primary" disabled={busy}>
+              Consultar CNPJ
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <form className={FORM_CLASSES} onSubmit={sendCard}>
+          <Field label="Cartão CNPJ (PDF)" hint="Até 2 MB.">
+            <Input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" disabled={busy || !file}>
+              Enviar cartão
+            </Button>
+            {Boolean(error) && (
+              <Button variant="secondary" onClick={() => setTyping(true)}>
+                Digitar o CNPJ
+              </Button>
+            )}
+          </div>
+        </form>
+      )}
+      {busy && <Spinner label="Lendo o cartão e consultando o CNPJ" />}
+    </Panel>
+  );
+}
+
+export function CertificateStep(props: {
+  prefix: string;
+  state: OnboardingState;
+  onDone: OnDone;
+  // Another emitter has no step to undo: "Trocar cartão" only goes back on screen.
+  onBack?: () => void;
+}) {
+  const { draft, municipalityName } = props.state;
+  const [file, setFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
+  const [registration, setRegistration] = useState('');
+  const [simplesRegime, setSimplesRegime] = useState<'1' | '2' | '3'>('1');
+  const [specialRegime, setSpecialRegime] = useState('0');
+  const [dpsSeries, setDpsSeries] = useState('900');
+  const { busy, error, run } = useStepAction();
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!file) return;
+    void run(async () => {
+      await api.post(`${props.prefix}/certificate`, {
+        pfxBase64: await fileToBase64(file),
+        password,
+        ...(registration.trim() ? { municipalRegistration: registration.trim() } : {}),
+        advanced: {
+          ...(draft?.simplesNacional === '3' ? { simplesRegime } : {}),
+          specialRegime,
+          dpsSeries,
+        },
+      });
+      props.onDone({ ...props.state, step: 'fiscal' });
+    });
+  };
+  const backToCard = () =>
+    run(async () => {
+      if (props.onBack) return props.onBack();
+      await api.post(`${props.prefix}/back-to-card`, {});
+      props.onDone({ step: 'card', draft: null, municipalityName: null });
+    });
+
+  return (
+    <div className="flex flex-col gap-6">
+      {draft && (
+        <section aria-label="Confira os dados" className={`${CARD_CLASSES} flex flex-col gap-2`}>
+          <h2 className={SECTION_TITLE_CLASSES}>Confira os dados</h2>
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted">Razão social</dt>
+            <dd className="break-words">{draft.legalName}</dd>
+            <dt className="text-muted">CNPJ</dt>
+            <dd>{formatCnpj(draft.cnpj)}</dd>
+            <dt className="text-muted">Município</dt>
+            <dd>{municipalityName ? `${municipalityName} - ${draft.uf}` : draft.uf}</dd>
+            <dt className="text-muted">Simples Nacional</dt>
+            <dd>{SIMPLES_TEXT[draft.simplesNacional]}</dd>
+          </dl>
+          <div>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={backToCard}>
+              Trocar cartão
+            </Button>
+          </div>
+        </section>
+      )}
+      <Panel title="Certificado digital">
+        <StepError error={error} />
+        <form className={FORM_CLASSES} onSubmit={submit}>
+          <Field label="Certificado A1 (.pfx)">
+            <Input
+              type="file"
+              accept=".pfx,.p12,application/x-pkcs12"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </Field>
+          <Field label="Senha do certificado">
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="off"
+              required
+            />
+          </Field>
+          <Field label="Inscrição municipal (opcional)">
+            <Input
+              value={registration}
+              onChange={(e) => setRegistration(e.target.value)}
+              maxLength={15}
+            />
+          </Field>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted">Opções avançadas</summary>
+            <div className="mt-3 flex flex-col gap-4">
+              {draft?.simplesNacional === '3' && (
+                <Field label="Regime de apuração do Simples">
+                  <Select
+                    value={simplesRegime}
+                    onChange={(e) => setSimplesRegime(e.target.value as '1' | '2' | '3')}
+                  >
+                    <option value="1">Tributos federais e municipais pelo Simples</option>
+                    <option value="2">Federais pelo Simples, ISS pela NFS-e</option>
+                    <option value="3">Federais e municipais pela NFS-e</option>
+                  </Select>
+                </Field>
+              )}
+              <Field label="Regime especial de tributação">
+                <Select value={specialRegime} onChange={(e) => setSpecialRegime(e.target.value)}>
+                  <option value="0">Nenhum</option>
+                  <option value="1">Ato cooperado</option>
+                  <option value="2">Estimativa</option>
+                  <option value="3">Microempresa municipal</option>
+                  <option value="4">Notário ou registrador</option>
+                  <option value="5">Profissional autônomo</option>
+                  <option value="6">Sociedade de profissionais</option>
+                </Select>
+              </Field>
+              <Field label="Série da DPS">
+                <Input
+                  value={dpsSeries}
+                  onChange={(e) => setDpsSeries(e.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]{1,5}"
+                />
+              </Field>
+            </div>
+          </details>
+          <div>
+            <Button type="submit" variant="primary" disabled={busy || !file}>
+              Enviar certificado
+            </Button>
+          </div>
+          {busy && <Spinner label="Testando o certificado no sistema nacional" />}
+        </form>
+      </Panel>
+    </div>
+  );
+}
+
+export function FiscalStep(props: { accountId: string; onDone: OnDone }) {
+  const base = accountUrl(props.accountId);
+  const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
+  const emitter = emitters.data?.[0];
+  const fiscalUrl = emitter ? `${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal` : null;
+  const fiscal = useAsync(
+    () => (fiscalUrl ? api.get<FiscalConfig>(fiscalUrl) : Promise.resolve(null)),
+    [fiscalUrl],
+  );
+  const { busy, error, run } = useStepAction();
+  const next = () =>
+    run(async () => {
+      await api.post(`${base}/onboarding/fiscal-done`, {});
+      props.onDone({ step: 'sync', draft: null, municipalityName: null });
+    });
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted">
+        Com a configuração fiscal, a nota nova já vem com as alíquotas certas. Se preferir, faça
+        isso depois na página do emitente.
+      </p>
+      <StepError error={error} />
+      {fiscalUrl && fiscal.data ? (
+        <FiscalConfigForm url={fiscalUrl} config={fiscal.data} canEdit />
+      ) : (
+        !emitters.error && <Spinner />
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" disabled={busy} onClick={next}>
+          Continuar
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={next}>
+          Fazer depois
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function SyncStep(props: { accountId: string }) {
+  const base = accountUrl(props.accountId);
+  const [total, setTotal] = useState<number | null>(null);
+  const { busy, error, run } = useStepAction();
+  useEffect(() => {
+    let live = true;
+    const read = () =>
+      api.get<InvoicePage>(`${base}/invoices?limit=1`).then(
+        (page) => live && setTotal(page.total),
+        () => undefined,
+      );
+    void read();
+    const timer = window.setInterval(read, 3000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, [base]);
+  const finish = () =>
+    run(async () => {
+      await api.post(`${base}/onboarding/finish`, {});
+      navigate({ name: 'home' }, { replace: true });
+    });
+  return (
+    <Panel title="Sincronização">
+      <p className="text-sm text-muted">
+        Estamos trazendo as notas que a empresa já emitiu no sistema nacional. Você pode ir para o
+        painel agora: a importação continua sozinha.
+      </p>
+      <p className="font-display text-2xl text-fg" aria-live="polite">
+        {total === null ? 'Contando…' : `${total} notas importadas até agora`}
+      </p>
+      <StepError error={error} />
+      <div>
+        <Button variant="primary" disabled={busy} onClick={finish}>
+          Ir para o painel
+        </Button>
+      </div>
+    </Panel>
+  );
+}

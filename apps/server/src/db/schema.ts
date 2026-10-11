@@ -39,6 +39,17 @@ export const accounts = sqliteTable('accounts', {
     .notNull()
     .default('active'),
   plan: text('plan').notNull().default(''),
+  // Where onboarding stands; an account with an emitter from before stage 3c is done.
+  onboardingStep: text('onboarding_step', {
+    enum: ['company', 'card', 'certificate', 'fiscal', 'sync', 'done'],
+  })
+    .notNull()
+    .default('card'),
+  // The confirmed card data (JSON) between the card step and the certificate step.
+  cnpjDraft: text('cnpj_draft'),
+  // The card of the draft, gzipped; it becomes an account document only once the certificate proves the company.
+  cnpjDraftCard: blob('cnpj_draft_card', { mode: 'buffer' }),
+  cnpjDraftCardName: text('cnpj_draft_card_name'),
   createdAt: createdAt(),
   updatedAt: changedAt(),
   ...authors(),
@@ -57,6 +68,7 @@ export const users = sqliteTable(
     lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
     emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     image: text('image'),
+    tourSeenAt: integer('tour_seen_at', { mode: 'timestamp_ms' }),
     createdAt: createdAt(),
     updatedAt: changedAt(),
     ...authors(),
@@ -319,6 +331,24 @@ export const syncState = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.emitterId, table.environment] })],
 );
+
+// Documents of an account, such as the CNPJ card of onboarding, stored gzipped.
+export const accountDocuments = sqliteTable('account_documents', {
+  id: id(),
+  accountId: text('account_id')
+    .notNull()
+    .references(() => accounts.id),
+  kind: text('kind', { enum: ['cnpj_card'] }).notNull(),
+  cnpj: text('cnpj').notNull(),
+  fileName: text('file_name').notNull(),
+  contentGzip: blob('content_gzip', { mode: 'buffer' }).notNull(),
+  sha256: text('sha256').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  createdAt: createdAt(),
+  updatedAt: changedAt(),
+  ...authors(),
+  ...removal(),
+});
 
 // Better Auth credentials: it deletes these rows on expiry, sign-out, unlink, or removal, and the audit log keeps the event.
 const authTime = (name: string) => integer(name, { mode: 'timestamp_ms' });

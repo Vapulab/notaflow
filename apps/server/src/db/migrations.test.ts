@@ -79,6 +79,13 @@ function migratedFromPre3a(): BetterSqlite3.Database {
   migrate(db, { migrationsFolder: migrationsUpTo(5) });
   seedPre3a(client);
   migrate(db, { migrationsFolder: MIGRATIONS });
+  // Business tables that came after stage 2b get their one row once they exist.
+  client
+    .prepare(
+      `INSERT INTO account_documents (id, account_id, kind, cnpj, file_name, content_gzip, sha256, size_bytes, updated_at)
+       VALUES ('d1', 'a1', 'cnpj_card', '12345678000195', 'cartao.pdf', x'00', 'h', 1, ${T0})`,
+    )
+    .run();
   return client;
 }
 
@@ -178,5 +185,33 @@ test('stage 3b: current users keep their row and count as verified; the auth tab
     .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'users_no_delete'")
     .get();
   expect(trigger).toEqual({ name: 'users_no_delete' });
+  client.close();
+});
+
+test('stage 3c: only an account with an active emitter skips onboarding', () => {
+  const client = new BetterSqlite3(':memory:');
+  migrate(drizzle(client), { migrationsFolder: migrationsUpTo(9) });
+  const run = (sql: string) => client.prepare(sql).run();
+  run("INSERT INTO accounts (id, name) VALUES ('with', 'A'), ('removed', 'B'), ('none', 'C')");
+  run(`INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series)
+       VALUES ('e1', 'with', '12345678000195', 'EMPRESA', '4113700', '3', '0', '900')`);
+  run(`INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series, deleted_at)
+       VALUES ('e2', 'removed', '11222333000181', 'OUTRA', '4113700', '3', '0', '900', 1)`);
+  migrate(drizzle(client), { migrationsFolder: MIGRATIONS });
+  expect(client.prepare('SELECT id, onboarding_step FROM accounts ORDER BY id').all()).toEqual([
+    { id: 'none', onboarding_step: 'card' },
+    { id: 'removed', onboarding_step: 'card' },
+    { id: 'with', onboarding_step: 'done' },
+  ]);
+  const triggers = client
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name IN ('account_documents_no_delete', 'accounts_no_delete', 'users_no_delete') ORDER BY name",
+    )
+    .all();
+  expect(triggers).toEqual([
+    { name: 'account_documents_no_delete' },
+    { name: 'accounts_no_delete' },
+    { name: 'users_no_delete' },
+  ]);
   client.close();
 });
