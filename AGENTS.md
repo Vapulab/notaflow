@@ -12,6 +12,7 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 6. Every English text follows the [Writing Style](docs/ENGINEERING/CONVENTIONS/WRITING_STYLE.md): inverted pyramid, Simplified Technical English, no em dash.
 7. Commits and PRs carry no AI attribution.
 8. Scripts must run on Windows and Linux. No `VAR=value cmd` prefixes.
+9. Never delete a business row: use `softDelete`, and every read uses `notDeleted`. See [Data](docs/ENGINEERING/CONVENTIONS/DATA.md).
 
 ## Package entrypoints
 

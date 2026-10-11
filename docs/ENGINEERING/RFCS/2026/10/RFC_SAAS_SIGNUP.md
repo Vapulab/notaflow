@@ -1,6 +1,6 @@
 # RFC: Open Signup, Own Login, Guided Onboarding, and Soft Delete
 
-**Status:** Accepted
+**Status:** Accepted (Stage 3a implemented)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
