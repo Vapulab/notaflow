@@ -13,6 +13,7 @@ export interface IssueRequest {
   foreignAmountCents?: number; // export invoices only
   description?: string;
   customer?: InvoiceParty; // replaces the template's customer
+  simplesPercent?: number; // hundredths; replaces the template's pTotTribSN
 }
 
 // A new invoice built from the emitter, the service, and the customer, with no stored template.

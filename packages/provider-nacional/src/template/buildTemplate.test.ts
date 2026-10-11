@@ -181,7 +181,8 @@ describe('buildTemplate', () => {
       issqnTaxation: '3',
       resultCountry: 'US',
       issRetention: '1',
-      pisCofins: { cst: '00', retention: '0' },
+      // PIS and COFINS do not apply to an export of services, whatever the service says.
+      pisCofins: { cst: '08', retention: '0' },
       simplesTotalPercent: '6.00',
     });
     expect(template.service.foreignTrade).toEqual({

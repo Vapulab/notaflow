@@ -1,3 +1,4 @@
+import { percentText } from '../rules/simplesBands';
 import type { InvoiceParty, IssueRequest, PartyAddress } from '@notaflow/core';
 import type { Address, DpsInput, Environment, ForeignAddress } from '../dps/types';
 import type { DpsTemplate } from './readTemplate';
@@ -30,6 +31,9 @@ export function applyTemplate(
         : {}),
     },
     amounts: { serviceCents: request.serviceCents },
+    ...(request.simplesPercent !== undefined
+      ? { tax: { ...copy.tax, simplesTotalPercent: percentText(request.simplesPercent) } }
+      : {}),
   };
 }
 
