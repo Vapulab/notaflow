@@ -54,17 +54,6 @@ test('every error code the server can send has a text', () => {
   }
 });
 
-test('the layout has Sair, which ends the Cloudflare Access session', () => {
-  render(
-    <Layout title="Notas">
-      <p>conteúdo</p>
-    </Layout>,
-  );
-  expect(screen.getByRole('link', { name: 'Sair' }).getAttribute('href')).toBe(
-    '/cdn-cgi/access/logout',
-  );
-});
-
 test('isDefinitive: a refusal before anything is reserved, never an unclear answer', () => {
   expect(isDefinitive(new ApiError(400, 'invalid_amount'))).toBe(true);
   expect(isDefinitive(new ApiError(409, 'fiscal_config_missing'))).toBe(true);

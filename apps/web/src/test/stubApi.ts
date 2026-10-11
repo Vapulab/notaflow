@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 // HTTP status the server uses for each error code these tests send back.
 const ERROR_STATUS: Record<string, number> = {
   not_found: 404,
+  unauthenticated: 401,
   ptax_unavailable: 502,
   sefin_unavailable: 502,
   sefin_rejected: 422,
