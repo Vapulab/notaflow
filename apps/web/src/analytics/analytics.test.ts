@@ -16,7 +16,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-test('PostHog starts with the privacy options of the policy: no cookies, no recording, no page text', async () => {
+test('PostHog starts with the privacy options of the policy: no cookies, and recordings with every text and input masked', async () => {
   await startAnalytics({ token: 'phc_x', host: 'https://us.i.posthog.com' });
   expect(posthog.init).toHaveBeenCalledWith(
     'phc_x',
@@ -24,8 +24,14 @@ test('PostHog starts with the privacy options of the policy: no cookies, no reco
       api_host: 'https://us.i.posthog.com',
       persistence: 'memory',
       autocapture: false,
-      disable_session_recording: true,
+      disable_session_recording: false,
+      enable_recording_console_log: false,
       mask_all_text: true,
+      session_recording: expect.objectContaining({
+        maskAllInputs: true,
+        maskTextSelector: '*',
+        recordCrossOriginIframes: false,
+      }),
     }),
   );
 });

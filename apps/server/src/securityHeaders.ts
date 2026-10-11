@@ -46,6 +46,7 @@ export function registerSecurityHeaders(
     "font-src 'self'",
     ['connect-src', "'self'", CLOUDFLARE_INSIGHTS, ...posthog].join(' '),
     `frame-src ${TURNSTILE}`,
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -5,11 +5,19 @@ export interface AnalyticsConfig {
   host: string;
 }
 
-// The privacy promise of /privacidade, in code: no cookies, no screen recording, no page text, no e-mail.
+// The privacy promise of /privacidade, in code: no cookies, no e-mail, and recordings without any text.
 export const POSTHOG_OPTIONS: Partial<PostHogConfig> = {
   persistence: 'memory',
   autocapture: false,
-  disable_session_recording: true,
+  disable_session_recording: false,
+  // The console can hold API error details; recordings never carry it.
+  enable_recording_console_log: false,
+  // The screens show customers' names, documents, and amounts: a recording keeps the layout, never the text.
+  session_recording: {
+    maskAllInputs: true,
+    maskTextSelector: '*',
+    recordCrossOriginIframes: false,
+  },
   disable_surveys: true,
   mask_all_text: true,
   mask_all_element_attributes: true,
