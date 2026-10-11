@@ -32,17 +32,17 @@
 
   Its free tier allows a few requests per minute: the fallback only.
 
-## Decisions to confirm with Lincoln before Task 1
+## Decisions (confirmed by Lincoln on 2026-10-11)
 
 1. **What the card proves.** The parser needs only the CNPJ (a fixed pattern) and checks the legal name against the lookup. The lookup gives everything else. A change in the card layout then breaks only the name check, and the step still works.
-2. **A real card, read locally once** (Task 3, Step 1). Lincoln gives the path of one CNPJ card of his companies. A script prints only which labels it found, never values, and the card stays out of git.
+2. **A real card, read locally once** (Task 3, Step 1), at a path Lincoln gave, outside the repo. A script prints only which labels it found, never values, and the card stays out of git.
 3. **The default DPS series stays `900`**, as the current form. It is under "Opções avançadas".
-4. **Accounts made by a platform admin skip onboarding** (`done`), as do the 3 current accounts.
+4. **Only an account that already has an emitter skips onboarding.** In production that is Vapulab, Lincoln's account; the other two current accounts have no emitter and start at the card step. An account made by a platform admin also starts at the card step.
 5. **Signup opens at the end**: `SIGNUP_OPEN=true` in production after the acceptance of Task 10, with Lincoln's go-ahead.
 
 ## Global Constraints
 
-- **Steps, in order:** `company`, `card`, `certificate`, `fiscal`, `sync`, `done`. `accounts.onboarding_step` is text, not null, default `done`. A new account from signup starts at `company`.
+- **Steps, in order:** `company`, `card`, `certificate`, `fiscal`, `sync`, `done`. `accounts.onboarding_step` is text, not null, default `card`. The migration sets `done` on every account with an active emitter. A new account from signup or from the admin panel starts at `card` (its name is already known).
 - **Card upload:** PDF only (`%PDF-` magic), at most 2 MB decoded. It is parsed in a `worker_threads` worker with a 5-second timeout and `isEvalSupported: false`. The route `bodyLimit` is 3 MB.
 - **The card is stored** in `account_documents` (a business table: soft delete, stamps, a `no_delete` trigger, and `notDeleted` on reads), gzipped, with its SHA-256 and size.
 - **Lookup:** a timeout of 8 seconds per source; BrasilAPI first, CNPJá open on a 5xx, a timeout, or a 429. Both down gives 502 `cnpj_lookup_unavailable`, and the step offers "Tentar de novo". It never guesses the Simples option.
@@ -72,14 +72,14 @@
 
 **Interfaces:**
 - Produces in `schema.ts`:
-  - `accounts.onboardingStep`: text enum `['company','card','certificate','fiscal','sync','done']`, not null, default `'done'`;
+  - `accounts.onboardingStep`: text enum `['company','card','certificate','fiscal','sync','done']`, not null, default `'card'`;
   - `accounts.cnpjDraft`: text JSON, null; the confirmed card data between the card and certificate steps;
   - `users.tourSeenAt`: timestamp, null;
   - `accountDocuments` (`account_documents`): `id`, `account_id` (fk), `kind` (`'cnpj_card'`), `cnpj`, `file_name`, `content_gzip` (blob), `sha256`, `size_bytes`, plus the six control columns.
 - `BUSINESS_TABLES` gains `account_documents`.
 
 - [ ] **Step 1: Failing tests.**
-  - The 3 existing accounts of a database migrated to `0009` read `done` after `0010`.
+  - On a database migrated to `0009` with three accounts, one with an active emitter, one with a removed emitter, and one without: after `0010` the first reads `done` and the other two read `card`.
   - `account_documents` has its `account_documents_no_delete` trigger, and the catalog test lists it as a business table.
   - `users_no_delete` and `accounts_no_delete` still exist (the migration must not rebuild those tables).
 - [ ] **Step 2:** `pnpm vitest run apps/server/src/db` → FAIL.
@@ -235,7 +235,7 @@ Run the dev server with signup open, the console mailer, the Turnstile test keys
 ### Task 10: Production (each step after Lincoln's go-ahead)
 
 1. Back up the database.
-2. Merge the PR (deploy); check the container, the logs, the migration count (11), and that the 3 accounts are `done`.
+2. Merge the PR (deploy); check the container, the logs, the migration count (11), that Vapulab is `done`, and that the two accounts without an emitter are at `card`.
 3. Lincoln creates a test account with another e-mail and goes through onboarding with a real company of his. A CNPJ that is already an emitter is refused, as designed, so he uses one that is not, or stops at the card step.
 4. Set `SIGNUP_OPEN=true` in `/opt/notaflow/.env` and restart the app. Signup is open.
 5. Publish the Google consent screen when the legal pages of stage 3d exist.
