@@ -49,13 +49,20 @@ test('an audit entry carries the IP, the browser, and the request id', async () 
   expect(row.request_id).toMatch(/\S+/);
 });
 
-test('behind the tunnel the IP is the one Cloudflare saw; from outside the header is ignored', async () => {
+test('with TRUST_CLOUDFLARE_IP, behind the tunnel the IP is the one Cloudflare saw; from outside the header is ignored', async () => {
+  await t.close();
+  t = await createTestApp({ env: { TRUST_CLOUDFLARE_IP: 'true' } });
   await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '172.18.0.5');
   expect(lastRow().ip).toBe('198.51.100.9');
   await t.close();
-  t = await createTestApp();
+  t = await createTestApp({ env: { TRUST_CLOUDFLARE_IP: 'true' } });
   await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '203.0.113.7');
   expect(lastRow().ip).toBe('203.0.113.7');
+});
+
+test('without TRUST_CLOUDFLARE_IP the header is never trusted, so no one can pick an IP to dodge the limits', async () => {
+  await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '172.18.0.5');
+  expect(lastRow().ip).toBe('172.18.0.5');
 });
 
 test('an entry written outside a request has no request data', () => {
