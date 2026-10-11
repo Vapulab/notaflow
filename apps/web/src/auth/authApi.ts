@@ -53,9 +53,12 @@ export async function resetPassword(email: string, otp: string, password: string
   await unwrap(authClient.emailOtp.resetPassword({ email, otp, password }));
 }
 
-// Leaves the page: Google brings the browser back to callbackURL.
-export async function signInWithGoogle(callbackURL: string): Promise<void> {
-  await unwrap(authClient.signIn.social({ provider: 'google', callbackURL }));
+// Leaves the page: Google brings the browser back to callbackURL, or to errorCallbackURL with ?error=.
+export async function signInWithGoogle(
+  callbackURL: string,
+  errorCallbackURL: string,
+): Promise<void> {
+  await unwrap(authClient.signIn.social({ provider: 'google', callbackURL, errorCallbackURL }));
 }
 
 export async function signInWithPasskey(): Promise<void> {
@@ -98,7 +101,13 @@ export async function listAccounts(): Promise<LinkedAccount[]> {
 }
 
 export async function linkGoogle(): Promise<void> {
-  await unwrap(authClient.linkSocial({ provider: 'google', callbackURL: '/app/conta' }));
+  await unwrap(
+    authClient.linkSocial({
+      provider: 'google',
+      callbackURL: '/app/conta',
+      errorCallbackURL: '/app/conta',
+    }),
+  );
 }
 
 export async function unlinkAccount(accountId: string): Promise<void> {

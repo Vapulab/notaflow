@@ -133,3 +133,8 @@ test('an old hash link is replaced by its path on the first render', () => {
   expect(window.location.hash).toBe('');
   expect(screen.getByText('invoice')).toBeTruthy();
 });
+
+test('a path or old link that does not decode goes home instead of breaking the app', () => {
+  expect(at('/app/%E0/notas')).toEqual({ name: 'home' });
+  expect(legacyHashTarget('#/a/%zz/invoices')).toBe('/app');
+});

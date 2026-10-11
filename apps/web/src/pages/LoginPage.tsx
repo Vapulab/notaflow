@@ -23,9 +23,18 @@ export function safeDestination(volta: string | null): string {
   return inside ? volta : '/app';
 }
 
+// The codes Better Auth puts in ?error= when Google sends the browser back.
+const GOOGLE_ERROR: Record<string, string> = {
+  account_not_linked:
+    'Este e-mail já tem conta no NotaFlow. Entre com um código por e-mail e depois vincule o Google em Minha conta.',
+  signup_closed: 'O cadastro de novas empresas abre em breve.',
+};
+
 export function LoginPage() {
   const config = usePublicConfig();
-  const destination = safeDestination(new URLSearchParams(window.location.search).get('volta'));
+  const query = new URLSearchParams(window.location.search);
+  const destination = safeDestination(query.get('volta'));
+  const googleError = query.get('error');
   const [mode, setMode] = useState<'code' | 'password'>('code');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -68,6 +77,12 @@ export function LoginPage() {
 
   return (
     <PublicLayout title="Entrar no NotaFlow">
+      {googleError && !error && (
+        <Alert variant="error">
+          {GOOGLE_ERROR[googleError] ??
+            'Não foi possível entrar com o Google. Tente de novo ou use um código por e-mail.'}
+        </Alert>
+      )}
       {Boolean(error) && <Alert variant="error">{errorText(error)}</Alert>}
       <form className={FORM_CLASSES} onSubmit={submit}>
         {step === 'email' || mode === 'password' ? (
@@ -117,7 +132,7 @@ export function LoginPage() {
             <Button
               variant="secondary"
               disabled={busy}
-              onClick={() => run(() => signInWithGoogle(destination))}
+              onClick={() => run(() => signInWithGoogle(destination, '/entrar'))}
             >
               Entrar com Google
             </Button>

@@ -3,7 +3,15 @@ import type { AccountRole, AdminContext } from '@notaflow/core';
 import { and, count, eq, like, or, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, removed, touched } from '../db/stamps';
-import { accounts, authSessions, memberships, users } from '../db/schema';
+import {
+  accounts,
+  authAccounts,
+  authPasskeys,
+  authSessions,
+  authVerifications,
+  memberships,
+  users,
+} from '../db/schema';
 
 // Platform scope: every method needs an AdminContext, which only the admin guard builds.
 export class AdminRepository {
@@ -122,11 +130,17 @@ export class AdminRepository {
   // LGPD erasure: the row stays for the records that point at it; the personal data goes.
   anonymizeUser(ctx: AdminContext, userId: string): boolean {
     return this.db.transaction((tx) => {
+      const before = tx
+        .select({ email: users.email })
+        .from(users)
+        .where(and(eq(users.id, userId), notDeleted(users)))
+        .get();
       const changed = tx
         .update(users)
         .set({
           name: 'Usuário removido',
           email: `removido-${userId}@anonimo.invalid`,
+          image: null,
           ...removed(ctx),
         })
         .where(and(eq(users.id, userId), notDeleted(users)))
@@ -136,8 +150,18 @@ export class AdminRepository {
         .set(removed(ctx))
         .where(and(eq(memberships.userId, userId), notDeleted(memberships)))
         .run();
-      // Sessions are credentials, not business rows: the anonymized user is logged out everywhere.
+      // Credentials, not business rows: they hold the e-mail, Google's ID token, and the keys.
       tx.delete(authSessions).where(eq(authSessions.userId, userId)).run();
+      tx.delete(authAccounts).where(eq(authAccounts.userId, userId)).run();
+      tx.delete(authPasskeys).where(eq(authPasskeys.userId, userId)).run();
+      if (before) {
+        tx.delete(authVerifications)
+          // Exact suffix: LIKE would read an underscore in the e-mail as a wildcard.
+          .where(
+            sql`substr(${authVerifications.identifier}, -length(${before.email})) = ${before.email}`,
+          )
+          .run();
+      }
       return true;
     });
   }

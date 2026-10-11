@@ -102,3 +102,18 @@ test('sign-out ends the session', async () => {
   const response = await t.app.inject({ method: 'GET', url: '/api/me', headers });
   expect(response.statusCode).toBe(401);
 });
+
+test('a session in use renews: after a day, the cookie and the expiry move forward', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const headers = await t.as('a@example.com');
+  const day = 24 * 60 * 60 * 1000;
+  const old = Date.now() + 29 * day - 60_000;
+  t.db.$client.prepare('UPDATE auth_sessions SET expires_at = ?').run(old);
+  const response = await t.app.inject({ method: 'GET', url: '/api/me', headers });
+  expect(response.statusCode).toBe(200);
+  expect([response.headers['set-cookie']].flat().join(';')).toContain('notaflow.session_token=');
+  const row = t.db.$client.prepare('SELECT expires_at FROM auth_sessions').get() as {
+    expires_at: number;
+  };
+  expect(row.expires_at).toBeGreaterThan(old + day / 2);
+});

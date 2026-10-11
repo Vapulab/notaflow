@@ -26,8 +26,18 @@ const PUBLIC: Record<string, Route> = {
 // Names under /app that are pages, never an account id.
 const RESERVED = new Set(['conta', 'comecar']);
 
+// A part that does not decode (a typo such as %E0) makes the whole path unknown, not a crash.
+function decodeParts(path: string): string[] | null {
+  try {
+    return path.split('/').filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return null;
+  }
+}
+
 export function parseRoute(location: { pathname: string; search: string }): Route {
-  const parts = location.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = decodeParts(location.pathname);
+  if (!parts) return { name: 'home' };
   const [first, accountId, section, id, action] = parts;
   if (first && parts.length === 1 && PUBLIC[first]) return PUBLIC[first];
   if (first !== 'app' || !accountId) return { name: 'home' };
@@ -100,7 +110,8 @@ export function routeHref(route: Route): string {
 export function legacyHashTarget(hash: string): string | null {
   const [path = '', search = ''] = hash.replace(/^#\/?/, '').split('?');
   if (hash === '' || hash === '#') return null;
-  const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = decodeParts(path);
+  if (!parts) return routeHref({ name: 'home' });
   const [first, accountId, section, id, action] = parts;
   if (parts.length === 0) return routeHref({ name: 'home' });
   if (first === 'admin' && parts.length === 1) return routeHref({ name: 'admin' });

@@ -237,3 +237,45 @@ test('a passkey prompt the browser did not finish shows a plain message', async 
     await screen.findByText('O navegador não concluiu a passkey. Tente de novo.'),
   ).toBeTruthy();
 });
+
+test('a password login before the e-mail is confirmed points to the code login', async () => {
+  stubApi(config());
+  vi.mocked(authApi.signInWithPassword).mockRejectedValue(new ApiError(403, 'EMAIL_NOT_VERIFIED'));
+  const user = userEvent.setup();
+  render(<LoginPage />);
+  await user.click(await screen.findByRole('button', { name: 'Entrar com senha' }));
+  await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com');
+  await user.type(screen.getByLabelText('Senha'), 'uma-senha-qualquer');
+  await user.click(screen.getByRole('button', { name: 'Entrar' }));
+  expect(
+    await screen.findByText(
+      'Seu e-mail ainda não foi confirmado. Entre com um código por e-mail; ele confirma o e-mail.',
+    ),
+  ).toBeTruthy();
+});
+
+test.each([
+  [
+    'account_not_linked',
+    'Este e-mail já tem conta no NotaFlow. Entre com um código por e-mail e depois vincule o Google em Minha conta.',
+  ],
+  ['signup_closed', 'O cadastro de novas empresas abre em breve.'],
+  [
+    'qualquer_outro',
+    'Não foi possível entrar com o Google. Tente de novo ou use um código por e-mail.',
+  ],
+])('back from Google with error %s, the login page explains it', async (code, text) => {
+  stubApi(config({ googleEnabled: true }));
+  window.history.replaceState(null, '', `/entrar?error=${code}`);
+  render(<LoginPage />);
+  expect(await screen.findByText(text)).toBeTruthy();
+});
+
+test('Google comes back to the login page on an error', async () => {
+  stubApi(config({ googleEnabled: true }));
+  vi.mocked(authApi.signInWithGoogle).mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(<LoginPage />);
+  await user.click(await screen.findByRole('button', { name: 'Entrar com Google' }));
+  expect(authApi.signInWithGoogle).toHaveBeenCalledWith('/app', '/entrar');
+});
