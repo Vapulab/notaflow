@@ -495,3 +495,13 @@ test('a retained ISS rate above 5% blocks the review with a hint', async () => {
     true,
   );
 });
+
+test('the customer field lists the emitter customers before anything is typed', async () => {
+  const calls = stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('combobox', { name: 'Cliente' }));
+  expect(await screen.findByRole('option', { name: /Cliente Teste Ltda/ })).toBeTruthy();
+  expect(screen.getByRole('option', { name: /Foreign Customer Inc/ })).toBeTruthy();
+  expect(calls.some((c) => c.url === `${base}/customers?emitterId=em1`)).toBe(true);
+});

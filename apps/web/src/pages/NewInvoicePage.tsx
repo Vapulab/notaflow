@@ -134,6 +134,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const found = useSearch<Customer>(
     `${base}/customers?emitterId=${encodeURIComponent(form.emitterId)}`,
     customerQuery,
+    { listWhenEmpty: true },
   );
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [codeQuery, setCodeQuery] = useState('');
