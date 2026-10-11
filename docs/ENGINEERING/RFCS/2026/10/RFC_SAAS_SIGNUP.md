@@ -1,6 +1,6 @@
 # RFC: Open Signup, Own Login, Guided Onboarding, and Soft Delete
 
-**Status:** In Review
+**Status:** Accepted
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -224,7 +224,7 @@ The page has these sections:
 
 **Legal pages.**
 
-- `/termos` and `/privacidade` are drafted by Claude in Portuguese. Lincoln reviews them, ideally with a lawyer, before launch.
+- `/termos` and `/privacidade` are drafted by Claude in Portuguese and reviewed with a skill specialized in Brazilian law and case law (LGPD, Marco Civil da Internet, CDC). Lincoln makes the final review, ideally with a lawyer, before launch.
 - Signup asks to accept both. The acceptance is stored with the date and the document version, and audited.
 
 **Copy.** All landing copy is drafted in Portuguese and reviewed by Lincoln.
@@ -271,4 +271,4 @@ The page has these sections:
 - [ ] Better Auth versions and plugins: e-mail OTP, passkey, Have I Been Pwned, captcha with Turnstile, Drizzle SQLite adapter. To check at plan time against the current docs.
 - [ ] Google OAuth consent screen: app name, logo, the privacy and terms URLs, and whether Google verification is needed for the scopes `openid email profile`.
 - [ ] The default DPS series for a new emitter.
-- [ ] Legal texts: Lincoln's review, and a lawyer.
+- [ ] Legal texts: a review with a Brazilian law skill (to find at stage 3d; if none is installed, recommend one), then Lincoln's review and a lawyer.
