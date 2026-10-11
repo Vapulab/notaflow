@@ -140,3 +140,10 @@ test('a seen tour does not start again, unless asked with ?tour=1', async () => 
   render(<HomePage />);
   await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
 });
+
+test('a user without a name yet is greeted without a dangling comma', async () => {
+  window.history.replaceState(null, '', '/app');
+  stubApi({ '/api/me': { ...meWith([account('acc', 'done')]), name: '', tourSeenAt: 'x' } });
+  render(<HomePage />);
+  expect(await screen.findByRole('heading', { level: 1, name: 'Olá!' })).toBeTruthy();
+});

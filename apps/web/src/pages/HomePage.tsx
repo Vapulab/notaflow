@@ -122,7 +122,7 @@ export function HomePage() {
   }
   const { data } = me;
   return (
-    <Layout title={`Olá, ${data.name}`}>
+    <Layout title={data.name ? `Olá, ${data.name}` : 'Olá!'}>
       {data.accounts.length === 0 && (
         <Alert variant="info">
           <p>
