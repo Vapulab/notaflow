@@ -3,6 +3,7 @@ import { gunzipSync } from 'node:zlib';
 import { MockAgent } from 'undici';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { seedTenant, seedUser } from '../../test/fixtures';
+import { makeTestCertificate } from '@notaflow/test-kit';
 import { syntheticCard } from '../../test/syntheticCard';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { EmitterRepository } from '../repos/EmitterRepository';
@@ -267,5 +268,86 @@ describe('the card step', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ draft: { cnpj: '12345678000195' } });
     expect(documents()).toEqual([]);
+  });
+  const certificateOf = (cnpj: string) => makeTestCertificate({ cnpj });
+  const sendCertificate = async (
+    accountId: string,
+    cert: { pfx: Buffer; password: string },
+    password = cert.password,
+  ) =>
+    c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/certificate`,
+      headers: await c.as('nova@example.com'),
+      payload: { pfxBase64: cert.pfx.toString('base64'), password },
+    });
+  const emitterRows = () =>
+    c.db.$client
+      .prepare(
+        'SELECT cnpj, municipality, simples_nacional, simples_regime, special_regime, dps_series, environment FROM emitters',
+      )
+      .all();
+  const stepOf = (accountId: string) =>
+    (
+      c.db.$client
+        .prepare('SELECT onboarding_step AS step FROM accounts WHERE id = ?')
+        .get(accountId) as {
+        step: string;
+      }
+    ).step;
+
+  async function atCertificate() {
+    const accountId = await start();
+    answer(active);
+    expect((await sendCard(accountId, await syntheticCard())).statusCode).toBe(200);
+    return accountId;
+  }
+
+  test('a certificate of another CNPJ than the card is refused, and nothing is stored', async () => {
+    const accountId = await atCertificate();
+    const response = await sendCertificate(accountId, certificateOf('11222333000181'));
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'certificate_cnpj_mismatch' });
+    expect(emitterRows()).toEqual([]);
+    expect(c.db.$client.prepare('SELECT count(*) AS n FROM certificates').get()).toEqual({ n: 0 });
+    expect(stepOf(accountId)).toBe('certificate');
+  });
+
+  test('the matching certificate creates the emitter from the card data, in production', async () => {
+    const accountId = await atCertificate();
+    const response = await sendCertificate(accountId, certificateOf('12345678000195'));
+    expect(response.statusCode).toBe(201);
+    expect(emitterRows()).toEqual([
+      {
+        cnpj: '12345678000195',
+        municipality: '4113700',
+        simples_nacional: '3',
+        simples_regime: '1',
+        special_regime: '0',
+        dps_series: '900',
+        environment: 'producao',
+      },
+    ]);
+    expect(stepOf(accountId)).toBe('fiscal');
+  });
+
+  test('two certificates at once make one emitter; the other is told it exists', async () => {
+    const accountId = await atCertificate();
+    const cert = certificateOf('12345678000195');
+    const answers = await Promise.all([
+      sendCertificate(accountId, cert),
+      sendCertificate(accountId, cert),
+    ]);
+    expect(answers.map((a) => a.statusCode).sort()).toEqual([201, 409]);
+    expect(emitterRows()).toHaveLength(1);
+    expect(stepOf(accountId)).toBe('fiscal');
+  });
+
+  test('a wrong certificate password keeps the step', async () => {
+    const accountId = await atCertificate();
+    const response = await sendCertificate(accountId, certificateOf('12345678000195'), 'errada');
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: 'WRONG_PASSWORD' });
+    expect(stepOf(accountId)).toBe('certificate');
   });
 });

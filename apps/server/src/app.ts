@@ -32,6 +32,7 @@ import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { memberRoutes } from './routes/members';
 import { onboardingRoutes } from './routes/onboarding';
+import { EmitterOnboarding } from './emitters/EmitterOnboarding';
 import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
@@ -152,6 +153,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   memberRoutes(app, db);
   onboardingRoutes(app, {
     db,
+    emitterOnboarding: new EmitterOnboarding({
+      db,
+      masterKey: config.masterKey,
+      providerFactory,
+      onEmitterCreated,
+    }),
     ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
   });
   emitterRoutes(app, { db, masterKey: config.masterKey, providerFactory, onEmitterCreated });

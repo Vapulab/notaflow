@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
 import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
+import type { EmitterOnboarding } from '../emitters/EmitterOnboarding';
 import { HttpError } from '../httpError';
 import { CardError, MAX_CARD_BYTES, readCard } from '../onboarding/cardReader';
 import { LookupError, lookupCnpj } from '../onboarding/cnpjLookup';
@@ -16,7 +17,7 @@ type Params = { Params: { accountId: string } };
 
 export function onboardingRoutes(
   app: FastifyInstance,
-  deps: { db: Database; cnpjDispatcher?: Dispatcher },
+  deps: { db: Database; emitterOnboarding: EmitterOnboarding; cnpjDispatcher?: Dispatcher },
 ): void {
   const { db } = deps;
   const onboarding = new OnboardingRepository(db);
@@ -170,6 +171,68 @@ export function onboardingRoutes(
         detail: `${draft.source}, typed`,
       });
       return { draft, nameMismatch: false };
+    },
+  );
+
+  app.post<
+    Params & {
+      Body: {
+        pfxBase64: string;
+        password: string;
+        municipalRegistration?: string;
+        advanced?: { simplesRegime?: '1' | '2' | '3'; specialRegime?: string; dpsSeries?: string };
+      };
+    }
+  >(
+    '/api/accounts/:accountId/onboarding/certificate',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['pfxBase64', 'password'],
+          additionalProperties: false,
+          properties: {
+            pfxBase64: { type: 'string', minLength: 1, maxLength: 200_000 },
+            password: { type: 'string', maxLength: 200 },
+            municipalRegistration: { type: 'string', minLength: 1, maxLength: 15 },
+            advanced: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                simplesRegime: { enum: ['1', '2', '3'] },
+                specialRegime: { enum: ['0', '1', '2', '3', '4', '5', '6', '9'] },
+                dpsSeries: { type: 'string', pattern: '^[0-9]{1,5}$' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+      atStep(ctx, 'certificate');
+      const draft = onboarding.draft(ctx);
+      if (!draft) throw new HttpError(409, 'card_required');
+      const { pfxBase64, password, municipalRegistration, advanced = {} } = request.body;
+      const emitter = await deps.emitterOnboarding.create(
+        ctx,
+        identityOf(request).email,
+        {
+          pfxBase64,
+          password,
+          municipality: draft.municipality,
+          ...(municipalRegistration ? { municipalRegistration } : {}),
+          simplesNacional: draft.simplesNacional,
+          ...(draft.simplesNacional === '3'
+            ? { simplesRegime: advanced.simplesRegime ?? '1' }
+            : {}),
+          specialRegime: advanced.specialRegime ?? '0',
+          dpsSeries: advanced.dpsSeries ?? '900',
+        },
+        { expectedCnpj: draft.cnpj },
+      );
+      onboarding.advance(ctx, 'certificate', 'fiscal');
+      return reply.status(201).send(emitter);
     },
   );
 
