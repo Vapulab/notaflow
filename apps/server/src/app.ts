@@ -53,6 +53,7 @@ export interface AppDeps {
   issuerFactory?: IssuerFactory;
   exchangeRate?: ExchangeRateSource;
   cepDispatcher?: Dispatcher;
+  cnpjDispatcher?: Dispatcher;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
   syncRetryDelaysMs?: number[];
@@ -149,7 +150,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   meRoutes(app);
   adminRoutes(app, db);
   memberRoutes(app, db);
-  onboardingRoutes(app, db);
+  onboardingRoutes(app, {
+    db,
+    ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
+  });
   emitterRoutes(app, { db, masterKey: config.masterKey, providerFactory, onEmitterCreated });
   syncRoutes(app, { db, sync: syncService });
   invoiceRoutes(app, { db, masterKey: config.masterKey, providerFactory });
