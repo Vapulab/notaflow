@@ -43,6 +43,27 @@
       "when": 1791665381711,
       "tag": "0005_force_export_support_01",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791680330375,
+      "tag": "0006_soft_delete_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791680493865,
+      "tag": "0007_no_delete_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791681023063,
+      "tag": "0008_audit_request",
+      "breakpoints": true
     }
   ]
 }

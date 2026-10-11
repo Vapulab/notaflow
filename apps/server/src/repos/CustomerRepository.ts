@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext, InvoiceParty, PartyAddress } from '@notaflow/core';
 import { and, eq, like, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, notDeleted, touched } from '../db/stamps';
 import { customers, emitters } from '../db/schema';
 
 export type CustomerRow = typeof customers.$inferSelect;
@@ -39,6 +40,7 @@ export class CustomerRepository {
           eq(customers.emitterId, emitterId),
           eq(customers.documentType, type),
           eq(customers.document, value),
+          notDeleted(customers),
         ),
       )
       .get();
@@ -47,6 +49,7 @@ export class CustomerRepository {
       this.db
         .insert(customers)
         .values({
+          ...created(ctx),
           id,
           emitterId,
           documentType: type,
@@ -63,7 +66,7 @@ export class CustomerRepository {
     );
     this.db
       .update(customers)
-      .set({ ...changes, updatedAt: new Date() })
+      .set({ ...changes, ...touched(ctx) })
       .where(eq(customers.id, existing.id))
       .run();
     return existing.id;
@@ -81,6 +84,7 @@ export class CustomerRepository {
             eq(customers.emitterId, emitterId),
             eq(customers.documentType, input.documentType),
             eq(customers.document, input.document),
+            notDeleted(customers),
           ),
         )
         .get();
@@ -100,6 +104,7 @@ export class CustomerRepository {
     return this.db
       .insert(customers)
       .values({
+        ...created(ctx),
         id: randomUUID(),
         emitterId,
         documentType: input.documentType,
@@ -122,7 +127,7 @@ export class CustomerRepository {
     const manualFields = [...new Set([...row.manualFields, ...Object.keys(fields)])];
     this.db
       .update(customers)
-      .set({ ...fields, manualFields, updatedAt: new Date() })
+      .set({ ...fields, manualFields, ...touched(ctx) })
       .where(eq(customers.id, customerId))
       .run();
     return true;
@@ -131,7 +136,9 @@ export class CustomerRepository {
   list(ctx: AccountContext, filter: { emitterId?: string; search?: string }): CustomerRow[] {
     const conditions: SQL[] = [
       eq(emitters.accountId, ctx.accountId),
+      notDeleted(emitters),
       eq(customers.archived, false),
+      notDeleted(customers),
     ];
     if (filter.emitterId) conditions.push(eq(customers.emitterId, filter.emitterId));
     if (filter.search) {
@@ -154,7 +161,14 @@ export class CustomerRepository {
       .select({ customer: customers })
       .from(customers)
       .innerJoin(emitters, eq(emitters.id, customers.emitterId))
-      .where(and(eq(customers.id, customerId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(customers.id, customerId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(customers),
+        ),
+      )
       .get();
     return row?.customer ?? null;
   }
@@ -163,7 +177,13 @@ export class CustomerRepository {
     const emitter = this.db
       .select({ id: emitters.id })
       .from(emitters)
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .get();
     if (!emitter) throw new Error('Emitter not found in this account.');
   }

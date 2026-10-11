@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountContext, Environment } from '@notaflow/core';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, invoices } from '../db/schema';
 
 export type EmitterRow = typeof emitters.$inferSelect;
@@ -23,7 +24,11 @@ export class EmitterRepository {
   constructor(private readonly db: Database) {}
 
   list(ctx: AccountContext): EmitterRow[] {
-    return this.db.select().from(emitters).where(eq(emitters.accountId, ctx.accountId)).all();
+    return this.db
+      .select()
+      .from(emitters)
+      .where(and(eq(emitters.accountId, ctx.accountId), notDeleted(emitters)))
+      .all();
   }
 
   get(ctx: AccountContext, emitterId: string): EmitterRow | null {
@@ -31,7 +36,13 @@ export class EmitterRepository {
       this.db
         .select()
         .from(emitters)
-        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
         .get() ?? null
     );
   }
@@ -41,7 +52,9 @@ export class EmitterRepository {
       this.db
         .select()
         .from(emitters)
-        .where(and(eq(emitters.cnpj, cnpj), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(eq(emitters.cnpj, cnpj), eq(emitters.accountId, ctx.accountId), notDeleted(emitters)),
+        )
         .get() ?? null
     );
   }
@@ -52,7 +65,20 @@ export class EmitterRepository {
       this.db
         .select({ id: emitters.id })
         .from(emitters)
-        .where(and(eq(emitters.cnpj, cnpj), ne(emitters.accountId, ctx.accountId)))
+        .where(
+          and(eq(emitters.cnpj, cnpj), ne(emitters.accountId, ctx.accountId), notDeleted(emitters)),
+        )
+        .get() !== undefined
+    );
+  }
+
+  // Yes or no only, across accounts: its invoices stay under the removed emitter, so the CNPJ waits for a restore.
+  isCnpjOfRemovedEmitter(_ctx: AccountContext, cnpj: string): boolean {
+    return (
+      this.db
+        .select({ id: emitters.id })
+        .from(emitters)
+        .where(and(eq(emitters.cnpj, cnpj), isNotNull(emitters.deletedAt)))
         .get() !== undefined
     );
   }
@@ -60,7 +86,7 @@ export class EmitterRepository {
   create(ctx: AccountContext, input: NewEmitter): EmitterRow {
     return this.db
       .insert(emitters)
-      .values({ ...input, id: randomUUID(), accountId: ctx.accountId })
+      .values({ ...created(ctx), ...input, id: randomUUID(), accountId: ctx.accountId })
       .returning()
       .get();
   }
@@ -72,8 +98,17 @@ export class EmitterRepository {
       WHERE ${invoices.emitterId} = ${emitters.id} AND ${invoices.dpsSeries} = ${emitters.dpsSeries})`;
     const row = this.db
       .update(emitters)
-      .set({ nextDpsNumber: sql`max(${emitters.nextDpsNumber}, ${usedAbove}) + 1` })
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .set({
+        nextDpsNumber: sql`max(${emitters.nextDpsNumber}, ${usedAbove}) + 1`,
+        ...touched(ctx),
+      })
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .returning({ next: emitters.nextDpsNumber })
       .get();
     if (!row) throw new Error('Emitter not found in this account.');
@@ -84,8 +119,14 @@ export class EmitterRepository {
     return (
       this.db
         .update(emitters)
-        .set({ environment })
-        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .set({ environment, ...touched(ctx) })
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
         .run().changes > 0
     );
   }
@@ -102,7 +143,13 @@ export class EmitterRepository {
           ibscbsRegimeFrom: emitters.ibscbsRegimeFrom,
         })
         .from(emitters)
-        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
         .get() ?? null
     );
   }
@@ -111,8 +158,14 @@ export class EmitterRepository {
     return (
       this.db
         .update(emitters)
-        .set(config)
-        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .set({ ...config, ...touched(ctx) })
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
         .run().changes > 0
     );
   }

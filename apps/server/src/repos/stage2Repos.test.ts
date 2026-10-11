@@ -138,7 +138,6 @@ test('a pending invoice keeps its built template and has no template_of', () => 
     environment: 'producao_restrita',
     templateOf: null,
     issueTemplate: '{"serviceCents":123400}',
-    createdBy: a.userId,
   });
   expect(invoices.issueState(a, id)).toMatchObject({
     templateOf: null,

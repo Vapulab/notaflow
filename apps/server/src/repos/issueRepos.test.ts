@@ -55,7 +55,6 @@ test('a pending row becomes issued with the provider invoice', () => {
     serviceCode: '010101',
     environment: 'producao_restrita',
     templateOf: 'template-id',
-    createdBy: a.userId,
   });
   expect(invoices.issueState(a, id)).toMatchObject({ status: 'pending', dpsNumber: 42 });
   invoices.markIssued(a, id, providerInvoice());
@@ -78,7 +77,6 @@ test('rejected and unknown keep the Sefin messages', () => {
     serviceCode: '010101',
     environment: 'producao_restrita' as const,
     templateOf: 't',
-    createdBy: a.userId,
   };
   const rejected = invoices.createPending(a, { ...base, dpsId: 'D1', dpsNumber: 1 });
   invoices.markRejected(a, rejected, [{ code: 'E0001', message: 'Campo inválido' }]);
@@ -106,7 +104,6 @@ test('a sync that brings an unknown invoice adopts its row instead of adding a s
     serviceCode: '010101',
     environment: 'producao_restrita',
     templateOf: 't',
-    createdBy: a.userId,
   });
   invoices.markUnknown(a, id, 'timeout');
   expect(invoices.upsertSynced(a, emitterId, invoice, null)).toEqual({
@@ -147,7 +144,6 @@ test('a sync never adopts an invoice of another system that took the same DPS nu
     serviceCode: '010101',
     environment: 'producao_restrita',
     templateOf: 't',
-    createdBy: a.userId,
   });
   invoices.markUnknown(a, id, 'timeout');
   expect(invoices.upsertSynced(a, emitterId, invoice, null).created).toBe(true);

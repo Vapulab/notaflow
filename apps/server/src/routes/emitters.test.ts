@@ -273,3 +273,19 @@ test('an emitter municipality outside the IBGE table is refused', async () => {
   expect(response.statusCode).toBe(400);
   expect(response.json()).toMatchObject({ error: 'unknown_municipality' });
 });
+
+test('a CNPJ of a removed emitter is refused until a platform admin restores it', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
+  const first = await onboard(a.accountId, 'owner@example.com');
+  expect(first.statusCode).toBe(201);
+  t.db.$client
+    .prepare('UPDATE emitters SET deleted_at = 1 WHERE id = ?')
+    .run(first.json<{ id: string }>().id);
+  const again = await onboard(a.accountId, 'owner@example.com');
+  expect(again.statusCode).toBe(409);
+  expect(again.json()).toMatchObject({ error: 'emitter_removed' });
+  const b = seedTenant(t.db, { accountName: 'B', email: 'other@example.com' });
+  const elsewhere = await onboard(b.accountId, 'other@example.com');
+  expect(elsewhere.statusCode).toBe(409);
+  expect(elsewhere.json()).toMatchObject({ error: 'emitter_removed' });
+});

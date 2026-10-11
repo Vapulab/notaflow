@@ -60,6 +60,9 @@ export const ERROR_TEXT: Record<string, string> = {
   unknown_municipality: 'Município fora da tabela do IBGE. Escolha o município na lista.',
   unknown_country: 'País fora da tabela ISO. Escolha o país na lista.',
   invalid_cep: 'O CEP deve ter 8 dígitos.',
+  emitter_removed:
+    'Este CNPJ pertence a um emitente removido. Fale com o suporte para restaurá-lo.',
+  cannot_anonymize_self: 'Você não pode anonimizar a sua própria conta.',
   cep_not_found: 'CEP não encontrado. Preencha o endereço e escolha o município na lista.',
   cep_unavailable:
     'A consulta de CEP não respondeu. Preencha o endereço e escolha o município na lista.',

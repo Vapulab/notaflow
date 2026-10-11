@@ -27,3 +27,4 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 5. Never resend a DPS without a lookup by DPS id first, and never with a new number (`IssueService.reconcile`).
 6. A new invoice without a template resends its stored `issue_template`; never rebuild it from the current customer or service records.
 7. The national service code list is `src/data/serviceCodes.json`, converted from the official Anexo B; the loader names its source and date.
+8. Never delete a business row (a trigger refuses it): writes spread `created`/`touched` from `src/db/stamps.ts`, reads use `notDeleted`, removal is `softDelete`. A migration that rebuilds a table recreates its `<table>_no_delete` trigger. See [Data](../../docs/ENGINEERING/CONVENTIONS/DATA.md).

@@ -204,7 +204,6 @@ test('an invoice issued by the app imports no service when the sync brings it ba
     serviceCode: '010101',
     environment: 'producao_restrita',
     templateOf: null,
-    createdBy: ctx.userId,
   });
   repos.invoices.markIssued(ctx, id, invoice);
   applyDocument(repos, ctx, emitterId, { kind: 'invoice', nsu: 1, invoice }, counts);
