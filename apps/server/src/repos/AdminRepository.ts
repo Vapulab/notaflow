@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountRole, AdminContext } from '@notaflow/core';
-import { count, eq, like, or, sql } from 'drizzle-orm';
+import { and, count, eq, like, or, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { accounts, memberships, users } from '../db/schema';
 
 // Platform scope: every method needs an AdminContext, which only the admin guard builds.
@@ -19,7 +19,8 @@ export class AdminRepository {
         members: count(memberships.id),
       })
       .from(accounts)
-      .leftJoin(memberships, eq(memberships.accountId, accounts.id))
+      .leftJoin(memberships, and(eq(memberships.accountId, accounts.id), notDeleted(memberships)))
+      .where(notDeleted(accounts))
       .groupBy(accounts.id)
       .orderBy(accounts.name)
       .all();
@@ -37,7 +38,12 @@ export class AdminRepository {
         lastLoginAt: users.lastLoginAt,
       })
       .from(users)
-      .where(pattern ? or(like(users.email, pattern), like(users.name, pattern)) : undefined)
+      .where(
+        and(
+          notDeleted(users),
+          pattern ? or(like(users.email, pattern), like(users.name, pattern)) : undefined,
+        ),
+      )
       .orderBy(users.name)
       .limit(50)
       .all();
@@ -64,7 +70,12 @@ export class AdminRepository {
 
   createUser(ctx: AdminContext, email: string, name: string): string | null {
     const normalized = email.toLowerCase();
-    if (this.db.select().from(users).where(eq(users.email, normalized)).get()) return null;
+    const taken = this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.email, normalized), notDeleted(users)))
+      .get();
+    if (taken) return null;
     const id = randomUUID();
     this.db
       .insert(users)
@@ -84,8 +95,16 @@ export class AdminRepository {
   }
 
   setMembership(ctx: AdminContext, accountId: string, userId: string, role: AccountRole): boolean {
-    const account = this.db.select().from(accounts).where(eq(accounts.id, accountId)).get();
-    const user = this.db.select().from(users).where(eq(users.id, userId)).get();
+    const account = this.db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.id, accountId), notDeleted(accounts)))
+      .get();
+    const user = this.db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), notDeleted(users)))
+      .get();
     if (!account || !user) return false;
     this.db
       .insert(memberships)

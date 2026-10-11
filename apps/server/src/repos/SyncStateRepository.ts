@@ -1,7 +1,7 @@
 import type { AccountContext, Environment } from '@notaflow/core';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, syncState } from '../db/schema';
 
 export type SyncStateRow = Pick<
@@ -31,6 +31,7 @@ export class SyncStateRepository {
           eq(syncState.emitterId, emitterId),
           eq(syncState.environment, environment),
           eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
         ),
       )
       .get();
@@ -72,7 +73,13 @@ export class SyncStateRepository {
     const emitter = this.db
       .select({ id: emitters.id })
       .from(emitters)
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .get();
     if (!emitter) throw new Error('Emitter not found in this account.');
     this.db

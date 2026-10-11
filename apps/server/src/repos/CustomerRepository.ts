@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext, InvoiceParty, PartyAddress } from '@notaflow/core';
 import { and, eq, like, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { customers, emitters } from '../db/schema';
 
 export type CustomerRow = typeof customers.$inferSelect;
@@ -40,6 +40,7 @@ export class CustomerRepository {
           eq(customers.emitterId, emitterId),
           eq(customers.documentType, type),
           eq(customers.document, value),
+          notDeleted(customers),
         ),
       )
       .get();
@@ -83,6 +84,7 @@ export class CustomerRepository {
             eq(customers.emitterId, emitterId),
             eq(customers.documentType, input.documentType),
             eq(customers.document, input.document),
+            notDeleted(customers),
           ),
         )
         .get();
@@ -134,7 +136,9 @@ export class CustomerRepository {
   list(ctx: AccountContext, filter: { emitterId?: string; search?: string }): CustomerRow[] {
     const conditions: SQL[] = [
       eq(emitters.accountId, ctx.accountId),
+      notDeleted(emitters),
       eq(customers.archived, false),
+      notDeleted(customers),
     ];
     if (filter.emitterId) conditions.push(eq(customers.emitterId, filter.emitterId));
     if (filter.search) {
@@ -157,7 +161,14 @@ export class CustomerRepository {
       .select({ customer: customers })
       .from(customers)
       .innerJoin(emitters, eq(emitters.id, customers.emitterId))
-      .where(and(eq(customers.id, customerId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(customers.id, customerId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(customers),
+        ),
+      )
       .get();
     return row?.customer ?? null;
   }
@@ -166,7 +177,13 @@ export class CustomerRepository {
     const emitter = this.db
       .select({ id: emitters.id })
       .from(emitters)
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .get();
     if (!emitter) throw new Error('Emitter not found in this account.');
   }

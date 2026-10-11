@@ -3,7 +3,7 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import type { AccountContext, Environment, ProviderEvent, ProviderInvoice } from '@notaflow/core';
 import { and, asc, count, desc, eq, gte, inArray, like, lte, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, invoiceEvents, invoices } from '../db/schema';
 
 export type InvoiceStatus = (typeof invoices.$inferSelect)['status'];
@@ -104,6 +104,7 @@ export class InvoiceRepository {
           eq(invoices.emitterId, emitterId),
           eq(invoices.dpsId, invoice.dps.id),
           inArray(invoices.status, ['pending', 'unknown']),
+          notDeleted(invoices),
         ),
       )
       .get();
@@ -174,7 +175,11 @@ export class InvoiceRepository {
   }
 
   list(ctx: AccountContext, filter: InvoiceFilter) {
-    const conditions: SQL[] = [eq(emitters.accountId, ctx.accountId)];
+    const conditions: SQL[] = [
+      eq(emitters.accountId, ctx.accountId),
+      notDeleted(emitters),
+      notDeleted(invoices),
+    ];
     if (filter.emitterId) conditions.push(eq(invoices.emitterId, filter.emitterId));
     if (filter.environment) conditions.push(eq(invoices.environment, filter.environment));
     if (filter.status) conditions.push(eq(invoices.status, filter.status));
@@ -218,7 +223,14 @@ export class InvoiceRepository {
       })
       .from(invoices)
       .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
-      .where(and(eq(invoices.id, invoiceId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(invoices.id, invoiceId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(invoices),
+        ),
+      )
       .get();
     if (!row) return null;
     const events = this.db
@@ -229,7 +241,7 @@ export class InvoiceRepository {
         registeredAt: invoiceEvents.registeredAt,
       })
       .from(invoiceEvents)
-      .where(eq(invoiceEvents.accessKey, row.accessKey ?? ''))
+      .where(and(eq(invoiceEvents.accessKey, row.accessKey ?? ''), notDeleted(invoiceEvents)))
       .orderBy(asc(invoiceEvents.registeredAt))
       .all();
     return { ...row, events };
@@ -240,7 +252,14 @@ export class InvoiceRepository {
       .select({ id: invoices.id })
       .from(invoices)
       .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
-      .where(and(eq(invoices.accessKey, accessKey), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(invoices.accessKey, accessKey),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(invoices),
+        ),
+      )
       .get();
     return row?.id ?? null;
   }
@@ -250,7 +269,14 @@ export class InvoiceRepository {
       .select({ xmlGzip: invoices.xmlGzip })
       .from(invoices)
       .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
-      .where(and(eq(invoices.id, invoiceId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(invoices.id, invoiceId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(invoices),
+        ),
+      )
       .get();
     return row?.xmlGzip ? gunzipSync(row.xmlGzip).toString('utf8') : null;
   }
@@ -264,6 +290,8 @@ export class InvoiceRepository {
         and(
           eq(invoices.emitterId, emitterId),
           eq(invoices.idempotencyKey, key),
+          notDeleted(invoices),
+          notDeleted(emitters),
           eq(emitters.accountId, ctx.accountId),
         ),
       )
@@ -282,7 +310,14 @@ export class InvoiceRepository {
         })
         .from(invoices)
         .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
-        .where(and(eq(invoices.id, invoiceId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(invoices.id, invoiceId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+            notDeleted(invoices),
+          ),
+        )
         .get() ?? null
     );
   }
@@ -389,7 +424,14 @@ export class InvoiceRepository {
         })
         .from(invoices)
         .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
-        .where(and(eq(invoices.id, invoiceId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(invoices.id, invoiceId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+            notDeleted(invoices),
+          ),
+        )
         .get() ?? null
     );
   }
@@ -436,7 +478,13 @@ export class InvoiceRepository {
     const emitter = this.db
       .select({ id: emitters.id })
       .from(emitters)
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .get();
     if (!emitter) throw new Error('Emitter not found in this account.');
   }

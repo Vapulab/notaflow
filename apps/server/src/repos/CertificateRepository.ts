@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext } from '@notaflow/core';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { certificates, emitters } from '../db/schema';
 import type { SealedCertificate } from '../vault/envelope';
 
@@ -30,7 +30,13 @@ export class CertificateRepository {
       const emitter = tx
         .select({ id: emitters.id })
         .from(emitters)
-        .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
         .get();
       if (!emitter) throw new Error('Emitter not found in this account.');
       tx.update(certificates)
@@ -55,6 +61,8 @@ export class CertificateRepository {
           eq(certificates.emitterId, emitterId),
           eq(certificates.active, true),
           eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(certificates),
         ),
       )
       .get();

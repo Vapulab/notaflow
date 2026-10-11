@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext, NewInvoiceInput } from '@notaflow/core';
 import { and, asc, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, touched } from '../db/stamps';
+import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, services } from '../db/schema';
 
 type ServiceRow = typeof services.$inferSelect;
@@ -33,6 +33,8 @@ export class ServiceRepository {
         and(
           eq(services.emitterId, emitterId),
           eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(services),
           options.includeArchived ? undefined : eq(services.archived, false),
         ),
       )
@@ -84,6 +86,7 @@ export class ServiceRepository {
           eq(services.emitterId, emitterId),
           eq(services.nationalTaxCode, input.nationalTaxCode),
           eq(services.description, input.description),
+          notDeleted(services),
         ),
       )
       .get();
@@ -129,7 +132,14 @@ export class ServiceRepository {
         .select({ service: services })
         .from(services)
         .innerJoin(emitters, eq(emitters.id, services.emitterId))
-        .where(and(eq(services.id, serviceId), eq(emitters.accountId, ctx.accountId)))
+        .where(
+          and(
+            eq(services.id, serviceId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+            notDeleted(services),
+          ),
+        )
         .get()?.service ?? null
     );
   }
@@ -138,7 +148,13 @@ export class ServiceRepository {
     const emitter = this.db
       .select({ id: emitters.id })
       .from(emitters)
-      .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
       .get();
     if (!emitter) throw new Error('Emitter not found in this account.');
   }
