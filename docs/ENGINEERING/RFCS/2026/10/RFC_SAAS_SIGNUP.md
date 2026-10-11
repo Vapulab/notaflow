@@ -1,6 +1,6 @@
 # RFC: Open Signup, Own Login, Guided Onboarding, and Soft Delete
 
-**Status:** Accepted (Stage 3a implemented); Stage 3b planned in [PLAN_STAGE_3B_LOGIN_AND_ROUTES](../../../PLANS/2026/10/PLAN_STAGE_3B_LOGIN_AND_ROUTES.md)
+**Status:** Accepted (Stage 3a and 3b implemented); Stage 3b plan: [PLAN_STAGE_3B_LOGIN_AND_ROUTES](../../../PLANS/2026/10/PLAN_STAGE_3B_LOGIN_AND_ROUTES.md)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -268,7 +268,7 @@ The page has these sections:
 
 - [ ] BrasilAPI CNPJ fields and limits. A spike confirms that the answer has the IBGE municipality code and the Simples and MEI options, and its rate limits. A second public source is a fallback.
 - [ ] The card layout. Two or three real cards of Lincoln's companies, read locally and never committed, confirm the text PDF layout of the Receita site.
-- [ ] Better Auth versions and plugins: e-mail OTP, passkey, Have I Been Pwned, captcha with Turnstile, Drizzle SQLite adapter. To check at plan time against the current docs.
+- [x] Better Auth versions and plugins: `better-auth@1.7.7` and `@better-auth/passkey@1.7.7`, with the plugins `emailOTP`, `haveIBeenPwned`, `captcha` (Turnstile), and `passkey`, on the Drizzle SQLite adapter.
 - [ ] Google OAuth consent screen: app name, logo, the privacy and terms URLs, and whether Google verification is needed for the scopes `openid email profile`.
 - [ ] The default DPS series for a new emitter.
 - [ ] Legal texts: a review with a Brazilian law skill (to find at stage 3d; if none is installed, recommend one), then Lincoln's review and a lawyer.

@@ -70,4 +70,11 @@ This is a decision to confirm in the legal review of stage 3d. If the review ask
 
 ## Exceptions
 
-The Better Auth `session` and `verification` tables (stage 3b) hold ephemeral secrets and keep their own lifecycle. The audit log records each login, code sent, and logout.
+The four Better Auth tables are credentials, not business rows, and are listed in `OTHER_TABLES`. Better Auth deletes their rows itself:
+
+- `auth_sessions`: on sign-out, expiry, "sair de todos os dispositivos", and the anonymization of a user;
+- `auth_verifications`: when a code is used or expires;
+- `auth_accounts` (a password or a linked Google): when the user unlinks Google;
+- `auth_passkeys`: when the user removes a passkey.
+
+The audit log records each of these events.
