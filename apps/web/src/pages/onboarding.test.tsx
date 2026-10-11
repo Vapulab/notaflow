@@ -367,3 +367,10 @@ test('a revenue above the Simples limit is explained, and nothing is saved', asy
   );
   expect(calls.some((c) => c.init?.method === 'PUT')).toBe(false);
 });
+
+test('an onboarding address of an account that does not exist goes to /app', async () => {
+  window.history.replaceState(null, '', '/app/comecar/antiga');
+  stubApi({ '/api/accounts/antiga/onboarding': { error: 'not_found' } });
+  renderWithMe(<OnboardingPage accountId="antiga" />, meWith(null));
+  await waitFor(() => expect(window.location.pathname).toBe('/app'));
+});
