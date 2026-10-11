@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiError, api, type IssueResult } from '../api';
+import { track } from '../analytics/analytics';
 import { navigate } from '../router';
 import { errorText } from './Layout';
 
@@ -82,6 +83,7 @@ export function useIssueSend<F>(options: { accountId: string; storageKey: string
         clearPendingSend(storageKey);
         setLocked(false);
         if (answer.status === 'issued') {
+          track('invoice_issued', { kind: path.endsWith('/invoices/new') ? 'new' : 'similar' });
           open(answer.id);
           return;
         }

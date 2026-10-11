@@ -3,6 +3,7 @@ import { signUpWithPassword, verifyEmail } from '../auth/authApi';
 import { CodeField } from '../auth/CodeField';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
+import { track } from '../analytics/analytics';
 import { api, type Me } from '../api';
 import { LegalCheckbox } from '../components/LegalGate';
 import { errorText } from '../components/Layout';
@@ -57,6 +58,7 @@ export function SignupPage() {
       } else {
         await verifyEmail(email, code);
         await recordAcceptance();
+        track('signup_completed');
         navigate('/app', { replace: true });
       }
     } catch (failure) {

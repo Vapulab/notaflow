@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError, type OnboardingState, type OnboardingStep } from '../../api';
+import { track } from '../../analytics/analytics';
 import { navigate } from '../../router';
 import { errorText, Layout } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
@@ -90,6 +91,10 @@ export function OnboardingPage(props: { accountId?: string }) {
 
   const prefix = `/api/accounts/${encodeURIComponent(accountId ?? '')}/onboarding`;
   const step: OnboardingStep | 'company' = accountId ? (state?.step ?? 'card') : 'company';
+  const reached = state?.step;
+  useEffect(() => {
+    if (reached) track('onboarding_step', { step: reached });
+  }, [reached]);
   let panel;
   if (!accountId) panel = <CompanyStep />;
   else if (loaded.error && !missing)

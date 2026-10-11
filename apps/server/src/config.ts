@@ -16,6 +16,8 @@ export interface Config {
   google: { clientId: string; clientSecret: string } | null;
   turnstile: { siteKey: string; secretKey: string } | null;
   signup: { open: boolean; limitPerIpPerDay: number };
+  // The project key is public by design: the browser sends it with every event.
+  posthog: { token: string; host: string } | null;
   nacionalUrls?: { sefin: string; adn: string };
 }
 
@@ -118,6 +120,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
         ? null
         : { siteKey: turnstile[0], secretKey: turnstile[1] },
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
+    posthog: env.POSTHOG_TOKEN
+      ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }
+      : null,
     ...(fake ? { nacionalUrls: { sefin: `${fake}/SefinNacional`, adn: `${fake}/adn` } } : {}),
   };
 }

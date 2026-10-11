@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { api, ApiError, type Environment, type Me } from '../api';
+import { identifyUser } from '../analytics/analytics';
 import { navigate } from '../router';
 import { useAsync } from './useAsync';
 
@@ -9,6 +10,10 @@ export const MeContext = createContext<Me | null>(null);
 export function MeProvider({ children }: { children: ReactNode }) {
   const me = useAsync(() => api.get<Me>('/api/me'), []);
   const signedOut = me.error instanceof ApiError && me.error.status === 401;
+  const userId = me.data?.userId;
+  useEffect(() => {
+    if (userId) identifyUser(userId);
+  }, [userId]);
   // No session: log in, then come back to this page.
   useEffect(() => {
     if (!signedOut) return;

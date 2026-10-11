@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
 import { formatCents, formatDate } from '../format';
+import { resetAnalytics } from '../analytics/analytics';
 import { signOut } from '../auth/authApi';
 import { navigate, routeHref, useRoute } from '../router';
 import { roleIn, useMe } from './MeContext';
@@ -189,6 +190,7 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
             <button
               type="button"
               onClick={() => {
+                resetAnalytics();
                 void signOut().finally(() => navigate('/entrar', { replace: true }));
               }}
               className={`text-sm ${linkClasses({ variant: 'muted' })}`}

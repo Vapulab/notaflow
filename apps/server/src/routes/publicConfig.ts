@@ -7,5 +7,6 @@ export function publicConfigRoutes(app: FastifyInstance, config: Config): void {
     googleEnabled: config.google !== null,
     turnstileSiteKey: config.turnstile?.siteKey ?? null,
     signupOpen: config.signup.open,
+    posthog: config.posthog,
   }));
 }

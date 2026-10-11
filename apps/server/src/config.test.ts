@@ -198,3 +198,15 @@ test('production needs an https APP_ORIGIN, so the session cookie is Secure', ()
     problemsOf({ ...base, NODE_ENV: 'development', APP_ORIGIN: 'http://localhost:3000' }),
   ).toEqual([]);
 });
+
+test('PostHog is on only with a token, at the US host unless told otherwise', () => {
+  expect(loadConfig(base).posthog).toBeNull();
+  expect(loadConfig({ ...base, POSTHOG_TOKEN: 'phc_test' }).posthog).toEqual({
+    token: 'phc_test',
+    host: 'https://us.i.posthog.com',
+  });
+  expect(
+    loadConfig({ ...base, POSTHOG_TOKEN: 'phc_test', POSTHOG_HOST: 'https://eu.i.posthog.com' })
+      .posthog,
+  ).toEqual({ token: 'phc_test', host: 'https://eu.i.posthog.com' });
+});

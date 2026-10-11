@@ -7,6 +7,7 @@ export interface PublicConfig {
   googleEnabled: boolean;
   turnstileSiteKey: string | null;
   signupOpen: boolean;
+  posthog?: { token: string; host: string } | null;
 }
 
 export function usePublicConfig() {
