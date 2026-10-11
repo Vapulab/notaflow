@@ -67,6 +67,29 @@ export function existingAccountEmail(): RenderedMail {
   };
 }
 
+export function inviteEmail(invite: {
+  inviter: string; // the name and e-mail of who invited
+  accountName: string;
+  loginUrl: string;
+}): RenderedMail {
+  const intro = `${invite.inviter} convidou você para a conta ${invite.accountName} no NotaFlow, o app de emissão de notas fiscais de serviço.`;
+  const how = `Para entrar, abra ${invite.loginUrl} e peça um código com este e-mail. Não é preciso criar senha.`;
+  return {
+    subject: `Convite para a conta ${invite.accountName} no NotaFlow`,
+    text: `${intro}
+
+${how}
+
+${FOOTER}
+`,
+    html: layout(
+      `<p style="margin:0 0 16px">${escapeHtml(intro)}</p>
+<p style="margin:0 0 16px"><a href="${escapeHtml(invite.loginUrl)}" style="display:inline-block;background:${COLOR.primary};color:#ffffff;text-decoration:none;font-weight:600;padding:10px 16px;border-radius:8px">Entrar no NotaFlow</a></p>
+<p style="margin:0;color:${COLOR.muted}">${escapeHtml(how)}</p>`,
+    ),
+  };
+}
+
 function layout(content: string): string {
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:24px;background:${COLOR.surface};color:${COLOR.fg};font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.5">
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid ${COLOR.border};border-radius:8px;padding:24px">

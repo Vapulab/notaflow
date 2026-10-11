@@ -86,3 +86,46 @@ test('a member cannot list the account users: 403 owner_only', async () => {
   expect(response.statusCode).toBe(403);
   expect(response.json()).toEqual({ error: 'owner_only' });
 });
+
+test('the invited person gets an e-mail with the account, who invited, and how to enter', async () => {
+  const a = seedTenant(t.db, { accountName: 'Vapulab', email: 'owner@example.com' });
+  await t.app.inject({
+    method: 'POST',
+    url: `/api/accounts/${a.accountId}/members`,
+    headers: await t.as('owner@example.com'),
+    payload: { email: 'Contador@Example.com', name: 'Contador' },
+  });
+  const sent = t.mail.filter((m) => m.to === 'contador@example.com');
+  expect(sent).toHaveLength(1);
+  expect(sent[0]?.subject).toBe('Convite para a conta Vapulab no NotaFlow');
+  expect(sent[0]?.text).toContain('owner@example.com');
+  expect(sent[0]?.text).toContain('http://localhost:3000/entrar');
+  expect(sent[0]?.html).toContain('Vapulab');
+});
+
+test('a name with markup arrives escaped in the invite e-mail', async () => {
+  const a = seedTenant(t.db, { accountName: '<b>Acme</b>', email: 'owner@example.com' });
+  await t.app.inject({
+    method: 'POST',
+    url: `/api/accounts/${a.accountId}/members`,
+    headers: await t.as('owner@example.com'),
+    payload: { email: 'novo@example.com', name: 'Novo' },
+  });
+  const html = t.mail.find((m) => m.to === 'novo@example.com')?.html ?? '';
+  expect(html).toContain('&lt;b&gt;Acme&lt;/b&gt;');
+  expect(html).not.toContain('<b>Acme</b>');
+});
+
+test('when the e-mail fails the member still exists, and the answer says the e-mail did not go', async () => {
+  const own = await createTestApp({ failMail: true });
+  const a = seedTenant(own.db, { accountName: 'Vapulab', email: 'owner@example.com' });
+  const invite = await own.app.inject({
+    method: 'POST',
+    url: `/api/accounts/${a.accountId}/members`,
+    headers: await own.as('owner@example.com'),
+    payload: { email: 'novo@example.com', name: 'Novo' },
+  });
+  expect(invite.statusCode).toBe(201);
+  expect(invite.json()).toMatchObject({ created: true, emailSent: false });
+  await own.close();
+});

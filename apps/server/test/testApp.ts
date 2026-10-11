@@ -35,6 +35,8 @@ export async function createTestApp(
     cnpjDispatcher?: Dispatcher;
     env?: Record<string, string>;
     googleUserInfo?: AuthDeps['googleUserInfo'];
+    // The app's e-mails fail, as when Resend is down; Better Auth's codes still arrive.
+    failMail?: boolean;
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -64,7 +66,11 @@ export async function createTestApp(
   const app = buildApp({
     config,
     db,
-    mailer,
+    mailer: options.failMail
+      ? async () => {
+          throw new Error('Resend answered 503');
+        }
+      : mailer,
     auth,
     ...(options.logStream ? { logStream: options.logStream } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),

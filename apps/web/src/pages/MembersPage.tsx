@@ -25,8 +25,12 @@ export function MembersPage({ accountId }: { accountId: string }) {
   async function invite(event: FormEvent) {
     event.preventDefault();
     try {
-      await api.post(url, { email, name });
-      setMessage(`${email} agora é membro da conta.`);
+      const answer = await api.post<{ emailSent?: boolean }>(url, { email, name });
+      setMessage(
+        answer.emailSent === false
+          ? `${email} agora é membro da conta, mas o e-mail de convite não saiu. Avise a pessoa para entrar em ${window.location.host}/entrar com esse e-mail.`
+          : `Convite enviado para ${email}. A pessoa entra com um código enviado para esse e-mail.`,
+      );
       setEmail('');
       setName('');
       members.reload();
