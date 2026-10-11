@@ -88,12 +88,12 @@ export interface LookupDeps {
 
 // BrasilAPI first; CNPJá open when BrasilAPI is down or limits us. Never a guess.
 export async function lookupCnpj(cnpj: string, deps: LookupDeps = {}): Promise<CnpjDraft> {
-  let found: { status: string; draft: CnpjDraft } | null = null;
   const brasil = await fetchJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, deps);
   if (brasil.kind === 'not_found') throw new LookupError('cnpj_not_found');
-  if (brasil.kind === 'ok') {
-    found = fromBrasilApi(cnpj, brasil.body as Record<string, unknown>);
-  } else {
+  let found: { status: string; draft: CnpjDraft } | null =
+    brasil.kind === 'ok' ? fromBrasilApi(cnpj, brasil.body as Record<string, unknown>) : null;
+  // CNPJá when BrasilAPI is down or answers without the municipality.
+  if (!found || !/^\d{7}$/.test(found.draft.municipality)) {
     const cnpja = await fetchJson(`https://open.cnpja.com/office/${cnpj}`, deps);
     if (cnpja.kind === 'not_found') throw new LookupError('cnpj_not_found');
     if (cnpja.kind === 'down') throw new LookupError('cnpj_lookup_unavailable');

@@ -156,3 +156,18 @@ test('the tour is marked as seen once, and /api/me tells which accounts lack a f
     accounts: [{ needsFiscalConfig: false }],
   });
 });
+
+test('marking the tour as seen stamps who and when', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  await t.app.inject({
+    method: 'POST',
+    url: '/api/me/tour-seen',
+    headers: await t.as('a@example.com'),
+    payload: {},
+  });
+  const row = t.db.$client
+    .prepare('SELECT updated_by, updated_at FROM users WHERE id = ?')
+    .get(a.userId) as { updated_by: string | null; updated_at: number | null };
+  expect(row.updated_by).toBe(a.userId);
+  expect(row.updated_at).toEqual(expect.any(Number));
+});

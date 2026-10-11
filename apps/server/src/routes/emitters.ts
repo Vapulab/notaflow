@@ -9,6 +9,7 @@ import { CertificateRepository } from '../repos/CertificateRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { sealCertificate } from '../vault/envelope';
 import { EmitterOnboarding, openPfx } from '../emitters/EmitterOnboarding';
+import { OnboardingRepository } from '../repos/OnboardingRepository';
 
 const DAY_MS = 86_400_000;
 
@@ -58,6 +59,7 @@ export function emitterRoutes(
   },
 ): void {
   const onboarding = new EmitterOnboarding(deps);
+  const steps = new OnboardingRepository(deps.db);
   const emitters = new EmitterRepository(deps.db);
   const certificates = new CertificateRepository(deps.db);
   const audit = new AuditLog(deps.db);
@@ -92,7 +94,11 @@ export function emitterRoutes(
     async (request, reply) => {
       const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
       const actor = identityOf(request).email;
-      return reply.status(201).send(await onboarding.create(ctx, actor, request.body));
+      // An emitter made this way finishes the account's onboarding, so the owner is never sent back to it.
+      const emitter = await onboarding.create(ctx, actor, request.body, {
+        inTransaction: () => steps.markDone(ctx),
+      });
+      return reply.status(201).send(emitter);
     },
   );
 

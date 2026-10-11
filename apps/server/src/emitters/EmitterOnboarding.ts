@@ -56,7 +56,8 @@ export class EmitterOnboarding {
     ctx: AccountContext,
     actor: string,
     input: NewEmitterInput,
-    options: { expectedCnpj?: string } = {},
+    // inTransaction runs with the emitter's insert: a throw there leaves no emitter.
+    options: { expectedCnpj?: string; inTransaction?: () => void } = {},
   ) {
     const { emitters, certificates, audit, deps } = this;
     const { pfxBase64, password, ...fiscal } = input;
@@ -138,6 +139,7 @@ export class EmitterOnboarding {
           fingerprintSha256: material.fingerprintSha256,
           uploadedBy: ctx.userId,
         });
+        options.inTransaction?.();
         return created;
       });
     let emitter: ReturnType<typeof create>;

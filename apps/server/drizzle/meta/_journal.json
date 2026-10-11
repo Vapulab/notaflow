@@ -78,6 +78,13 @@
       "when": 1791690269874,
       "tag": "0010_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791692798393,
+      "tag": "0011_onboarding_draft_card",
+      "breakpoints": true
     }
   ]
 }

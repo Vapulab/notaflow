@@ -1,6 +1,11 @@
-import { Worker } from 'node:worker_threads';
+import { fork } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 export const MAX_CARD_BYTES = 2 * 1024 * 1024;
+// A Receita card has about 2 kB of text; anything near this is not a card.
+export const MAX_CARD_TEXT = 64 * 1024;
+const MAX_PARALLEL = 2;
+const CHILD_HEAP_MB = 128;
 
 export interface CardText {
   cnpj: string;
@@ -8,15 +13,17 @@ export interface CardText {
 }
 
 export class CardError extends Error {
-  constructor(readonly code: 'card_unreadable' | 'card_no_cnpj' | 'card_too_large') {
+  constructor(readonly code: 'card_unreadable' | 'card_no_cnpj' | 'card_too_large' | 'card_busy') {
     super(code);
     this.name = 'CardError';
   }
 }
 
 // The Receita card puts each label on its own line and its value on the next one.
+// The CNPJ may be alphanumeric (since 2026): twelve [0-9A-Z] and two check digits.
 export function parseCardText(text: string): CardText {
-  const cnpj = /\b(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})-(\d{2})\b/.exec(text);
+  if (text.length > MAX_CARD_TEXT) throw new CardError('card_unreadable');
+  const cnpj = /\b([0-9A-Z]{2})\.([0-9A-Z]{3})\.([0-9A-Z]{3})\/([0-9A-Z]{4})-(\d{2})\b/.exec(text);
   if (!cnpj) throw new CardError('card_no_cnpj');
   const lines = text.split('\n').map((line) => line.trim());
   const label = lines.findIndex((line) => line.toUpperCase() === 'NOME EMPRESARIAL');
@@ -25,29 +32,34 @@ export function parseCardText(text: string): CardText {
   return { cnpj: cnpj.slice(1).join(''), legalName };
 }
 
-function extractText(pdf: Buffer, timeoutMs: number): Promise<string> {
+let running = 0;
+
+type ChildAnswer = { ok: true; card: CardText } | { ok: false; code: CardError['code'] };
+
+function parseInChild(pdf: Buffer, timeoutMs: number): Promise<CardText> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./cardWorker.ts', import.meta.url), {
-      workerData: new Uint8Array(pdf),
-      execArgv: ['--import', 'tsx'],
+    const child = fork(fileURLToPath(new URL('./cardProcess.ts', import.meta.url)), [], {
+      execArgv: ['--import', 'tsx', `--max-old-space-size=${CHILD_HEAP_MB}`],
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     });
-    const timer = setTimeout(() => {
-      void worker.terminate();
-      reject(new CardError('card_unreadable'));
-    }, timeoutMs);
-    worker.once('message', (text: unknown) => {
+    let settled = false;
+    const finish = (outcome: () => void) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      void worker.terminate();
-      resolve(typeof text === 'string' ? text : '');
-    });
-    worker.once('error', () => {
-      clearTimeout(timer);
-      reject(new CardError('card_unreadable'));
-    });
-    worker.once('exit', () => {
-      clearTimeout(timer);
-      reject(new CardError('card_unreadable'));
-    });
+      child.kill('SIGKILL');
+      outcome();
+    };
+    const timer = setTimeout(
+      () => finish(() => reject(new CardError('card_unreadable'))),
+      timeoutMs,
+    );
+    child.once('message', (answer: ChildAnswer) =>
+      finish(() => (answer.ok ? resolve(answer.card) : reject(new CardError(answer.code)))),
+    );
+    child.once('error', () => finish(() => reject(new CardError('card_unreadable'))));
+    child.once('exit', () => finish(() => reject(new CardError('card_unreadable'))));
+    child.send({ pdfBase64: pdf.toString('base64') });
   });
 }
 
@@ -57,7 +69,12 @@ export async function readCard(
 ): Promise<CardText> {
   if (pdf.length > MAX_CARD_BYTES) throw new CardError('card_too_large');
   if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new CardError('card_unreadable');
-  const text = await extractText(pdf, options.timeoutMs ?? 5000);
-  if (text.trim() === '') throw new CardError('card_unreadable');
-  return parseCardText(text);
+  // A small server: two parses at a time, and the next one is told to retry rather than queue.
+  if (running >= MAX_PARALLEL) throw new CardError('card_busy');
+  running += 1;
+  try {
+    return await parseInChild(pdf, options.timeoutMs ?? 10_000);
+  } finally {
+    running -= 1;
+  }
 }

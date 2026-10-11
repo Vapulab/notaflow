@@ -184,6 +184,16 @@ describe('the card step', () => {
       nameMismatch: false,
       municipalityName: 'Londrina',
     });
+    // The card is kept only once the certificate proves the company.
+    expect(documents()).toEqual([]);
+    const cert = makeTestCertificate({ cnpj: '12345678000195' });
+    const created = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/certificate`,
+      headers: await c.as('nova@example.com'),
+      payload: { pfxBase64: cert.pfx.toString('base64'), password: cert.password },
+    });
+    expect(created.statusCode).toBe(201);
     const [doc] = documents();
     expect(doc?.cnpj).toBe('12345678000195');
     expect(doc?.size_bytes).toBe(pdf.length);
@@ -194,7 +204,8 @@ describe('the card step', () => {
       url: `/api/accounts/${accountId}/onboarding`,
       headers: await c.as('nova@example.com'),
     });
-    expect(state.json()).toMatchObject({ step: 'certificate', draft: { cnpj: '12345678000195' } });
+    // After the certificate the draft is gone: GET answers the step only.
+    expect(state.json()).toMatchObject({ step: 'fiscal', draft: null });
   });
 
   test('a legal name on the card that differs from the lookup is flagged, not refused', async () => {
@@ -431,5 +442,114 @@ describe('a second emitter', () => {
     expect(c.db.$client.prepare('SELECT simples_nacional FROM emitters').get()).toEqual({
       simples_nacional: '2',
     });
+  });
+});
+
+describe('limits and edges', () => {
+  let agent: MockAgent;
+  let c: TestApp;
+  beforeEach(async () => {
+    agent = new MockAgent();
+    agent.disableNetConnect();
+    c = await createTestApp({ cnpjDispatcher: agent });
+  });
+  afterEach(() => c.close());
+
+  const brasil = (cnpj: string) =>
+    agent
+      .get('https://brasilapi.com.br')
+      .intercept({ path: `/api/cnpj/v1/${cnpj}`, method: 'GET' })
+      .reply(200, {
+        razao_social: 'EMPRESA TESTE LTDA',
+        descricao_situacao_cadastral: 'ATIVA',
+        codigo_municipio_ibge: 4113700,
+        uf: 'PR',
+        opcao_pelo_simples: true,
+        opcao_pelo_mei: false,
+      })
+      .persist();
+  async function doneAccount() {
+    const a = seedTenant(c.db, { accountName: 'A', email: 'dono@example.com' });
+    c.db.$client.prepare("UPDATE accounts SET onboarding_step = 'done'").run();
+    return { a, headers: await c.as('dono@example.com') };
+  }
+
+  test('an account gets at most 10 card or CNPJ lookups an hour', async () => {
+    brasil('12345678000195');
+    const { a, headers } = await doneAccount();
+    const typed = () =>
+      c.app.inject({
+        method: 'POST',
+        url: `/api/accounts/${a.accountId}/emitters/new/cnpj`,
+        headers,
+        payload: { cnpj: '12345678000195' },
+      });
+    for (let i = 0; i < 10; i++) expect((await typed()).statusCode, `call ${i}`).toBe(200);
+    const eleventh = await typed();
+    expect(eleventh.statusCode).toBe(429);
+    expect(eleventh.json()).toMatchObject({ error: 'too_many_lookups' });
+  });
+
+  test('an alphanumeric CNPJ can be typed', async () => {
+    brasil('12ABC34501DE35');
+    const { a, headers } = await doneAccount();
+    const response = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${a.accountId}/emitters/new/cnpj`,
+      headers,
+      payload: { cnpj: '12.abc.345/01de-35' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ draft: { cnpj: '12ABC34501DE35' } });
+  });
+
+  test('a card just over 2 MB gets card_too_large, not a generic error', async () => {
+    const { a, headers } = await doneAccount();
+    const big = Buffer.concat([Buffer.from('%PDF-1.7 '), Buffer.alloc(2 * 1024 * 1024 + 300_000)]);
+    const response = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${a.accountId}/emitters/new/card`,
+      headers,
+      payload: { pdfBase64: big.toString('base64'), fileName: 'c.pdf' },
+    });
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({ error: 'card_too_large' });
+  });
+
+  test('an emitter created the old way finishes the onboarding of its account', async () => {
+    const a = seedTenant(c.db, { accountName: 'A', email: 'dono@example.com' });
+    const cert = makeTestCertificate({ cnpj: '12345678000195' });
+    const response = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${a.accountId}/emitters`,
+      headers: await c.as('dono@example.com'),
+      payload: {
+        pfxBase64: cert.pfx.toString('base64'),
+        password: cert.password,
+        municipality: '4113700',
+        simplesNacional: '3',
+        specialRegime: '0',
+        dpsSeries: '900',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(c.db.$client.prepare('SELECT onboarding_step AS s FROM accounts').get()).toEqual({
+      s: 'done',
+    });
+  });
+
+  test('two account creations at once make one account', async () => {
+    seedUser(c.db, 'nova@example.com');
+    const headers = await c.as('nova@example.com');
+    const create = () =>
+      c.app.inject({
+        method: 'POST',
+        url: '/api/onboarding/account',
+        headers,
+        payload: { name: 'X' },
+      });
+    const answers = await Promise.all([create(), create()]);
+    expect(answers.map((r) => r.statusCode).sort()).toEqual([201, 409]);
+    expect(c.db.$client.prepare('SELECT count(*) AS n FROM accounts').get()).toEqual({ n: 1 });
   });
 });

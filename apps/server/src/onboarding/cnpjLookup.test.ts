@@ -117,3 +117,9 @@ test.each([400, 404])('a CNPJ BrasilAPI does not know (%s) is not found', async 
   brasil(status, { message: 'CNPJ inválido' });
   expect(await errorOf(lookup())).toBe('cnpj_not_found');
 });
+
+test('a BrasilAPI answer without an IBGE code falls back to CNPJá', async () => {
+  brasil(200, brasilBody({ codigo_municipio_ibge: null }));
+  cnpja(200, cnpjaBody());
+  expect((await lookup()).source).toBe('cnpja');
+});

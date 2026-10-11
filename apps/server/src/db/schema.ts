@@ -47,6 +47,9 @@ export const accounts = sqliteTable('accounts', {
     .default('card'),
   // The confirmed card data (JSON) between the card step and the certificate step.
   cnpjDraft: text('cnpj_draft'),
+  // The card of the draft, gzipped; it becomes an account document only once the certificate proves the company.
+  cnpjDraftCard: blob('cnpj_draft_card', { mode: 'buffer' }),
+  cnpjDraftCardName: text('cnpj_draft_card_name'),
   createdAt: createdAt(),
   updatedAt: changedAt(),
   ...authors(),

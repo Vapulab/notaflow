@@ -48,6 +48,16 @@ export function onboardingRoutes(
     if (current !== step) throw new HttpError(409, 'onboarding_step', undefined, { step: current });
   };
 
+  // Each lookup reaches public services and may store a card: 10 an hour per account.
+  const lookups = new Map<string, number[]>();
+  const countLookup = (ctx: AccountContext) => {
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    const recent = (lookups.get(ctx.accountId) ?? []).filter((at) => at > hourAgo);
+    if (recent.length >= 10) throw new HttpError(429, 'too_many_lookups');
+    recent.push(Date.now());
+    lookups.set(ctx.accountId, recent);
+  };
+
   // Moves one step, or answers which step the account is really at.
   const move = (ctx: AccountContext, from: OnboardingStep, to: OnboardingStep) => {
     if (!onboarding.advance(ctx, from, to)) {
@@ -75,6 +85,7 @@ export function onboardingRoutes(
       // One account per signup; joining more accounts is by invitation.
       if (identity.memberships.length > 0) throw new HttpError(409, 'already_has_account');
       const accountId = onboarding.createAccount(identity.userId, name);
+      if (!accountId) throw new HttpError(409, 'already_has_account');
       audit.record({
         userEmail: identity.email,
         accountId,
@@ -95,8 +106,8 @@ export function onboardingRoutes(
     app.post<Params & { Body: { pdfBase64: string; fileName: string } }>(
       `${prefix}/card`,
       {
-        // A 2 MB card is about 2.7 MB in base64; the decoded size is checked below.
-        bodyLimit: 3 * 1024 * 1024,
+        // Room for base64 over 2 MB, so an oversized card gets card_too_large rather than a generic 413.
+        bodyLimit: 4 * 1024 * 1024,
         schema: {
           body: {
             type: 'object',
@@ -114,11 +125,14 @@ export function onboardingRoutes(
         atStep(ctx, stepful ? 'card' : 'done');
         const pdf = Buffer.from(request.body.pdfBase64, 'base64');
         if (pdf.length > MAX_CARD_BYTES) throw new HttpError(413, 'card_too_large');
+        countLookup(ctx);
         let card;
         try {
           card = await readCard(pdf);
         } catch (error) {
-          if (error instanceof CardError) throw new HttpError(422, error.code);
+          if (error instanceof CardError) {
+            throw new HttpError(error.code === 'card_busy' ? 503 : 422, error.code);
+          }
           throw error;
         }
         refuseTaken(ctx, card.cnpj);
@@ -126,12 +140,11 @@ export function onboardingRoutes(
         const nameMismatch =
           card.legalName !== null && normalize(card.legalName) !== normalize(draft.legalName);
         const { fileName } = request.body;
-        const cnpj = card.cnpj;
         // The step moves first: a parallel upload finds it moved and stores nothing.
         db.transaction(() => {
           if (stepful) move(ctx, 'card', 'certificate');
-          documents.addCnpjCard(ctx, { cnpj, fileName, content: pdf });
-          onboarding.setDraft(ctx, draft);
+          // The card waits on the account until the certificate proves the company.
+          onboarding.setDraft(ctx, draft, { fileName, content: pdf });
         });
         audit.record({
           userEmail: identityOf(request).email,
@@ -160,8 +173,10 @@ export function onboardingRoutes(
       async (request) => {
         const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
         atStep(ctx, stepful ? 'card' : 'done');
-        const cnpj = request.body.cnpj.replace(/[./-]/g, '');
-        if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, 'invalid_cnpj');
+        // Alphanumeric since 2026: twelve [0-9A-Z] and two check digits.
+        const cnpj = request.body.cnpj.toUpperCase().replace(/[./-\s]/g, '');
+        if (!/^[0-9A-Z]{12}\d{2}$/.test(cnpj)) throw new HttpError(400, 'invalid_cnpj');
+        countLookup(ctx);
         refuseTaken(ctx, cnpj);
         const draft = await lookup(cnpj);
         db.transaction(() => {
@@ -239,11 +254,17 @@ export function onboardingRoutes(
             specialRegime: advanced.specialRegime ?? '0',
             dpsSeries: advanced.dpsSeries ?? '900',
           },
-          { expectedCnpj: draft.cnpj },
+          {
+            expectedCnpj: draft.cnpj,
+            // With the emitter's insert: the step moves, the proven card is kept, and the draft goes.
+            inTransaction: () => {
+              if (stepful) move(ctx, 'certificate', 'fiscal');
+              const card = onboarding.draftCard(ctx);
+              if (card) documents.addCnpjCard(ctx, { cnpj: draft.cnpj, ...card });
+              onboarding.setDraft(ctx, null);
+            },
+          },
         );
-        if (stepful) onboarding.advance(ctx, 'certificate', 'fiscal');
-        // A second emitter keeps no draft: the next one starts from its own card.
-        else onboarding.setDraft(ctx, null);
         return reply.status(201).send(emitter);
       },
     );

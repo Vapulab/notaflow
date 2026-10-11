@@ -68,7 +68,11 @@ export class IdentityRepository {
   }
 
   markTourSeen(userId: string, now = new Date()): void {
-    this.db.update(users).set({ tourSeenAt: now }).where(eq(users.id, userId)).run();
+    this.db
+      .update(users)
+      .set({ tourSeenAt: now, updatedAt: now, updatedBy: userId })
+      .where(eq(users.id, userId))
+      .run();
   }
 
   // Every request calls this; the condition keeps it to one write per user every 15 minutes.
