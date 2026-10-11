@@ -32,6 +32,7 @@ The tokens switch to dark colors when the OS asks for dark, unless the page sets
 | `/recuperar-senha` | Create or reset a password with an e-mail code |
 | `/app` | Home: the user's accounts |
 | `/app/conta` | My account: name, password, passkeys, Google, active sessions |
+| `/app/comecar`, `/app/comecar/:accountId` | Onboarding timeline: company name, CNPJ card, certificate, fiscal configuration, sync (see [Onboarding](ONBOARDING.md)) |
 | `/admin` | Platform admin |
 | `/app/:accountId/notas` | Invoices, filters, lookup by access key |
 | `/app/:accountId/notas/nova` (optional `?cliente=<id>`) | Nova nota: an invoice without a template, simplified mode and "Mais opções" |
