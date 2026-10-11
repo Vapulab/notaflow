@@ -82,6 +82,23 @@ export function adminRoutes(app: FastifyInstance, db: Database): void {
     },
   );
 
+  app.post<{ Params: { userId: string } }>(
+    '/api/admin/users/:userId/anonymize',
+    async (request, reply) => {
+      const ctx = adminContext(request);
+      if (!admin.anonymizeUser(ctx, request.params.userId)) throw new HttpError(404, 'not_found');
+      audit.record({
+        userEmail: identityOf(request).email,
+        accountId: null,
+        action: 'user.anonymize',
+        entity: request.params.userId,
+        result: 'ok',
+        detail: 'personal data anonymized',
+      });
+      return reply.status(204).send();
+    },
+  );
+
   app.post<{ Body: { email: string; name: string; platformRole?: 'admin' | 'user' } }>(
     '/api/admin/users',
     {

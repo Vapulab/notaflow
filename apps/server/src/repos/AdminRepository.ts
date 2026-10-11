@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountRole, AdminContext } from '@notaflow/core';
 import { and, count, eq, like, or, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { created, notDeleted, touched } from '../db/stamps';
+import { created, notDeleted, removed, touched } from '../db/stamps';
 import { accounts, memberships, users } from '../db/schema';
 
 // Platform scope: every method needs an AdminContext, which only the admin guard builds.
@@ -117,5 +117,26 @@ export class AdminRepository {
       })
       .run();
     return true;
+  }
+
+  // LGPD erasure: the row stays for the records that point at it; the personal data goes.
+  anonymizeUser(ctx: AdminContext, userId: string): boolean {
+    return this.db.transaction((tx) => {
+      const changed = tx
+        .update(users)
+        .set({
+          name: 'Usuário removido',
+          email: `removido-${userId}@anonimo.invalid`,
+          ...removed(ctx),
+        })
+        .where(and(eq(users.id, userId), notDeleted(users)))
+        .run().changes;
+      if (changed === 0) return false;
+      tx.update(memberships)
+        .set(removed(ctx))
+        .where(and(eq(memberships.userId, userId), notDeleted(memberships)))
+        .run();
+      return true;
+    });
   }
 }

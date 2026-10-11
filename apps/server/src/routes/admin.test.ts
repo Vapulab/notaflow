@@ -150,11 +150,12 @@ test('a platform admin searches users by name or e-mail', async () => {
   const headers = await t.as('admin@example.com');
   const all = await t.app.inject({ method: 'GET', url: '/api/admin/users', headers });
   expect(all.statusCode).toBe(200);
-  expect(all.json<{ email: string }[]>().map((u) => u.email).sort()).toEqual([
-    'admin@example.com',
-    'lincoln@example.com',
-    'talita@example.com',
-  ]);
+  expect(
+    all
+      .json<{ email: string }[]>()
+      .map((u) => u.email)
+      .sort(),
+  ).toEqual(['admin@example.com', 'lincoln@example.com', 'talita@example.com']);
   const found = await t.app.inject({ method: 'GET', url: '/api/admin/users?q=TALI', headers });
   expect(found.json()).toEqual([
     {
@@ -180,7 +181,11 @@ test('a user who is not a platform admin cannot list users', async () => {
 test('an authenticated request records the last access, at most every 15 minutes', async () => {
   seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
   const lastOf = () =>
-    t.db.select({ at: users.lastLoginAt }).from(users).where(eq(users.email, 'owner@example.com')).get()?.at ?? null;
+    t.db
+      .select({ at: users.lastLoginAt })
+      .from(users)
+      .where(eq(users.email, 'owner@example.com'))
+      .get()?.at ?? null;
   expect(lastOf()).toBeNull();
   await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('owner@example.com') });
   const first = lastOf();
@@ -199,6 +204,79 @@ test('an authenticated request records the last access, at most every 15 minutes
 
 test('the admin user list carries the last access', async () => {
   await t.app.inject({ method: 'GET', url: '/api/me', headers: await t.as('admin@example.com') });
-  const list = await t.app.inject({ method: 'GET', url: '/api/admin/users', headers: await t.as('admin@example.com') });
-  expect(list.json()).toEqual([expect.objectContaining({ email: 'admin@example.com', lastLoginAt: expect.any(String) })]);
+  const list = await t.app.inject({
+    method: 'GET',
+    url: '/api/admin/users',
+    headers: await t.as('admin@example.com'),
+  });
+  expect(list.json()).toEqual([
+    expect.objectContaining({ email: 'admin@example.com', lastLoginAt: expect.any(String) }),
+  ]);
+});
+
+test('a platform admin anonymizes a user: personal data goes, the row and the invoices stay', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
+  t.db.$client
+    .prepare(
+      `INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series)
+       VALUES ('e1', ?, '12345678000195', 'EMPRESA', '4113700', '3', '0', '900')`,
+    )
+    .run(a.accountId);
+  t.db.$client
+    .prepare(
+      `INSERT INTO invoices (id, emitter_id, dps_series, dps_number, status, environment, competence, service_code,
+       description, service_cents, net_cents, origin, created_by)
+       VALUES ('i1', 'e1', '900', 1, 'issued', 'producao', '2026-09-30', '010101', 'X', 100, 100, 'app', ?)`,
+    )
+    .run(a.userId);
+  const headers = await t.as('admin@example.com');
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${a.userId}/anonymize`,
+    headers,
+    payload: {},
+  });
+  expect(response.statusCode).toBe(204);
+  const user = t.db.$client
+    .prepare('SELECT name, email, deleted_at, deleted_by FROM users WHERE id = ?')
+    .get(a.userId) as Record<string, unknown>;
+  expect(user).toMatchObject({
+    name: 'Usuário removido',
+    email: `removido-${a.userId}@anonimo.invalid`,
+    deleted_at: expect.any(Number),
+    deleted_by: expect.any(String),
+  });
+  const membership = t.db.$client
+    .prepare('SELECT deleted_at FROM memberships WHERE user_id = ?')
+    .get(a.userId) as { deleted_at: number | null };
+  expect(membership.deleted_at).not.toBeNull();
+  expect(t.db.$client.prepare('SELECT count(*) AS n FROM invoices').get()).toEqual({ n: 1 });
+  const entry = new AuditLog(t.db).list().at(-1);
+  expect(entry).toMatchObject({ action: 'user.anonymize', entity: a.userId, result: 'ok' });
+  expect(JSON.stringify(entry)).not.toContain('pessoa@example.com');
+  const again = await t.app.inject({
+    method: 'POST',
+    url: '/api/admin/users',
+    headers,
+    payload: { email: 'pessoa@example.com', name: 'Pessoa' },
+  });
+  expect(again.statusCode).toBe(201);
+});
+
+test('only a platform admin anonymizes, and an unknown user is not found', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'dono@example.com' });
+  const asOwner = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${a.userId}/anonymize`,
+    headers: await t.as('dono@example.com'),
+    payload: {},
+  });
+  expect(asOwner.statusCode).toBe(403);
+  const unknown = await t.app.inject({
+    method: 'POST',
+    url: '/api/admin/users/missing/anonymize',
+    headers: await t.as('admin@example.com'),
+    payload: {},
+  });
+  expect(unknown.statusCode).toBe(404);
 });
