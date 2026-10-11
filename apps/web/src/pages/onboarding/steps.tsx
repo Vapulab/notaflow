@@ -18,6 +18,7 @@ import {
   CARD_CLASSES,
   Field,
   FORM_CLASSES,
+  FileInput,
   Input,
   SECTION_TITLE_CLASSES,
   Select,
@@ -154,8 +155,7 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
       ) : (
         <form className={FORM_CLASSES} onSubmit={sendCard}>
           <Field label="Cartão CNPJ (PDF)" hint="Até 2 MB.">
-            <Input
-              type="file"
+            <FileInput
               accept="application/pdf"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
@@ -243,8 +243,7 @@ export function CertificateStep(props: {
         <StepError error={error} />
         <form className={FORM_CLASSES} onSubmit={submit}>
           <Field label="Certificado A1 (.pfx)">
-            <Input
-              type="file"
+            <FileInput
               accept=".pfx,.p12,application/x-pkcs12"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />

@@ -3,7 +3,17 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeAll, expect, test } from 'vitest';
 import { installDialogPolyfill } from '../test/dialog';
-import { Badge, Button, buttonClasses, Combobox, Field, Input, Modal, Select } from './index';
+import {
+  Badge,
+  Button,
+  buttonClasses,
+  Combobox,
+  Field,
+  FileInput,
+  Input,
+  Modal,
+  Select,
+} from './index';
 
 beforeAll(() => installDialogPolyfill());
 afterEach(() => cleanup());
@@ -85,4 +95,18 @@ test('Escape closes the open list and stops there, so a dialog around it stays o
   const notPrevented = fireEvent.keyDown(input, { key: 'Escape' });
   expect(notPrevented).toBe(false);
   expect(screen.queryByRole('listbox')).toBeNull();
+});
+
+test('a FileInput is a native file input whose button has the Malphas secondary look', () => {
+  render(
+    <Field label="Arquivo">
+      <FileInput accept="application/pdf" />
+    </Field>,
+  );
+  const input = screen.getByLabelText('Arquivo');
+  expect(input.getAttribute('type')).toBe('file');
+  expect(input.getAttribute('accept')).toBe('application/pdf');
+  for (const token of ['file:border-border', 'file:bg-surface', 'file:text-fg', 'file:rounded']) {
+    expect(input.className, token).toContain(token);
+  }
 });

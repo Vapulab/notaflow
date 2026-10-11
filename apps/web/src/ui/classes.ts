@@ -71,6 +71,9 @@ export const CARD_CLASSES = 'rounded border border-border bg-surface p-6 shadow-
 export const LABEL_CLASSES = 'text-sm font-medium text-fg';
 export const INPUT_CLASSES =
   'h-10 px-3 rounded border border-border bg-surface text-fg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50';
+// Malphas has no file component: the native input keeps its behavior, and its button takes the secondary-button look.
+export const FILE_INPUT_CLASSES =
+  'block w-full text-sm text-muted file:mr-3 file:h-10 file:cursor-pointer file:rounded file:border file:border-border file:bg-surface file:px-4 file:text-sm file:font-medium file:text-fg file:transition-colors hover:file:bg-muted/10 focus:outline-none focus-visible:file:ring-2 focus-visible:file:ring-primary/50';
 export const SELECT_CLASSES =
   'h-10 w-full appearance-none rounded border border-border bg-surface px-3 pr-9 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50';
 export const TABLE_CLASSES =
