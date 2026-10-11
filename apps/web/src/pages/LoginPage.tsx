@@ -114,11 +114,16 @@ export function LoginPage() {
       {step === 'email' && (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           {googleEnabled && (
-            <Button disabled={busy} onClick={() => run(() => signInWithGoogle(destination))}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => run(() => signInWithGoogle(destination))}
+            >
               Entrar com Google
             </Button>
           )}
           <Button
+            variant="secondary"
             disabled={busy}
             onClick={() => {
               setError(null);
@@ -128,7 +133,11 @@ export function LoginPage() {
             {mode === 'code' ? 'Entrar com senha' : 'Receber código por e-mail'}
           </Button>
           {passkeys && (
-            <Button disabled={busy} onClick={() => run(signInWithPasskey, done)}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => run(signInWithPasskey, done)}
+            >
               Entrar com passkey
             </Button>
           )}

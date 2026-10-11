@@ -213,3 +213,27 @@ test('Sair ends the Better Auth session and goes to the login', async () => {
   expect(authApi.signOut).toHaveBeenCalled();
   await waitFor(() => expect(window.location.pathname).toBe('/entrar'));
 });
+
+test('the other login methods are secondary buttons, so the main action stands out', async () => {
+  stubApi(config({ googleEnabled: true }));
+  vi.stubGlobal('PublicKeyCredential', function PublicKeyCredential() {});
+  render(<LoginPage />);
+  await screen.findByRole('button', { name: 'Enviar código' });
+  for (const name of ['Entrar com Google', 'Entrar com senha', 'Entrar com passkey']) {
+    expect(screen.getByRole('button', { name }).className, name).not.toMatch(/\bbg-primary\b/);
+  }
+});
+
+test('a passkey prompt the browser did not finish shows a plain message', async () => {
+  stubApi(config());
+  vi.stubGlobal('PublicKeyCredential', function PublicKeyCredential() {});
+  vi.mocked(authApi.signInWithPasskey).mockRejectedValue(
+    new ApiError(400, 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY'),
+  );
+  const user = userEvent.setup();
+  render(<LoginPage />);
+  await user.click(await screen.findByRole('button', { name: 'Entrar com passkey' }));
+  expect(
+    await screen.findByText('O navegador não concluiu a passkey. Tente de novo.'),
+  ).toBeTruthy();
+});
