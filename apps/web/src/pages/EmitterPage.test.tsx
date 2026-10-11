@@ -203,3 +203,31 @@ test('the missing-configuration warning goes away once the owner saves', async (
   expect(await screen.findByText('Configuração salva.')).toBeTruthy();
   expect(screen.queryByText(/Sem esta configuração/)).toBeNull();
 });
+
+test("before typing, the code field suggests the codes of the company's CNAEs, marked as a suggestion", async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [
+          { code: '010101', description: 'Análise e desenvolvimento de sistemas.' },
+          { code: '010201', description: 'Programação.' },
+        ],
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo serviço' }));
+  const dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('combobox', { name: 'Código nacional' }));
+  expect(
+    await within(dialog).findByText('Sugeridos pelas atividades (CNAE) da empresa'),
+  ).toBeTruthy();
+  expect(
+    within(dialog).getByRole('option', {
+      name: '01.01.01 – Análise e desenvolvimento de sistemas.',
+    }),
+  ).toBeTruthy();
+  expect(within(dialog).getByRole('option', { name: '01.02.01 – Programação.' })).toBeTruthy();
+});

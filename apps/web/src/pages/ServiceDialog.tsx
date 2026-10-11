@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { api, type Service, type ServiceCode, type ServiceExport, type ServiceInput } from '../api';
 import { errorText } from '../components/Layout';
+import { SUGGESTED_HEADING, useSuggestedCodes } from '../components/suggestedCodes';
 import { useSearch } from '../components/useSearch';
 import { EXPORT_LABELS, EXPORT_OPTIONS } from '../exportCodes';
 import { formatServiceCode } from '../format';
@@ -92,6 +93,8 @@ export function ServiceDialog(props: {
   );
   const [query, setQuery] = useState('');
   const found = useSearch<ServiceCode>(`${base}/service-codes`, query);
+  const suggested = useSuggestedCodes(base, props.emitterId);
+  const typing = query.trim() !== '';
   const [text, setText] = useState(() => textOf(service));
   const [exp, setExp] = useState<Record<ExportField, string>>(
     () =>
@@ -148,7 +151,8 @@ export function ServiceDialog(props: {
             label="Código nacional"
             query={query}
             onQueryChange={setQuery}
-            options={found.map(codeOption)}
+            options={(typing ? suggested.rank(found) : suggested.codes).map(codeOption)}
+            {...(!typing && suggested.codes.length > 0 ? { heading: SUGGESTED_HEADING } : {})}
             selected={code ? codeOption(code) : null}
             onSelect={choose}
             placeholder="Busque pelo nome ou pelo código"

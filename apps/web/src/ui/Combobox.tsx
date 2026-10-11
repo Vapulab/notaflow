@@ -17,6 +17,8 @@ export function Combobox(props: {
   onSelect: (option: ComboboxOption | null) => void;
   placeholder?: string;
   emptyText?: string;
+  // A line above the options, such as what makes them suggestions.
+  heading?: string;
 }) {
   const listId = useId();
   const [open, setOpen] = useState(false);
@@ -78,6 +80,11 @@ export function Combobox(props: {
           aria-label={props.label}
           className="absolute z-40 mt-1 max-h-64 w-full min-w-48 overflow-y-auto rounded border border-border bg-surface py-1 shadow-lg"
         >
+          {props.heading && shown.length > 0 && (
+            <li role="presentation" className="px-4 pb-1 pt-2 text-xs font-medium text-muted">
+              {props.heading}
+            </li>
+          )}
           {shown.length === 0 && (
             <li className="px-4 py-2 text-sm text-muted">{props.emptyText ?? 'Nada encontrado'}</li>
           )}

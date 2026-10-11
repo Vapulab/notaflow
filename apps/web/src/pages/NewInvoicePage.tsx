@@ -16,6 +16,7 @@ import { roleIn, showsEnvironment, useMe } from '../components/MeContext';
 import { NewCustomerForm } from '../components/NewCustomerForm';
 import { useAsync } from '../components/useAsync';
 import { useIssueSend } from '../components/useIssueSend';
+import { SUGGESTED_HEADING, useSuggestedCodes } from '../components/suggestedCodes';
 import { useSearch } from '../components/useSearch';
 import {
   brasiliaToday,
@@ -139,6 +140,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [codeQuery, setCodeQuery] = useState('');
   const foundCodes = useSearch<ServiceCode>(`${base}/service-codes`, codeQuery);
+  const suggestedCodes = useSuggestedCodes(base, form.emitterId);
+  const typingCode = codeQuery.trim() !== '';
 
   // A customer from the link ("Emitir nota" on the customer page) starts selected.
   const linked = props.customerId;
@@ -593,10 +596,15 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 label="Código nacional"
                 query={codeQuery}
                 onQueryChange={setCodeQuery}
-                options={foundCodes.map((c) => ({
-                  value: c.code,
-                  label: `${formatServiceCode(c.code)} – ${c.description}`,
-                }))}
+                {...(!typingCode && suggestedCodes.codes.length > 0
+                  ? { heading: SUGGESTED_HEADING }
+                  : {})}
+                options={(typingCode ? suggestedCodes.rank(foundCodes) : suggestedCodes.codes).map(
+                  (c) => ({
+                    value: c.code,
+                    label: `${formatServiceCode(c.code)} – ${c.description}`,
+                  }),
+                )}
                 selected={
                   more.code
                     ? {
