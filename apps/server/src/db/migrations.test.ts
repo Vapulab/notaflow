@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { afterEach, expect, test } from 'vitest';
+import { BUSINESS_TABLES } from './businessTables';
+import * as schema from './schema';
 
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const temps: string[] = [];
@@ -58,18 +61,7 @@ function seedPre3a(client: BetterSqlite3.Database): void {
   );
 }
 
-const BUSINESS = [
-  'accounts',
-  'users',
-  'memberships',
-  'emitters',
-  'certificates',
-  'customers',
-  'services',
-  'invoices',
-  'invoice_events',
-  'sync_state',
-];
+const BUSINESS = BUSINESS_TABLES;
 const CONTROL = [
   'created_at',
   'updated_at',
@@ -128,5 +120,47 @@ test('the unique indexes count only active rows', () => {
       .get(name) as { sql: string } | undefined;
     expect(row?.sql, name).toMatch(/deleted_at.*IS NULL/i);
   }
+  client.close();
+});
+
+test('no business row can be deleted, not even with raw SQL', () => {
+  const client = migratedFromPre3a();
+  for (const table of [...BUSINESS].reverse()) {
+    expect(() => client.prepare(`DELETE FROM ${table}`).run(), table).toThrow(/soft delete only/);
+  }
+  client.close();
+});
+
+test('the audit log is append only', () => {
+  const client = migratedFromPre3a();
+  client
+    .prepare(
+      "INSERT INTO audit_log (user_email, action, entity, result) VALUES ('a@example.com', 'x', 'y', 'ok')",
+    )
+    .run();
+  expect(() => client.prepare("UPDATE audit_log SET detail = 'x'").run()).toThrow(
+    /audit log is append only/,
+  );
+  expect(() => client.prepare('DELETE FROM audit_log').run()).toThrow(/audit log is append only/);
+  client.close();
+});
+
+test('every business table has its no-delete trigger, and every table is classified', () => {
+  const client = migratedFromPre3a();
+  const triggers = client
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+    .all()
+    .map((t) => (t as { name: string }).name);
+  for (const table of BUSINESS) expect(triggers, table).toContain(`${table}_no_delete`);
+  const tables = Object.values(schema)
+    .filter(
+      (value): value is SQLiteTable =>
+        typeof value === 'object' &&
+        value !== null &&
+        Symbol.for('drizzle:IsDrizzleTable') in value,
+    )
+    .map((table) => getTableConfig(table).name)
+    .filter((name) => name !== 'audit_log');
+  expect([...tables].sort()).toEqual([...BUSINESS].sort());
   client.close();
 });

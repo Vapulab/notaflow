@@ -50,6 +50,13 @@
       "when": 1791680330375,
       "tag": "0006_soft_delete_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791680493865,
+      "tag": "0007_no_delete_triggers",
+      "breakpoints": true
     }
   ]
 }
