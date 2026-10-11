@@ -110,6 +110,17 @@ export function emitterRoutes(
       const { pfx, material } = openPfx(pfxBase64, password);
 
       const refuseDuplicate = () => {
+        if (emitters.isCnpjOfRemovedEmitter(ctx, material.cnpj)) {
+          audit.record({
+            userEmail: actor,
+            accountId: ctx.accountId,
+            action: 'emitter.create',
+            entity: material.cnpj,
+            result: 'refused',
+            detail: 'cnpj of a removed emitter',
+          });
+          throw new HttpError(409, 'emitter_removed');
+        }
         if (emitters.isCnpjTakenElsewhere(ctx, material.cnpj)) {
           audit.record({
             userEmail: actor,

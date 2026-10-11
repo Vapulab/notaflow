@@ -32,6 +32,7 @@ export class SyncStateRepository {
           eq(syncState.environment, environment),
           eq(emitters.accountId, ctx.accountId),
           notDeleted(emitters),
+          notDeleted(syncState),
         ),
       )
       .get();

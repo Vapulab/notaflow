@@ -280,3 +280,15 @@ test('only a platform admin anonymizes, and an unknown user is not found', async
   });
   expect(unknown.statusCode).toBe(404);
 });
+
+test('a platform admin cannot anonymize themself', async () => {
+  const self = new IdentityRepository(t.db).findByEmail('admin@example.com');
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${self?.userId ?? ''}/anonymize`,
+    headers: await t.as('admin@example.com'),
+    payload: {},
+  });
+  expect(response.statusCode).toBe(409);
+  expect(response.json()).toMatchObject({ error: 'cannot_anonymize_self' });
+});

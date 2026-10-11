@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { type Database, openDatabase } from './db/openDatabase';
 import { users } from './db/schema';
-import { created, touched } from './db/stamps';
+import { created, notDeleted, touched } from './db/stamps';
 
 // Runs before any user exists, so it writes the users table directly.
 export function seedAdmin(
@@ -12,7 +12,11 @@ export function seedAdmin(
   name: string,
 ): { userId: string; created: boolean } {
   const normalized = email.toLowerCase();
-  const existing = db.select().from(users).where(eq(users.email, normalized)).get();
+  const existing = db
+    .select()
+    .from(users)
+    .where(and(eq(users.email, normalized), notDeleted(users)))
+    .get();
   if (existing) {
     db.update(users)
       .set({ platformRole: 'admin', ...touched(null) })

@@ -86,14 +86,19 @@ export function adminRoutes(app: FastifyInstance, db: Database): void {
     '/api/admin/users/:userId/anonymize',
     async (request, reply) => {
       const ctx = adminContext(request);
-      if (!admin.anonymizeUser(ctx, request.params.userId)) throw new HttpError(404, 'not_found');
-      audit.record({
-        userEmail: identityOf(request).email,
-        accountId: null,
-        action: 'user.anonymize',
-        entity: request.params.userId,
-        result: 'ok',
-        detail: 'personal data anonymized',
+      // The admin would lose access at once; another admin does it.
+      if (request.params.userId === ctx.userId) throw new HttpError(409, 'cannot_anonymize_self');
+      // One transaction: an erasure is never left without its audit entry.
+      db.transaction(() => {
+        if (!admin.anonymizeUser(ctx, request.params.userId)) throw new HttpError(404, 'not_found');
+        audit.record({
+          userEmail: identityOf(request).email,
+          accountId: null,
+          action: 'user.anonymize',
+          entity: request.params.userId,
+          result: 'ok',
+          detail: 'personal data anonymized',
+        });
       });
       return reply.status(204).send();
     },

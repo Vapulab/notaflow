@@ -63,7 +63,7 @@ export class AdminRepository {
       this.db
         .update(accounts)
         .set({ status, ...touched(ctx) })
-        .where(eq(accounts.id, accountId))
+        .where(and(eq(accounts.id, accountId), notDeleted(accounts)))
         .run().changes > 0
     );
   }
@@ -89,7 +89,7 @@ export class AdminRepository {
       this.db
         .update(users)
         .set({ platformRole, ...touched(ctx) })
-        .where(eq(users.id, userId))
+        .where(and(eq(users.id, userId), notDeleted(users)))
         .run().changes > 0
     );
   }

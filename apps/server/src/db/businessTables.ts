@@ -11,3 +11,6 @@ export const BUSINESS_TABLES = [
   'invoice_events',
   'sync_state',
 ] as const;
+
+// Append-only or ephemeral tables, outside the soft delete rule (stage 3b adds the auth session tables).
+export const OTHER_TABLES = ['audit_log'] as const;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountContext, Environment } from '@notaflow/core';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, invoices } from '../db/schema';
@@ -68,6 +68,17 @@ export class EmitterRepository {
         .where(
           and(eq(emitters.cnpj, cnpj), ne(emitters.accountId, ctx.accountId), notDeleted(emitters)),
         )
+        .get() !== undefined
+    );
+  }
+
+  // Yes or no only, across accounts: its invoices stay under the removed emitter, so the CNPJ waits for a restore.
+  isCnpjOfRemovedEmitter(_ctx: AccountContext, cnpj: string): boolean {
+    return (
+      this.db
+        .select({ id: emitters.id })
+        .from(emitters)
+        .where(and(eq(emitters.cnpj, cnpj), isNotNull(emitters.deletedAt)))
         .get() !== undefined
     );
   }

@@ -340,7 +340,6 @@ export class InvoiceRepository {
       environment: Environment;
       templateOf: string | null;
       issueTemplate?: string;
-      createdBy: string;
       idempotencyKey?: string;
     },
   ): string {

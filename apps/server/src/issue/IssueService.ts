@@ -174,7 +174,6 @@ export class IssueService {
         serviceCode: template.service.nationalTaxCode,
         environment: emitter.environment,
         templateOf: input.templateInvoiceId,
-        createdBy: ctx.userId,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       });
       this.audit.record({
@@ -351,7 +350,6 @@ export class IssueService {
         environment: emitter.environment,
         templateOf: null,
         issueTemplate: template,
-        createdBy: ctx.userId,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       });
       this.audit.record({

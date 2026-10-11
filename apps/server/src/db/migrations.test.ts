@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { is } from 'drizzle-orm';
 import { getTableConfig, SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { afterEach, expect, test } from 'vitest';
-import { BUSINESS_TABLES } from './businessTables';
+import { BUSINESS_TABLES, OTHER_TABLES } from './businessTables';
 import * as schema from './schema';
 
 const MIGRATIONS = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -156,7 +156,7 @@ test('every business table has its no-delete trigger, and every table is classif
   const tables = Object.values(schema as Record<string, unknown>)
     .filter((value): value is SQLiteTable => is(value, SQLiteTable))
     .map((table) => getTableConfig(table).name)
-    .filter((name) => name !== 'audit_log');
+    .filter((name) => !(OTHER_TABLES as readonly string[]).includes(name));
   expect([...tables].sort()).toEqual([...BUSINESS].sort());
   client.close();
 });

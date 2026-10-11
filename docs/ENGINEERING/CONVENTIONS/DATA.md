@@ -33,8 +33,11 @@ Repositories set them through `apps/server/src/db/stamps.ts`:
 
 ## Unique indexes
 
-- A unique index on a business table counts only active rows: `uniqueIndex(...).on(...).where(sql\`deleted_at IS NULL\`)`. A removed e-mail, CNPJ, or customer document can come back.
-- An upsert on such an index passes `targetWhere: sql\`deleted_at IS NULL\``.
+- A unique index on a business table counts only active rows: ``uniqueIndex(...).on(...).where(sql`deleted_at IS NULL`)``. A removed e-mail or customer document can come back.
+- **A CNPJ of a removed emitter cannot come back** (409 `emitter_removed`), in any account, until a platform admin restores the emitter.
+  - Its invoices stay under the removed emitter: the access key is globally unique, so a new emitter could never sync them.
+  - Its sync would also update the hidden rows of the old one.
+- An upsert on such an index passes ``targetWhere: sql`deleted_at IS NULL` ``.
 - Drizzle 0.45 writes the `WHERE` of `onConflictDoNothing` in the wrong place, so a "do nothing" insert uses no target.
 - `invoices.access_key` stays globally unique: an NFS-e key never repeats. The sync finds a removed invoice by its key and keeps it removed.
 
@@ -57,7 +60,13 @@ Behind the Cloudflare tunnel, the IP is `cf-connecting-ip`. The header is truste
 - soft-deletes the user and the user's memberships;
 - audits the action without the old e-mail.
 
-Invoices and their XML stay as tax records.
+Invoices and their XML stay as tax records. An admin cannot anonymize themself (409 `cannot_anonymize_self`). The anonymization and its audit entry are one transaction.
+
+**What erasure keeps.** The audit log keeps the e-mail and the IP of the entries the user made before the erasure; the trigger makes them permanent. The basis:
+- Marco Civil da Internet (Lei 12.965/2014), art. 15: an application provider keeps its access records (IP, date and time) for at least 6 months.
+- LGPD, art. 7, II and IX, and art. 16, I: compliance with a legal obligation, and the legitimate interest in security and fraud prevention.
+
+This is a decision to confirm in the legal review of stage 3d. If the review asks for a time limit, past entries need a migration that recreates the audit triggers around a scrub.
 
 ## Exceptions
 

@@ -22,6 +22,7 @@ import { IdentityRepository } from './IdentityRepository';
 import { InvoiceRepository } from './InvoiceRepository';
 import { MemberRepository } from './MemberRepository';
 import { ServiceRepository } from './ServiceRepository';
+import { SyncStateRepository } from './SyncStateRepository';
 import { SyncTargetRepository } from './SyncTargetRepository';
 
 let db: Database;
@@ -42,7 +43,7 @@ function emitterFor(ctx: AccountContext, cnpj: string) {
   }).id;
 }
 
-test('a removed emitter disappears from every emitter read and frees its CNPJ', () => {
+test('a removed emitter disappears from every emitter read and keeps its CNPJ blocked', () => {
   const a = seedTenant(db, { accountName: 'A', email: 'a@example.com' });
   const b = seedTenant(db, { accountName: 'B', email: 'b@example.com' });
   const kept = emitterFor(a, '12345678000195');
@@ -53,9 +54,10 @@ test('a removed emitter disappears from every emitter read and frees its CNPJ', 
   expect(repo.get(a, gone)).toBeNull();
   expect(repo.findByCnpj(a, '11222333000181')).toBeNull();
   expect(repo.fiscalConfig(a, gone)).toBeNull();
+  // Its invoices stay under the removed emitter, so the CNPJ waits for a platform admin to restore it.
+  expect(repo.isCnpjOfRemovedEmitter(b, '11222333000181')).toBe(true);
+  expect(repo.isCnpjOfRemovedEmitter(b, '12345678000195')).toBe(false);
   expect(repo.isCnpjTakenElsewhere(b, '11222333000181')).toBe(false);
-  // The CNPJ of a removed emitter can be onboarded again.
-  expect(emitterFor(b, '11222333000181')).toBeTruthy();
   expect(new SyncTargetRepository(db).list().map((t) => t.emitterId)).not.toContain(gone);
 });
 
@@ -106,7 +108,6 @@ test('a removed invoice disappears from lists, lookups, and the issue state', ()
     serviceCode: '010101',
     environment: 'producao',
     templateOf: null,
-    createdBy: a.userId,
     idempotencyKey: 'key-1',
   });
   softDelete(db, invoices, id, a);
@@ -198,4 +199,41 @@ test('a removed certificate is not the active one', () => {
   );
   softDelete(db, certificates, id, a);
   expect(repo.activeFor(a, emitterId)).toBeNull();
+});
+
+test('admin updates and the seed ignore removed rows', async () => {
+  const adminId = seedUser(db, 'admin@example.com', 'admin');
+  const admin = new AdminRepository(db);
+  const ctx = adminOf(adminId);
+  const accountId = admin.createAccount(ctx, 'Conta');
+  const userId = admin.createUser(ctx, 'pessoa@example.com', 'Pessoa') ?? '';
+  softDelete(db, accounts, accountId, ctx);
+  softDelete(db, users, userId, ctx);
+  expect(admin.setAccountStatus(ctx, accountId, 'suspended')).toBe(false);
+  expect(admin.setPlatformRole(ctx, userId, 'admin')).toBe(false);
+  // The seed promotes the live user, never a removed one with the same e-mail.
+  const live = admin.createUser(ctx, 'pessoa@example.com', 'Pessoa de novo') ?? '';
+  const { seedAdmin } = await import('../seed');
+  seedAdmin(db, 'pessoa@example.com', 'Pessoa');
+  const role = (id: string) =>
+    (
+      db.$client.prepare('SELECT platform_role AS r FROM users WHERE id = ?').get(id) as {
+        r: string;
+      }
+    ).r;
+  expect(role(live)).toBe('admin');
+  expect(role(userId)).toBe('user');
+});
+
+test('the sync cursor of a removed row is not read back', () => {
+  const a = seedTenant(db, { accountName: 'A', email: 'a@example.com' });
+  const emitterId = emitterFor(a, '12345678000195');
+  const state = new SyncStateRepository(db);
+  state.saveCursor(a, emitterId, 'producao', 42);
+  db.$client
+    .prepare(
+      "UPDATE sync_state SET deleted_at = 1 WHERE emitter_id = ? AND environment = 'producao'",
+    )
+    .run(emitterId);
+  expect(state.get(a, emitterId, 'producao').lastNsu).toBe(0);
 });
