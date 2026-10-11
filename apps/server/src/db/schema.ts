@@ -124,6 +124,11 @@ export const emitters = sqliteTable(
     simplesAnnex: text('simples_annex', { enum: ['III', 'V'] }),
     simplesBand: integer('simples_band'),
     simplesPercent: integer('simples_percent'),
+    // Gross revenue of the last 12 months (RBT12): the band and the rate of each invoice come from it.
+    simplesRbt12Cents: integer('simples_rbt12_cents'),
+    simplesRbt12At: integer('simples_rbt12_at', { mode: 'timestamp_ms' }),
+    // The company's CNAEs (JSON list of 7-digit codes), main first; they suggest its services.
+    cnaes: text('cnaes'),
     issRate: integer('iss_rate'),
     ibscbsRegime: text('ibscbs_regime', { enum: ['inside_das', 'regular'] })
       .notNull()

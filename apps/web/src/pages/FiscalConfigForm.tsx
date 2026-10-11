@@ -1,7 +1,14 @@
 import { type FormEvent, useState } from 'react';
 import { api, type FiscalConfig } from '../api';
+import { AmountInput } from '../components/AmountInput';
 import { errorText } from '../components/Layout';
-import { parsePercent, percentInput } from '../format';
+import {
+  RBT12_LABEL,
+  ratesLine,
+  revenueIsStale,
+  useSimplesRates,
+} from '../components/simplesRates';
+import { centsInput, formatDate, parseCents, parsePercent, percentInput } from '../format';
 import {
   Alert,
   Button,
@@ -15,24 +22,34 @@ import {
 
 export const OWNER_ONLY_TEXT = 'Só o dono da conta altera a configuração fiscal e os serviços.';
 
-export function bandLabel(band: number, percent: number): string {
-  return `Faixa ${band} – ${percentInput(percent)}%`;
-}
-
 export function FiscalConfigForm(props: { url: string; config: FiscalConfig; canEdit: boolean }) {
   const { config, canEdit } = props;
+  const ratesUrl = props.url.replace(/\/emitters\/[^/]+\/fiscal$/, '/simples-rates');
   const [annex, setAnnex] = useState<'III' | 'V'>(config.simplesAnnex ?? 'III');
-  const [band, setBand] = useState(String(config.simplesBand ?? 1));
+  const [revenue, setRevenue] = useState(
+    config.simplesRbt12Cents === null ? '' : centsInput(config.simplesRbt12Cents),
+  );
   const [iss, setIss] = useState(config.issRate === null ? '' : percentInput(config.issRate));
   const [regime, setRegime] = useState(config.ibscbsRegime);
   const [from, setFrom] = useState(config.ibscbsRegimeFrom ?? '');
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [configured, setConfigured] = useState(config.simplesPercent !== null);
+  const [informedAt, setInformedAt] = useState(config.simplesRbt12At);
   const issRate = parsePercent(iss);
+  const rbt12Cents = parseCents(revenue);
+  const unchanged = annex === config.simplesAnnex && rbt12Cents === config.simplesRbt12Cents;
+  const preview = useSimplesRates(ratesUrl, annex, unchanged ? null : rbt12Cents);
+  const rates =
+    unchanged && config.rates && config.simplesBand
+      ? { band: config.simplesBand, ...config.rates }
+      : preview.rates;
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (rbt12Cents === null) {
+      setMessage({ variant: 'error', text: 'Informe a receita bruta dos últimos 12 meses.' });
+      return;
+    }
     if (issRate === null || issRate > 500) {
       setMessage({
         variant: 'error',
@@ -42,14 +59,14 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
     }
     setBusy(true);
     try {
-      await api.put(props.url, {
+      const saved = await api.put<FiscalConfig>(props.url, {
         simplesAnnex: annex,
-        simplesBand: Number(band),
+        simplesRbt12Cents: rbt12Cents,
         issRate,
         ibscbsRegime: regime,
         ...(from ? { ibscbsRegimeFrom: from } : {}),
       });
-      setConfigured(true);
+      setInformedAt(saved?.simplesRbt12At ?? new Date().toISOString());
       setMessage({ variant: 'info', text: 'Configuração salva.' });
     } catch (error) {
       setMessage({ variant: 'error', text: errorText(error) });
@@ -61,9 +78,14 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
   return (
     <form onSubmit={save} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
       <h2 className={SECTION_TITLE_CLASSES}>Configuração fiscal</h2>
-      {!configured && (
+      {!informedAt && (
         <Alert variant="warning">
           Sem esta configuração não é possível emitir uma nota sem modelo.
+        </Alert>
+      )}
+      {revenueIsStale(informedAt) && (
+        <Alert variant="warning">
+          Atualize a receita dos últimos 12 meses: a alíquota do Simples de cada mês depende dela.
         </Alert>
       )}
       <fieldset disabled={!canEdit} className="flex flex-col gap-4">
@@ -74,17 +96,18 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
               <option value="V">Anexo V</option>
             </Select>
           </Field>
-          <Field label="Faixa">
-            <Select value={band} onChange={(e) => setBand(e.target.value)}>
-              {config.bands[annex].map((percent, index) => (
-                <option key={index + 1} value={String(index + 1)}>
-                  {bandLabel(index + 1, percent)}
-                </option>
-              ))}
-            </Select>
+          <Field
+            label={RBT12_LABEL}
+            hint={
+              informedAt
+                ? `Informada em ${formatDate(informedAt)}. Atualize todo mês, antes da primeira nota.`
+                : 'A soma das receitas dos 12 meses antes do mês da nota.'
+            }
+          >
+            <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
           </Field>
           <Field label="Alíquota de ISS (%)" hint="Usada quando o cliente retém o ISS.">
-            <Input inputMode="decimal" value={iss} onChange={(e) => setIss(e.target.value)} />
+            <AmountInput unit="%" value={iss} onValueChange={setIss} />
           </Field>
           <Field label="Regime do IBS/CBS">
             <Select
@@ -100,6 +123,8 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
           </Field>
         </div>
       </fieldset>
+      {rates && <p className="text-sm text-fg">{ratesLine(rates)}</p>}
+      {Boolean(preview.error) && <Alert variant="warning">{errorText(preview.error)}</Alert>}
       {message && <Alert variant={message.variant}>{message.text}</Alert>}
       <div>
         <Button type="submit" variant="primary" disabled={!canEdit || busy}>

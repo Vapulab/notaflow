@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api, type OnboardingState, type OnboardingStep } from '../../api';
+import { api, ApiError, type OnboardingState, type OnboardingStep } from '../../api';
+import { navigate } from '../../router';
 import { errorText, Layout } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
 import { Alert, Badge, Link, Spinner } from '../../ui';
@@ -81,18 +82,24 @@ export function OnboardingPage(props: { accountId?: string }) {
   );
   const [state, setState] = useState<OnboardingState | null>(null);
   useEffect(() => setState(loaded.data ?? null), [loaded.data]);
+  // An old link to an account the user does not have (or that is gone): the home finds the right step.
+  const missing = loaded.error instanceof ApiError && loaded.error.status === 404;
+  useEffect(() => {
+    if (missing) navigate('/app', { replace: true });
+  }, [missing]);
 
   const prefix = `/api/accounts/${encodeURIComponent(accountId ?? '')}/onboarding`;
   const step: OnboardingStep | 'company' = accountId ? (state?.step ?? 'card') : 'company';
   let panel;
   if (!accountId) panel = <CompanyStep />;
-  else if (loaded.error) panel = <Alert variant="error">{errorText(loaded.error)}</Alert>;
+  else if (loaded.error && !missing)
+    panel = <Alert variant="error">{errorText(loaded.error)}</Alert>;
   else if (!state) panel = <Spinner />;
   else if (state.step === 'card') panel = <CardStep prefix={prefix} onDone={setState} />;
   else if (state.step === 'certificate') {
     panel = <CertificateStep prefix={prefix} state={state} onDone={setState} />;
   } else if (state.step === 'fiscal') {
-    panel = <FiscalStep accountId={accountId} onDone={setState} />;
+    panel = <FiscalStep accountId={accountId} state={state} onDone={setState} />;
   } else if (state.step === 'sync') panel = <SyncStep accountId={accountId} />;
   else {
     panel = (

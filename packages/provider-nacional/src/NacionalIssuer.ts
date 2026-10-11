@@ -124,8 +124,9 @@ export class NacionalIssuer implements InvoiceIssuer {
 // Stored on pending rows; a shape change needs a new version, so an older row is never resent wrong.
 const BUILT_TEMPLATE_VERSION = 1;
 
-// A copy declares no export support mechanism (01, Nenhum); the stored invoices carried 02. Lincoln, 2026-10-10.
-function withoutExportSupport(template: DpsTemplate): DpsTemplate {
+// A copy of an export declares no export support mechanism (01, Nenhum; the stored invoices carried 02),
+// and PIS/COFINS without incidence (08), whatever the original said. Lincoln, 2026-10-10 and 2026-10-11.
+function exportCopyDefaults(template: DpsTemplate): DpsTemplate {
   const trade = template.service.foreignTrade;
   if (!trade) return template;
   return {
@@ -134,11 +135,12 @@ function withoutExportSupport(template: DpsTemplate): DpsTemplate {
       ...template.service,
       foreignTrade: { ...trade, providerSupport: '01', customerSupport: '01' },
     },
+    tax: { ...template.tax, pisCofins: { cst: '08', retention: '0' } },
   };
 }
 
 function templateOf(source: IssueSource): DpsTemplate {
-  if (source.kind === 'stored') return withoutExportSupport(readTemplate(source.xml));
+  if (source.kind === 'stored') return exportCopyDefaults(readTemplate(source.xml));
   const built = JSON.parse(source.template) as { version?: unknown; template?: DpsTemplate };
   if (built.version !== BUILT_TEMPLATE_VERSION || !built.template) {
     throw new Error(`Unsupported built template version: ${String(built.version)}`);

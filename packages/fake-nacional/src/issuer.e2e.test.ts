@@ -177,3 +177,11 @@ test('a built template of an unknown version is refused, never sent', async () =
     }),
   ).resolves.toMatchObject({ kind: 'rejected', errors: [{ code: 'local_error' }] });
 });
+
+test('a copy of an export declares PIS/COFINS without incidence (08) and takes the given Simples rate', async () => {
+  const outcome = await issuer.issue({ ...request(7), simplesPercent: 312 });
+  expect(outcome.kind).toBe('issued');
+  if (outcome.kind !== 'issued') return;
+  expect(outcome.invoice.xml).toMatch(/<piscofins><CST>08<\/CST>/);
+  expect(outcome.invoice.xml).toContain('<pTotTribSN>3.12</pTotTribSN>');
+});

@@ -10,11 +10,7 @@ const CODES = JSON.parse(
   readFileSync(new URL('./serviceCodes.json', import.meta.url), 'utf8'),
 ) as ServiceCode[];
 
-const fold = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+const fold = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const INDEX = CODES.map((c) => ({ entry: c, text: fold(c.description) }));
 
@@ -31,4 +27,9 @@ export function searchServiceCodes(query: string, limit = 20): ServiceCode[] {
 
 export function serviceCode(code: string): ServiceCode | null {
   return CODES.find((c) => c.code === code) ?? null;
+}
+
+// The codes of LC 116 item groups (the first two digits), group by group in the order given.
+export function codesInGroups(groups: string[]): ServiceCode[] {
+  return groups.flatMap((group) => CODES.filter((c) => c.code.startsWith(group)));
 }

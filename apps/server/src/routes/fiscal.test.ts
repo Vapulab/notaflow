@@ -27,48 +27,70 @@ function withEmitter(options: { role?: AccountRole; status?: 'active' | 'suspend
 
 const body = {
   simplesAnnex: 'III',
-  simplesBand: 1,
+  simplesRbt12Cents: 12_000_000,
   issRate: 200,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: '2026-07-01',
 };
 
-test('the owner saves the fiscal configuration; the server takes the percent from the band', async () => {
-  const { a, url } = withEmitter();
-  const headers = await t.as('a@example.com');
-  const saved = await t.app.inject({ method: 'PUT', url, headers, payload: body });
-  expect(saved.statusCode).toBe(200);
-  expect(saved.json()).toEqual({ ...body, simplesPercent: 600 });
-  const read = await t.app.inject({ method: 'GET', url, headers });
-  expect(read.json()).toMatchObject({ ...body, simplesPercent: 600 });
-  expect(new AuditLog(t.db).list().at(-1)).toMatchObject({
-    accountId: a.accountId,
-    action: 'emitter.fiscal',
-    result: 'ok',
-    detail: 'III/1 6.00%, ISS 2.00%, inside_das from 2026-07-01',
-  });
-});
-
-test('band 2 of Annex V gives 18.00%', async () => {
+test('the owner saves the revenue of the last 12 months; the server derives the band and the rates', async () => {
   const { url } = withEmitter();
+  const headers = await t.as('a@example.com');
   const saved = await t.app.inject({
     method: 'PUT',
     url,
-    headers: await t.as('a@example.com'),
-    payload: { ...body, simplesAnnex: 'V', simplesBand: 2 },
+    headers,
+    payload: { ...body, simplesRbt12Cents: 18_470_000 },
   });
-  expect(saved.json()).toMatchObject({ simplesPercent: 1800 });
+  expect(saved.statusCode).toBe(200);
+  const read = (await t.app.inject({ method: 'GET', url, headers })).json();
+  expect(read).toMatchObject({
+    simplesAnnex: 'III',
+    simplesBand: 2,
+    simplesRbt12Cents: 18_470_000,
+    simplesRbt12At: expect.any(String),
+    // The effective rate of Anexo III band 2, and on an export without ISS, Cofins, and PIS.
+    rates: { domestic: 613, export: 312 },
+    issRate: 200,
+  });
+  const entry = new AuditLog(t.db).list().at(-1);
+  expect(entry).toMatchObject({ action: 'emitter.fiscal', result: 'ok' });
 });
 
-test('a band outside 1 to 6 or an ISS rate above 5% is refused', async () => {
+test('a revenue above the Simples limit or an ISS rate above 5% is refused', async () => {
   const { url } = withEmitter();
   const headers = await t.as('a@example.com');
-  for (const payload of [
-    { ...body, simplesBand: 7 },
-    { ...body, issRate: 501 },
-  ]) {
-    expect((await t.app.inject({ method: 'PUT', url, headers, payload })).statusCode).toBe(400);
-  }
+  const over = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, simplesRbt12Cents: 480_000_001 },
+  });
+  expect(over.statusCode).toBe(400);
+  const iss = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, issRate: 501 },
+  });
+  expect(iss.statusCode).toBe(400);
+});
+
+test('a preview gives the band and both rates for any revenue, without saving', async () => {
+  const { a } = withEmitter();
+  const response = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${a.accountId}/simples-rates?annex=V&rbt12Cents=10000000`,
+    headers: await t.as('a@example.com'),
+  });
+  expect(response.json()).toEqual({ band: 1, domestic: 1550, export: 1067 });
+  const outside = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${a.accountId}/simples-rates?annex=III&rbt12Cents=500000000`,
+    headers: await t.as('a@example.com'),
+  });
+  expect(outside.statusCode).toBe(400);
+  expect(outside.json()).toMatchObject({ error: 'outside_simples' });
 });
 
 test('a member reads the configuration but cannot change it', async () => {
@@ -103,20 +125,11 @@ test('an emitter of another account is not found', async () => {
   expect(response.statusCode).toBe(404);
 });
 
-test('the fiscal answer carries the band table, with or without a configuration', async () => {
+test('without a revenue the answer has no rates', async () => {
   const { url } = withEmitter();
   const headers = await t.as('a@example.com');
-  const bands = {
-    III: [600, 1120, 1350, 1600, 2100, 3300],
-    V: [1550, 1800, 1950, 2050, 2300, 3050],
-  };
   expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
-    simplesPercent: null,
-    bands,
-  });
-  await t.app.inject({ method: 'PUT', url, headers, payload: body });
-  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
-    simplesPercent: 600,
-    bands,
+    simplesRbt12Cents: null,
+    rates: null,
   });
 });

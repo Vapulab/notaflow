@@ -33,18 +33,16 @@ const emitter = {
   dpsSeries: '900',
   certificate: null,
 };
-const bands = {
-  III: [600, 1120, 1350, 1600, 2100, 3300],
-  V: [1550, 1800, 1950, 2050, 2300, 3050],
-};
 const fiscal = {
   simplesAnnex: 'III',
   simplesBand: 2,
-  simplesPercent: 1120,
+  simplesPercent: 613,
+  simplesRbt12Cents: 18_470_000,
+  simplesRbt12At: new Date().toISOString(),
+  rates: { domestic: 613, export: 312 },
   issRate: 200,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
-  bands,
 };
 const service = {
   id: 's1',
@@ -140,6 +138,9 @@ test('without a fiscal configuration the owner gets a link and a member is told 
         simplesPercent: null,
         simplesAnnex: null,
         simplesBand: null,
+        simplesRbt12Cents: null,
+        simplesRbt12At: null,
+        rates: null,
       },
     }),
   );
@@ -152,7 +153,7 @@ test('without a fiscal configuration the owner gets a link and a member is told 
   expect(await screen.findByText(/Peça ao dono da conta/)).toBeTruthy();
 });
 
-test('a Brazil invoice: the service fills the description, and the default band is not sent', async () => {
+test('a Brazil invoice: the service fills the description, and the computed rate is not sent', async () => {
   const calls = stubApi(
     routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued', number: '7' } }),
   );
@@ -162,14 +163,14 @@ test('a Brazil invoice: the service fills the description, and the default band 
   expect((screen.getByLabelText('Descrição') as HTMLTextAreaElement).value).toBe(
     'Desenvolvimento de software',
   );
-  expect((screen.getByLabelText('Faixa do Simples') as HTMLSelectElement).value).toBe('2');
+  expect(screen.getByText('6,13% (faixa 2)')).toBeTruthy();
   expect(screen.getByText('ISS no DAS (não retido)')).toBeTruthy();
   expect(screen.queryByLabelText('Moeda')).toBeNull();
   expect(calls.some((c) => c.url.includes('/customers?emitterId=em1&q=Clie'))).toBe(true);
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   const review = screen.getByRole('table');
   expect(within(review).getByText('Cliente Teste Ltda')).toBeTruthy();
-  expect(within(review).getByText('Faixa 2 – 11,20%')).toBeTruthy();
+  expect(within(review).getByText('6,13% (faixa 2)')).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
   await waitFor(() =>
     expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/new1'),
@@ -186,16 +187,14 @@ test('a Brazil invoice: the service fills the description, and the default band 
   });
 });
 
-test('another band sends its percent', async () => {
-  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+test('a revenue informed before this month asks to be updated', async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesRbt12At: '2020-01-15T12:00:00Z' },
+    }),
+  );
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
-  const user = userEvent.setup();
-  await fillBrazil(user);
-  await user.selectOptions(screen.getByLabelText('Faixa do Simples'), '3');
-  await user.click(screen.getByRole('button', { name: 'Revisar' }));
-  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
-  await waitFor(() => expect(sent(calls)).toHaveLength(1));
-  expect(JSON.parse(String(sent(calls)[0]?.init?.body))).toMatchObject({ simplesPercent: 1350 });
+  expect(await screen.findByText(/Atualize a receita dos últimos 12 meses/)).toBeTruthy();
 });
 
 test('a customer abroad: currency, foreign amount, and reais from the PTAX of the competence', async () => {
@@ -205,6 +204,8 @@ test('a customer abroad: currency, foreign amount, and reais from the PTAX of th
   await pickCustomer(user, 'Foreign Customer Inc');
   await user.selectOptions(screen.getByLabelText('Serviço'), 's1');
   expect(screen.getByText('Exportação: sem ISS')).toBeTruthy();
+  // An export leaves out ISS, PIS, and COFINS from the Simples rate.
+  expect(screen.getByText('3,12% (faixa 2, exportação sem ISS, PIS e COFINS)')).toBeTruthy();
   expect((screen.getByLabelText('Moeda') as HTMLSelectElement).value).toBe('220');
   await user.type(screen.getByLabelText('Valor em USD'), '1.234,00');
   const brl = screen.getByLabelText('Valor em reais') as HTMLInputElement;
@@ -454,7 +455,7 @@ test('the review shows the typed Simples percent in place of the band', async ()
   await user.type(screen.getByLabelText('Outro percentual do Simples (%)'), '7,50');
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   expect(within(screen.getByRole('table')).getByText('Percentual informado: 7,50%')).toBeTruthy();
-  expect(within(screen.getByRole('table')).queryByText('Faixa 2 – 11,20%')).toBeNull();
+  expect(within(screen.getByRole('table')).queryByText('6,13% (faixa 2)')).toBeNull();
 });
 
 test('an incomplete IBS/CBS group blocks the review with a hint', async () => {
@@ -493,4 +494,104 @@ test('a retained ISS rate above 5% blocks the review with a hint', async () => {
   expect((screen.getByRole('button', { name: 'Revisar' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
+});
+
+test('the customer field lists the emitter customers before anything is typed', async () => {
+  const calls = stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('combobox', { name: 'Cliente' }));
+  expect(await screen.findByRole('option', { name: /Cliente Teste Ltda/ })).toBeTruthy();
+  expect(screen.getByRole('option', { name: /Foreign Customer Inc/ })).toBeTruthy();
+  expect(calls.some((c) => c.url === `${base}/customers?emitterId=em1`)).toBe(true);
+});
+
+test('Mais opções: a code suggested by the CNAEs can be chosen before any typing', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [{ code: '010201', description: 'Programação.' }],
+      },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByRole('combobox', { name: 'Código nacional' }));
+  await user.click(
+    await screen.findByRole('option', {
+      name: '01.02.01 – Programação.',
+    }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.overrides).toEqual({ nationalTaxCode: '010201' });
+});
+
+function withSuggestion() {
+  const services = [service];
+  const created = { ...service, id: 's2', name: 'Programação', nationalTaxCode: '010201' };
+  return routes({
+    [`${base}/emitters/em1/services`]: (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        services.push(created);
+        return created;
+      }
+      return services;
+    },
+    [`${base}/emitters/em1/service-codes/suggested`]: {
+      cnaes: ['6201501'],
+      codes: [{ code: '010201', description: 'Programação.' }],
+    },
+  });
+}
+
+test('Serviço: the owner registers a code suggested by the CNAEs, and it goes into the invoice', async () => {
+  const calls = stubApi(withSuggestion());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.selectOptions(
+    await screen.findByLabelText('Serviço'),
+    screen.getByRole('option', { name: 'Cadastrar: 01.02.01 – Programação.' }),
+  );
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByRole('combobox', { name: 'Código nacional' })).toHaveProperty(
+    'value',
+    '01.02.01 – Programação.',
+  );
+  await user.type(within(dialog).getByLabelText('Nome'), 'Programação');
+  await user.click(within(dialog).getByRole('button', { name: 'Salvar serviço' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() => expect(screen.getByLabelText('Serviço')).toHaveProperty('value', 's2'));
+  const post = calls.find((c) => c.init?.method === 'POST');
+  expect(JSON.parse(String(post?.init?.body))).toMatchObject({
+    name: 'Programação',
+    nationalTaxCode: '010201',
+    description: 'Programação.',
+  });
+});
+
+test('Serviço: a member, who cannot register services, sees no suggestions there', async () => {
+  stubApi(withSuggestion());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user', 'member'));
+  await screen.findByLabelText('Serviço');
+  expect(screen.queryByRole('option', { name: /^Cadastrar:/ })).toBeNull();
+});
+
+test('the amounts fill like a cash register, with the currency inside the field', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.type(await screen.findByLabelText('Valor em reais'), '123456');
+  expect(screen.getByLabelText('Valor em reais')).toHaveProperty('value', '1.234,56');
+  expect(screen.getByText('R$')).toBeTruthy();
+  await pickCustomer(user, 'Foreign Customer Inc');
+  await user.type(screen.getByLabelText('Valor em USD'), '100000');
+  expect(screen.getByLabelText('Valor em USD')).toHaveProperty('value', '1.000,00');
+  expect(screen.getByText('US$')).toBeTruthy();
 });

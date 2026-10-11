@@ -25,6 +25,7 @@ import { clientIp, requestContext } from './requestContext';
 import { cepRoutes } from './routes/cep';
 import { fiscalRoutes } from './routes/fiscal';
 import { serviceRoutes } from './routes/services';
+import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
@@ -178,6 +179,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   fiscalRoutes(app, db);
   cepRoutes(app, deps.cepDispatcher ? { cepDispatcher: deps.cepDispatcher } : {});
   serviceRoutes(app, db);
+  serviceSuggestionRoutes(app, {
+    db,
+    ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
+  });
   auditRoutes(app, db);
   if (deps.webRoot) registerWeb(app, deps.webRoot);
   return app;

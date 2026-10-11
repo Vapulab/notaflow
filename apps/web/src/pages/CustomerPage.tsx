@@ -7,12 +7,13 @@ import {
   toPartyAddress,
 } from '../components/AddressFields';
 import { Layout, errorText } from '../components/Layout';
+import { maskPhone } from '../masks';
 import { useAsync } from '../components/useAsync';
 import { routeHref } from '../router';
 import {
   Alert,
   Button,
-  buttonClasses,
+  ButtonLink,
   CARD_CLASSES,
   Field,
   FORM_CLASSES,
@@ -34,8 +35,8 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
       </Link>
       {customer.data && (
         <div>
-          <Link
-            className={buttonClasses({ variant: 'primary' })}
+          <ButtonLink
+            variant="primary"
             href={routeHref({
               name: 'newInvoice',
               accountId: props.accountId,
@@ -43,7 +44,7 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
             })}
           >
             Emitir nota
-          </Link>
+          </ButtonLink>
         </div>
       )}
       {customer.error && <Alert variant="error">{errorText(customer.error)}</Alert>}
@@ -55,17 +56,22 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
   );
 }
 
+// The document decides the kind: a CNPJ or CPF lives in Brazil, a NIF or no document abroad.
+const kindOf = (customer: Customer) =>
+  customer.documentType === 'CNPJ' || customer.documentType === 'CPF' ? 'domestic' : 'foreign';
+
 function CustomerForm(props: { accountId: string; url: string; customer: Customer }) {
   const { accountId, url, customer } = props;
   const [text, setText] = useState<Record<Text, string>>({
     name: customer.name,
     email: customer.email ?? '',
-    phone: customer.phone ?? '',
+    phone:
+      customer.phone && kindOf(customer) === 'domestic'
+        ? maskPhone(customer.phone)
+        : (customer.phone ?? ''),
     municipalRegistration: customer.municipalRegistration ?? '',
   });
-  // The document decides the kind: a CNPJ or CPF lives in Brazil, a NIF or no document abroad.
-  const kind =
-    customer.documentType === 'CNPJ' || customer.documentType === 'CPF' ? 'domestic' : 'foreign';
+  const kind = kindOf(customer);
   const [initialAddress] = useState(() => addressFromParty(customer.address, kind));
   const [address, setAddress] = useState<AddressValue>(initialAddress);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
@@ -73,7 +79,8 @@ function CustomerForm(props: { accountId: string; url: string; customer: Custome
   function changes(): Record<string, unknown> | null {
     const body: Record<string, unknown> = {};
     for (const field of ['name', 'email', 'phone', 'municipalRegistration'] as const) {
-      const value = text[field].trim();
+      // The server takes the phone as digits only.
+      const value = field === 'phone' ? text.phone.replace(/\D/g, '') : text[field].trim();
       if (value && value !== ((customer[field] as string | null) ?? '')) body[field] = value;
     }
     if (JSON.stringify(address) !== JSON.stringify(initialAddress)) {
@@ -111,7 +118,13 @@ function CustomerForm(props: { accountId: string; url: string; customer: Custome
       <Input
         type={type}
         value={text[field]}
-        onChange={(e) => setText((t) => ({ ...t, [field]: e.target.value }))}
+        onChange={(e) =>
+          setText((t) => ({
+            ...t,
+            [field]:
+              field === 'phone' && kind === 'domestic' ? maskPhone(e.target.value) : e.target.value,
+          }))
+        }
       />
     </Field>
   );

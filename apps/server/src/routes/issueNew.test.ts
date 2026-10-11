@@ -69,6 +69,27 @@ test('an export invoice is issued with comExt in the foreign currency', async ()
   expect(xml).toContain('<tpMoeda>220</tpMoeda>');
   expect(xml).toContain('<vServMoeda>1234.00</vServMoeda>');
   expect(xml).toContain('<cClassTrib>410027</cClassTrib>');
+  // RBT12 R$ 120,000 (band 1, Anexo III): 6% without ISS, Cofins, and PIS is 3.05%.
+  expect(xml).toContain('<pTotTribSN>3.05</pTotTribSN>');
+  expect(xml).toMatch(/<piscofins><CST>08<\/CST>/);
+});
+
+test('an emitter without the revenue of the last 12 months cannot issue until it says it', async () => {
+  const s = await withNewInvoiceSetup(t);
+  t.db.$client.prepare('UPDATE emitters SET simples_rbt12_cents = NULL').run();
+  const body = {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+  };
+  const refused = await s.call('POST', '/invoices/new', body);
+  expect(refused.statusCode).toBe(409);
+  expect(refused.json()).toMatchObject({ error: 'simples_revenue_missing' });
+  // A rate typed in the complete mode still issues.
+  const typed = await s.call('POST', '/invoices/new', { ...body, simplesPercent: 600 });
+  expect(typed.statusCode).toBe(201);
 });
 
 test('a customer abroad without the foreign amount is invalid_amount', async () => {

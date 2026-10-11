@@ -22,18 +22,16 @@ const emitter = {
   dpsSeries: '900',
   certificate: null,
 };
-const bands = {
-  III: [600, 1120, 1350, 1600, 2100, 3300],
-  V: [1550, 1800, 1950, 2050, 2300, 3050],
-};
 const fiscal = {
   simplesAnnex: 'III',
   simplesBand: 1,
   simplesPercent: 600,
+  simplesRbt12Cents: 12_000_000,
+  simplesRbt12At: new Date().toISOString(),
+  rates: { domestic: 600, export: 305 },
   issRate: 200,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
-  bands,
 };
 const service = {
   id: 's1',
@@ -54,32 +52,36 @@ const routes = (overrides: Record<string, unknown> = {}) => ({
 const bodyOf = (calls: StubCall[], method: string) =>
   JSON.parse(String(calls.filter((c) => c.init?.method === method).at(-1)?.init?.body)) as unknown;
 
-test('the owner picks the annex and band; the bands show their percent', async () => {
-  const calls = stubApi(routes());
+test('the owner sets the annex and the revenue; the band and both rates are shown', async () => {
+  const calls = stubApi(
+    routes({ [`${base}/simples-rates`]: { band: 2, domestic: 1575, export: 1084 } }),
+  );
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
   const user = userEvent.setup();
-  const band = (await screen.findByLabelText('Faixa')) as HTMLSelectElement;
-  expect([...band.options].map((o) => o.text)).toEqual([
-    'Faixa 1 – 6,00%',
-    'Faixa 2 – 11,20%',
-    'Faixa 3 – 13,50%',
-    'Faixa 4 – 16,00%',
-    'Faixa 5 – 21,00%',
-    'Faixa 6 – 33,00%',
-  ]);
+  expect(
+    await screen.findByText('Faixa 1 · alíquota efetiva 6,00% · exportação 3,05%'),
+  ).toBeTruthy();
   await user.selectOptions(screen.getByLabelText('Anexo do Simples'), 'V');
-  expect(band.options[0]?.text).toBe('Faixa 1 – 15,50%');
-  await user.selectOptions(band, '2');
+  const revenue = screen.getByLabelText('Receita bruta dos últimos 12 meses (R$)');
+  await user.clear(revenue);
+  await user.type(revenue, '200.000,00');
+  expect(
+    await screen.findByText('Faixa 2 · alíquota efetiva 15,75% · exportação 10,84%'),
+  ).toBeTruthy();
+  expect(calls.some((c) => c.url === `${base}/simples-rates?annex=V&rbt12Cents=20000000`)).toBe(
+    true,
+  );
   const iss = screen.getByLabelText('Alíquota de ISS (%)');
   await user.clear(iss);
-  await user.type(iss, '3,5');
+  await user.type(iss, '350');
+  expect(iss).toHaveProperty('value', '3,50');
   await user.selectOptions(screen.getByLabelText('Regime do IBS/CBS'), 'regular');
   await user.type(screen.getByLabelText('Desde'), '2027-01-01');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
   await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
   expect(bodyOf(calls, 'PUT')).toEqual({
     simplesAnnex: 'V',
-    simplesBand: 2,
+    simplesRbt12Cents: 20_000_000,
     issRate: 350,
     ibscbsRegime: 'regular',
     ibscbsRegimeFrom: '2027-01-01',
@@ -90,7 +92,9 @@ test('the owner picks the annex and band; the bands show their percent', async (
 test('a member reads the configuration and the services but changes nothing', async () => {
   stubApi(routes());
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user', 'member'));
-  expect((await screen.findByLabelText('Faixa')).matches(':disabled')).toBe(true);
+  expect(
+    (await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)')).matches(':disabled'),
+  ).toBe(true);
   expect(
     (screen.getByRole('button', { name: 'Salvar configuração' }) as HTMLButtonElement).disabled,
   ).toBe(true);
@@ -169,7 +173,7 @@ test('editing keeps the service fields, and archiving sends archived', async () 
 test('while the user is still loading, the owner-only notice does not show', async () => {
   stubApi(routes());
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, null);
-  await screen.findByLabelText('Faixa');
+  await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
   expect(
     screen.queryByText('Só o dono da conta altera a configuração fiscal e os serviços.'),
   ).toBeNull();
@@ -183,15 +187,70 @@ test('the missing-configuration warning goes away once the owner saves', async (
         simplesAnnex: null,
         simplesBand: null,
         simplesPercent: null,
+        simplesRbt12Cents: null,
+        simplesRbt12At: null,
+        rates: null,
         issRate: null,
       },
+      [`${base}/simples-rates`]: { band: 1, domestic: 600, export: 305 },
     }),
   );
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
   const user = userEvent.setup();
   expect(await screen.findByText(/Sem esta configuração/)).toBeTruthy();
+  await user.type(screen.getByLabelText('Receita bruta dos últimos 12 meses (R$)'), '120.000,00');
   await user.type(screen.getByLabelText('Alíquota de ISS (%)'), '2,00');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
   expect(await screen.findByText('Configuração salva.')).toBeTruthy();
   expect(screen.queryByText(/Sem esta configuração/)).toBeNull();
+});
+
+test("before typing, the code field suggests the codes of the company's CNAEs, marked as a suggestion", async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [
+          { code: '010101', description: 'Análise e desenvolvimento de sistemas.' },
+          { code: '010201', description: 'Programação.' },
+        ],
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo serviço' }));
+  const dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('combobox', { name: 'Código nacional' }));
+  expect(
+    await within(dialog).findByText('Sugeridos pelas atividades (CNAE) da empresa'),
+  ).toBeTruthy();
+  expect(
+    within(dialog).getByRole('option', {
+      name: '01.01.01 – Análise e desenvolvimento de sistemas.',
+    }),
+  ).toBeTruthy();
+  expect(within(dialog).getByRole('option', { name: '01.02.01 – Programação.' })).toBeTruthy();
+});
+
+test('a code suggested before any typing is the code the new service saves', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [{ code: '010201', description: 'Programação.' }],
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Novo serviço' }));
+  const dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('combobox', { name: 'Código nacional' }));
+  await user.click(await within(dialog).findByRole('option', { name: '01.02.01 – Programação.' }));
+  await user.type(within(dialog).getByLabelText('Nome'), 'Programação');
+  await user.click(within(dialog).getByRole('button', { name: 'Salvar serviço' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'POST')).toBe(true));
+  const post = calls.find((c) => c.init?.method === 'POST');
+  expect(JSON.parse(String(post?.init?.body))).toMatchObject({ nationalTaxCode: '010201' });
 });

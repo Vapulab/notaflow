@@ -7,7 +7,7 @@ import {
   type TextareaHTMLAttributes,
   useId,
 } from 'react';
-import { INPUT_CLASSES, LABEL_CLASSES, SELECT_CLASSES } from './classes';
+import { FILE_INPUT_CLASSES, INPUT_CLASSES, LABEL_CLASSES, SELECT_CLASSES } from './classes';
 
 // Malphas pairs label and control with for/id; the hint describes the control.
 export function Field(props: { label: string; hint?: string; children: ReactNode }) {
@@ -38,6 +38,12 @@ export function Field(props: { label: string; hint?: string; children: ReactNode
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${INPUT_CLASSES} ${props.className ?? ''}`} />;
+}
+
+export function FileInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  return (
+    <input {...props} type="file" className={`${FILE_INPUT_CLASSES} ${props.className ?? ''}`} />
+  );
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {

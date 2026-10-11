@@ -76,6 +76,7 @@ export interface CnpjDraft {
   municipality: string;
   uf: string;
   cnae: string | null;
+  cnaeDescription: string | null;
   simplesNacional: '1' | '2' | '3';
   source: 'brasilapi' | 'cnpja';
 }
@@ -261,11 +262,14 @@ export interface CepAnswer {
 export interface FiscalConfig {
   simplesAnnex: 'III' | 'V' | null;
   simplesBand: number | null;
-  simplesPercent: number | null; // hundredths
+  simplesPercent: number | null; // hundredths; the domestic rate
+  simplesRbt12Cents: number | null;
+  simplesRbt12At: string | null;
+  // The rates of pTotTribSN for the saved revenue; an export leaves out ISS, PIS, and COFINS.
+  rates: { domestic: number; export: number } | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null;
-  bands: { III: number[]; V: number[] };
 }
 
 export interface ServiceExport {

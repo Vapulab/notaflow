@@ -28,6 +28,11 @@ const brasilBody = (overrides: object = {}) => ({
   codigo_municipio_ibge: 4113700,
   uf: 'PR',
   cnae_fiscal: 6201501,
+  cnae_fiscal_descricao: 'Desenvolvimento de programas de computador sob encomenda',
+  cnaes_secundarios: [
+    { codigo: 6202300, descricao: 'Desenvolvimento e licenciamento de programas customizáveis' },
+    { codigo: 0, descricao: '' },
+  ],
   opcao_pelo_simples: true,
   opcao_pelo_mei: false,
   ...overrides,
@@ -42,7 +47,8 @@ const cnpjaBody = (overrides: object = {}) => ({
     simei: { optant: true },
   },
   address: { municipality: 4113700, state: 'PR' },
-  mainActivity: { id: 6201501 },
+  mainActivity: { id: 6201501, text: 'Desenvolvimento de programas de computador sob encomenda' },
+  sideActivities: [{ id: 6311900, text: 'Tratamento de dados' }],
   ...overrides,
 });
 
@@ -62,6 +68,9 @@ test('BrasilAPI: an active Simples company that is not MEI is option 3', async (
     municipality: '4113700',
     uf: 'PR',
     cnae: '6201501',
+    cnaeDescription: 'Desenvolvimento de programas de computador sob encomenda',
+    // The empty secondary activity BrasilAPI sends as code 0 is left out.
+    secondaryCnaes: ['6202300'],
     simplesNacional: '3',
     source: 'brasilapi',
   });
@@ -122,4 +131,18 @@ test('a BrasilAPI answer without an IBGE code falls back to CNPJá', async () =>
   brasil(200, brasilBody({ codigo_municipio_ibge: null }));
   cnpja(200, cnpjaBody());
   expect((await lookup()).source).toBe('cnpja');
+});
+
+test('CNPJá gives the activity description too', async () => {
+  brasil(503, 'erro');
+  cnpja(200, cnpjaBody());
+  expect((await lookup()).cnaeDescription).toBe(
+    'Desenvolvimento de programas de computador sob encomenda',
+  );
+});
+
+test('CNPJá gives the secondary activities too', async () => {
+  brasil(503, 'erro');
+  cnpja(200, cnpjaBody());
+  expect((await lookup()).secondaryCnaes).toEqual(['6311900']);
 });

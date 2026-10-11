@@ -14,6 +14,7 @@ const draft = {
   municipality: '4113700',
   uf: 'PR',
   cnae: '6201501',
+  cnaeDescription: 'Desenvolvimento de programas de computador sob encomenda',
   simplesNacional: '3',
   source: 'brasilapi',
 };
@@ -125,7 +126,8 @@ test('a card that cannot be read offers to type the CNPJ', async () => {
   );
   await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
   await user.click(await screen.findByRole('button', { name: 'Digitar o CNPJ' }));
-  await user.type(screen.getByLabelText('CNPJ'), '12.345.678/0001-95');
+  await user.type(screen.getByLabelText('CNPJ'), '12345678000195');
+  expect(screen.getByLabelText('CNPJ')).toHaveProperty('value', '12.345.678/0001-95');
   await user.click(screen.getByRole('button', { name: 'Consultar CNPJ' }));
   const sent = calls.find((c) => c.url === `${base}/onboarding/cnpj`);
   expect(JSON.parse(String(sent?.init?.body))).toEqual({ cnpj: '12.345.678/0001-95' });
@@ -285,4 +287,94 @@ test.each([
   );
   await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
   expect(await screen.findByText(text)).toBeTruthy();
+});
+
+const fiscalRoutes = () => ({
+  ...state('fiscal', true),
+  [`${base}/emitters`]: [
+    {
+      id: 'em1',
+      cnpj: '12345678000195',
+      companyName: 'EMPRESA',
+      environment: 'producao',
+      municipality: '4113700',
+      dpsSeries: '900',
+      certificate: null,
+    },
+  ],
+  [`${base}/emitters/em1/fiscal`]: {},
+  [`${base}/onboarding/fiscal-done`]: { step: 'sync' },
+  [`${base}/invoices`]: { items: [], total: 0 },
+});
+
+test('the fiscal step shows the activity and asks only the revenue and the payroll share', async () => {
+  const calls = stubApi(fiscalRoutes());
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  expect(
+    await screen.findByText('6201-5/01 · Desenvolvimento de programas de computador sob encomenda'),
+  ).toBeTruthy();
+  await user.type(screen.getByLabelText('Receita bruta dos últimos 12 meses (R$)'), '250.000,00');
+  expect(screen.getByText('Faixa 2 do Simples Nacional')).toBeTruthy();
+  await user.click(screen.getByRole('radio', { name: 'Sim, 28% ou mais' }));
+  await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toEqual({
+    simplesAnnex: 'III',
+    simplesRbt12Cents: 25_000_000,
+    issRate: 200,
+    ibscbsRegime: 'inside_das',
+  });
+});
+
+test('a payroll under 28% means Anexo V', async () => {
+  const calls = stubApi(fiscalRoutes());
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '90.000,00',
+  );
+  await user.click(screen.getByRole('radio', { name: 'Não, menos de 28%' }));
+  await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toMatchObject({
+    simplesAnnex: 'V',
+    simplesRbt12Cents: 9_000_000,
+  });
+});
+
+test('a revenue above the Simples limit is explained, and nothing is saved', async () => {
+  const calls = stubApi(fiscalRoutes());
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '5.000.000,00',
+  );
+  expect(
+    screen.getByText('Acima de R$ 4.800.000,00 a empresa sai do Simples Nacional.'),
+  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Salvar e continuar' })).toHaveProperty(
+    'disabled',
+    true,
+  );
+  expect(calls.some((c) => c.init?.method === 'PUT')).toBe(false);
+});
+
+test('an onboarding address of an account that does not exist goes to /app', async () => {
+  window.history.replaceState(null, '', '/app/comecar/antiga');
+  stubApi({ '/api/accounts/antiga/onboarding': { error: 'not_found' } });
+  renderWithMe(<OnboardingPage accountId="antiga" />, meWith(null));
+  await waitFor(() => expect(window.location.pathname).toBe('/app'));
 });

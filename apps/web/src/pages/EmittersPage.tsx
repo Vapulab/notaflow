@@ -13,7 +13,7 @@ import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { fileToBase64, formatDate } from '../format';
 import { routeHref } from '../router';
-import { Alert, Button, buttonClasses, Card, Link, SECTION_TITLE_CLASSES } from '../ui';
+import { Alert, Button, buttonClasses, ButtonLink, Card, SECTION_TITLE_CLASSES } from '../ui';
 import { CardStep, CertificateStep } from './onboarding/steps';
 
 type Act = (action: () => Promise<string>) => Promise<void>;
@@ -134,12 +134,12 @@ function EmitterCard(props: {
         <Button variant="secondary" onClick={syncNow}>
           Sincronizar agora
         </Button>
-        <Link
-          className={buttonClasses({ variant: 'secondary' })}
+        <ButtonLink
+          variant="secondary"
           href={routeHref({ name: 'emitter', accountId, emitterId: emitter.id })}
         >
           Configuração fiscal e serviços
-        </Link>
+        </ButtonLink>
         {isOwner && (
           <>
             <label className={`${buttonClasses({ variant: 'secondary' })} cursor-pointer`}>

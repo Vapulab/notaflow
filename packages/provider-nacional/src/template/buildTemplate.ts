@@ -74,7 +74,8 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ...(address?.kind === 'foreign' ? { resultCountry: address.country } : {}),
       issRetention: retained ? '2' : '1',
       ...(issRatePercent ? { issRatePercent } : {}),
-      pisCofins: { cst: service.pisCofinsCst ?? '00', retention: '0' },
+      // PIS and COFINS do not apply to an export of services (08), whatever the service says.
+      pisCofins: { cst: abroad ? '08' : (service.pisCofinsCst ?? '00'), retention: '0' },
       simplesTotalPercent: percentText(input.simplesPercent),
     },
     // 2026: the group is optional for the Simples; a service's codes describe its export.

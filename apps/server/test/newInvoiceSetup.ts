@@ -44,7 +44,7 @@ export async function withNewInvoiceSetup(
   if (options.fiscal !== false) {
     const fiscal = await call('PUT', `/emitters/${emitterId}/fiscal`, {
       simplesAnnex: 'III',
-      simplesBand: 1,
+      simplesRbt12Cents: 12_000_000,
       issRate: 200,
       ibscbsRegime: 'inside_das',
     });

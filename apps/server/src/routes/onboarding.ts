@@ -253,15 +253,19 @@ export function onboardingRoutes(
               : {}),
             specialRegime: advanced.specialRegime ?? '0',
             dpsSeries: advanced.dpsSeries ?? '900',
+            cnaes: [...(draft.cnae ? [draft.cnae] : []), ...(draft.secondaryCnaes ?? [])],
           },
           {
             expectedCnpj: draft.cnpj,
             // With the emitter's insert: the step moves, the proven card is kept, and the draft goes.
             inTransaction: () => {
-              if (stepful) move(ctx, 'certificate', 'fiscal');
+              // Only an ME or EPP in the Simples has an annex and a band to set.
+              if (stepful)
+                move(ctx, 'certificate', draft.simplesNacional === '3' ? 'fiscal' : 'sync');
               const card = onboarding.draftCard(ctx);
               if (card) documents.addCnpjCard(ctx, { cnpj: draft.cnpj, ...card });
-              onboarding.setDraft(ctx, null);
+              // Onboarding keeps the draft for the fiscal step; another emitter has none.
+              onboarding.setDraft(ctx, stepful ? draft : null);
             },
           },
         );
@@ -286,21 +290,23 @@ export function onboardingRoutes(
     });
   });
 
-  app.post<Params>('/api/accounts/:accountId/onboarding/fiscal-done', async (request) =>
-    move(
-      accountContext(request, request.params.accountId, { owner: true, write: true }),
-      'fiscal',
-      'sync',
-    ),
-  );
+  app.post<Params>('/api/accounts/:accountId/onboarding/fiscal-done', async (request) => {
+    const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+    return db.transaction(() => {
+      const moved = move(ctx, 'fiscal', 'sync');
+      onboarding.setDraft(ctx, null);
+      return moved;
+    });
+  });
 
-  app.post<Params>('/api/accounts/:accountId/onboarding/finish', async (request) =>
-    move(
-      accountContext(request, request.params.accountId, { owner: true, write: true }),
-      'sync',
-      'done',
-    ),
-  );
+  app.post<Params>('/api/accounts/:accountId/onboarding/finish', async (request) => {
+    const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+    return db.transaction(() => {
+      const moved = move(ctx, 'sync', 'done');
+      onboarding.setDraft(ctx, null);
+      return moved;
+    });
+  });
 }
 
 // Case, accents, and punctuation differ between the card and the lookup; the words do not.

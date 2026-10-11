@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { api, type Service, type ServiceCode, type ServiceExport, type ServiceInput } from '../api';
 import { errorText } from '../components/Layout';
+import { SUGGESTED_HEADING, useSuggestedCodes } from '../components/suggestedCodes';
 import { useSearch } from '../components/useSearch';
 import { EXPORT_LABELS, EXPORT_OPTIONS } from '../exportCodes';
 import { formatServiceCode } from '../format';
@@ -82,17 +83,23 @@ export function ServiceDialog(props: {
   accountId: string;
   emitterId: string;
   service: Service | null; // null for a new service
+  initialCode?: ServiceCode; // a new service that starts from a suggested code
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (created?: Service) => void;
 }) {
   const { service } = props;
   const base = `/api/accounts/${encodeURIComponent(props.accountId)}`;
   const [code, setCode] = useState<ServiceCode | null>(
-    service ? { code: service.nationalTaxCode, description: '' } : null,
+    service ? { code: service.nationalTaxCode, description: '' } : (props.initialCode ?? null),
   );
   const [query, setQuery] = useState('');
   const found = useSearch<ServiceCode>(`${base}/service-codes`, query);
-  const [text, setText] = useState(() => textOf(service));
+  const suggested = useSuggestedCodes(base, props.emitterId);
+  const typing = query.trim() !== '';
+  const [text, setText] = useState(() => ({
+    ...textOf(service),
+    ...(!service && props.initialCode ? { description: props.initialCode.description } : {}),
+  }));
   const [exp, setExp] = useState<Record<ExportField, string>>(
     () =>
       Object.fromEntries(EXPORT_FIELDS.map((f) => [f, service?.export?.[f] ?? ''])) as Record<
@@ -112,7 +119,9 @@ export function ServiceDialog(props: {
   );
 
   function choose(option: ComboboxOption | null) {
-    const chosen = option ? (found.find((c) => c.code === option.value) ?? null) : null;
+    const chosen = option
+      ? ([...found, ...suggested.codes].find((c) => c.code === option.value) ?? null)
+      : null;
     // The official description fills an empty field or replaces the one the last code filled.
     if (chosen && (text.description.trim() === '' || text.description === code?.description)) {
       set('description')(chosen.description);
@@ -130,9 +139,17 @@ export function ServiceDialog(props: {
     setError(null);
     try {
       const body = serviceBody(code.code, text, exp);
-      if (service) await api.put(`${base}/services/${encodeURIComponent(service.id)}`, body);
-      else await api.post(`${base}/emitters/${encodeURIComponent(props.emitterId)}/services`, body);
-      props.onSaved();
+      if (service) {
+        await api.put(`${base}/services/${encodeURIComponent(service.id)}`, body);
+        props.onSaved();
+      } else {
+        props.onSaved(
+          await api.post<Service>(
+            `${base}/emitters/${encodeURIComponent(props.emitterId)}/services`,
+            body,
+          ),
+        );
+      }
     } catch (failure) {
       setError(errorText(failure));
     } finally {
@@ -148,7 +165,8 @@ export function ServiceDialog(props: {
             label="Código nacional"
             query={query}
             onQueryChange={setQuery}
-            options={found.map(codeOption)}
+            options={(typing ? suggested.rank(found) : suggested.codes).map(codeOption)}
+            {...(!typing && suggested.codes.length > 0 ? { heading: SUGGESTED_HEADING } : {})}
             selected={code ? codeOption(code) : null}
             onSelect={choose}
             placeholder="Busque pelo nome ou pelo código"

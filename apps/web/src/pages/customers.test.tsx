@@ -104,3 +104,21 @@ test('the customer page links to Nova nota for that customer', async () => {
   const link = await screen.findByRole('link', { name: 'Emitir nota' });
   expect(link.getAttribute('href')).toBe('/app/acc/notas/nova?cliente=c1');
 });
+
+test('the phone of a Brazil customer is masked, and it goes as digits', async () => {
+  const calls = stubApi({
+    '/api/accounts/acc/customers/c1': { ...customer, phone: '5543999998888' },
+  });
+  render(<CustomerPage accountId="acc" customerId="c1" />);
+  const user = userEvent.setup();
+  const phone = await screen.findByLabelText('Telefone');
+  expect(phone).toHaveProperty('value', '(43) 99999-8888');
+  await user.clear(phone);
+  await user.type(phone, '4333334444');
+  expect(phone).toHaveProperty('value', '(43) 3333-4444');
+  await user.click(screen.getByRole('button', { name: 'Salvar' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
+  expect(JSON.parse(String(calls.find((c) => c.init?.method === 'PUT')?.init?.body))).toEqual({
+    phone: '4333334444',
+  });
+});

@@ -2,15 +2,21 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 
 // Search results for a combobox, asked 300 ms after the last key.
-export function useSearch<T>(url: string, query: string): T[] {
+// listWhenEmpty: an empty text asks the whole list, so the field shows what exists before any typing.
+export function useSearch<T>(
+  url: string,
+  query: string,
+  options: { listWhenEmpty?: boolean } = {},
+): T[] {
+  const { listWhenEmpty = false } = options;
   const [found, setFound] = useState<T[]>([]);
   useEffect(() => {
     const text = query.trim();
-    if (!text) return;
+    if (!text && !listWhenEmpty) return;
     let live = true;
     const timer = setTimeout(() => {
       const joiner = url.includes('?') ? '&' : '?';
-      api.get<T[]>(`${url}${joiner}q=${encodeURIComponent(text)}`).then(
+      api.get<T[]>(text ? `${url}${joiner}q=${encodeURIComponent(text)}` : url).then(
         (items) => {
           if (live) setFound(items);
         },
@@ -23,6 +29,6 @@ export function useSearch<T>(url: string, query: string): T[] {
       live = false;
       clearTimeout(timer);
     };
-  }, [url, query]);
-  return query.trim() ? found : [];
+  }, [url, query, listWhenEmpty]);
+  return query.trim() || listWhenEmpty ? found : [];
 }

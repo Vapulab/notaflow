@@ -4,13 +4,14 @@ import {
   ApiError,
   type CnpjDraft,
   type Emitter,
-  type FiscalConfig,
   type InvoicePage,
   type OnboardingState,
 } from '../../api';
+import { AmountInput } from '../../components/AmountInput';
 import { errorText } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
-import { fileToBase64, formatCnpj } from '../../format';
+import { fileToBase64, formatCnpj, parseCents, parsePercent, percentInput } from '../../format';
+import { maskCnpj } from '../../masks';
 import { navigate } from '../../router';
 import {
   Alert,
@@ -18,12 +19,12 @@ import {
   CARD_CLASSES,
   Field,
   FORM_CLASSES,
+  FileInput,
   Input,
   SECTION_TITLE_CLASSES,
   Select,
   Spinner,
 } from '../../ui';
-import { FiscalConfigForm } from '../FiscalConfigForm';
 
 const SIMPLES_TEXT: Record<CnpjDraft['simplesNacional'], string> = {
   '1': 'Não optante',
@@ -139,7 +140,7 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
           <Field label="CNPJ">
             <Input
               value={cnpj}
-              onChange={(e) => setCnpj(e.target.value)}
+              onChange={(e) => setCnpj(maskCnpj(e.target.value))}
               autoCapitalize="characters"
               required
               maxLength={18}
@@ -154,8 +155,7 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
       ) : (
         <form className={FORM_CLASSES} onSubmit={sendCard}>
           <Field label="Cartão CNPJ (PDF)" hint="Até 2 MB.">
-            <Input
-              type="file"
+            <FileInput
               accept="application/pdf"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
@@ -243,8 +243,7 @@ export function CertificateStep(props: {
         <StepError error={error} />
         <form className={FORM_CLASSES} onSubmit={submit}>
           <Field label="Certificado A1 (.pfx)">
-            <Input
-              type="file"
+            <FileInput
               accept=".pfx,.p12,application/x-pkcs12"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
@@ -313,42 +312,155 @@ export function CertificateStep(props: {
   );
 }
 
-export function FiscalStep(props: { accountId: string; onDone: OnDone }) {
+// The Simples Nacional bands, by gross revenue of the last 12 months (LC 123/2006), in cents.
+const BAND_LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
+
+function bandOf(revenueCents: number): number | null {
+  const index = BAND_LIMITS.findIndex((limit) => revenueCents <= limit);
+  return index === -1 ? null : index + 1;
+}
+
+function formatCnae(cnae: string): string {
+  return /^\d{7}$/.test(cnae) ? `${cnae.slice(0, 4)}-${cnae.slice(4, 5)}/${cnae.slice(5)}` : cnae;
+}
+
+export function FiscalStep(props: { accountId: string; state: OnboardingState; onDone: OnDone }) {
   const base = accountUrl(props.accountId);
+  const { draft } = props.state;
   const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
   const emitter = emitters.data?.[0];
-  const fiscalUrl = emitter ? `${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal` : null;
-  const fiscal = useAsync(
-    () => (fiscalUrl ? api.get<FiscalConfig>(fiscalUrl) : Promise.resolve(null)),
-    [fiscalUrl],
-  );
+  const [revenue, setRevenue] = useState('');
+  const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
+  const [annexChoice, setAnnexChoice] = useState<'III' | 'V' | null>(null);
+  const [iss, setIss] = useState(percentInput(200));
+  const [regime, setRegime] = useState<'inside_das' | 'regular'>('inside_das');
   const { busy, error, run } = useStepAction();
-  const next = () =>
-    run(async () => {
-      await api.post(`${base}/onboarding/fiscal-done`, {});
-      props.onDone({ step: 'sync', draft: null, municipalityName: null });
+
+  const revenueCents = parseCents(revenue);
+  const band = revenueCents === null ? null : bandOf(revenueCents);
+  const overLimit = revenueCents !== null && band === null;
+  // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
+  const annex = annexChoice ?? (payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
+  const issRate = parsePercent(iss);
+  const ready = !!emitter && band !== null && annex !== null && issRate !== null && issRate <= 500;
+
+  const finish = async () => {
+    await api.post(`${base}/onboarding/fiscal-done`, {});
+    props.onDone({ step: 'sync', draft: null, municipalityName: null });
+  };
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    if (!ready || !emitter || revenueCents === null || annex === null || issRate === null) return;
+    void run(async () => {
+      await api.put(`${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal`, {
+        simplesAnnex: annex,
+        // The server derives the band and the rates of each invoice from the revenue.
+        simplesRbt12Cents: revenueCents,
+        issRate,
+        ibscbsRegime: regime,
+      });
+      await finish();
     });
+  };
+
   return (
-    <div className="flex flex-col gap-4">
+    <Panel title="Configuração fiscal">
       <p className="text-sm text-muted">
-        Com a configuração fiscal, a nota nova já vem com as alíquotas certas. Se preferir, faça
-        isso depois na página do emitente.
+        Com estes dados, a nota nova já sai com as alíquotas do Simples. Você pode mudar depois na
+        página do emitente.
       </p>
-      <StepError error={error} />
-      {fiscalUrl && fiscal.data ? (
-        <FiscalConfigForm url={fiscalUrl} config={fiscal.data} canEdit />
-      ) : (
-        !emitters.error && <Spinner />
+      {draft?.cnae && (
+        <p className="text-sm">
+          <span className="text-muted">Atividade principal: </span>
+          {draft.cnaeDescription
+            ? `${formatCnae(draft.cnae)} · ${draft.cnaeDescription}`
+            : formatCnae(draft.cnae)}
+        </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" disabled={busy} onClick={next}>
-          Continuar
-        </Button>
-        <Button variant="secondary" disabled={busy} onClick={next}>
-          Fazer depois
-        </Button>
-      </div>
-    </div>
+      <StepError error={error} />
+      <form className={FORM_CLASSES} onSubmit={save}>
+        <Field
+          label="Receita bruta dos últimos 12 meses (R$)"
+          hint="Empresa com menos de 12 meses: a média mensal vezes 12."
+        >
+          <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
+        </Field>
+        {band !== null && <p className="text-sm text-fg">Faixa {band} do Simples Nacional</p>}
+        {overLimit && (
+          <Alert variant="warning">
+            Acima de R$ 4.800.000,00 a empresa sai do Simples Nacional.
+          </Alert>
+        )}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium text-fg">
+            A folha de salários dos últimos 12 meses, com o pró-labore, é de 28% ou mais da receita?
+          </legend>
+          {(
+            [
+              ['yes', 'Sim, 28% ou mais'],
+              ['no', 'Não, menos de 28%'],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="flex items-center gap-2 text-sm text-fg">
+              <input
+                type="radio"
+                name="payroll"
+                checked={payroll === value}
+                onChange={() => {
+                  setPayroll(value);
+                  setAnnexChoice(null);
+                }}
+              />
+              {label}
+            </label>
+          ))}
+          <p className="text-xs text-muted">
+            É o fator R: decide entre o Anexo III e o Anexo V. Se a sua atividade é sempre do Anexo
+            III, escolha o anexo em Opções avançadas; na dúvida, pergunte ao seu contador.
+          </p>
+        </fieldset>
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted">Opções avançadas</summary>
+          <div className="mt-3 flex flex-col gap-4">
+            <Field label="Anexo do Simples">
+              <Select
+                value={annex ?? ''}
+                onChange={(e) => setAnnexChoice(e.target.value === 'V' ? 'V' : 'III')}
+              >
+                <option value="" disabled>
+                  Responda a pergunta da folha
+                </option>
+                <option value="III">Anexo III</option>
+                <option value="V">Anexo V</option>
+              </Select>
+            </Field>
+            <Field
+              label="Alíquota de ISS (%)"
+              hint="Usada quando o cliente retém o ISS. O mínimo legal é 2,00."
+            >
+              <AmountInput unit="%" value={iss} onValueChange={setIss} />
+            </Field>
+            <Field label="Regime do IBS/CBS">
+              <Select
+                value={regime}
+                onChange={(e) => setRegime(e.target.value === 'regular' ? 'regular' : 'inside_das')}
+              >
+                <option value="inside_das">Dentro do DAS</option>
+                <option value="regular">Regular (fora do DAS)</option>
+              </Select>
+            </Field>
+          </div>
+        </details>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" variant="primary" disabled={busy || !ready}>
+            Salvar e continuar
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => run(finish)}>
+            Fazer depois
+          </Button>
+        </div>
+      </form>
+    </Panel>
   );
 }
 

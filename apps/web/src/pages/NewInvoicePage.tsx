@@ -8,6 +8,7 @@ import {
   type Service,
   type ServiceCode,
 } from '../api';
+import { AmountInput, currencySymbol } from '../components/AmountInput';
 import { DiscardPendingDialog } from '../components/DiscardPendingDialog';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
@@ -16,6 +17,7 @@ import { roleIn, showsEnvironment, useMe } from '../components/MeContext';
 import { NewCustomerForm } from '../components/NewCustomerForm';
 import { useAsync } from '../components/useAsync';
 import { useIssueSend } from '../components/useIssueSend';
+import { SUGGESTED_HEADING, useSuggestedCodes } from '../components/suggestedCodes';
 import { useSearch } from '../components/useSearch';
 import {
   brasiliaToday,
@@ -30,6 +32,7 @@ import {
   previousMonthEnd,
 } from '../format';
 import { routeHref } from '../router';
+import { ServiceDialog } from './ServiceDialog';
 import {
   Alert,
   Button,
@@ -59,7 +62,7 @@ import {
   EXPORT_FIELDS,
   serviceFields,
 } from './completeMode';
-import { bandLabel } from './FiscalConfigForm';
+import { revenueIsStale } from '../components/simplesRates';
 
 const CURRENCIES = { '220': 'USD', '978': 'EUR' } as const;
 type CurrencyCode = keyof typeof CURRENCIES;
@@ -73,7 +76,6 @@ interface Form {
   brl: string;
   currencyCode: CurrencyCode;
   foreign: string;
-  band: string; // 1 to 6, within the emitter's annex
   more: Complete | null; // "Mais opções", null while closed
 }
 
@@ -121,7 +123,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     brl: '',
     currencyCode: '220',
     foreign: '',
-    band: '',
     more: null,
   });
   const [discarding, setDiscarding] = useState(false);
@@ -136,10 +137,14 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const found = useSearch<Customer>(
     `${base}/customers?emitterId=${encodeURIComponent(form.emitterId)}`,
     customerQuery,
+    { listWhenEmpty: true },
   );
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [codeQuery, setCodeQuery] = useState('');
   const foundCodes = useSearch<ServiceCode>(`${base}/service-codes`, codeQuery);
+  const suggestedCodes = useSuggestedCodes(base, form.emitterId);
+  const typingCode = codeQuery.trim() !== '';
+  const [registering, setRegistering] = useState<ServiceCode | null>(null);
 
   // A customer from the link ("Emitir nota" on the customer page) starts selected.
   const linked = props.customerId;
@@ -156,7 +161,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 emitterId: customer.emitterId,
                 customer,
                 serviceId: '',
-                band: '',
                 more: null,
               },
         );
@@ -164,10 +168,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
       () => {},
     );
   }, [base, linked, send.restored]);
-
-  // The emitter's band is the default until the user picks another.
-  const defaultBand = fiscal.data?.simplesBand ? String(fiscal.data.simplesBand) : '';
-  const band = form.band || defaultBand;
 
   const customer = form.customer;
   const abroad =
@@ -232,23 +232,33 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   if (services.error) return <Alert variant="error">{errorText(services.error)}</Alert>;
   if (!fiscal.data || !services.data) return <Spinner />;
   const config = fiscal.data;
-  if (config.simplesPercent === null || !config.simplesAnnex) {
+  if (!config.rates || !config.simplesAnnex) {
     return roleIn(me, accountId) === 'owner' ? (
       <Alert variant="warning">
-        Configure o Simples e o ISS do emitente antes de emitir.{' '}
+        Informe a receita dos últimos 12 meses e o ISS do emitente antes de emitir.{' '}
         <Link href={routeHref({ name: 'emitter', accountId, emitterId: emitter.id })}>
           Configurar o emitente
         </Link>
       </Alert>
     ) : (
       <Alert variant="warning">
-        Peça ao dono da conta para configurar o Simples e o ISS do emitente antes de emitir.
+        Peça ao dono da conta para informar a receita dos últimos 12 meses e o ISS do emitente antes
+        de emitir.
       </Alert>
     );
   }
-  const annexBands = config.bands[config.simplesAnnex];
-  const bandPercent = annexBands[Number(band) - 1] ?? null;
+  // The rate of this invoice: the effective one, or the export one without ISS, PIS, and COFINS.
+  const ratePercent = abroad ? config.rates.export : config.rates.domestic;
+  const rateText = `${percentInput(ratePercent)}% (faixa ${config.simplesBand ?? ''}${
+    abroad ? ', exportação sem ISS, PIS e COFINS' : ''
+  })`;
   const activeServices = services.data.filter((s) => !s.archived);
+  // Only the owner registers services; a code already registered is not suggested again.
+  const registered = new Set(activeServices.map((s) => s.nationalTaxCode));
+  const suggestions =
+    roleIn(me, accountId) === 'owner'
+      ? suggestedCodes.codes.filter((c) => !registered.has(c.code))
+      : [];
   const currency = CURRENCIES[form.currencyCode];
 
   const canRetain = customer?.documentType === 'CNPJ';
@@ -270,16 +280,24 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     form.description.trim() !== '' &&
     brlCents !== null &&
     brlCents > 0 &&
-    bandPercent !== null &&
     (!abroad || (foreignCents !== null && foreignCents > 0 && rate !== null && !rateLoading));
 
   function chooseService(serviceId: string) {
+    const suggestion = suggestions.find((c) => `suggested:${c.code}` === serviceId);
+    if (suggestion) {
+      setRegistering(suggestion);
+      return;
+    }
     const next = activeServices.find((s) => s.id === serviceId);
+    applyService(serviceId, next ?? null);
+  }
+
+  function applyService(serviceId: string, next: Service | null) {
     setForm((f) => ({
       ...f,
       serviceId,
       // A new service brings its own codes into "Mais opções".
-      more: f.more ? { ...f.more, ...serviceFields(next ?? null) } : null,
+      more: f.more ? { ...f.more, ...serviceFields(next) } : null,
       // The service text fills an empty description or replaces the one the last service filled.
       description:
         next && (f.description.trim() === '' || f.description === service?.description)
@@ -304,9 +322,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
       ...(abroad && foreignCents
         ? { foreignCurrency: form.currencyCode, foreignAmountCents: foreignCents }
         : {}),
-      ...(band !== defaultBand && bandPercent !== null ? { simplesPercent: bandPercent } : {}),
       description: form.description.trim(),
-      // A typed Simples percent replaces the band.
+      // A typed Simples percent replaces the computed one.
       ...complete?.body,
     });
   }
@@ -333,12 +350,10 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           : formatCents(brlCents ?? 0),
       ],
       [
-        'Faixa do Simples',
+        'Alíquota do Simples',
         complete?.body.simplesPercent !== undefined
           ? `Percentual informado: ${percentInput(complete.body.simplesPercent)}%`
-          : bandPercent === null
-            ? ''
-            : bandLabel(Number(band), bandPercent),
+          : rateText,
       ],
       ['ISS', issLine],
     ];
@@ -429,7 +444,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   emitterId: e.target.value,
                   customer: null,
                   serviceId: '',
-                  band: '',
                   more: null,
                 }))
               }
@@ -478,6 +492,15 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 {s.name} ({formatServiceCode(s.nationalTaxCode)})
               </option>
             ))}
+            {suggestions.length > 0 && (
+              <optgroup label={SUGGESTED_HEADING}>
+                {suggestions.map((c) => (
+                  <option key={c.code} value={`suggested:${c.code}`}>
+                    Cadastrar: {formatServiceCode(c.code)} – {c.description}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </Select>
         </Field>
         {activeServices.length === 0 && (
@@ -514,10 +537,10 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 </Select>
               </Field>
               <Field label={`Valor em ${currency}`}>
-                <Input
-                  inputMode="decimal"
+                <AmountInput
+                  unit={currencySymbol(currency)}
                   value={form.foreign}
-                  onChange={(e) => set('foreign', e.target.value)}
+                  onValueChange={(text) => set('foreign', text)}
                 />
               </Field>
             </div>
@@ -531,23 +554,24 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           </div>
         )}
         <Field label="Valor em reais">
-          <Input
-            inputMode="decimal"
+          <AmountInput
+            unit="R$"
             readOnly={abroad}
             value={form.brl}
-            onChange={(e) => set('brl', e.target.value)}
+            onValueChange={(text) => set('brl', text)}
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Faixa do Simples">
-            <Select value={band} onChange={(e) => set('band', e.target.value)}>
-              {annexBands.map((percent, index) => (
-                <option key={index + 1} value={String(index + 1)}>
-                  {bandLabel(index + 1, percent)}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-fg">Alíquota do Simples</span>
+            <p className="text-sm text-muted">{rateText}</p>
+            {revenueIsStale(config.simplesRbt12At) && (
+              <Alert variant="warning">
+                Atualize a receita dos últimos 12 meses na configuração fiscal: a alíquota deste mês
+                depende dela.
+              </Alert>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-fg">ISS</span>
             <p className="text-sm text-muted">{issLine}</p>
@@ -579,18 +603,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             <div className="grid gap-4 sm:grid-cols-2">
               {canRetain && more.issRetained && (
                 <Field label="Alíquota de ISS (%)" hint={issMinimumHint(effectiveCode)}>
-                  <Input
-                    inputMode="decimal"
+                  <AmountInput
+                    unit="%"
                     value={more.issRate}
-                    onChange={(e) => setMore({ issRate: e.target.value })}
+                    onValueChange={(text) => setMore({ issRate: text })}
                   />
                 </Field>
               )}
               <Field label="Outro percentual do Simples (%)" hint="Em branco: a faixa escolhida.">
-                <Input
-                  inputMode="decimal"
+                <AmountInput
+                  unit="%"
                   value={more.simplesOther}
-                  onChange={(e) => setMore({ simplesOther: e.target.value })}
+                  onValueChange={(text) => setMore({ simplesOther: text })}
                 />
               </Field>
             </div>
@@ -599,10 +623,15 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 label="Código nacional"
                 query={codeQuery}
                 onQueryChange={setCodeQuery}
-                options={foundCodes.map((c) => ({
-                  value: c.code,
-                  label: `${formatServiceCode(c.code)} – ${c.description}`,
-                }))}
+                {...(!typingCode && suggestedCodes.codes.length > 0
+                  ? { heading: SUGGESTED_HEADING }
+                  : {})}
+                options={(typingCode ? suggestedCodes.rank(foundCodes) : suggestedCodes.codes).map(
+                  (c) => ({
+                    value: c.code,
+                    label: `${formatServiceCode(c.code)} – ${c.description}`,
+                  }),
+                )}
                 selected={
                   more.code
                     ? {
@@ -615,7 +644,11 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 }
                 onSelect={(option) =>
                   setMore({
-                    code: option ? (foundCodes.find((c) => c.code === option.value) ?? null) : null,
+                    code: option
+                      ? ([...foundCodes, ...suggestedCodes.codes].find(
+                          (c) => c.code === option.value,
+                        ) ?? null)
+                      : null,
                   })
                 }
                 placeholder="Busque pelo nome ou pelo código"
@@ -698,6 +731,20 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           />
         )}
       </Modal>
+      {registering && (
+        <ServiceDialog
+          accountId={accountId}
+          emitterId={form.emitterId}
+          service={null}
+          initialCode={registering}
+          onClose={() => setRegistering(null)}
+          onSaved={(created) => {
+            setRegistering(null);
+            services.reload();
+            if (created) applyService(created.id, created);
+          }}
+        />
+      )}
     </>
   );
 }

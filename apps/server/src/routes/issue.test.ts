@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { issueExportOnFake } from '../../test/fakeInvoices';
 import { seedTenant } from '../../test/fixtures';
 import { withTemplate } from '../../test/issueSetup';
+import { xmlOf } from '../../test/newInvoiceSetup';
 import { providerInvoice } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { EmitterRepository } from '../repos/EmitterRepository';
@@ -308,4 +309,36 @@ test('issue similar also takes the amount in reais from the PTAX of the competen
   // The test app's PTAX is 5.0000: 2.00 USD = 10.00 BRL.
   expect(wrong.json()).toMatchObject({ error: 'amount_ptax_mismatch', expectedCents: 1000 });
   expect((await send(1000)).json()).toMatchObject({ status: 'issued' });
+});
+
+test('issue similar of an export uses the rate of the current revenue, and PIS/COFINS 08', async () => {
+  const { a, headers, templateInvoiceId } = await withTemplate(t);
+  const emitterId = (t.db.$client.prepare('SELECT id FROM emitters').get() as { id: string }).id;
+  const fiscal = await t.app.inject({
+    method: 'PUT',
+    url: `/api/accounts/${a.accountId}/emitters/${emitterId}/fiscal`,
+    headers,
+    payload: {
+      simplesAnnex: 'III',
+      simplesRbt12Cents: 18_470_000,
+      issRate: 200,
+      ibscbsRegime: 'inside_das',
+    },
+  });
+  expect(fiscal.statusCode).toBe(200);
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/accounts/${a.accountId}/invoices/issue`,
+    headers,
+    payload: {
+      templateInvoiceId,
+      competence: '2026-09-30',
+      serviceCents: 617000,
+      foreignAmountCents: 123400,
+    },
+  });
+  expect(response.statusCode).toBe(201);
+  const xml = xmlOf(t, a, response.json<{ id: string }>().id);
+  expect(xml).toContain('<pTotTribSN>3.12</pTotTribSN>');
+  expect(xml).toMatch(/<piscofins><CST>08<\/CST>/);
 });

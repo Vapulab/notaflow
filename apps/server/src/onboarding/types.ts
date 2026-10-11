@@ -16,6 +16,10 @@ export interface CnpjDraft {
   municipality: string;
   uf: string;
   cnae: string | null;
+  // The main activity in words, shown when the fiscal step asks about the Simples annex.
+  cnaeDescription: string | null;
+  // Seven-digit codes; they suggest the services of the company.
+  secondaryCnaes: string[];
   simplesNacional: '1' | '2' | '3';
   source: 'brasilapi' | 'cnpja';
 }

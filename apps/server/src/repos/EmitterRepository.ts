@@ -14,7 +14,9 @@ export type NewEmitter = Omit<
 export interface FiscalConfig {
   simplesAnnex: 'III' | 'V' | null;
   simplesBand: number | null;
-  simplesPercent: number | null; // hundredths
+  simplesPercent: number | null; // hundredths; the domestic rate
+  simplesRbt12Cents: number | null;
+  simplesRbt12At: Date | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null; // YYYY-MM-DD
@@ -91,6 +93,37 @@ export class EmitterRepository {
       .get();
   }
 
+  // undefined when the emitter is not in the account; null when its CNAEs are not known yet.
+  cnaesOf(ctx: AccountContext, emitterId: string): string[] | null | undefined {
+    const row = this.db
+      .select({ cnaes: emitters.cnaes })
+      .from(emitters)
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
+      .get();
+    if (!row) return undefined;
+    return row.cnaes ? (JSON.parse(row.cnaes) as string[]) : null;
+  }
+
+  setCnaes(ctx: AccountContext, emitterId: string, cnaes: string[]): void {
+    this.db
+      .update(emitters)
+      .set({ cnaes: JSON.stringify(cnaes), ...touched(ctx) })
+      .where(
+        and(
+          eq(emitters.id, emitterId),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+        ),
+      )
+      .run();
+  }
+
   reserveDpsNumber(ctx: AccountContext, emitterId: string): number {
     // One UPDATE ... RETURNING: SQLite runs it atomically, so two requests never get one number.
     // Invoices issued before the app used numbers of the same series; a reused number gets E0014.
@@ -138,6 +171,8 @@ export class EmitterRepository {
           simplesAnnex: emitters.simplesAnnex,
           simplesBand: emitters.simplesBand,
           simplesPercent: emitters.simplesPercent,
+          simplesRbt12Cents: emitters.simplesRbt12Cents,
+          simplesRbt12At: emitters.simplesRbt12At,
           issRate: emitters.issRate,
           ibscbsRegime: emitters.ibscbsRegime,
           ibscbsRegimeFrom: emitters.ibscbsRegimeFrom,
