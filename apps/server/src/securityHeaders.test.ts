@@ -78,6 +78,8 @@ test('a page allows only its own scripts, its inline theme script by hash, Turns
   expect(csp).toContain('https://us-assets.i.posthog.com');
   expect(csp).toContain("frame-ancestors 'none'");
   expect(csp).toContain("object-src 'none'");
+  // The PostHog recorder compresses in a worker it builds from a blob.
+  expect(csp).toContain("worker-src 'self' blob:");
   expect(csp).not.toContain("'unsafe-inline' 'unsafe-eval'");
   expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
 });
