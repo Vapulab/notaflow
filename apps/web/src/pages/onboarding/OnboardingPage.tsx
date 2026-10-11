@@ -92,7 +92,7 @@ export function OnboardingPage(props: { accountId?: string }) {
   else if (state.step === 'certificate') {
     panel = <CertificateStep prefix={prefix} state={state} onDone={setState} />;
   } else if (state.step === 'fiscal') {
-    panel = <FiscalStep accountId={accountId} onDone={setState} />;
+    panel = <FiscalStep accountId={accountId} state={state} onDone={setState} />;
   } else if (state.step === 'sync') panel = <SyncStep accountId={accountId} />;
   else {
     panel = (

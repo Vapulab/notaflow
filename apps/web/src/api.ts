@@ -76,6 +76,7 @@ export interface CnpjDraft {
   municipality: string;
   uf: string;
   cnae: string | null;
+  cnaeDescription: string | null;
   simplesNacional: '1' | '2' | '3';
   source: 'brasilapi' | 'cnpja';
 }
