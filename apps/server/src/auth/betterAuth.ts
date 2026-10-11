@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
-import { emailOTP, testUtils } from 'better-auth/plugins';
+import { captcha, emailOTP, haveIBeenPwned, testUtils } from 'better-auth/plugins';
 import { and, count, eq, gte, isNotNull } from 'drizzle-orm';
 import type { Config } from '../config';
 import type { Database } from '../db/openDatabase';
@@ -77,6 +77,8 @@ export function createAuth(deps: AuthDeps) {
     expiresIn: 600,
     allowedAttempts: 5,
     storeOTP: 'hashed',
+    sendVerificationOnSignUp: true,
+    overrideDefaultEmailVerification: true,
     async sendVerificationOTP({ email, otp, type }) {
       if (type === 'change-email') throw refuse('FORBIDDEN', 'not_supported');
       try {
@@ -105,6 +107,13 @@ export function createAuth(deps: AuthDeps) {
       updateAge: 60 * 60 * 24,
     },
     account: { modelName: 'authAccounts' },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 10,
+      requireEmailVerification: true,
+      revokeSessionsOnPasswordReset: true,
+    },
+    emailVerification: { autoSignInAfterVerification: true },
     verification: { modelName: 'authVerifications' },
     disabledPaths: [
       '/delete-user',
@@ -147,8 +156,29 @@ export function createAuth(deps: AuthDeps) {
         },
       },
     },
-    // The cast covers a typing gap of test-utils under exactOptionalPropertyTypes; tests read it through $context.
-    plugins: deps.testUtils ? [codeLogin, testUtils() as BetterAuthPlugin] : [codeLogin],
+    plugins: [
+      codeLogin,
+      haveIBeenPwned({
+        customPasswordCompromisedMessage:
+          'Esta senha apareceu em vazamentos conhecidos. Escolha outra.',
+      }),
+      ...(config.turnstile
+        ? [
+            captcha({
+              provider: 'cloudflare-turnstile',
+              secretKey: config.turnstile.secretKey,
+              endpoints: [
+                '/sign-up/email',
+                '/email-otp/send-verification-otp',
+                '/email-otp/request-password-reset',
+                '/forget-password/email-otp',
+              ],
+            }),
+          ]
+        : []),
+      // The cast covers a typing gap of test-utils under exactOptionalPropertyTypes.
+      ...(deps.testUtils ? [testUtils() as BetterAuthPlugin] : []),
+    ],
   });
 }
 
