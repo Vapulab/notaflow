@@ -178,6 +178,7 @@ describe('the card step', () => {
         municipality: '4113700',
         uf: 'PR',
         cnae: '6201501',
+        cnaeDescription: null,
         simplesNacional: '3',
         source: 'brasilapi',
       },
@@ -204,8 +205,20 @@ describe('the card step', () => {
       url: `/api/accounts/${accountId}/onboarding`,
       headers: await c.as('nova@example.com'),
     });
-    // After the certificate the draft is gone: GET answers the step only.
-    expect(state.json()).toMatchObject({ step: 'fiscal', draft: null });
+    // The draft stays for the fiscal step, which shows the activity, and goes with fiscal-done.
+    expect(state.json()).toMatchObject({ step: 'fiscal', draft: { cnpj: '12345678000195' } });
+    await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/fiscal-done`,
+      headers: await c.as('nova@example.com'),
+      payload: {},
+    });
+    const after = await c.app.inject({
+      method: 'GET',
+      url: `/api/accounts/${accountId}/onboarding`,
+      headers: await c.as('nova@example.com'),
+    });
+    expect(after.json()).toMatchObject({ step: 'sync', draft: null });
   });
 
   test('a legal name on the card that differs from the lookup is flagged, not refused', async () => {
@@ -551,5 +564,54 @@ describe('limits and edges', () => {
     const answers = await Promise.all([create(), create()]);
     expect(answers.map((r) => r.statusCode).sort()).toEqual([201, 409]);
     expect(c.db.$client.prepare('SELECT count(*) AS n FROM accounts').get()).toEqual({ n: 1 });
+  });
+
+  test('a MEI has no Simples annex or band: the certificate goes straight to the sync step', async () => {
+    agent
+      .get('https://brasilapi.com.br')
+      .intercept({ path: '/api/cnpj/v1/12345678000195', method: 'GET' })
+      .reply(200, {
+        razao_social: 'EMPRESA TESTE LTDA',
+        descricao_situacao_cadastral: 'ATIVA',
+        codigo_municipio_ibge: 4113700,
+        uf: 'PR',
+        opcao_pelo_simples: true,
+        opcao_pelo_mei: true,
+      });
+    seedUser(c.db, 'mei@example.com');
+    const headers = await c.as('mei@example.com');
+    const created = await c.app.inject({
+      method: 'POST',
+      url: '/api/onboarding/account',
+      headers,
+      payload: { name: 'MEI' },
+    });
+    const accountId = (created.json() as { accountId: string }).accountId;
+    await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/card`,
+      headers,
+      payload: { pdfBase64: (await syntheticCard()).toString('base64'), fileName: 'c.pdf' },
+    });
+    const cert = makeTestCertificate({ cnpj: '12345678000195' });
+    const response = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/certificate`,
+      headers,
+      payload: { pfxBase64: cert.pfx.toString('base64'), password: cert.password },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(
+      c.db.$client.prepare('SELECT onboarding_step AS s FROM accounts WHERE id = ?').get(accountId),
+    ).toEqual({ s: 'sync' });
+    await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/finish`,
+      headers,
+      payload: {},
+    });
+    expect(
+      c.db.$client.prepare('SELECT cnpj_draft AS d FROM accounts WHERE id = ?').get(accountId),
+    ).toEqual({ d: null });
   });
 });
