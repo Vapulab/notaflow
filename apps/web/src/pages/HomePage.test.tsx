@@ -147,3 +147,15 @@ test('a user without a name yet is greeted without a dangling comma', async () =
   render(<HomePage />);
   expect(await screen.findByRole('heading', { level: 1, name: 'Olá!' })).toBeTruthy();
 });
+
+test('after a replay asked by ?tour=1, the address goes back to /app', async () => {
+  vi.mocked(tour.startTour).mockClear();
+  window.history.replaceState(null, '', '/app?tour=1');
+  stubApi({
+    '/api/me': { ...meWith([account('acc', 'done')]), tourSeenAt: '2026-10-11T00:00:00Z' },
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
+  await waitFor(() => expect(window.location.search).toBe(''));
+  expect(tour.startTour).toHaveBeenCalledOnce();
+});

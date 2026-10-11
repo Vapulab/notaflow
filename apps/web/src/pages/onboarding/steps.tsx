@@ -1,6 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   api,
+  ApiError,
   type CnpjDraft,
   type Emitter,
   type FiscalConfig,
@@ -111,6 +112,8 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
     event.preventDefault();
     if (!file) return;
     void run(async () => {
+      // The server refuses it too; this saves uploading a large file for nothing.
+      if (file.size > 2 * 1024 * 1024) throw new ApiError(413, 'card_too_large');
       finish(
         await api.post(`${props.prefix}/card`, {
           pdfBase64: await fileToBase64(file),
@@ -137,7 +140,7 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
             <Input
               value={cnpj}
               onChange={(e) => setCnpj(e.target.value)}
-              inputMode="numeric"
+              autoCapitalize="characters"
               required
               maxLength={18}
             />

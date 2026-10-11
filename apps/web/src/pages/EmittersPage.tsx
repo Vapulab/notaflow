@@ -23,7 +23,10 @@ export function EmittersPage({ accountId }: { accountId: string }) {
   const me = useAsync(() => api.get<Me>('/api/me'), []);
   const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
   const [message, setMessage] = useState<string | null>(null);
-  const isOwner = me.data?.accounts.find((a) => a.id === accountId)?.role === 'owner';
+  const account = me.data?.accounts.find((a) => a.id === accountId);
+  const isOwner = account?.role === 'owner';
+  // An unfinished account adds its first emitter through onboarding.
+  const canAddEmitter = isOwner && account?.onboardingStep === 'done';
   // Produção restrita is a platform-admin tool; every account works in production.
   const isAdmin = me.data?.platformRole === 'admin';
 
@@ -52,7 +55,7 @@ export function EmittersPage({ accountId }: { accountId: string }) {
           act={act}
         />
       ))}
-      {isOwner && (
+      {canAddEmitter && (
         <AddEmitter
           prefix={`${base}/emitters/new`}
           onCreated={() =>

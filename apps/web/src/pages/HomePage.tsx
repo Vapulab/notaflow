@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { api, type Me } from '../api';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
@@ -97,8 +97,12 @@ export function HomePage() {
 
   // The tour runs on the first visit with a finished account, or again on /app?tour=1.
   const tourOptions = me.data && !target ? tourFor(me.data) : null;
+  // Once per page: the address loses ?tour=1 right away, and this ref keeps the replay from starting twice.
+  const tourStarted = useRef(false);
   useEffect(() => {
-    if (!tourOptions) return;
+    if (!tourOptions || tourStarted.current) return;
+    tourStarted.current = true;
+    if (window.location.search.includes('tour=1')) navigate('/app', { replace: true });
     startTour({
       needsFiscalConfig: tourOptions.needsFiscalConfig,
       onDone: () => {

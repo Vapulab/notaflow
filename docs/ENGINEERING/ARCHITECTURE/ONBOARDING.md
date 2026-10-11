@@ -23,10 +23,13 @@ A company signs up alone, at `/app/comecar`. It names its account, sends its CNP
 
 - **Reading** (`src/onboarding/cardReader.ts`):
   - a PDF of at most 2 MB;
-  - pdf.js (through `unpdf`) extracts the text in a worker thread, ended after 5 seconds;
+  - pdf.js (through `unpdf`) extracts the text in a child process (`cardProcess.ts`) with a 128 MB heap, killed after 10 seconds, so a hostile PDF cannot exhaust the server;
+  - at most two cards are read at once; a third answers 503 `card_busy`;
+  - a text over 64 kB is refused (a real card has about 2 kB);
   - the bundled pdf.js 6 has no eval path.
-- **What the parser takes:** the CNPJ (a fixed pattern) and the legal name (the line after `NOME EMPRESARIAL`). A different name from the lookup is flagged, not refused.
-- **Storage:** the card goes to `account_documents`, gzipped, with its SHA-256.
+- **Limit:** 10 card or CNPJ lookups an hour per account (429 `too_many_lookups`).
+- **What the parser takes:** the CNPJ (alphanumeric allowed, as the Receita issues since 2026) and the legal name (the line after `NOME EMPRESARIAL`). A different name from the lookup is flagged, not refused.
+- **Storage:** the card waits on the account (`accounts.cnpj_draft_card`, one at a time) and moves to `account_documents`, gzipped, with its SHA-256, only when the certificate proves the company.
 - **Card layout check:** `pnpm tsx apps/server/scripts/cardLabels.ts <card.pdf>` checks a real card locally and prints only which labels it found.
 
 ## The public lookup
@@ -44,6 +47,8 @@ The certificate's CNPJ must equal the card's (409 `certificate_cnpj_mismatch`), 
 - a CNPJ that is an emitter in another account;
 - a CNPJ that belongs to a removed emitter;
 - a CNPJ that is already an emitter of this account.
+
+The first refusal tells an account that a CNPJ is a NotaFlow customer. The lookup limit bounds that, and the certificate step stays the real proof.
 
 ## Another emitter
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type OnboardingState, type OnboardingStep } from '../../api';
 import { errorText, Layout } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
-import { Alert, Badge, Spinner } from '../../ui';
+import { Alert, Badge, Link, Spinner } from '../../ui';
 import { CardStep, CertificateStep, CompanyStep, FiscalStep, SyncStep } from './steps';
 
 const TIMELINE: { key: string; title: string; line: string }[] = [
@@ -93,7 +93,17 @@ export function OnboardingPage(props: { accountId?: string }) {
     panel = <CertificateStep prefix={prefix} state={state} onDone={setState} />;
   } else if (state.step === 'fiscal') {
     panel = <FiscalStep accountId={accountId} onDone={setState} />;
-  } else panel = <SyncStep accountId={accountId} />;
+  } else if (state.step === 'sync') panel = <SyncStep accountId={accountId} />;
+  else {
+    panel = (
+      <div className="flex flex-col gap-3">
+        <p className="text-fg">Cadastro concluído.</p>
+        <div>
+          <Link href="/app">Ir para o painel</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Layout title="Comece por aqui">

@@ -238,3 +238,51 @@ test('the sync step counts imported invoices and lets the user go to the dashboa
   expect(calls.some((c) => c.url === `${base}/onboarding/finish`)).toBe(true);
   await waitFor(() => expect(window.location.pathname).toBe('/app'));
 });
+
+test('a card over 2 MB is stopped before the upload', async () => {
+  const calls = stubApi(state('card'));
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('card'));
+  const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'grande.pdf', {
+    type: 'application/pdf',
+  });
+  await user.upload(await screen.findByLabelText('Cartão CNPJ (PDF)'), big);
+  await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
+  expect(await screen.findByText('O PDF passa de 2 MB.')).toBeTruthy();
+  expect(calls.some((c) => c.url.endsWith('/onboarding/card'))).toBe(false);
+});
+
+test('the typed CNPJ field accepts letters', async () => {
+  stubApi({ ...state('card'), [`${base}/onboarding/card`]: { error: 'card_unreadable' } });
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('card'));
+  await user.upload(
+    await screen.findByLabelText('Cartão CNPJ (PDF)'),
+    new File(['x'], 'c.pdf', { type: 'application/pdf' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
+  await user.click(await screen.findByRole('button', { name: 'Digitar o CNPJ' }));
+  expect(screen.getByLabelText('CNPJ').getAttribute('inputmode')).toBeNull();
+});
+
+test('a finished account at the onboarding address gets a way to the dashboard', async () => {
+  stubApi(state('done'));
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('done'));
+  expect(await screen.findByText('Cadastro concluído.')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Ir para o painel' }).getAttribute('href')).toBe('/app');
+});
+
+test.each([
+  ['card_busy', 'Muitos cartões sendo lidos agora. Tente de novo em instantes.'],
+  ['too_many_lookups', 'Muitas consultas de CNPJ nesta conta. Tente de novo em uma hora.'],
+])('the card error %s is explained', async (error, text) => {
+  stubApi({ ...state('card'), [`${base}/onboarding/card`]: { error } });
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('card'));
+  await user.upload(
+    await screen.findByLabelText('Cartão CNPJ (PDF)'),
+    new File(['%PDF'], 'c.pdf', { type: 'application/pdf' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
+  expect(await screen.findByText(text)).toBeTruthy();
+});

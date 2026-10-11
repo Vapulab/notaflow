@@ -86,3 +86,16 @@ test('an owner adds an emitter through the card, then the certificate', async ()
   expect(calls.some((c) => c.url === '/api/accounts/acc/emitters/new/card')).toBe(true);
   expect(screen.getByLabelText('Certificado A1 (.pfx)')).toBeTruthy();
 });
+
+test('an unfinished account has no "Adicionar emitente": its onboarding adds the first one', async () => {
+  stubApi({
+    ...routes('user'),
+    '/api/me': {
+      ...me('user'),
+      accounts: [{ id: 'acc', name: 'A', role: 'owner', status: 'active', onboardingStep: 'card' }],
+    },
+  });
+  render(<EmittersPage accountId="acc" />);
+  await screen.findByText('EMPRESA TESTE LTDA');
+  expect(screen.queryByRole('button', { name: 'Adicionar emitente' })).toBeNull();
+});

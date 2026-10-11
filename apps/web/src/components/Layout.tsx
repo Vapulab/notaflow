@@ -33,6 +33,8 @@ export const ERROR_TEXT: Record<string, string> = {
     'Não conseguimos ler este PDF. Envie o cartão baixado do site da Receita, ou digite o CNPJ.',
   card_no_cnpj: 'Este PDF não traz um CNPJ. Envie o cartão CNPJ, ou digite o CNPJ.',
   card_too_large: 'O PDF passa de 2 MB.',
+  card_busy: 'Muitos cartões sendo lidos agora. Tente de novo em instantes.',
+  too_many_lookups: 'Muitas consultas de CNPJ nesta conta. Tente de novo em uma hora.',
   cnpj_not_found: 'Este CNPJ não foi encontrado na consulta pública.',
   cnpj_not_active: 'Este CNPJ não está ativo na Receita.',
   cnpj_lookup_unavailable: 'A consulta do CNPJ não respondeu. Tente de novo em instantes.',

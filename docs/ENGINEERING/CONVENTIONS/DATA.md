@@ -60,7 +60,7 @@ Behind the Cloudflare tunnel, the IP is `cf-connecting-ip`. The header is truste
 - soft-deletes the user and the user's memberships;
 - audits the action without the old e-mail.
 
-Invoices and their XML stay as tax records. An admin cannot anonymize themself (409 `cannot_anonymize_self`). The anonymization and its audit entry are one transaction.
+Invoices and their XML stay as tax records. Account documents (the CNPJ cards) are account data, not the person's: they stay with the account. An admin cannot anonymize themself (409 `cannot_anonymize_self`). The anonymization and its audit entry are one transaction.
 
 **What erasure keeps.** The audit log keeps the e-mail and the IP of the entries the user made before the erasure; the trigger makes them permanent. The basis:
 - Marco Civil da Internet (Lei 12.965/2014), art. 15: an application provider keeps its access records (IP, date and time) for at least 6 months.
