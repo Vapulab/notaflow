@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NotaFlow: nota fiscal de serviço pelo sistema nacional</title>
+    <meta
+      name="description"
+      content="Grátis: emita, copie e cancele NFS-e pelo sistema nacional. Para empresas do Simples Nacional, com a alíquota calculada pela lei, exportação com PTAX automática e suas notas importadas."
+    />
+    <link rel="canonical" href="https://notaflow.vapulab.com/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="NotaFlow" />
+    <meta property="og:url" content="https://notaflow.vapulab.com/" />
+    <meta property="og:title" content="NotaFlow: nota fiscal de serviço pelo sistema nacional" />
+    <meta
+      property="og:description"
+      content="Grátis, sem cartão de crédito: emita, copie e cancele NFS-e pelo sistema nacional, com a alíquota do Simples calculada pela lei."
+    />
+    <meta property="og:image" content="https://notaflow.vapulab.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/site.ts"></script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <a
+      href="#conteudo"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-fg"
+      >Pular para o conteúdo</a
+    >
+    <header class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5">
+      <a href="/" aria-label="NotaFlow, página inicial" class="inline-flex items-center gap-2 font-display text-xl font-semibold text-fg">
+        <svg viewBox="0 0 128 100" class="h-7 w-auto" aria-hidden="true">
+          <defs>
+            <mask id="nf-gap-header">
+              <rect width="128" height="100" fill="white" />
+              <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" fill="black" stroke="black" stroke-width="6" />
+            </mask>
+          </defs>
+          <g class="fill-fg" mask="url(#nf-gap-header)">
+            <rect x="8" y="12" width="16" height="76" />
+            <polygon points="8,12 25,12 76,88 59,88" />
+          </g>
+          <g class="fill-brand">
+            <rect x="60" y="12" width="16" height="76" />
+            <rect x="60" y="12" width="56" height="16" />
+            <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" />
+          </g>
+        </svg>
+        NotaFlow
+      </a>
+      <nav class="flex items-center gap-2 text-sm" aria-label="Principal">
+        <a
+          href="/entrar"
+          class="rounded px-3 py-2 font-medium text-fg hover:bg-muted/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >Entrar</a
+        >
+        <a
+          href="/cadastro"
+          class="hidden rounded bg-primary px-3 py-2 font-medium text-primary-fg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 sm:inline-block"
+          >Criar conta grátis</a
+        >
+        <button
+          type="button"
+          data-theme-toggle
+          title="Alternar entre tema claro e escuro"
+          aria-label="Alternar entre tema claro e escuro"
+          class="rounded border border-border px-2 py-1 text-sm text-muted hover:text-fg focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          <span class="dark:hidden" aria-hidden="true">☾</span>
+          <span class="hidden dark:inline" aria-hidden="true">☀</span>
+        </button>
+      </nav>
+    </header>
+
+    <main id="conteudo">
+      <section
+        class="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-5 pb-20 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:pt-16"
+      >
+        <div class="max-w-xl">
+          <h1
+            class="font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl"
+          >
+            A nota fiscal de serviço, do cliente à chave de acesso.
+          </h1>
+          <p class="mt-6 max-w-lg text-lg leading-relaxed text-muted">
+            O NotaFlow emite, copia e cancela NFS-e pelo sistema nacional. A alíquota do Simples
+            sai da sua receita, o dólar sai da PTAX do Banco Central, e as notas que você já emitiu
+            chegam sozinhas.
+          </p>
+          <p class="mt-6 font-display text-2xl font-semibold text-brand">
+            Grátis. Sem cartão de crédito e sem limite de notas.
+          </p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <a
+              href="/cadastro"
+              class="inline-flex h-11 items-center rounded bg-primary px-5 font-medium text-primary-fg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >Criar conta grátis</a
+            >
+            <a
+              href="#como-funciona"
+              class="inline-flex h-11 items-center rounded border border-border px-5 font-medium text-fg hover:bg-muted/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >Ver como funciona</a
+            >
+          </div>
+          <p class="mt-4 text-sm text-muted">
+            Para empresas do Simples Nacional com certificado digital A1.
+          </p>
+        </div>
+
+        <figure class="relative mx-auto w-full max-w-md lg:max-w-none" aria-label="Exemplo de nota emitida">
+          <div
+            aria-hidden="true"
+            class="absolute inset-0 translate-x-3 translate-y-3 rounded-lg border border-border bg-surface"
+          ></div>
+          <div
+            aria-hidden="true"
+            class="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-lg border border-border bg-surface"
+          ></div>
+          <article
+            class="relative rounded-lg border border-border bg-surface p-6 shadow-[0_24px_48px_-24px_rgb(var(--color-brand)/0.4)]"
+          >
+            <header class="flex items-start justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <p class="font-display text-sm font-semibold text-brand">NFS-e</p>
+                <p class="text-xs text-muted">Nota Fiscal de Serviço eletrônica</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-muted">Número</p>
+                <p class="font-display text-lg font-semibold">128</p>
+              </div>
+            </header>
+            <dl class="grid grid-cols-[7.5rem_1fr] gap-x-4 gap-y-3 py-4 text-sm">
+              <dt class="text-muted">Prestador</dt>
+              <dd>Estúdio Exemplo Ltda</dd>
+              <dt class="text-muted">Tomador</dt>
+              <dd>Acme Software Inc., Estados Unidos</dd>
+              <dt class="text-muted">Serviço</dt>
+              <dd>01.07.01 Suporte técnico em informática</dd>
+              <dt class="text-muted">Valor</dt>
+              <dd>
+                US$ 2.000,00
+                <span class="block text-muted">R$ 10.734,00 na PTAX de 5,3670</span>
+              </dd>
+              <dt class="text-muted">Simples</dt>
+              <dd>3,50% (exportação, sem ISS, PIS e COFINS)</dd>
+            </dl>
+            <footer class="flex items-end justify-between gap-4 border-t border-border pt-4">
+              <div class="min-w-0">
+                <p class="text-xs text-muted">Chave de acesso</p>
+                <p class="truncate font-display text-xs tracking-wide">
+                  4113 7002 1234 5678 0001 9500 0000 0012 8
+                </p>
+              </div>
+              <span
+                class="nf-stamp shrink-0 rounded-full bg-success px-3 py-1 text-xs font-semibold text-success-fg"
+                >Emitida</span
+              >
+            </footer>
+          </article>
+          <figcaption class="mt-6 text-center text-xs text-muted">
+            Exemplo com dados fictícios.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="como-funciona" class="border-t border-border">
+        <div class="mx-auto max-w-6xl px-5 py-20">
+          <h2 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            Do cadastro à primeira nota
+          </h2>
+          <p class="mt-3 max-w-2xl text-muted">
+            Cada passo usa um documento que a sua empresa já tem. Em poucos minutos, a próxima nota
+            sai daqui.
+          </p>
+          <div class="relative mt-14">
+            <!-- The flow of the logo: one arrow carries the steps to the issued invoice. -->
+            <div aria-hidden="true" class="absolute left-0 right-6 top-[0.65rem] hidden h-1.5 rounded-full bg-brand lg:block"></div>
+            <div aria-hidden="true" class="absolute right-0 top-0 hidden h-0 w-0 border-y-[0.85rem] border-l-[1.6rem] border-y-transparent border-l-brand lg:block"></div>
+            <div aria-hidden="true" class="absolute bottom-6 left-[0.65rem] top-0 w-1.5 rounded-full bg-brand lg:hidden"></div>
+            <ol class="relative grid gap-10 lg:grid-cols-6 lg:gap-6">
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full border-4 border-brand bg-surface lg:static lg:mb-4"></span>
+                <h3 class="font-semibold">Crie a conta</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  Com e-mail e senha, código por e-mail, passkey ou Google.
+                </p>
+              </li>
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full border-4 border-brand bg-surface lg:static lg:mb-4"></span>
+                <h3 class="font-semibold">Envie o cartão CNPJ</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  Lemos a razão social, o endereço e as atividades, e conferimos na consulta pública.
+                </p>
+              </li>
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full border-4 border-brand bg-surface lg:static lg:mb-4"></span>
+                <h3 class="font-semibold">Envie o certificado A1</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  O CNPJ do certificado precisa ser o mesmo do cartão. Ele fica guardado cifrado.
+                </p>
+              </li>
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full border-4 border-brand bg-surface lg:static lg:mb-4"></span>
+                <h3 class="font-semibold">Informe a receita</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  Com a receita dos últimos 12 meses, calculamos a faixa, a alíquota e o ISS retido.
+                </p>
+              </li>
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full border-4 border-brand bg-surface lg:static lg:mb-4"></span>
+                <h3 class="font-semibold">Receba suas notas</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  Importamos as notas e os clientes do sistema nacional.
+                </p>
+              </li>
+              <li class="pl-10 lg:pl-0">
+                <span aria-hidden="true" class="absolute left-0 mt-0.5 block h-7 w-7 rounded-full bg-brand lg:static lg:mb-4"></span>
+                <h3 class="font-semibold text-brand">Emita</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted">
+                  Nova, ou parecida com uma que já existe. A chave de acesso volta na hora.
+                </p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="border-t border-border bg-muted/5">
+        <div class="mx-auto max-w-6xl px-5 py-20">
+          <h2 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            O que você faz no NotaFlow
+          </h2>
+          <p class="mt-3 max-w-2xl text-muted">
+            As telas abaixo são do produto, com dados fictícios.
+          </p>
+          <div class="mt-12 grid gap-4 md:grid-cols-6">
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-4">
+              <h3 class="font-display text-xl font-semibold">Nota nova, simples ou completa</h3>
+              <p class="mt-2 max-w-md text-sm leading-relaxed text-muted">
+                No modo simples, você escolhe o cliente, o serviço e o valor. Em mais opções, ajusta
+                ISS retido, códigos e outro percentual só naquela nota.
+              </p>
+              <div aria-hidden="true" class="mt-6 grid gap-3 rounded-md border border-border p-4 text-sm sm:grid-cols-3">
+                <div>
+                  <p class="text-xs text-muted">Cliente</p>
+                  <p class="mt-1 rounded border border-border px-3 py-2">Cliente Exemplo Ltda</p>
+                </div>
+                <div>
+                  <p class="text-xs text-muted">Serviço</p>
+                  <p class="mt-1 rounded border border-border px-3 py-2">01.07.01 Suporte</p>
+                </div>
+                <div>
+                  <p class="text-xs text-muted">Valor em reais</p>
+                  <p class="mt-1 rounded border border-border px-3 py-2"><span class="text-muted">R$</span> 4.500,00</p>
+                </div>
+                <p class="text-xs text-muted sm:col-span-3">Simples 6,87% (faixa 2) · ISS no DAS</p>
+              </div>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-2">
+              <h3 class="font-display text-xl font-semibold">Emitir parecida</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                Copie uma nota e mude só o que mudou: a competência, o valor, a descrição.
+              </p>
+              <div aria-hidden="true" class="relative mt-6 h-28">
+                <div class="absolute left-0 top-0 h-24 w-[56%] rounded-md border border-border bg-surface p-3 text-xs text-muted">
+                  <p>Nº 127, setembro</p>
+                  <p class="mt-1">R$ 4.500,00</p>
+                </div>
+                <div class="absolute right-0 top-5 h-24 w-[56%] rounded-md border-2 border-brand bg-surface p-3 text-xs">
+                  <p class="font-semibold text-brand">Nova, outubro</p>
+                  <p class="mt-1">R$ 4.800,00</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-3">
+              <h3 class="font-display text-xl font-semibold">Exportação com PTAX automática</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                Para cliente no exterior, informe o valor em dólar ou euro. O valor em reais vem da
+                PTAX de venda do Banco Central.
+              </p>
+              <div aria-hidden="true" class="mt-6 flex flex-wrap items-center gap-3 font-display">
+                <span class="rounded-md border border-border px-3 py-2 text-lg">US$ 2.000,00</span>
+                <svg viewBox="0 0 40 16" class="h-4 w-10 fill-brand"><path d="M0,6 H30 V0 L40,8 L30,16 V10 H0 Z" /></svg>
+                <span class="rounded-md bg-brand/10 px-3 py-2 text-lg text-brand">R$ 10.734,00</span>
+              </div>
+              <p class="mt-3 text-xs text-muted">PTAX de venda de 30/09: 5,3670</p>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-3">
+              <h3 class="font-display text-xl font-semibold">Alíquota calculada pela lei</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                A faixa, a alíquota efetiva e o ISS retido saem das tabelas da Lei Complementar 123,
+                anexos III e V. O app avisa quando a receita do mês precisa ser atualizada.
+              </p>
+              <div aria-hidden="true" class="mt-6">
+                <div class="flex h-2.5 gap-1">
+                  <span class="flex-1 rounded-full bg-brand/25"></span>
+                  <span class="flex-1 rounded-full bg-brand"></span>
+                  <span class="flex-1 rounded-full bg-brand/25"></span>
+                  <span class="flex-1 rounded-full bg-brand/25"></span>
+                  <span class="flex-1 rounded-full bg-brand/25"></span>
+                  <span class="flex-1 rounded-full bg-brand/25"></span>
+                </div>
+                <p class="mt-3 text-sm">
+                  <span class="font-semibold">Faixa 2</span>
+                  <span class="text-muted">· efetiva 6,87% · exportação 3,50% · ISS retido 2,20%</span>
+                </p>
+              </div>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-2">
+              <h3 class="font-display text-xl font-semibold">Notas importadas</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                As notas emitidas em outros lugares aparecem aqui, com seus clientes.
+              </p>
+              <ul aria-hidden="true" class="mt-5 divide-y divide-border text-sm">
+                <li class="flex justify-between py-2"><span>Nº 126 · Acme Inc.</span><span class="text-muted">US$ 2.000</span></li>
+                <li class="flex justify-between py-2"><span>Nº 125 · Exemplo Ltda</span><span class="text-muted">R$ 4.500</span></li>
+                <li class="flex justify-between py-2"><span>Nº 124 · Exemplo Ltda</span><span class="text-muted">R$ 4.500</span></li>
+              </ul>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-2">
+              <h3 class="font-display text-xl font-semibold">Serviços pelas atividades</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                O CNAE do cartão CNPJ sugere os códigos de serviço, sem esconder a lista completa.
+              </p>
+              <div aria-hidden="true" class="mt-5 flex flex-wrap gap-2 text-xs">
+                <span class="rounded-full border border-brand px-3 py-1 text-brand">01.01.01 Desenvolvimento</span>
+                <span class="rounded-full border border-brand px-3 py-1 text-brand">01.02.01 Programação</span>
+                <span class="rounded-full border border-border px-3 py-1 text-muted">01.07.01 Suporte</span>
+              </div>
+            </article>
+
+            <article class="flex flex-col rounded-lg border border-border bg-surface p-6 md:col-span-2">
+              <h3 class="font-display text-xl font-semibold">Equipe e várias empresas</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                Convide quem emite as notas. O dono configura; o membro emite e consulta. Uma conta
+                pode ter mais de um emitente.
+              </p>
+              <div aria-hidden="true" class="mt-5 flex items-center">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand text-xs font-semibold text-surface">AL</span>
+                <span class="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand/70 text-xs font-semibold text-surface">BC</span>
+                <span class="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand/40 text-xs font-semibold text-fg">MD</span>
+                <span class="ml-3 text-xs text-muted">dono · membro · membro</span>
+              </div>
+            </article>
+
+            <article class="flex flex-col justify-between gap-4 rounded-lg border border-border bg-surface p-6 md:col-span-6 md:flex-row md:items-center">
+              <div>
+                <h3 class="font-display text-xl font-semibold">Cancelamento com registro</h3>
+                <p class="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+                  Cancele uma nota com o motivo. O evento volta do sistema nacional e fica guardado
+                  junto da nota.
+                </p>
+              </div>
+              <div aria-hidden="true" class="flex items-center gap-3 text-sm">
+                <span class="rounded-full bg-danger/10 px-3 py-1 font-semibold text-danger">Cancelada</span>
+                <span class="text-muted">Evento 101101 · erro no valor</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="preco" class="border-t border-border">
+        <div
+          class="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-10 px-5 py-24 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]"
+        >
+          <p
+            aria-hidden="true"
+            class="font-display text-[7rem] font-semibold leading-none tracking-tighter text-brand sm:text-[10rem] lg:text-[13rem]"
+          >
+            R$&nbsp;0
+          </p>
+          <div>
+            <h2 class="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+              Tudo isso é grátis.
+            </h2>
+            <p class="mt-4 max-w-xl text-lg leading-relaxed text-muted">
+              Tudo o que está nesta página, para todas as empresas da sua conta: emitir, copiar,
+              cancelar, importar, a equipe e a exportação com PTAX.
+            </p>
+            <ul class="mt-8 grid gap-4 sm:grid-cols-3">
+              <li class="rounded-lg border-2 border-brand p-4">
+                <p class="font-display text-2xl font-semibold text-brand">R$ 0</p>
+                <p class="mt-1 text-sm text-muted">por mês, sem plano pago</p>
+              </li>
+              <li class="rounded-lg border-2 border-brand p-4">
+                <p class="font-display text-2xl font-semibold text-brand">Sem cartão</p>
+                <p class="mt-1 text-sm text-muted">de crédito para criar a conta</p>
+              </li>
+              <li class="rounded-lg border-2 border-brand p-4">
+                <p class="font-display text-2xl font-semibold text-brand">Sem limite</p>
+                <p class="mt-1 text-sm text-muted">de notas, clientes ou emitentes</p>
+              </li>
+            </ul>
+            <div class="mt-8 flex flex-wrap items-center gap-4">
+              <a
+                href="/cadastro"
+                class="inline-flex h-11 items-center rounded bg-primary px-5 font-medium text-primary-fg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >Criar conta grátis</a
+              >
+              <p class="text-sm text-muted">
+                Se um dia houver cobrança, você recebe o aviso antes, e nada muda sem a sua escolha.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-brand text-surface dark:bg-fg">
+        <div class="mx-auto grid max-w-6xl gap-12 px-5 py-20 lg:grid-cols-[1fr_2fr]">
+          <div>
+            <h2 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Segurança</h2>
+            <p class="mt-3 text-surface/80">O que o NotaFlow faz com o que você confia a ele.</p>
+          </div>
+          <ul class="grid gap-8 sm:grid-cols-2">
+            <li class="border-l-2 border-surface/40 pl-4">
+              <h3 class="font-semibold">Certificado cifrado</h3>
+              <p class="mt-2 text-sm leading-relaxed text-surface/80">
+                O arquivo do certificado e a senha ficam cifrados com AES-256-GCM, com a chave fora
+                do banco de dados. Um certificado trocado não pode mais ser decifrado.
+              </p>
+            </li>
+            <li class="border-l-2 border-surface/40 pl-4">
+              <h3 class="font-semibold">Nada some sem registro</h3>
+              <p class="mt-2 text-sm leading-relaxed text-surface/80">
+                Notas, clientes e serviços removidos saem da tela, mas o registro continua na trilha
+                de auditoria. Dados pessoais são anonimizados quando a lei manda ou permite.
+              </p>
+            </li>
+            <li class="border-l-2 border-surface/40 pl-4">
+              <h3 class="font-semibold">Trilha de auditoria</h3>
+              <p class="mt-2 text-sm leading-relaxed text-surface/80">
+                Cada emissão, cancelamento e mudança de configuração fica registrada com quem fez,
+                quando e de onde.
+              </p>
+            </li>
+            <li class="border-l-2 border-surface/40 pl-4">
+              <h3 class="font-semibold">Seu acesso, do seu jeito</h3>
+              <p class="mt-2 text-sm leading-relaxed text-surface/80">
+                Entre com passkey, código por e-mail, senha ou Google. Senhas vazadas em ataques
+                conhecidos são recusadas.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <div class="mx-auto max-w-3xl px-5 py-20">
+          <h2 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Perguntas frequentes</h2>
+          <div class="mt-10 divide-y divide-border border-y border-border">
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Quanto custa?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Nada. O NotaFlow é grátis, sem cartão de crédito e sem limite de notas. Se um dia
+                houver cobrança, você recebe o aviso antes, e nada muda sem a sua escolha.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Para quem é o NotaFlow?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Para empresas do Simples Nacional (ME e EPP) que prestam serviços dos anexos III e
+                V, como tecnologia, consultoria e design. A sua cidade precisa emitir a NFS-e pelo
+                sistema nacional. O MEI ainda não é atendido.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Que certificado eu preciso?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Um e-CNPJ do tipo A1, o arquivo .pfx ou .p12 com a senha. O certificado A3, em
+                cartão ou token, não funciona em um serviço on-line.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                O NotaFlow substitui o meu contador?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Não. O NotaFlow emite as notas e calcula as alíquotas pelas tabelas da lei, mas a
+                apuração do Simples, as guias e a orientação tributária continuam com a sua
+                contabilidade.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                E as notas que já emiti no portal?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Depois do cadastro, o NotaFlow busca no sistema nacional as notas da sua empresa e
+                cadastra os clientes delas. Você continua podendo usar o portal quando quiser.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="border-t border-border">
+        <div class="mx-auto flex max-w-6xl flex-col items-start gap-8 px-5 py-20 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-5">
+            <svg viewBox="0 0 128 100" class="hidden h-16 w-auto shrink-0 sm:block" aria-hidden="true">
+              <defs>
+                <mask id="nf-gap-cta">
+                  <rect width="128" height="100" fill="white" />
+                  <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" fill="black" stroke="black" stroke-width="6" />
+                </mask>
+              </defs>
+              <g class="fill-fg" mask="url(#nf-gap-cta)">
+                <rect x="8" y="12" width="16" height="76" />
+                <polygon points="8,12 25,12 76,88 59,88" />
+              </g>
+              <g class="fill-brand">
+                <rect x="60" y="12" width="16" height="76" />
+                <rect x="60" y="12" width="56" height="16" />
+                <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" />
+              </g>
+            </svg>
+            <h2 class="max-w-xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              Sua próxima nota pode sair daqui. E é grátis.
+            </h2>
+          </div>
+          <a
+            href="/cadastro"
+            class="inline-flex h-11 shrink-0 items-center rounded bg-primary px-5 font-medium text-primary-fg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >Criar conta grátis</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-border">
+      <div
+        class="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>NotaFlow, um produto Vapulab.</p>
+        <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Rodapé">
+          <a class="hover:text-fg" href="/termos">Termos de uso</a>
+          <a class="hover:text-fg" href="/privacidade">Política de privacidade</a>
+          <a class="hover:text-fg" href="mailto:contato@vapulab.com">Contato</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

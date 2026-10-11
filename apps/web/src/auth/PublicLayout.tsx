@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { api } from '../api';
 import { useAsync } from '../components/useAsync';
-import { Card, Spinner, ThemeToggle } from '../ui';
+import { Card, Logo, Spinner, ThemeToggle } from '../ui';
 
 export interface PublicConfig {
   googleEnabled: boolean;
   turnstileSiteKey: string | null;
   signupOpen: boolean;
+  posthog?: { token: string; host: string } | null;
 }
 
 export function usePublicConfig() {
@@ -18,8 +19,8 @@ export function PublicLayout(props: { title: string; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-surface">
       <header className="mx-auto flex max-w-md items-center justify-between px-4 py-4">
-        <a href="/" className="font-display text-lg font-semibold text-primary">
-          NotaFlow
+        <a href="/" aria-label="NotaFlow, página inicial">
+          <Logo />
         </a>
         <ThemeToggle />
       </header>

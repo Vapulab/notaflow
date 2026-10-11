@@ -149,7 +149,11 @@ test('signup closed says so and points to login', async () => {
 });
 
 test('signup with a password, then the code from the e-mail', async () => {
-  stubApi(config({ turnstileSiteKey: 'site' }));
+  const calls = stubApi({
+    ...config({ turnstileSiteKey: 'site' }),
+    '/api/me': { legalVersion: '2026-10-11', legalAccepted: false },
+    '/api/me/legal-acceptance': {},
+  });
   vi.mocked(authApi.signUpWithPassword).mockResolvedValue(undefined);
   vi.mocked(authApi.verifyEmail).mockResolvedValue(undefined);
   const user = userEvent.setup();
@@ -158,6 +162,13 @@ test('signup with a password, then the code from the e-mail', async () => {
   await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com');
   await user.type(screen.getByLabelText('Senha'), 'uma-senha-boa');
   expect(screen.getByText('Pelo menos 10 caracteres.')).toBeTruthy();
+  // The terms and the privacy policy come first.
+  expect(screen.getByRole('button', { name: 'Criar conta' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('link', { name: 'Termos de uso' }).getAttribute('href')).toBe('/termos');
+  expect(screen.getByRole('link', { name: 'Política de privacidade' }).getAttribute('href')).toBe(
+    '/privacidade',
+  );
+  await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
   await user.click(screen.getByRole('button', { name: 'Criar conta' }));
   expect(authApi.signUpWithPassword).toHaveBeenCalledWith(
     'Pessoa',
@@ -174,6 +185,9 @@ test('signup with a password, then the code from the e-mail', async () => {
   await user.click(screen.getByRole('button', { name: 'Confirmar e-mail' }));
   expect(authApi.verifyEmail).toHaveBeenCalledWith('pessoa@example.com', '654321');
   await waitFor(() => expect(window.location.pathname).toBe('/app'));
+  // The acceptance the user checked is recorded once the account exists.
+  const accepted = calls.find((c) => c.url === '/api/me/legal-acceptance');
+  expect(JSON.parse(String(accepted?.init?.body))).toEqual({ version: '2026-10-11' });
 });
 
 test('reset: e-mail, then code and new password, then a link to log in', async () => {

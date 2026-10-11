@@ -1,7 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- NotaFlow: an invoice sheet with a folded corner and an N, in the Malphas primary blue. -->
-  <rect width="32" height="32" rx="7" fill="#1e40af"/>
-  <path d="M9 6h10l5 5v15a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z" fill="#fff"/>
-  <path d="M19 6v4a1 1 0 0 0 1 1h4z" fill="#93c5fd"/>
-  <path d="M12 23V14l6 9v-9" fill="none" stroke="#1e40af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 100">
+  <!-- NotaFlow: N with the F, whose middle arm is an arrow through the N. Follows the system theme. -->
+  <style>
+    .n { fill: #090d14; }
+    .f { fill: #121774; }
+    @media (prefers-color-scheme: dark) {
+      .n { fill: #edf0f4; }
+      .f { fill: #60a5fa; }
+    }
+  </style>
+  <defs>
+    <mask id="gap">
+      <rect width="128" height="100" fill="white"/>
+      <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" fill="black" stroke="black" stroke-width="6"/>
+    </mask>
+  </defs>
+  <g class="n" mask="url(#gap)">
+    <rect x="8" y="12" width="16" height="76"/>
+    <polygon points="8,12 25,12 76,88 59,88"/>
+  </g>
+  <g class="f">
+    <rect x="60" y="12" width="16" height="76"/>
+    <rect x="60" y="12" width="56" height="16"/>
+    <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z"/>
+  </g>
 </svg>

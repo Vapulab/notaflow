@@ -57,6 +57,8 @@ export interface Me {
   name: string;
   platformRole: 'admin' | 'user';
   tourSeenAt?: string | null;
+  legalVersion?: string;
+  legalAccepted?: boolean;
   accounts: {
     id: string;
     name: string;

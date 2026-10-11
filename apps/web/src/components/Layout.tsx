@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
 import { formatCents, formatDate } from '../format';
+import { resetAnalytics } from '../analytics/analytics';
 import { signOut } from '../auth/authApi';
 import { navigate, routeHref, useRoute } from '../router';
 import { roleIn, useMe } from './MeContext';
-import { Avatar, initialsOf, linkClasses, ThemeToggle } from '../ui';
+import { Avatar, initialsOf, linkClasses, Logo, ThemeToggle } from '../ui';
 
 export const ERROR_TEXT: Record<string, string> = {
   unauthenticated: 'Sua sessão terminou. Entre de novo.',
@@ -99,6 +100,8 @@ export const ERROR_TEXT: Record<string, string> = {
   unknown_service_code: 'Código de serviço fora da lista nacional.',
   unknown_municipality: 'Município fora da tabela do IBGE. Escolha o município na lista.',
   unknown_country: 'País fora da tabela ISO. Escolha o país na lista.',
+  legal_version_changed:
+    'Os termos mudaram desde que a página abriu. Recarregue a página e leia a versão atual.',
   invalid_cep: 'O CEP deve ter 8 dígitos.',
   emitter_removed:
     'Este CNPJ pertence a um emitente removido. Fale com o suporte para restaurá-lo.',
@@ -153,8 +156,8 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
     <div className="min-h-screen">
       <header className="border-b border-border bg-surface">
         <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <a href={routeHref({ name: 'home' })} className="font-display font-semibold text-fg">
-            NotaFlow
+          <a href={routeHref({ name: 'home' })} aria-label="NotaFlow, painel">
+            <Logo markClassName="h-6 w-auto" />
           </a>
           {accountId && (
             <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -187,6 +190,7 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
             <button
               type="button"
               onClick={() => {
+                resetAnalytics();
                 void signOut().finally(() => navigate('/entrar', { replace: true }));
               }}
               className={`text-sm ${linkClasses({ variant: 'muted' })}`}

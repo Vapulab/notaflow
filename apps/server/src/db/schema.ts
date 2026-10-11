@@ -180,6 +180,24 @@ export const auditLog = sqliteTable('audit_log', {
   requestId: text('request_id'),
 });
 
+// The acceptance of the terms and the privacy policy: append-only, one row per user and version.
+export const legalAcceptances = sqliteTable(
+  'legal_acceptances',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    version: text('version').notNull(),
+    acceptedAt: integer('accepted_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+  },
+  (t) => [uniqueIndex('legal_acceptances_user_version').on(t.userId, t.version)],
+);
+
 export const customers = sqliteTable(
   'customers',
   {

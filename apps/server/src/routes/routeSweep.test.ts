@@ -144,6 +144,7 @@ describe('every /api route', () => {
       googleEnabled: false,
       turnstileSiteKey: null,
       signupOpen: true,
+      posthog: null,
     });
   });
 

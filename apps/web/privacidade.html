@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Política de privacidade do NotaFlow</title>
+    <meta name="description" content="Como o NotaFlow trata os dados pessoais, conforme a LGPD." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/privacidade" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/site.ts"></script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <header class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-5">
+      <a href="/" aria-label="NotaFlow, página inicial" class="inline-flex items-center gap-2 font-display text-xl font-semibold text-fg">
+        <svg viewBox="0 0 128 100" class="h-7 w-auto" aria-hidden="true">
+          <defs>
+            <mask id="nf-gap-header">
+              <rect width="128" height="100" fill="white" />
+              <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" fill="black" stroke="black" stroke-width="6" />
+            </mask>
+          </defs>
+          <g class="fill-fg" mask="url(#nf-gap-header)">
+            <rect x="8" y="12" width="16" height="76" />
+            <polygon points="8,12 25,12 76,88 59,88" />
+          </g>
+          <g class="fill-brand">
+            <rect x="60" y="12" width="16" height="76" />
+            <rect x="60" y="12" width="56" height="16" />
+            <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" />
+          </g>
+        </svg>
+        NotaFlow
+      </a>
+      <button
+        type="button"
+        data-theme-toggle
+        title="Alternar entre tema claro e escuro"
+        aria-label="Alternar entre tema claro e escuro"
+        class="rounded border border-border px-2 py-1 text-sm text-muted hover:text-fg focus:outline-none focus:ring-2 focus:ring-primary/50"
+      >
+        <span class="dark:hidden" aria-hidden="true">☾</span>
+        <span class="hidden dark:inline" aria-hidden="true">☀</span>
+      </button>
+    </header>
+
+    <main class="legal-text mx-auto max-w-3xl px-5 pb-20">
+      <h1 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+        Política de privacidade
+      </h1>
+      <p class="text-sm text-muted">Versão de 11 de outubro de 2026.</p>
+
+      <p>
+        Esta política explica quais dados pessoais o NotaFlow trata, para quê, com quem os
+        compartilha, por quanto tempo os guarda e como você exerce os seus direitos, conforme a Lei
+        Geral de Proteção de Dados (Lei 13.709/2018, LGPD) e o Marco Civil da Internet (Lei
+        12.965/2014).
+      </p>
+
+      <h2>1. Quem é o controlador</h2>
+      <p>
+        TALITA PIRES DALCORTIVO CONSULTORIA EM TECNOLOGIA DA INFORMACAO LTDA, nome fantasia Vapulab,
+        CNPJ 67.819.917/0001-93, Rua Alexander Graham Bell, 434, Parque Jamaica, Londrina/PR, CEP
+        86063-250.
+      </p>
+      <p>
+        A Vapulab é agente de tratamento de pequeno porte e, conforme o art. 11 da Resolução CD/ANPD
+        2/2022, não indicou encarregado. O canal para falar conosco sobre dados pessoais é
+        <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a>. Outros assuntos:
+        <a href="mailto:contato@vapulab.com">contato@vapulab.com</a>.
+      </p>
+
+      <h2>2. Dois papéis diferentes</h2>
+      <ul>
+        <li>
+          <strong>Controladora:</strong> a Vapulab decide sobre os dados de quem usa o NotaFlow (o
+          seu cadastro, o seu acesso e o uso do serviço).
+        </li>
+        <li>
+          <strong>Operadora:</strong> os dados dos clientes da sua empresa (os tomadores das notas)
+          e das próprias notas são tratados pela Vapulab em nome da sua empresa, que é a
+          controladora deles. Tratamos esses dados só para executar o serviço que você pede. Não
+          usamos esses dados para fins próprios. As regras desse tratamento estão nos
+          <a href="/termos">Termos de uso</a>.
+        </li>
+      </ul>
+
+      <h2>3. Que dados tratamos, para quê e com que base legal</h2>
+      <div class="overflow-x-auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Dados</th>
+            <th>Para quê</th>
+            <th>Base legal (LGPD, art. 7º)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Nome, e-mail, senha (guardada só como hash), passkeys, identificador da conta Google</td>
+            <td>Criar a conta, autenticar e falar com você sobre o serviço</td>
+            <td>Execução de contrato ou de procedimentos preliminares (V), quando você é parte; legítimo interesse (IX), quando você age como representante ou membro convidado de uma empresa</td>
+          </tr>
+          <tr>
+            <td>E-mail de uma pessoa convidada</td>
+            <td>Enviar o convite</td>
+            <td>Legítimo interesse (IX)</td>
+          </tr>
+          <tr>
+            <td>Cartão CNPJ (o arquivo), dados da empresa, receita dos últimos 12 meses, configuração fiscal</td>
+            <td>Cadastrar o emitente e calcular as alíquotas da nota</td>
+            <td>Execução de contrato (V)</td>
+          </tr>
+          <tr>
+            <td>Dados públicos do CNPJ consultados na BrasilAPI ou no CNPJá, que podem trazer nomes de sócios e administradores</td>
+            <td>Conferir e cadastrar o emitente; guardamos só os dados da empresa e as atividades</td>
+            <td>Legítimo interesse (IX), dados tornados públicos (art. 7º, §§ 3º e 4º)</td>
+          </tr>
+          <tr>
+            <td>Certificado digital A1 e a senha dele, que podem conter o nome e o CPF do responsável pela empresa</td>
+            <td>Assinar e enviar ao sistema nacional as notas e os cancelamentos que você pede, e consultar as notas do emitente</td>
+            <td>Legítimo interesse (IX) em executar o serviço contratado pela empresa; o nome e o CPF são tratados só porque estão no certificado</td>
+          </tr>
+          <tr>
+            <td>Notas fiscais e dados dos tomadores: nome, CPF ou CNPJ, NIF, endereço, e-mail, telefone</td>
+            <td>Emitir, copiar, consultar e cancelar notas</td>
+            <td>Como operadora, conforme as instruções da sua empresa; para a empresa, cumprimento de obrigação legal (II) e execução de contrato (V)</td>
+          </tr>
+          <tr>
+            <td>Endereço IP, navegador, data e hora de acesso e de cada ação relevante</td>
+            <td>Segurança, prevenção de fraude, trilha de auditoria e a guarda de registros de acesso exigida pelo Marco Civil (art. 15)</td>
+            <td>Cumprimento de obrigação legal (II) e legítimo interesse (IX)</td>
+          </tr>
+          <tr>
+            <td>IP e sinais técnicos do navegador nas telas de cadastro e entrada</td>
+            <td>Bloquear robôs (Cloudflare Turnstile)</td>
+            <td>Legítimo interesse (IX)</td>
+          </tr>
+          <tr>
+            <td>Aceite destes documentos: versão, data, IP e navegador</td>
+            <td>Provar o aceite dos termos e desta política</td>
+            <td>Exercício regular de direitos (VI)</td>
+          </tr>
+          <tr>
+            <td>Uso do serviço: páginas vistas e ações no app, ligadas a um identificador interno, sem o seu e-mail ou nome e sem o conteúdo das notas</td>
+            <td>Entender o uso e melhorar o produto</td>
+            <td>Legítimo interesse (IX). Você pode se opor pelo privacidade@vapulab.com, e paramos de medir o seu uso.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <p>
+        Não vendemos dados pessoais e não os usamos para publicidade. O NotaFlow não se destina a
+        menores de 18 anos. Se uma nota tiver um tomador menor de idade, a empresa emitente, como
+        controladora, responde por esse tratamento.
+      </p>
+
+      <h2>4. Com quem compartilhamos</h2>
+      <p>Só com quem é necessário para o serviço funcionar:</p>
+      <ul>
+        <li><strong>Sistema nacional da NFS-e</strong> (governo federal): recebe as notas e os cancelamentos, e devolve as notas do emitente.</li>
+        <li><strong>Hostinger, no Brasil</strong> (servidor virtual): guarda o banco de dados e as cópias de segurança, e executa o serviço.</li>
+        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile).</li>
+        <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha e de convite.</li>
+        <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
+        <li><strong>PostHog</strong> (EUA): medição de uso do produto, sem cookies, sem gravar a tela e sem o seu e-mail.</li>
+        <li><strong>BrasilAPI e CNPJá</strong>: consulta pública do CNPJ da sua empresa; <strong>ViaCEP</strong>: consulta de endereço pelo CEP; <strong>Banco Central</strong>: cotação PTAX. Essas consultas enviam só o CNPJ, o CEP ou a data.</li>
+        <li><strong>Have I Been Pwned</strong>: confere se uma senha nova já vazou. Enviamos só o começo do hash da senha, nunca a senha.</li>
+        <li><strong>Autoridades</strong>: quando a lei ou uma ordem judicial exigir.</li>
+      </ul>
+
+      <h2>5. Transferência internacional</h2>
+      <p>
+        Cloudflare, Resend, Google e PostHog tratam dados fora do Brasil. Essas transferências se
+        apoiam no art. 33 da LGPD: nas cláusulas-padrão contratuais aprovadas pela ANPD (Resolução
+        CD/ANPD 19/2024), quando o fornecedor as adota, ou, quando a transferência é necessária para
+        executar o contrato com você, no inciso IX do art. 33. Você pode pedir pelo
+        <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a> mais informações sobre
+        cada transferência e a cópia das cláusulas aplicáveis.
+      </p>
+
+      <h2>6. Por quanto tempo guardamos</h2>
+      <ul>
+        <li><strong>Conta e cadastro:</strong> enquanto a conta estiver ativa. Depois do encerramento, anonimizamos os dados pessoais da conta em até 30 dias, salvo os registros dos itens abaixo.</li>
+        <li><strong>Notas e dados dos tomadores:</strong> guardamos em nome da empresa emitente enquanto a conta estiver ativa. Depois do encerramento, mantemos por mais 90 dias para a empresa pedir uma cópia e então anonimizamos os dados pessoais, salvo instrução diferente da empresa. A guarda fiscal de 5 anos (arts. 173 e 195, parágrafo único, do Código Tributário Nacional) é obrigação da empresa, e a fonte oficial das notas é o sistema nacional.</li>
+        <li><strong>Registros de acesso (IP, data e hora):</strong> 6 meses, como exige o art. 15 do Marco Civil da Internet. Depois, anonimizamos o IP, salvo ordem judicial ou investigação em curso.</li>
+        <li><strong>Trilha de auditoria e registro de aceite:</strong> até 5 anos depois do encerramento da conta, para a defesa da Vapulab e da empresa em processos (exercício regular de direitos).</li>
+        <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 14 dias.</li>
+        <li><strong>Cópias de segurança:</strong> 14 dias. Um dado anonimizado sai das cópias quando elas vencem.</li>
+      </ul>
+      <p>
+        O banco de dados do NotaFlow não apaga linhas. Quando um prazo acima termina, ou quando você
+        pede a eliminação e a lei permite, trocamos os dados pessoais por valores que não
+        identificam ninguém (anonimização, arts. 12 e 16 da LGPD).
+      </p>
+
+      <h2>7. Como protegemos</h2>
+      <ul>
+        <li>O certificado e a senha dele ficam cifrados com AES-256-GCM, com a chave fora do banco de dados.</li>
+        <li>A conexão é sempre cifrada (HTTPS), e as senhas ficam guardadas só como hash.</li>
+        <li>A passkey usa a biometria só no seu aparelho; recebemos apenas uma chave pública.</li>
+        <li>Cada conta só vê os próprios dados, e as ações relevantes ficam na trilha de auditoria.</li>
+        <li>Fazemos cópias de segurança diárias do banco de dados.</li>
+      </ul>
+      <p>
+        Se um incidente de segurança puder causar risco ou dano relevante a você, comunicamos a você
+        e à ANPD em até 3 dias úteis depois de sabermos que ele atingiu dados pessoais, como mandam o
+        art. 48 da LGPD e a Resolução CD/ANPD 15/2024. A comunicação diz o que aconteceu, quais
+        dados foram atingidos, os riscos, o que fizemos e o que você pode fazer. Quando o incidente
+        atingir dados que tratamos em nome da sua empresa, avisamos a empresa sem demora, para que
+        ela faça as comunicações que cabem a ela.
+      </p>
+
+      <h2>8. Cookies e armazenamento no navegador</h2>
+      <ul>
+        <li><strong>Cookie de sessão (NotaFlow):</strong> mantém você conectado por até 30 dias. É essencial, e sem ele o app não funciona.</li>
+        <li><strong>Cookies da Cloudflare (por exemplo, __cf_bm e os do Turnstile):</strong> segurança e bloqueio de robôs. São essenciais.</li>
+        <li><strong>Armazenamento local do navegador:</strong> guarda o tema claro ou escuro e, durante o envio de uma nota, os dados desse envio, para não emitir a mesma nota duas vezes se a conexão cair. Esses dados saem do navegador quando a emissão termina.</li>
+      </ul>
+      <p>
+        A medição de uso (PostHog) não grava nada no seu navegador. Não usamos cookies de
+        publicidade nem de rastreamento entre sites.
+      </p>
+
+      <h2>9. Os seus direitos</h2>
+      <p>Pelo art. 18 da LGPD, você pode pedir, a qualquer momento:</p>
+      <ul>
+        <li>confirmação de que tratamos dados seus, e acesso a eles;</li>
+        <li>correção de dados incompletos, inexatos ou desatualizados;</li>
+        <li>anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em desconformidade com a lei;</li>
+        <li>portabilidade dos dados;</li>
+        <li>informação sobre com quem compartilhamos os dados;</li>
+        <li>revisão de decisões tomadas só de forma automatizada;</li>
+        <li>oposição a um tratamento baseado no legítimo interesse, quando ele não cumprir a lei.</li>
+      </ul>
+      <p>
+        Escreva para <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a>. Podemos
+        pedir uma confirmação de identidade antes de atender. A confirmação simples de que tratamos
+        dados seus é imediata; a declaração completa sai em até 15 dias (art. 19 da LGPD). Quando
+        você pede a eliminação, anonimizamos os dados, salvo os que a lei manda guardar, e dizemos
+        quais ficam e por quê. Se o pedido for sobre dados de um tomador de nota, informamos ao
+        titular qual empresa é a controladora e encaminhamos o pedido a ela. Você também pode
+        reclamar à ANPD.
+      </p>
+
+      <h2>10. Mudanças nesta política</h2>
+      <p>
+        Quando a política mudar de forma relevante, avisamos por e-mail e no serviço com pelo menos
+        15 dias de antecedência, salvo quando a lei ou uma autoridade exigir prazo menor, e pedimos o
+        seu aceite da nova versão.
+      </p>
+    </main>
+
+    <footer class="border-t border-border">
+      <div
+        class="mx-auto flex max-w-3xl flex-col gap-4 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>NotaFlow, um produto Vapulab.</p>
+        <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Rodapé">
+          <a class="hover:text-fg" href="/">Início</a>
+          <a class="hover:text-fg" href="/termos">Termos de uso</a>
+          <a class="hover:text-fg" href="mailto:privacidade@vapulab.com">Privacidade</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

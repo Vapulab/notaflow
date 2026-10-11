@@ -17,3 +17,4 @@ export { Field, FileInput, Input, Select, Textarea } from './Field';
 export { Modal } from './Modal';
 export { Avatar, initialsOf, ThemeToggle } from './ThemeAvatar';
 export { Combobox, type ComboboxOption } from './Combobox';
+export { Logo, LogoMark } from './Logo';
