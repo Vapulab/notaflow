@@ -1,6 +1,7 @@
 import type { AccountContext, Environment } from '@notaflow/core';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, touched } from '../db/stamps';
 import { emitters, syncState } from '../db/schema';
 
 export type SyncStateRow = Pick<
@@ -76,8 +77,11 @@ export class SyncStateRepository {
     if (!emitter) throw new Error('Emitter not found in this account.');
     this.db
       .insert(syncState)
-      .values({ emitterId, environment, ...values })
-      .onConflictDoUpdate({ target: [syncState.emitterId, syncState.environment], set: values })
+      .values({ ...created(ctx), emitterId, environment, ...values })
+      .onConflictDoUpdate({
+        target: [syncState.emitterId, syncState.environment],
+        set: { ...values, ...touched(ctx) },
+      })
       .run();
   }
 }

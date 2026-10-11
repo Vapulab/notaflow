@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext } from '@notaflow/core';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created } from '../db/stamps';
 import { memberships, users } from '../db/schema';
 
 export class MemberRepository {
@@ -26,7 +27,11 @@ export class MemberRepository {
     return this.db.transaction((tx) => {
       const existing = tx.select().from(users).where(eq(users.email, normalized)).get();
       const userId = existing?.id ?? randomUUID();
-      if (!existing) tx.insert(users).values({ id: userId, email: normalized, name }).run();
+      if (!existing) {
+        tx.insert(users)
+          .values({ ...created(ctx), id: userId, email: normalized, name })
+          .run();
+      }
       const member = tx
         .select()
         .from(memberships)
@@ -34,7 +39,13 @@ export class MemberRepository {
         .get();
       if (member) return null;
       tx.insert(memberships)
-        .values({ id: randomUUID(), accountId: ctx.accountId, userId, role: 'member' })
+        .values({
+          ...created(ctx),
+          id: randomUUID(),
+          accountId: ctx.accountId,
+          userId,
+          role: 'member',
+        })
         .run();
       return { userId, created: !existing };
     });

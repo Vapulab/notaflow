@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext, NewInvoiceInput } from '@notaflow/core';
 import { and, asc, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, touched } from '../db/stamps';
 import { emitters, services } from '../db/schema';
 
 type ServiceRow = typeof services.$inferSelect;
@@ -55,6 +56,7 @@ export class ServiceRepository {
     const row = this.db
       .insert(services)
       .values({
+        ...created(ctx),
         id: randomUUID(),
         emitterId,
         ...columnsOf(input),
@@ -89,6 +91,7 @@ export class ServiceRepository {
     this.db
       .insert(services)
       .values({
+        ...created(ctx),
         id: randomUUID(),
         emitterId,
         ...columnsOf(input),
@@ -104,7 +107,7 @@ export class ServiceRepository {
     if (!this.row(ctx, serviceId)) return false;
     this.db
       .update(services)
-      .set({ ...columnsOf(input), updatedAt: new Date() })
+      .set({ ...columnsOf(input), ...touched(ctx) })
       .where(eq(services.id, serviceId))
       .run();
     return true;
@@ -114,7 +117,7 @@ export class ServiceRepository {
     if (!this.row(ctx, serviceId)) return false;
     this.db
       .update(services)
-      .set({ archived, updatedAt: new Date() })
+      .set({ archived, ...touched(ctx) })
       .where(eq(services.id, serviceId))
       .run();
     return true;

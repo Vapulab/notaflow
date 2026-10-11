@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AccountContext, Environment } from '@notaflow/core';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, touched } from '../db/stamps';
 import { emitters, invoices } from '../db/schema';
 
 export type EmitterRow = typeof emitters.$inferSelect;
@@ -60,7 +61,7 @@ export class EmitterRepository {
   create(ctx: AccountContext, input: NewEmitter): EmitterRow {
     return this.db
       .insert(emitters)
-      .values({ ...input, id: randomUUID(), accountId: ctx.accountId })
+      .values({ ...created(ctx), ...input, id: randomUUID(), accountId: ctx.accountId })
       .returning()
       .get();
   }
@@ -72,7 +73,10 @@ export class EmitterRepository {
       WHERE ${invoices.emitterId} = ${emitters.id} AND ${invoices.dpsSeries} = ${emitters.dpsSeries})`;
     const row = this.db
       .update(emitters)
-      .set({ nextDpsNumber: sql`max(${emitters.nextDpsNumber}, ${usedAbove}) + 1` })
+      .set({
+        nextDpsNumber: sql`max(${emitters.nextDpsNumber}, ${usedAbove}) + 1`,
+        ...touched(ctx),
+      })
       .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
       .returning({ next: emitters.nextDpsNumber })
       .get();
@@ -84,7 +88,7 @@ export class EmitterRepository {
     return (
       this.db
         .update(emitters)
-        .set({ environment })
+        .set({ environment, ...touched(ctx) })
         .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
         .run().changes > 0
     );
@@ -111,7 +115,7 @@ export class EmitterRepository {
     return (
       this.db
         .update(emitters)
-        .set(config)
+        .set({ ...config, ...touched(ctx) })
         .where(and(eq(emitters.id, emitterId), eq(emitters.accountId, ctx.accountId)))
         .run().changes > 0
     );

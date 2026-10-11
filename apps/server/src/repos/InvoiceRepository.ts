@@ -3,6 +3,7 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import type { AccountContext, Environment, ProviderEvent, ProviderInvoice } from '@notaflow/core';
 import { and, asc, count, desc, eq, gte, inArray, like, lte, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+import { created, touched } from '../db/stamps';
 import { emitters, invoiceEvents, invoices } from '../db/schema';
 
 export type InvoiceStatus = (typeof invoices.$inferSelect)['status'];
@@ -83,7 +84,7 @@ export class InvoiceRepository {
       const status = existing.status === 'cancelled' || cancelled ? 'cancelled' : existing.status;
       this.db
         .update(invoices)
-        .set({ ...projection, status })
+        .set({ ...projection, status, ...touched(ctx) })
         .where(eq(invoices.id, existing.id))
         .run();
       return { id: existing.id, created: false, fromApp: existing.origin === 'app' };
@@ -107,7 +108,7 @@ export class InvoiceRepository {
       )
       .get();
     if (awaiting && isOwnInvoice(awaiting, invoice)) {
-      this.promote(awaiting.id, invoice);
+      this.promote(ctx, awaiting.id, invoice);
       return { id: awaiting.id, created: false, fromApp: true };
     }
     if (awaiting) {
@@ -116,7 +117,7 @@ export class InvoiceRepository {
         .set({
           status: 'rejected',
           sefinMessages: [{ code: 'E0014', message: DPS_NUMBER_TAKEN }],
-          updatedAt: new Date(),
+          ...touched(ctx),
         })
         .where(eq(invoices.id, awaiting.id))
         .run();
@@ -125,6 +126,7 @@ export class InvoiceRepository {
     this.db
       .insert(invoices)
       .values({
+        ...created(ctx),
         ...projection,
         id,
         emitterId,
@@ -133,7 +135,7 @@ export class InvoiceRepository {
         origin: 'synced',
       })
       .run();
-    this.linkEvents(id, invoice.accessKey);
+    this.linkEvents(ctx, id, invoice.accessKey);
     return { id, created: true, fromApp: false };
   }
 
@@ -147,6 +149,7 @@ export class InvoiceRepository {
     const inserted = this.db
       .insert(invoiceEvents)
       .values({
+        ...created(ctx),
         id: randomUUID(),
         emitterId,
         invoiceId: invoice?.id ?? null,
@@ -163,7 +166,7 @@ export class InvoiceRepository {
     if (invoice && CANCELLING_EVENTS.includes(event.code)) {
       this.db
         .update(invoices)
-        .set({ status: 'cancelled', updatedAt: new Date() })
+        .set({ status: 'cancelled', ...touched(ctx) })
         .where(eq(invoices.id, invoice.id))
         .run();
     }
@@ -311,6 +314,7 @@ export class InvoiceRepository {
     this.db
       .insert(invoices)
       .values({
+        ...created(ctx),
         ...input,
         id,
         accessKey: null,
@@ -326,7 +330,7 @@ export class InvoiceRepository {
 
   markIssued(ctx: AccountContext, invoiceId: string, invoice: ProviderInvoice): void {
     this.requireInvoice(ctx, invoiceId);
-    this.promote(invoiceId, invoice);
+    this.promote(ctx, invoiceId, invoice);
   }
 
   markRejected(
@@ -337,7 +341,7 @@ export class InvoiceRepository {
     this.requireInvoice(ctx, invoiceId);
     this.db
       .update(invoices)
-      .set({ status: 'rejected', sefinMessages: errors, updatedAt: new Date() })
+      .set({ status: 'rejected', sefinMessages: errors, ...touched(ctx) })
       .where(eq(invoices.id, invoiceId))
       .run();
   }
@@ -349,7 +353,7 @@ export class InvoiceRepository {
       .set({
         status: 'unknown',
         sefinMessages: [{ code: 'uncertain', message: reason }],
-        updatedAt: new Date(),
+        ...touched(ctx),
       })
       .where(eq(invoices.id, invoiceId))
       .run();
@@ -359,7 +363,7 @@ export class InvoiceRepository {
     this.requireInvoice(ctx, invoiceId);
     this.db
       .update(invoices)
-      .set({ status: 'cancelled', updatedAt: new Date() })
+      .set({ status: 'cancelled', ...touched(ctx) })
       .where(eq(invoices.id, invoiceId))
       .run();
   }
@@ -390,7 +394,7 @@ export class InvoiceRepository {
     );
   }
 
-  private promote(invoiceId: string, invoice: ProviderInvoice): void {
+  private promote(ctx: AccountContext, invoiceId: string, invoice: ProviderInvoice): void {
     const cancelled = this.hasCancellingEvent(invoice.accessKey);
     this.db
       .update(invoices)
@@ -398,10 +402,11 @@ export class InvoiceRepository {
         ...projectionOf(invoice),
         accessKey: invoice.accessKey,
         status: cancelled ? 'cancelled' : 'issued',
+        ...touched(ctx),
       })
       .where(eq(invoices.id, invoiceId))
       .run();
-    this.linkEvents(invoiceId, invoice.accessKey);
+    this.linkEvents(ctx, invoiceId, invoice.accessKey);
   }
 
   private hasCancellingEvent(accessKey: string): boolean {
@@ -415,10 +420,10 @@ export class InvoiceRepository {
     return row !== undefined;
   }
 
-  private linkEvents(invoiceId: string, accessKey: string): void {
+  private linkEvents(ctx: AccountContext, invoiceId: string, accessKey: string): void {
     this.db
       .update(invoiceEvents)
-      .set({ invoiceId })
+      .set({ invoiceId, ...touched(ctx) })
       .where(eq(invoiceEvents.accessKey, accessKey))
       .run();
   }
@@ -454,7 +459,6 @@ function projectionOf(invoice: ProviderInvoice) {
     issCents: invoice.amounts.issCents ?? null,
     netCents: invoice.amounts.netCents,
     xmlGzip: gzipSync(invoice.xml),
-    updatedAt: new Date(),
   };
 }
 
