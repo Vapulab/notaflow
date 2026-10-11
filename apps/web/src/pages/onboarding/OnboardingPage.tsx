@@ -82,14 +82,15 @@ export function OnboardingPage(props: { accountId?: string }) {
   const [state, setState] = useState<OnboardingState | null>(null);
   useEffect(() => setState(loaded.data ?? null), [loaded.data]);
 
+  const prefix = `/api/accounts/${encodeURIComponent(accountId ?? '')}/onboarding`;
   const step: OnboardingStep | 'company' = accountId ? (state?.step ?? 'card') : 'company';
   let panel;
   if (!accountId) panel = <CompanyStep />;
   else if (loaded.error) panel = <Alert variant="error">{errorText(loaded.error)}</Alert>;
   else if (!state) panel = <Spinner />;
-  else if (state.step === 'card') panel = <CardStep accountId={accountId} onDone={setState} />;
+  else if (state.step === 'card') panel = <CardStep prefix={prefix} onDone={setState} />;
   else if (state.step === 'certificate') {
-    panel = <CertificateStep accountId={accountId} state={state} onDone={setState} />;
+    panel = <CertificateStep prefix={prefix} state={state} onDone={setState} />;
   } else if (state.step === 'fiscal') {
     panel = <FiscalStep accountId={accountId} onDone={setState} />;
   } else panel = <SyncStep accountId={accountId} />;

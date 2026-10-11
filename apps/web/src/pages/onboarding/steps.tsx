@@ -94,12 +94,12 @@ export function CompanyStep() {
   );
 }
 
-export function CardStep(props: { accountId: string; onDone: OnDone }) {
+// prefix is .../onboarding for the first emitter, or .../emitters/new for another one.
+export function CardStep(props: { prefix: string; onDone: OnDone }) {
   const [file, setFile] = useState<File | null>(null);
   const [typing, setTyping] = useState(false);
   const [cnpj, setCnpj] = useState('');
   const { busy, error, run } = useStepAction();
-  const base = accountUrl(props.accountId);
   const finish = (answer: { draft: CnpjDraft; municipalityName: string | null }) =>
     props.onDone({
       step: 'certificate',
@@ -112,7 +112,7 @@ export function CardStep(props: { accountId: string; onDone: OnDone }) {
     if (!file) return;
     void run(async () => {
       finish(
-        await api.post(`${base}/onboarding/card`, {
+        await api.post(`${props.prefix}/card`, {
           pdfBase64: await fileToBase64(file),
           fileName: file.name,
         }),
@@ -121,7 +121,7 @@ export function CardStep(props: { accountId: string; onDone: OnDone }) {
   };
   const sendCnpj = (event: FormEvent) => {
     event.preventDefault();
-    void run(async () => finish(await api.post(`${base}/onboarding/cnpj`, { cnpj })));
+    void run(async () => finish(await api.post(`${props.prefix}/cnpj`, { cnpj })));
   };
 
   return (
@@ -175,9 +175,11 @@ export function CardStep(props: { accountId: string; onDone: OnDone }) {
 }
 
 export function CertificateStep(props: {
-  accountId: string;
+  prefix: string;
   state: OnboardingState;
   onDone: OnDone;
+  // Another emitter has no step to undo: "Trocar cartão" only goes back on screen.
+  onBack?: () => void;
 }) {
   const { draft, municipalityName } = props.state;
   const [file, setFile] = useState<File | null>(null);
@@ -187,13 +189,12 @@ export function CertificateStep(props: {
   const [specialRegime, setSpecialRegime] = useState('0');
   const [dpsSeries, setDpsSeries] = useState('900');
   const { busy, error, run } = useStepAction();
-  const base = accountUrl(props.accountId);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!file) return;
     void run(async () => {
-      await api.post(`${base}/onboarding/certificate`, {
+      await api.post(`${props.prefix}/certificate`, {
         pfxBase64: await fileToBase64(file),
         password,
         ...(registration.trim() ? { municipalRegistration: registration.trim() } : {}),
@@ -208,7 +209,8 @@ export function CertificateStep(props: {
   };
   const backToCard = () =>
     run(async () => {
-      await api.post(`${base}/onboarding/back-to-card`, {});
+      if (props.onBack) return props.onBack();
+      await api.post(`${props.prefix}/back-to-card`, {});
       props.onDone({ step: 'card', draft: null, municipalityName: null });
     });
 

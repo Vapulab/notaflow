@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { api, type Emitter, type Me, type SyncResult, type SyncState } from '../api';
+import {
+  api,
+  type Emitter,
+  type Me,
+  type OnboardingState,
+  type SyncResult,
+  type SyncState,
+} from '../api';
 import { CertificateWarning } from '../components/CertificateWarning';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
@@ -7,7 +14,7 @@ import { useAsync } from '../components/useAsync';
 import { fileToBase64, formatDate } from '../format';
 import { routeHref } from '../router';
 import { Alert, Button, buttonClasses, Card, Link, SECTION_TITLE_CLASSES } from '../ui';
-import { OnboardingForm } from './OnboardingForm';
+import { CardStep, CertificateStep } from './onboarding/steps';
 
 type Act = (action: () => Promise<string>) => Promise<void>;
 
@@ -46,12 +53,10 @@ export function EmittersPage({ accountId }: { accountId: string }) {
         />
       ))}
       {isOwner && (
-        <OnboardingForm
-          onSubmit={(body) =>
-            act(async () => {
-              await api.post(`${base}/emitters`, body);
-              return 'Emitente cadastrado. A primeira sincronização começou.';
-            })
+        <AddEmitter
+          prefix={`${base}/emitters/new`}
+          onCreated={() =>
+            act(async () => 'Emitente cadastrado. A primeira sincronização começou.')
           }
         />
       )}
@@ -160,5 +165,31 @@ function EmitterCard(props: {
         )}
       </div>
     </Card>
+  );
+}
+
+// Another company of the account: the card, then the certificate, as in onboarding.
+function AddEmitter(props: { prefix: string; onCreated: () => void }) {
+  const [state, setState] = useState<OnboardingState | 'closed' | 'card'>('closed');
+  if (state === 'closed') {
+    return (
+      <div>
+        <Button variant="primary" onClick={() => setState('card')}>
+          Adicionar emitente
+        </Button>
+      </div>
+    );
+  }
+  if (state === 'card') return <CardStep prefix={props.prefix} onDone={setState} />;
+  return (
+    <CertificateStep
+      prefix={props.prefix}
+      state={state}
+      onBack={() => setState('card')}
+      onDone={() => {
+        setState('closed');
+        props.onCreated();
+      }}
+    />
   );
 }

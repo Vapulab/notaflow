@@ -1,7 +1,8 @@
+import { useEffect } from 'react';
 import { api, type Me } from '../api';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
-import { type Route, routeHref } from '../router';
+import { navigate, type Route, routeHref } from '../router';
 import { Alert, Badge, CARD_CLASSES, SECTION_TITLE_CLASSES, Spinner } from '../ui';
 
 interface Option {
@@ -58,8 +59,24 @@ function OptionCard({ option }: { option: Option }) {
   );
 }
 
+// Where a user without a finished account belongs: onboarding, unless there is a choice to make.
+function onboardingTarget(me: Me): Route | null {
+  if (me.accounts.length === 0) return me.platformRole === 'admin' ? null : { name: 'onboarding' };
+  const [only] = me.accounts;
+  if (me.accounts.length === 1 && only && only.role === 'owner' && only.onboardingStep !== 'done') {
+    return { name: 'onboarding', accountId: only.id };
+  }
+  return null;
+}
+
 export function HomePage() {
   const me = useAsync(() => api.get<Me>('/api/me'), []);
+  const target = me.data ? onboardingTarget(me.data) : null;
+  // A path, not the route object: the effect runs once per destination.
+  const targetHref = target ? routeHref(target) : null;
+  useEffect(() => {
+    if (targetHref) navigate(targetHref, { replace: true });
+  }, [targetHref]);
   if (me.error) {
     return (
       <Layout title="NotaFlow">
@@ -67,7 +84,7 @@ export function HomePage() {
       </Layout>
     );
   }
-  if (!me.data) {
+  if (!me.data || target) {
     return (
       <Layout title="NotaFlow">
         <Spinner />
@@ -92,11 +109,27 @@ export function HomePage() {
             <Badge>{account.role === 'owner' ? 'dono' : 'membro'}</Badge>
             {account.status === 'suspended' && <Badge variant="warning">suspensa</Badge>}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {optionsFor(account).map((option) => (
-              <OptionCard key={option.title} option={option} />
-            ))}
-          </div>
+          {account.onboardingStep !== 'done' && account.role === 'owner' && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <OptionCard
+                option={{
+                  route: { name: 'onboarding', accountId: account.id },
+                  title: 'Continuar cadastro',
+                  text: 'Termine o cadastro da empresa para emitir e importar notas.',
+                }}
+              />
+            </div>
+          )}
+          {account.onboardingStep !== 'done' && account.role !== 'owner' && (
+            <Alert variant="info">O dono da conta ainda está concluindo o cadastro.</Alert>
+          )}
+          {account.onboardingStep === 'done' && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {optionsFor(account).map((option) => (
+                <OptionCard key={option.title} option={option} />
+              ))}
+            </div>
+          )}
         </section>
       ))}
       {data.platformRole === 'admin' && (
