@@ -151,7 +151,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   publicConfigRoutes(app, config);
   meRoutes(app, db);
   adminRoutes(app, db);
-  memberRoutes(app, db);
+  memberRoutes(app, { db, mailer, appOrigin: config.appOrigin });
   onboardingRoutes(app, {
     db,
     emitterOnboarding: new EmitterOnboarding({
