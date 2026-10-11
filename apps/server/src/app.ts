@@ -4,6 +4,9 @@ import type { Dispatcher } from 'undici';
 import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
 import { remoteAccessVerifier, type VerifyAccessToken } from './auth/accessVerifier';
 import { registerAuth } from './auth/authHook';
+import { registerAuthRoutes } from './auth/authRoutes';
+import { type Auth, createAuth } from './auth/betterAuth';
+import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
 import { handleError } from './httpError';
@@ -37,6 +40,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     routeList: { method: string; url: string }[];
     syncService: SyncService;
+    auth: Auth;
   }
 }
 
@@ -54,6 +58,8 @@ export interface AppDeps {
   syncRetryDelaysMs?: number[];
   onEmitterCreated?: (ctx: AccountContext, emitterId: string) => void;
   webRoot?: string;
+  mailer?: Mailer;
+  auth?: Auth;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -89,6 +95,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       ? remoteAccessVerifier(config.auth.teamDomain, config.auth.audience)
       : async () => '');
   registerAuth(app, { config, identities: new IdentityRepository(db), verifyAccessToken });
+  const mailer =
+    deps.mailer ??
+    (config.mail.resendApiKey
+      ? resendMailer({ apiKey: config.mail.resendApiKey, from: config.mail.from })
+      : consoleMailer((line) => app.log.info(line)));
+  const auth =
+    deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
+  app.decorate('auth', auth);
+  registerAuthRoutes(app, auth, config.appOrigin);
 
   const providerFactory = deps.providerFactory ?? nacionalProviderFactory(config.nacionalUrls);
   const certificates = new VaultCertificateStore(new CertificateRepository(db), config.masterKey);

@@ -17,6 +17,8 @@ export function registerAuth(
     // The matched route, not the raw URL: the router decodes %61pi to api before matching.
     const route = request.routeOptions.url;
     if (route === '/api/health') return;
+    // Better Auth checks the origin of its own routes and needs no session to log in.
+    if (route?.startsWith('/api/auth/')) return;
     if (route !== undefined ? !route.startsWith('/api/') : !isApiPath(request.url)) return;
     const email = await emailOf(request, deps.config, deps.verifyAccessToken);
     const identity = deps.identities.findByEmail(email);
