@@ -56,9 +56,12 @@
       out.innerHTML = svg;
       // Twice the natural size, so the PNG is sharp; the SVG scales without changing its layout.
       const drawn = out.querySelector('svg');
+      // Crop to what is drawn: Mermaid sometimes leaves a frame much larger than the diagram.
+      const box = drawn.getBBox();
+      drawn.setAttribute('viewBox', `${box.x - 8} ${box.y - 8} ${box.width + 16} ${box.height + 16}`);
       drawn.style.maxWidth = 'none';
-      drawn.setAttribute('width', String(drawn.viewBox.baseVal.width * 2));
-      drawn.setAttribute('height', String(drawn.viewBox.baseVal.height * 2));
+      drawn.setAttribute('width', String((box.width + 16) * 2));
+      drawn.setAttribute('height', String((box.height + 16) * 2));
       document.body.dataset.ready = 'true';
     </script>
   </body>

@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily NotaFlow off-site backup, after the local backup of 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 America/Sao_Paulo
+Persistent=true
+
+[Install]
+WantedBy=timers.target

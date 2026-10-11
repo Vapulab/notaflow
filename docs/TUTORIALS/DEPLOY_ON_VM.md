@@ -73,7 +73,37 @@ docker run --rm -v notaflow_data:/data alpine sh -c 'cp /data/backups/<file>.db 
 docker compose start app
 ```
 
-The backups live on the same disk as the database. After a VPS loss, the ADN is the backup for invoices: deploy again, onboard the emitter with its `.pfx`, and sync. What exists only in the database (accounts, users, manual customer data, the audit log, DPS numbering) needs a backup copied off the VPS; that is planned after Stage 1.
+## Off-site backups
+
+`notaflow-offsite-backup.timer` runs `/opt/notaflow/offsite-backup.sh` every day at 03:30, after the local backup. The script does four things:
+
+1. Takes the newest file in `/data/backups`.
+2. Compresses it with gzip.
+3. Encrypts it with [age](https://age-encryption.org) to a public key.
+4. Sends it to the Cloudflare R2 bucket `notaflow-backups`.
+
+The bucket deletes objects older than 30 days (a lifecycle rule). The script and the units are in `deploy/`; install a new version with `install -m 700 offsite-backup.sh /opt/notaflow/`.
+
+- **`/opt/notaflow/offsite.env`** (600, root) holds `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET`, and `AGE_RECIPIENT`, the public key only.
+- **The R2 token** can read and write this bucket only, and only from the VPS IPv4 address. The VPS also goes out over IPv6, so the script calls `curl -4`.
+- **The private key is not on the VPS.** Someone who gets into the VPS cannot read the copies. Lincoln keeps the private key in his password manager and in `keys/notaflow-backup.age.key` on his machine, which git ignores. Without it, no copy can be decrypted.
+
+Restore from R2, on any machine with `age` and the private key:
+
+```bash
+# Download the object from the R2 dashboard (or with the same curl call the script uses, with -o).
+age -d -i notaflow-backup.age.key notaflow-<UTC time>.db.gz.age | gunzip > notaflow.db
+python3 -c "import sqlite3; print(sqlite3.connect('notaflow.db').execute('pragma integrity_check').fetchone())"
+```
+
+Then copy `notaflow.db` into the volume as in "Restore" above. The first copy was restored this way on 2026-10-11: the integrity check printed `ok`, with 20 tables and 16 migrations.
+
+## Server hardening
+
+- **SSH:** key login only. `/etc/ssh/sshd_config.d/00-hardening.conf` turns off passwords, lets root in with a key only, turns off X11, and allows 3 tries. Delete that file and run `systemctl reload ssh` to undo it.
+- **Firewall:** `ufw` denies every inbound connection but 22/tcp. The containers publish no port to the internet, and the tunnel only connects out.
+- **fail2ban:** bans an IP for an hour after 5 failed SSH logins in 10 minutes (`/etc/fail2ban/jail.d/sshd.local`, reading `/var/log/auth.log`).
+- **Updates:** `unattended-upgrades` installs the security updates. A new kernel still needs a reboot, which takes the three sites on this VPS down for about a minute.
 
 ## Login
 
