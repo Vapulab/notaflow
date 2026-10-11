@@ -3,6 +3,7 @@ import { seedTenant } from '../../test/fixtures';
 import { createTestApp, ORIGIN, type TestApp } from '../../test/testApp';
 import { softDelete } from '../db/stamps';
 import { users } from '../db/schema';
+import { LEGAL_VERSION } from '../legal';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -49,6 +50,8 @@ test('GET /api/me returns the user and accounts of the session', async () => {
     name: 'lincoln',
     platformRole: 'user',
     tourSeenAt: null,
+    legalVersion: LEGAL_VERSION,
+    legalAccepted: false,
     accounts: [
       {
         id: a.accountId,

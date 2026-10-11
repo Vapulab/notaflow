@@ -16,6 +16,7 @@ export const BUSINESS_TABLES = [
 // Append-only, or credentials that Better Auth deletes on expiry, sign-out, unlink, or removal.
 export const OTHER_TABLES = [
   'audit_log',
+  'legal_acceptances',
   'auth_sessions',
   'auth_accounts',
   'auth_verifications',
