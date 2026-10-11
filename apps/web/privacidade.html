@@ -149,7 +149,7 @@
             <td>Exercício regular de direitos (VI)</td>
           </tr>
           <tr>
-            <td>Uso do serviço: páginas vistas e ações no app, ligadas a um identificador interno, sem o seu e-mail ou nome e sem o conteúdo das notas</td>
+            <td>Uso do serviço: páginas vistas e ações no app, ligadas a um identificador interno, sem o seu e-mail, nome ou IP e sem o conteúdo das notas</td>
             <td>Entender o uso e melhorar o produto</td>
             <td>Legítimo interesse (IX). Você pode se opor pelo privacidade@vapulab.com, e paramos de medir o seu uso.</td>
           </tr>
@@ -167,10 +167,10 @@
       <ul>
         <li><strong>Sistema nacional da NFS-e</strong> (governo federal): recebe as notas e os cancelamentos, e devolve as notas do emitente.</li>
         <li><strong>Hostinger, no Brasil</strong> (servidor virtual): guarda o banco de dados e as cópias de segurança, e executa o serviço.</li>
-        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile).</li>
+        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile) e guarda uma cópia de segurança diária do banco de dados, cifrada antes de sair do nosso servidor, que ela não consegue ler.</li>
         <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha e de convite.</li>
         <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
-        <li><strong>PostHog</strong> (EUA): medição de uso do produto, sem cookies, sem gravar a tela e sem o seu e-mail.</li>
+        <li><strong>PostHog</strong> (EUA): medição de uso do produto, sem cookies, sem gravar a tela, sem o seu e-mail e sem o seu IP.</li>
         <li><strong>BrasilAPI e CNPJá</strong>: consulta pública do CNPJ da sua empresa; <strong>ViaCEP</strong>: consulta de endereço pelo CEP; <strong>Banco Central</strong>: cotação PTAX. Essas consultas enviam só o CNPJ, o CEP ou a data.</li>
         <li><strong>Have I Been Pwned</strong>: confere se uma senha nova já vazou. Enviamos só o começo do hash da senha, nunca a senha.</li>
         <li><strong>Autoridades</strong>: quando a lei ou uma ordem judicial exigir.</li>
@@ -192,8 +192,8 @@
         <li><strong>Notas e dados dos tomadores:</strong> guardamos em nome da empresa emitente enquanto a conta estiver ativa. Depois do encerramento, mantemos por mais 90 dias para a empresa pedir uma cópia e então anonimizamos os dados pessoais, salvo instrução diferente da empresa. A guarda fiscal de 5 anos (arts. 173 e 195, parágrafo único, do Código Tributário Nacional) é obrigação da empresa, e a fonte oficial das notas é o sistema nacional.</li>
         <li><strong>Registros de acesso (IP, data e hora):</strong> 6 meses, como exige o art. 15 do Marco Civil da Internet. Depois, anonimizamos o IP, salvo ordem judicial ou investigação em curso.</li>
         <li><strong>Trilha de auditoria e registro de aceite:</strong> até 5 anos depois do encerramento da conta, para a defesa da Vapulab e da empresa em processos (exercício regular de direitos).</li>
-        <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 14 dias.</li>
-        <li><strong>Cópias de segurança:</strong> 14 dias. Um dado anonimizado sai das cópias quando elas vencem.</li>
+        <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 30 dias.</li>
+        <li><strong>Cópias de segurança:</strong> 14 dias no nosso servidor e 30 dias, cifradas, na Cloudflare. Um dado anonimizado sai das cópias quando elas vencem.</li>
       </ul>
       <p>
         O banco de dados do NotaFlow não apaga linhas. Quando um prazo acima termina, ou quando você
@@ -207,7 +207,7 @@
         <li>A conexão é sempre cifrada (HTTPS), e as senhas ficam guardadas só como hash.</li>
         <li>A passkey usa a biometria só no seu aparelho; recebemos apenas uma chave pública.</li>
         <li>Cada conta só vê os próprios dados, e as ações relevantes ficam na trilha de auditoria.</li>
-        <li>Fazemos cópias de segurança diárias do banco de dados.</li>
+        <li>Fazemos cópias de segurança diárias do banco de dados, com uma cópia cifrada fora do servidor.</li>
       </ul>
       <p>
         Se um incidente de segurança puder causar risco ou dano relevante a você, comunicamos a você

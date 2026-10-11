@@ -1,0 +1,7 @@
+[Unit]
+Description=NotaFlow off-site backup (encrypted copy of the newest backup to Cloudflare R2)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/notaflow/offsite-backup.sh

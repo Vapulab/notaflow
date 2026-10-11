@@ -8,7 +8,7 @@ flowchart TB
   nacional["<b>National NFS-e system</b><br/><i>[External system]</i><br/>Sefin Nacional receives DPS and events; the ADN returns each emitter's documents. mTLS with the company's A1 certificate."]
   resend["<b>Resend</b><br/><i>[External system]</i><br/>Sends login codes, invites, and welcome e-mails."]
   google["<b>Google</b><br/><i>[External system]</i><br/>Optional OAuth login."]
-  cloudflare["<b>Cloudflare</b><br/><i>[External system]</i><br/>DNS, tunnel to the VPS, and Turnstile against bots."]
+  cloudflare["<b>Cloudflare</b><br/><i>[External system]</i><br/>DNS, tunnel to the VPS, Turnstile against bots, and R2 for the encrypted off-site backups."]
   lookups["<b>Public lookups</b><br/><i>[External systems]</i><br/>BrasilAPI and CNPJá (CNPJ), ViaCEP (CEP), Banco Central (PTAX), Have I Been Pwned (k-anonymity)."]
   posthog["<b>PostHog</b><br/><i>[External system]</i><br/>Product analytics, no cookies, internal user id only."]
 
@@ -18,6 +18,7 @@ flowchart TB
   notaflow -- "Sends e-mail [HTTPS API]" --> resend
   notaflow -- "OAuth login [HTTPS]" --> google
   cloudflare -- "Carries every request [Tunnel]" --> notaflow
+  notaflow -- "Encrypted daily backup [HTTPS]" --> cloudflare
   notaflow -- "Looks up CNPJ, CEP, PTAX, breached passwords [HTTPS]" --> lookups
   owner -. "Page views and product events [HTTPS]" .-> posthog
   resend -. "Delivers e-mail" .-> owner

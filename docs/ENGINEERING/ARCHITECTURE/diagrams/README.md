@@ -6,7 +6,7 @@ The `.mmd` files are the sources of the C4 diagrams in the [Architecture Overvie
 
 1. Edit the `.mmd` file.
 2. Serve this folder: `python -m http.server 4181 --bind 127.0.0.1`.
-3. Open `http://127.0.0.1:4181/render.html?file=<name>.mmd` in a browser. The page loads Mermaid 11.4.1 from jsDelivr, so it needs the internet.
+3. Open `http://localhost:4181/render.html?file=<name>.mmd` in a browser at 100% zoom (Chrome keeps a zoom per host, and a zoomed page makes a small PNG). The page loads Mermaid 11.4.1 from jsDelivr, so it needs the internet.
 4. Save a screenshot of the diagram as `<name>.png` (in Chrome: DevTools, select `#out`, then "Capture node screenshot"; with Playwright, a screenshot of `#out`).
 5. Commit the `.mmd` and the `.png` together.
 
