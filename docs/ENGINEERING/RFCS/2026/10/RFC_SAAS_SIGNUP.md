@@ -1,6 +1,6 @@
 # RFC: Open Signup, Own Login, Guided Onboarding, and Soft Delete
 
-**Status:** Accepted (Stage 3a implemented)
+**Status:** Accepted (Stage 3a implemented); Stage 3b planned in [PLAN_STAGE_3B_LOGIN_AND_ROUTES](../../../PLANS/2026/10/PLAN_STAGE_3B_LOGIN_AND_ROUTES.md)
 **Date:** 2026-10-10
 **Owner:** Lincoln Santos (Vapulab)
 
