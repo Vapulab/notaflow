@@ -31,7 +31,7 @@ test('the certificate warning shows only when the certificate expires soon or is
 });
 
 test('the layout shows the account links and marks the current page', () => {
-  window.location.hash = '#/a/acc/invoices';
+  window.history.replaceState(null, '', '/app/acc/notas');
   render(
     <Layout title="Notas" accountId="acc">
       <p>conteúdo</p>
@@ -39,7 +39,7 @@ test('the layout shows the account links and marks the current page', () => {
   );
   expect(screen.getByRole('link', { name: 'Notas' }).getAttribute('aria-current')).toBe('page');
   expect(screen.getByRole('link', { name: 'Clientes' }).getAttribute('href')).toBe(
-    '#/a/acc/customers',
+    '/app/acc/clientes',
   );
 });
 
@@ -52,17 +52,6 @@ test('every error code the server can send has a text', () => {
   ]) {
     expect(ERROR_TEXT[code]).toBeTruthy();
   }
-});
-
-test('the layout has Sair, which ends the Cloudflare Access session', () => {
-  render(
-    <Layout title="Notas">
-      <p>conteúdo</p>
-    </Layout>,
-  );
-  expect(screen.getByRole('link', { name: 'Sair' }).getAttribute('href')).toBe(
-    '/cdn-cgi/access/logout',
-  );
 });
 
 test('isDefinitive: a refusal before anything is reserved, never an unclear answer', () => {

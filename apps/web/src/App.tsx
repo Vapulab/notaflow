@@ -9,19 +9,33 @@ import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { IssuePage } from './pages/IssuePage';
 import { MembersPage } from './pages/MembersPage';
+import { LoginPage } from './pages/LoginPage';
 import { NewInvoicePage } from './pages/NewInvoicePage';
-import { useRoute } from './router';
+import { ProfilePage } from './pages/ProfilePage';
+import { ResetPage } from './pages/ResetPage';
+import { SignupPage } from './pages/SignupPage';
+import { type Route, useRoute } from './router';
 
 export function App() {
-  return (
-    <MeProvider>
-      <Screen />
-    </MeProvider>
-  );
+  const route = useRoute();
+  // The pages before a session render outside MeProvider; entering the app mounts it, so /api/me is fresh.
+  switch (route.name) {
+    case 'login':
+      return <LoginPage />;
+    case 'signup':
+      return <SignupPage />;
+    case 'reset':
+      return <ResetPage />;
+    default:
+      return (
+        <MeProvider>
+          <Screen route={route} />
+        </MeProvider>
+      );
+  }
 }
 
-function Screen() {
-  const route = useRoute();
+function Screen({ route }: { route: Route }) {
   switch (route.name) {
     case 'emitters':
       return <EmittersPage accountId={route.accountId} />;
@@ -48,6 +62,8 @@ function Screen() {
       return <MembersPage accountId={route.accountId} />;
     case 'admin':
       return <AdminPage />;
+    case 'profile':
+      return <ProfilePage />;
     default:
       return <HomePage />;
   }

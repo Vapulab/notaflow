@@ -3,22 +3,24 @@ import { type FakeNacional, startFakeNacional } from '@notaflow/fake-nacional';
 import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
 import type { ExchangeRateSource } from '../src/exchange/ptax';
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app';
-import { createAccessVerifier } from '../src/auth/accessVerifier';
+import { type AuthDeps, createAuth } from '../src/auth/betterAuth';
+import type { MailMessage } from '../src/mail/mailer';
+import { users } from '../src/db/schema';
 import { nacionalIssuerFactory } from '../src/providers/providerFactory';
 import { loadConfig } from '../src/config';
 import { type Database, openDatabase } from '../src/db/openDatabase';
 
 export const ORIGIN = 'http://localhost:3000';
-const ISSUER = 'https://test.cloudflareaccess.com';
-const AUDIENCE = 'test-aud';
 
 export interface TestApp {
   app: FastifyInstance;
   db: Database;
   fake: FakeNacional;
-  tokenFor(email: string): Promise<string>;
+  // Every e-mail the app sent, in order.
+  mail: MailMessage[];
+  cookieFor(email: string): Promise<string>;
   as(email: string): Promise<Record<string, string>>;
   close(): Promise<void>;
 }
@@ -30,26 +32,39 @@ export async function createTestApp(
     ptaxDispatcher?: Dispatcher;
     exchangeRate?: ExchangeRateSource;
     cepDispatcher?: Dispatcher;
+    env?: Record<string, string>;
+    googleUserInfo?: AuthDeps['googleUserInfo'];
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
   const { db, close } = openDatabase(':memory:');
-  const { publicKey, privateKey } = await generateKeyPair('RS256');
-  const jwks = createLocalJWKSet({ keys: [{ ...(await exportJWK(publicKey)), alg: 'RS256' }] });
   const config = loadConfig({
     NODE_ENV: 'test',
     DATABASE_PATH: ':memory:',
     APP_ORIGIN: ORIGIN,
     NFSE_MASTER_KEY: Buffer.alloc(32, 9).toString('base64'),
-    AUTH_MODE: 'access',
-    CF_ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com',
-    CF_ACCESS_AUD: AUDIENCE,
+    AUTH_MODE: 'session',
+    BETTER_AUTH_SECRET: 'test-secret-'.repeat(4),
+    SIGNUP_OPEN: 'true',
     NACIONAL_FAKE_URL: fake.urls.sefin.replace('/SefinNacional', ''),
+    ...options.env,
+  });
+  const mail: MailMessage[] = [];
+  const mailer = async (message: MailMessage) => {
+    mail.push(message);
+  };
+  const auth = createAuth({
+    config,
+    db,
+    mailer,
+    testUtils: true,
+    ...(options.googleUserInfo ? { googleUserInfo: options.googleUserInfo } : {}),
   });
   const app = buildApp({
     config,
     db,
-    verifyAccessToken: createAccessVerifier({ issuer: ISSUER, audience: AUDIENCE, jwks }),
+    mailer,
+    auth,
     ...(options.logStream ? { logStream: options.logStream } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),
     ...(options.cepDispatcher ? { cepDispatcher: options.cepDispatcher } : {}),
@@ -71,22 +86,30 @@ export async function createTestApp(
   });
   await app.ready();
 
-  const tokenFor = (email: string) =>
-    new SignJWT({ email })
-      .setProtectedHeader({ alg: 'RS256' })
-      .setIssuer(ISSUER)
-      .setAudience(AUDIENCE)
-      .setIssuedAt()
-      .setExpirationTime('5m')
-      .sign(privateKey);
+  // A real signed session cookie without the login flow (test-utils plugin), one per e-mail.
+  const cookies = new Map<string, string>();
+  const cookieFor = async (email: string) => {
+    const cached = cookies.get(email.toLowerCase());
+    if (cached) return cached;
+    const user = db.select().from(users).where(eq(users.email, email.toLowerCase())).get();
+    if (!user) throw new Error(`No user ${email}; seed it first.`);
+    const context = (await auth.$context) as unknown as {
+      test: { getAuthHeaders(opts: { userId: string }): Promise<Headers> };
+    };
+    const headers = await context.test.getAuthHeaders({ userId: user.id });
+    const cookie = headers.get('cookie') ?? '';
+    cookies.set(email.toLowerCase(), cookie);
+    return cookie;
+  };
 
   return {
     app,
     db,
     fake,
-    tokenFor,
+    mail,
+    cookieFor,
     as: async (email) => ({
-      'cf-access-jwt-assertion': await tokenFor(email),
+      cookie: await cookieFor(email),
       origin: ORIGIN,
       'content-type': 'application/json',
     }),

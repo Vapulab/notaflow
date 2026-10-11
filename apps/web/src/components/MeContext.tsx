@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useContext } from 'react';
-import { api, type Environment, type Me } from '../api';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
+import { api, ApiError, type Environment, type Me } from '../api';
+import { navigate } from '../router';
 import { useAsync } from './useAsync';
 
 // Who is logged in, fetched once for the whole app. Null while loading or when unknown.
@@ -7,6 +8,13 @@ export const MeContext = createContext<Me | null>(null);
 
 export function MeProvider({ children }: { children: ReactNode }) {
   const me = useAsync(() => api.get<Me>('/api/me'), []);
+  const signedOut = me.error instanceof ApiError && me.error.status === 401;
+  // No session: log in, then come back to this page.
+  useEffect(() => {
+    if (!signedOut) return;
+    const here = window.location.pathname + window.location.search;
+    navigate(`/entrar?volta=${encodeURIComponent(here)}`, { replace: true });
+  }, [signedOut]);
   return <MeContext.Provider value={me.data ?? null}>{children}</MeContext.Provider>;
 }
 

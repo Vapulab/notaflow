@@ -41,7 +41,7 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 | `pytest services/signer-py` | Python signer tests |
 | `pnpm dev:web` | Vite dev server for the UI, proxying `/api` to the local server |
 | `pnpm build:web` | Build the UI into `apps/web/dist`; the server serves it |
-| `pnpm dev:server` | Local server; needs `apps/server/.env.local` and `pnpm fake:nacional` |
+| `pnpm dev:server` | Local server; needs `apps/server/.env.local` and `pnpm fake:nacional`. Without `RESEND_API_KEY`, it prints login codes to its log |
 | `pnpm seed:admin <email> <name>` | Create or promote a platform admin |
 | `pnpm fake:nacional` | Local fake of the Sefin and the ADN on port 4010 |
 | `pnpm spike:sefin` | Stage 0 spike against produção restrita (needs `.env.local`) |

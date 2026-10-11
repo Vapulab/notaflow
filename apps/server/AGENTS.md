@@ -6,7 +6,8 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 
 - Entry: `src/main.ts` (`pnpm dev:server`); app wiring: `src/app.ts`; config: `src/config.ts`
 - Database: `src/db/schema.ts`; migrations in `drizzle/` (`pnpm --filter @notaflow/server exec drizzle-kit generate --name <name>`)
-- Tests: `test/testApp.ts` builds the app on an in-memory database, signs Access tokens, and starts the fake national system
+- Login: Better Auth in `src/auth/betterAuth.ts`, mounted at `/api/auth/*` by `src/auth/authRoutes.ts`; `src/auth/authHook.ts` turns the session into an identity; e-mail in `src/mail/`
+- Tests: `test/testApp.ts` builds the app on an in-memory database, logs in with `t.as(email)` (a real session cookie), collects sent e-mail in `t.mail`, and starts the fake national system
 - Local run: copy `.env.example` to `.env.local`, then `pnpm fake:nacional`, `pnpm seed:admin <email> <name>`, and `pnpm dev:server`
 
 ## Documentation Index
@@ -28,3 +29,4 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 6. A new invoice without a template resends its stored `issue_template`; never rebuild it from the current customer or service records.
 7. The national service code list is `src/data/serviceCodes.json`, converted from the official Anexo B; the loader names its source and date.
 8. Never delete a business row (a trigger refuses it): writes spread `created`/`touched` from `src/db/stamps.ts`, reads use `notDeleted`, removal is `softDelete`. A migration that rebuilds a table recreates its `<table>_no_delete` trigger. See [Data](../../docs/ENGINEERING/CONVENTIONS/DATA.md).
+9. Better Auth keeps its rate-limit counters per process: a test that calls `/api/auth/*` more than twice uses its own `remoteAddress`.

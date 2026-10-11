@@ -21,7 +21,10 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | Secret | Where | Note |
 | --- | --- | --- |
 | `NFSE_MASTER_KEY` | `/opt/notaflow/.env` | Generated on the VPS. Keep a copy in the password manager, never next to a backup. Without it, stored certificates cannot be opened: users upload the `.pfx` again |
-| `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` | `/opt/notaflow/.env` | From the Cloudflare Access application of `notaflow.vapulab.com` |
+| `BETTER_AUTH_SECRET` | `/opt/notaflow/.env` | Signs the session cookies. Changing it logs everyone out |
+| `RESEND_API_KEY` | `/opt/notaflow/.env` | Sends the login codes from `nao-responda@notaflow.vapulab.com` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `/opt/notaflow/.env` | Google Cloud project `NotaFlow`, client `NotaFlow web` |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | `/opt/notaflow/.env` | The Turnstile widget of `notaflow.vapulab.com` |
 | `VM_SSH_KEY`, `VM_KNOWN_HOSTS`, `VM_HOST` | Secrets of the GitHub environment `production`, which only the `production` branch can use | The deploy key (`notaflow-deploy` in `/root/.ssh/authorized_keys`, with `restrict`: no forwarding, no terminal) |
 
 To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_KEY /opt/notaflow/.env"` in your own terminal.
@@ -70,11 +73,11 @@ docker compose start app
 
 The backups live on the same disk as the database. After a VPS loss, the ADN is the backup for invoices: deploy again, onboard the emitter with its `.pfx`, and sync. What exists only in the database (accounts, users, manual customer data, the audit log, DPS numbering) needs a backup copied off the VPS; that is planned after Stage 1.
 
-## Cloudflare Access
+## Login
 
-The Access application `NotaFlow` protects `notaflow.vapulab.com` (team `plain-hat-ef9e.cloudflareaccess.com`, login by one-time PIN by email, 24 h sessions). Its policy is the **reusable** policy "NotaFlow users (the app authorizes)", which allows any email: the app then checks the email against its own users. A policy written inline in the application (the legacy, app-scoped kind) denied every login on this account with "That account does not have access"; keep the policy reusable.
+The app has its own login (Better Auth, stage 3b): e-mail code, Google, password, and passkey. The codes come from `nao-responda@notaflow.vapulab.com` through Resend. `SIGNUP_OPEN=false` keeps signup closed until onboarding ships: existing users log in, and a platform admin links new users as before.
 
-The PIN comes from `noreply@notify.cloudflare.com`. A new user logs in once, sees "Você ainda não participa de nenhuma conta" with their user id, and a platform admin links that id to an account.
+Cloudflare Access protected the hostname until the stage 3b cut-over. After it, the hostname is public; the tunnel, the WAF, and Turnstile stay.
 
 ## The tunnel
 

@@ -62,7 +62,10 @@ test('linking picks the account by name and finds the user by name, then sends t
   expect(within(form).queryByLabelText(/buscar usuário/i)).toBeNull();
   await user.type(combo, 'tal');
   const option = await within(form).findByRole('option', { name: /talita@example.com/ });
-  expect(within(form).queryByRole('option', { name: /lincoln@example.com/ })).toBeNull();
+  // The search reruns per keystroke; an earlier answer can still list lincoln for a moment.
+  await waitFor(() =>
+    expect(within(form).queryByRole('option', { name: /lincoln@example.com/ })).toBeNull(),
+  );
   await user.click(option);
   expect((combo as HTMLInputElement).value).toBe('Talita (talita@example.com)');
   await user.selectOptions(within(form).getByLabelText(/^papel/i), 'member');

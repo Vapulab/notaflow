@@ -20,9 +20,8 @@ beforeAll(async () => {
     DATABASE_PATH: ':memory:',
     APP_ORIGIN: 'http://localhost:3000',
     NFSE_MASTER_KEY: Buffer.alloc(32).toString('base64'),
-    AUTH_MODE: 'access',
-    CF_ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com',
-    CF_ACCESS_AUD: 'aud',
+    AUTH_MODE: 'session',
+    BETTER_AUTH_SECRET: 'test-secret-'.repeat(4),
   });
   const opened = openDatabase(':memory:');
   close = opened.close;
@@ -30,9 +29,7 @@ beforeAll(async () => {
     config,
     db: opened.db,
     webRoot: root,
-    verifyAccessToken: async () => {
-      throw new Error('no token is valid here');
-    },
+    mailer: async () => {},
   });
   await app.ready();
 });
@@ -56,4 +53,25 @@ test('an unknown page path falls back to index.html without authentication', asy
 test('an unknown /api path still needs authentication, also when percent-encoded', async () => {
   expect((await app.inject({ url: '/api/nao-existe' })).statusCode).toBe(401);
   expect((await app.inject({ url: '/%61pi/nao-existe' })).statusCode).toBe(401);
+});
+
+test.each([
+  '/app',
+  '/app/x/notas',
+  '/app/x/notas/nova?cliente=c',
+  '/entrar',
+  '/cadastro',
+  '/recuperar-senha',
+  '/admin',
+])('a reload on %s serves the app', async (url) => {
+  const response = await app.inject({ url });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toContain('text/html');
+  expect(response.body).toContain('id="root"');
+});
+
+test('an /api path never falls back to the app page', async () => {
+  const response = await app.inject({ url: '/api/nothing' });
+  expect(response.statusCode).toBe(401);
+  expect(response.headers['content-type']).toContain('application/json');
 });

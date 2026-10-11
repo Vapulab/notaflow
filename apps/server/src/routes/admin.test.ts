@@ -292,3 +292,59 @@ test('a platform admin cannot anonymize themself', async () => {
   expect(response.statusCode).toBe(409);
   expect(response.json()).toMatchObject({ error: 'cannot_anonymize_self' });
 });
+
+test('anonymizing a user ends their sessions', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
+  const userHeaders = await t.as('pessoa@example.com');
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${a.userId}/anonymize`,
+    headers: await t.as('admin@example.com'),
+    payload: {},
+  });
+  expect(response.statusCode).toBe(204);
+  const left = t.db.$client
+    .prepare('SELECT count(*) AS n FROM auth_sessions WHERE user_id = ?')
+    .get(a.userId);
+  expect(left).toEqual({ n: 0 });
+  const me = await t.app.inject({ method: 'GET', url: '/api/me', headers: userHeaders });
+  expect(me.statusCode).toBe(401);
+});
+
+test('anonymizing removes the login credentials and the picture, which hold personal data', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
+  const run = (sql: string, ...args: unknown[]) => t.db.$client.prepare(sql).run(...args);
+  run("UPDATE users SET image = 'https://example.com/foto.png' WHERE id = ?", a.userId);
+  run(
+    `INSERT INTO auth_accounts (id, user_id, account_id, provider_id, id_token, created_at, updated_at)
+     VALUES ('g1', ?, 'google-sub', 'google', 'header.payload.sig', 0, 0)`,
+    a.userId,
+  );
+  run(
+    `INSERT INTO auth_passkeys (id, name, public_key, user_id, credential_id, counter, device_type, backed_up)
+     VALUES ('pk1', 'Notebook', 'key', ?, 'cred', 0, 'singleDevice', 0)`,
+    a.userId,
+  );
+  run(
+    `INSERT INTO auth_verifications (id, identifier, value, expires_at)
+     VALUES ('v1', 'sign-in-otp-pessoa@example.com', 'hash', 0)`,
+  );
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${a.userId}/anonymize`,
+    headers: await t.as('admin@example.com'),
+    payload: {},
+  });
+  expect(response.statusCode).toBe(204);
+  const count = (sql: string) => (t.db.$client.prepare(sql).get() as { n: number }).n;
+  expect(count('SELECT count(*) AS n FROM auth_accounts')).toBe(0);
+  expect(count('SELECT count(*) AS n FROM auth_passkeys')).toBe(0);
+  expect(
+    count(
+      "SELECT count(*) AS n FROM auth_verifications WHERE identifier LIKE '%pessoa@example.com'",
+    ),
+  ).toBe(0);
+  expect(t.db.$client.prepare('SELECT image FROM users WHERE id = ?').get(a.userId)).toEqual({
+    image: null,
+  });
+});

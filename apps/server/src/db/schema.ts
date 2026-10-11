@@ -1,5 +1,13 @@
 import { sql } from 'drizzle-orm';
-import { blob, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  blob,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 // Business tables are never deleted from (a trigger refuses it): removal sets deleted_at.
 // A migration that rebuilds a table must recreate its <table>_no_delete trigger; a test checks it.
@@ -47,6 +55,8 @@ export const users = sqliteTable(
       .notNull()
       .default('user'),
     lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
+    emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
+    image: text('image'),
     createdAt: createdAt(),
     updatedAt: changedAt(),
     ...authors(),
@@ -308,4 +318,80 @@ export const syncState = sqliteTable(
     ...removal(),
   },
   (table) => [primaryKey({ columns: [table.emitterId, table.environment] })],
+);
+
+// Better Auth credentials: it deletes these rows on expiry, sign-out, unlink, or removal, and the audit log keeps the event.
+const authTime = (name: string) => integer(name, { mode: 'timestamp_ms' });
+const authUser = () =>
+  text('user_id')
+    .notNull()
+    .references(() => users.id);
+
+export const authSessions = sqliteTable(
+  'auth_sessions',
+  {
+    id: id(),
+    userId: authUser(),
+    token: text('token').notNull().unique(),
+    expiresAt: authTime('expires_at').notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: authTime('created_at').notNull(),
+    updatedAt: authTime('updated_at').notNull(),
+  },
+  (table) => [index('auth_sessions_user').on(table.userId)],
+);
+
+export const authAccounts = sqliteTable(
+  'auth_accounts',
+  {
+    id: id(),
+    userId: authUser(),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: authTime('access_token_expires_at'),
+    refreshTokenExpiresAt: authTime('refresh_token_expires_at'),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: authTime('created_at').notNull(),
+    updatedAt: authTime('updated_at').notNull(),
+  },
+  (table) => [index('auth_accounts_user').on(table.userId)],
+);
+
+export const authVerifications = sqliteTable(
+  'auth_verifications',
+  {
+    id: id(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: authTime('expires_at').notNull(),
+    createdAt: authTime('created_at'),
+    updatedAt: authTime('updated_at'),
+  },
+  (table) => [index('auth_verifications_identifier').on(table.identifier)],
+);
+
+export const authPasskeys = sqliteTable(
+  'auth_passkeys',
+  {
+    id: id(),
+    name: text('name'),
+    publicKey: text('public_key').notNull(),
+    userId: authUser(),
+    credentialID: text('credential_id').notNull(),
+    counter: integer('counter').notNull(),
+    deviceType: text('device_type').notNull(),
+    backedUp: integer('backed_up', { mode: 'boolean' }).notNull(),
+    transports: text('transports'),
+    createdAt: authTime('created_at'),
+    aaguid: text('aaguid'),
+  },
+  (table) => [
+    index('auth_passkeys_user').on(table.userId),
+    index('auth_passkeys_credential').on(table.credentialID),
+  ],
 );

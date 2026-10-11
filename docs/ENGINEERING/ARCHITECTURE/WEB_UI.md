@@ -27,17 +27,23 @@ The tokens switch to dark colors when the OS asks for dark, unless the page sets
 
 | Route | Screen |
 | --- | --- |
-| `#/` | Home: the user's accounts |
-| `#/admin` | Platform admin |
-| `#/a/:accountId/invoices` | Invoices, filters, lookup by access key |
-| `#/a/:accountId/invoices/new` (optional `?customer=<id>`) | Nova nota: an invoice without a template, simplified mode and "Mais opções" |
-| `#/a/:accountId/invoices/:invoiceId` | Invoice detail: issue similar, cancel, verify at the Sefin |
-| `#/a/:accountId/invoices/:invoiceId/issue` | Issue similar: form with PTAX, review, result |
-| `#/a/:accountId/emitters` | Emitters, onboarding, certificate, environment, sync |
-| `#/a/:accountId/emitters/:emitterId` | Emitter: fiscal configuration (Simples annex and band, ISS rate, IBS/CBS regime) and services |
-| `#/a/:accountId/customers` | Customers; "Novo cliente" in Brazil or abroad |
-| `#/a/:accountId/customers/:customerId` | Customer edit by hand |
-| `#/a/:accountId/members` | Members |
+| `/entrar` | Login: e-mail code, Google, password, passkey; `?volta=` names the page to return to |
+| `/cadastro` | Signup with a password, then the e-mail code (closed while `SIGNUP_OPEN=false`) |
+| `/recuperar-senha` | Create or reset a password with an e-mail code |
+| `/app` | Home: the user's accounts |
+| `/app/conta` | My account: name, password, passkeys, Google, active sessions |
+| `/admin` | Platform admin |
+| `/app/:accountId/notas` | Invoices, filters, lookup by access key |
+| `/app/:accountId/notas/nova` (optional `?cliente=<id>`) | Nova nota: an invoice without a template, simplified mode and "Mais opções" |
+| `/app/:accountId/notas/:invoiceId` | Invoice detail: issue similar, cancel, verify at the Sefin |
+| `/app/:accountId/notas/:invoiceId/emitir` | Issue similar: form with PTAX, review, result |
+| `/app/:accountId/emitentes` | Emitters, onboarding, certificate, environment, sync |
+| `/app/:accountId/emitentes/:emitterId` | Emitter: fiscal configuration (Simples annex and band, ISS rate, IBS/CBS regime) and services |
+| `/app/:accountId/clientes` | Customers; "Novo cliente" in Brazil or abroad |
+| `/app/:accountId/clientes/:customerId` | Customer edit by hand |
+| `/app/:accountId/membros` | Members |
+
+An old link of the hash routes (`/#/a/:accountId/invoices/...`) is replaced by its path on load. Without a session, an app page sends the browser to `/entrar?volta=<page>`.
 
 The issue review and the cancel dialog show the environment badge, and their confirm buttons name the environment ("Emitir em PRODUÇÃO", "Cancelar em PRODUÇÃO"). The issue form keeps one `Idempotency-Key` per review. After an answer that does not say whether the invoice exists (a network error, a 5xx, or a proxy timeout such as Cloudflare's 524), the review allows only "Tentar de novo" with the same key, and the key and the reviewed values survive a reload (`sessionStorage`). A 4xx answer is definitive: the server refused before reserving a number, so the user may edit again. So is a 502 `ptax_unavailable`.
 

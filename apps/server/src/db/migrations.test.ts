@@ -160,3 +160,23 @@ test('every business table has its no-delete trigger, and every table is classif
   expect([...tables].sort()).toEqual([...BUSINESS].sort());
   client.close();
 });
+
+test('stage 3b: current users keep their row and count as verified; the auth tables accept deletes', () => {
+  const client = new BetterSqlite3(':memory:');
+  migrate(drizzle(client), { migrationsFolder: migrationsUpTo(8) });
+  client
+    .prepare("INSERT INTO users (id, email, name) VALUES ('u1', 'pessoa@example.com', 'Pessoa')")
+    .run();
+  migrate(drizzle(client), { migrationsFolder: MIGRATIONS });
+  expect(client.prepare('SELECT id, email_verified, image FROM users').all()).toEqual([
+    { id: 'u1', email_verified: 1, image: null },
+  ]);
+  for (const table of ['auth_sessions', 'auth_accounts', 'auth_verifications', 'auth_passkeys']) {
+    expect(() => client.prepare(`DELETE FROM ${table}`).run(), table).not.toThrow();
+  }
+  const trigger = client
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'users_no_delete'")
+    .get();
+  expect(trigger).toEqual({ name: 'users_no_delete' });
+  client.close();
+});

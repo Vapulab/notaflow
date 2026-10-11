@@ -22,7 +22,7 @@ test('the dashboard shows each option of the account as a card link', async () =
   render(<HomePage />);
   // A card carries a title and a line that says what the option is for.
   expect((await screen.findByRole('link', { name: /notas.*emitir/i })).getAttribute('href')).toBe(
-    '#/a/acc/invoices',
+    '/app/acc/notas',
   );
   expect(screen.getByRole('link', { name: /emitentes.*certificado/i })).toBeTruthy();
   expect(screen.getByRole('link', { name: /clientes.*tomadores/i })).toBeTruthy();
@@ -35,7 +35,7 @@ test('an owner gets Membros and the platform admin gets the admin panel card', a
   render(<HomePage />);
   expect(await screen.findByRole('link', { name: /membros.*convide/i })).toBeTruthy();
   expect(screen.getByRole('link', { name: /painel do administrador/i }).getAttribute('href')).toBe(
-    '#/admin',
+    '/admin',
   );
 });
 
@@ -43,5 +43,5 @@ test('the dashboard has a Nova nota card per account', async () => {
   stubApi({ '/api/me': me('user', 'member') });
   render(<HomePage />);
   const card = await screen.findByRole('link', { name: /nova nota.*sem modelo/i });
-  expect(card.getAttribute('href')).toBe('#/a/acc/invoices/new');
+  expect(card.getAttribute('href')).toBe('/app/acc/notas/nova');
 });

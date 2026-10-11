@@ -15,3 +15,12 @@ test('seedAdmin creates a platform admin once and promotes an existing user', ()
   expect(new IdentityRepository(db).findByEmail('user@example.com')?.platformRole).toBe('admin');
   close();
 });
+
+test('a seeded admin counts as a verified e-mail, so Google can link to it', () => {
+  const { db, close } = openDatabase(':memory:');
+  seedAdmin(db, 'admin@example.com', 'Admin');
+  expect(db.$client.prepare('SELECT email_verified FROM users').get()).toEqual({
+    email_verified: 1,
+  });
+  close();
+});

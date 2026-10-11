@@ -26,7 +26,15 @@ export function seedAdmin(
   }
   const userId = randomUUID();
   db.insert(users)
-    .values({ ...created(null), id: userId, email: normalized, name, platformRole: 'admin' })
+    // The person running the seed vouches for the e-mail, so Google can link to it.
+    .values({
+      ...created(null),
+      id: userId,
+      email: normalized,
+      name,
+      platformRole: 'admin',
+      emailVerified: true,
+    })
     .run();
   return { userId, created: true };
 }

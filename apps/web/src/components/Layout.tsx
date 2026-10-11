@@ -1,12 +1,33 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
 import { formatCents, formatDate } from '../format';
-import { routeHref, useRoute } from '../router';
+import { signOut } from '../auth/authApi';
+import { navigate, routeHref, useRoute } from '../router';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, ThemeToggle } from '../ui';
 
 export const ERROR_TEXT: Record<string, string> = {
-  access_not_granted: 'Seu e-mail ainda não tem acesso ao NotaFlow. Fale com o administrador.',
+  unauthenticated: 'Sua sessão terminou. Entre de novo.',
+  signup_closed: 'O cadastro de novas empresas abre em breve.',
+  signup_limit: 'Muitos cadastros a partir desta rede hoje. Tente amanhã.',
+  account_removed: 'Esta conta foi removida. Fale com o suporte.',
+  rate_limited: 'Muitas tentativas. Espere um minuto e tente de novo.',
+  INVALID_OTP: 'Código incorreto. Confira e tente de novo.',
+  OTP_EXPIRED: 'Este código expirou. Peça um novo.',
+  TOO_MANY_ATTEMPTS: 'Tentativas demais com este código. Peça um novo.',
+  INVALID_EMAIL_OR_PASSWORD: 'E-mail ou senha incorretos.',
+  EMAIL_NOT_VERIFIED:
+    'Seu e-mail ainda não foi confirmado. Entre com um código por e-mail; ele confirma o e-mail.',
+  PASSWORD_TOO_SHORT: 'A senha precisa de pelo menos 10 caracteres.',
+  PASSWORD_COMPROMISED: 'Esta senha apareceu em vazamentos conhecidos. Escolha outra.',
+  USER_ALREADY_EXISTS: 'Já existe uma conta com este e-mail. Entre ou redefina a senha.',
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL:
+    'Já existe uma conta com este e-mail. Entre ou redefina a senha.',
+  MISSING_RESPONSE: 'Confirme que você não é um robô e tente de novo.',
+  VERIFICATION_FAILED: 'A verificação anti-robô falhou. Tente de novo.',
+  INVALID_EMAIL: 'E-mail inválido.',
+  // The browser closed or refused the passkey prompt; the cause stays in the browser.
+  ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY: 'O navegador não concluiu a passkey. Tente de novo.',
   account_suspended: 'Esta conta está suspensa. Você pode consultar, mas não alterar.',
   owner_only: 'Só o dono da conta pode fazer isso.',
   cnpj_in_other_account: 'Este CNPJ já pertence a outra conta.',
@@ -97,7 +118,7 @@ const SECTIONS = [
   { name: 'members', label: 'Membros', current: ['members'] },
 ] as const;
 
-// Malphas Navbar and page shell, without Alpine: the links are plain hash routes.
+// Malphas Navbar and page shell, without Alpine: the links are plain paths that useRoute keeps in the app.
 export function Layout(props: { title: string; accountId?: string; children: ReactNode }) {
   const route = useRoute();
   const me = useMe();
@@ -133,14 +154,20 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
           )}
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
-            {me && <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />}
-            {/* Cloudflare Access serves this path on the app's own domain and ends its session. */}
-            <a
-              href="/cdn-cgi/access/logout"
+            {me && (
+              <a href={routeHref({ name: 'profile' })} title="Minha conta" aria-label="Minha conta">
+                <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                void signOut().finally(() => navigate('/entrar', { replace: true }));
+              }}
               className={`text-sm ${linkClasses({ variant: 'muted' })}`}
             >
               Sair
-            </a>
+            </button>
           </div>
         </nav>
       </header>

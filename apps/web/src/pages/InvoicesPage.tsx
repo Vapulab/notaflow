@@ -4,7 +4,7 @@ import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { formatCents, formatCompetence } from '../format';
 import { danfseErrorText, downloadFile } from '../download';
-import { routeHref } from '../router';
+import { navigate, routeHref } from '../router';
 import {
   Alert,
   Badge,
@@ -78,7 +78,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
       const { id } = await api.post<{ id: string }>(`${base}/invoices/lookup`, {
         accessKey: accessKey.trim(),
       });
-      window.location.hash = routeHref({ name: 'invoice', accountId, invoiceId: id });
+      navigate({ name: 'invoice', accountId, invoiceId: id });
     } catch (error) {
       setLookupError(errorText(error));
     }
@@ -183,7 +183,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
             <TBody>
               {page.data.items.map((invoice) => {
                 const open = () => {
-                  window.location.hash = routeHref({
+                  navigate({
                     name: 'invoice',
                     accountId,
                     invoiceId: invoice.id,

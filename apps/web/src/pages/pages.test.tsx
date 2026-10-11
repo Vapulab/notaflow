@@ -8,7 +8,7 @@ import { InvoicesPage } from './InvoicesPage';
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  window.location.hash = '';
+  window.history.replaceState(null, '', '/');
 });
 
 const invoice = {
@@ -50,7 +50,9 @@ test('the lookup posts the key and opens the found invoice', async () => {
   const user = userEvent.setup();
   await user.type(screen.getByLabelText(/chave de acesso/i), 'K'.repeat(50));
   await user.click(screen.getByRole('button', { name: /buscar/i }));
-  await waitFor(() => expect(window.location.hash).toBe('#/a/acc/invoices/inv1'));
+  await waitFor(() =>
+    expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/inv1'),
+  );
   expect(calls.find((c) => c.url.endsWith('/lookup'))?.init?.body).toBe(
     JSON.stringify({ accessKey: 'K'.repeat(50) }),
   );
@@ -63,7 +65,7 @@ test('each issued or cancelled invoice has Emitir parecida and PDF in the list',
   });
   render(<InvoicesPage accountId="acc" />);
   const link = await screen.findByRole('link', { name: 'Emitir parecida' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/inv1/issue');
+  expect(link.getAttribute('href')).toBe('/app/acc/notas/inv1/emitir');
   expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
 });
 
@@ -110,7 +112,7 @@ test('a click on the row opens the invoice; the list has no number or environmen
   expect(screen.queryByRole('columnheader', { name: 'Número' })).toBeNull();
   expect(screen.queryByRole('columnheader', { name: 'Ambiente' })).toBeNull();
   await user.click(row as HTMLElement);
-  expect(window.location.hash).toBe('#/a/acc/invoices/inv1');
+  expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/inv1');
 });
 
 test('the row opens with Enter, and its buttons do not open it', async () => {
@@ -126,11 +128,11 @@ test('the row opens with Enter, and its buttons do not open it', async () => {
   render(<InvoicesPage accountId="acc" />);
   const user = userEvent.setup();
   await user.click(await screen.findByRole('button', { name: 'PDF' }));
-  expect(window.location.hash).toBe('');
+  expect(window.location.pathname + window.location.search).toBe('/');
   const row = screen.getByText('Foreign Customer Inc').closest('tr') as HTMLElement;
   row.focus();
   await user.keyboard('{Enter}');
-  expect(window.location.hash).toBe('#/a/acc/invoices/inv1');
+  expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/inv1');
 });
 
 test('a produção restrita invoice carries a Teste badge; a production one does not', async () => {
@@ -158,5 +160,5 @@ test('the invoice list links to Nova nota', async () => {
   });
   render(<InvoicesPage accountId="acc" />);
   const link = await screen.findByRole('link', { name: 'Nova nota' });
-  expect(link.getAttribute('href')).toBe('#/a/acc/invoices/new');
+  expect(link.getAttribute('href')).toBe('/app/acc/notas/nova');
 });

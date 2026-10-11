@@ -45,7 +45,7 @@ beforeAll(async () => {
 });
 afterAll(() => t.close());
 
-const PUBLIC = new Set(['GET /api/health']);
+const PUBLIC = new Set(['GET /api/health', 'GET /api/public/config']);
 
 function fill(url: string): string {
   return url.replace(/:([A-Za-z]+)/g, (_, name: string) => {
@@ -75,6 +75,8 @@ describe('every /api route', () => {
   test('requires authentication', async () => {
     for (const route of t.app.routeList) {
       if (!route.url.startsWith('/api/') || PUBLIC.has(`${route.method} ${route.url}`)) continue;
+      // Better Auth owns its routes; the next test covers them.
+      if (route.url.startsWith('/api/auth/')) continue;
       const response = await t.app.inject({ method: route.method as 'GET', url: fill(route.url) });
       expect(response.statusCode, `${route.method} ${route.url}`).toBe(401);
     }
@@ -116,6 +118,33 @@ describe('every /api route', () => {
       payload: 'x',
     });
     expect(response.statusCode).toBe(415);
+  });
+
+  test('the Better Auth routes answer without a session and never open one', async () => {
+    const session = await t.app.inject({ method: 'GET', url: '/api/auth/get-session' });
+    expect(session.statusCode).toBe(200);
+    expect(session.json()).toBeNull();
+    const sessions = () =>
+      (t.db.$client.prepare('SELECT count(*) AS n FROM auth_sessions').get() as { n: number }).n;
+    const before = sessions();
+    const out = await t.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-out',
+      headers: { origin: 'http://localhost:3000', 'content-type': 'application/json' },
+      payload: {},
+    });
+    expect(out.statusCode).toBeLessThan(500);
+    expect(sessions()).toBe(before);
+  });
+
+  test('the public configuration needs no session and holds no secret', async () => {
+    const response = await t.app.inject({ method: 'GET', url: '/api/public/config' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      googleEnabled: false,
+      turnstileSiteKey: null,
+      signupOpen: true,
+    });
   });
 
   test('a query string on the health route needs no authentication', async () => {
