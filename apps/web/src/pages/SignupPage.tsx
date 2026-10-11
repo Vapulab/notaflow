@@ -3,9 +3,21 @@ import { signUpWithPassword, verifyEmail } from '../auth/authApi';
 import { CodeField } from '../auth/CodeField';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
+import { api, type Me } from '../api';
+import { LegalCheckbox } from '../components/LegalGate';
 import { errorText } from '../components/Layout';
 import { navigate } from '../router';
 import { Alert, Button, Field, FORM_CLASSES, Input, Link } from '../ui';
+
+// The box checked on the form becomes the record once the account exists; if this fails, the app asks again.
+async function recordAcceptance() {
+  try {
+    const me = await api.get<Me>('/api/me');
+    if (me.legalVersion) await api.post('/api/me/legal-acceptance', { version: me.legalVersion });
+  } catch {
+    // The acceptance screen of the app covers it.
+  }
+}
 
 export function SignupPage() {
   const config = usePublicConfig();
@@ -17,6 +29,7 @@ export function SignupPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const [legal, setLegal] = useState(false);
   const onToken = useCallback((value: string | null) => setToken(value), []);
 
   if (!config.data) return <PublicLoading />;
@@ -43,6 +56,7 @@ export function SignupPage() {
         setStep('code');
       } else {
         await verifyEmail(email, code);
+        await recordAcceptance();
         navigate('/app', { replace: true });
       }
     } catch (failure) {
@@ -85,11 +99,12 @@ export function SignupPage() {
                 required
               />
             </Field>
+            <LegalCheckbox checked={legal} onChange={setLegal} />
             {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} onToken={onToken} />}
             <Button
               type="submit"
               variant="primary"
-              disabled={busy || (!!turnstileSiteKey && !token)}
+              disabled={busy || !legal || (!!turnstileSiteKey && !token)}
             >
               Criar conta
             </Button>

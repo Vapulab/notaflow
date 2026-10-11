@@ -1,3 +1,4 @@
+import { LegalGate } from './components/LegalGate';
 import { MeProvider } from './components/MeContext';
 import { AdminPage } from './pages/AdminPage';
 import { CustomerPage } from './pages/CustomerPage';
@@ -30,7 +31,9 @@ export function App() {
     default:
       return (
         <MeProvider>
-          <Screen route={route} />
+          <LegalGate>
+            <Screen route={route} />
+          </LegalGate>
         </MeProvider>
       );
   }
