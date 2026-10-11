@@ -57,6 +57,13 @@
       "when": 1791680493865,
       "tag": "0007_no_delete_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791681023063,
+      "tag": "0008_audit_request",
+      "breakpoints": true
     }
   ]
 }

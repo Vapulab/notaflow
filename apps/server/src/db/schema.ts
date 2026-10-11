@@ -147,6 +147,10 @@ export const auditLog = sqliteTable('audit_log', {
   result: text('result', { enum: ['ok', 'refused', 'error'] }).notNull(),
   detail: text('detail'),
   at: createdAt(),
+  // Null when the entry comes from the system (the scheduler), not from a request.
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  requestId: text('request_id'),
 });
 
 export const customers = sqliteTable(

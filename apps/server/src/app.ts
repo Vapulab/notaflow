@@ -19,6 +19,7 @@ import { IdentityRepository } from './repos/IdentityRepository';
 import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
 import { customerRoutes } from './routes/customers';
+import { clientIp, requestContext } from './requestContext';
 import { cepRoutes } from './routes/cep';
 import { fiscalRoutes } from './routes/fiscal';
 import { serviceRoutes } from './routes/services';
@@ -66,6 +67,18 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     for (const method of [route.method].flat()) {
       if (method !== 'HEAD') routeList.push({ method, url: route.url });
     }
+  });
+  app.addHook('onRequest', (request, _reply, done) => {
+    const cf = request.headers['cf-connecting-ip'];
+    requestContext.enterWith({
+      ip: clientIp(
+        request.socket.remoteAddress ?? request.ip,
+        typeof cf === 'string' ? cf : undefined,
+      ),
+      userAgent: request.headers['user-agent'] ?? null,
+      requestId: request.id,
+    });
+    done();
   });
   app.setErrorHandler(handleError);
 
