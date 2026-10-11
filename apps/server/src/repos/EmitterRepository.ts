@@ -14,7 +14,9 @@ export type NewEmitter = Omit<
 export interface FiscalConfig {
   simplesAnnex: 'III' | 'V' | null;
   simplesBand: number | null;
-  simplesPercent: number | null; // hundredths
+  simplesPercent: number | null; // hundredths; the domestic rate
+  simplesRbt12Cents: number | null;
+  simplesRbt12At: Date | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null; // YYYY-MM-DD
@@ -138,6 +140,8 @@ export class EmitterRepository {
           simplesAnnex: emitters.simplesAnnex,
           simplesBand: emitters.simplesBand,
           simplesPercent: emitters.simplesPercent,
+          simplesRbt12Cents: emitters.simplesRbt12Cents,
+          simplesRbt12At: emitters.simplesRbt12At,
           issRate: emitters.issRate,
           ibscbsRegime: emitters.ibscbsRegime,
           ibscbsRegimeFrom: emitters.ibscbsRegimeFrom,

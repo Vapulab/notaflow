@@ -13,6 +13,7 @@ import {
   minimumIssRate,
   parseNfseXml,
   readTemplate,
+  simplesRate,
   TemplateUnsupportedError,
 } from '@notaflow/provider-nacional';
 import { country, municipality } from '../data/places';
@@ -154,6 +155,14 @@ export class IssueService {
 
     const templateCustomer = template.customer;
     const description = checkDescription(input.description) ?? template.service.description;
+    // With a revenue set, a copy takes this month's rate; without it, the rate of the original stays.
+    const fiscal = this.emitters.fiscalConfig(ctx, emitter.id);
+    const simplesPercent =
+      fiscal?.simplesAnnex && fiscal.simplesRbt12Cents !== null
+        ? simplesRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, {
+            export: template.service.foreignTrade !== undefined,
+          })
+        : undefined;
     const pending = this.deps.db.transaction(() => {
       // A second request with the same key may have passed the first check while this one awaited.
       const raced = repeated();
@@ -199,6 +208,7 @@ export class IssueService {
       ...(input.foreignAmountCents ? { foreignAmountCents: input.foreignAmountCents } : {}),
       description,
       ...(customer ? { customer } : {}),
+      ...(simplesPercent !== undefined ? { simplesPercent } : {}),
     });
     return {
       view: this.record(ctx, actor, 'invoice.issue', pending.id, emitter.id, outcome),
@@ -260,6 +270,13 @@ export class IssueService {
     if (!abroad && (input.foreignCurrency || input.foreignAmountCents)) {
       throw new HttpError(400, 'foreign_amount_not_allowed');
     }
+    // The effective rate of this month's revenue (an export leaves out ISS, Cofins, and PIS), or a typed one.
+    const simplesPercent =
+      input.simplesPercent ??
+      (fiscal.simplesAnnex && fiscal.simplesRbt12Cents !== null
+        ? simplesRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, { export: abroad })
+        : null);
+    if (simplesPercent === null) throw new HttpError(409, 'simples_revenue_missing');
     if (foreign && !BACEN_CURRENCY[foreign.currencyCode]) {
       throw new HttpError(400, 'unsupported_currency');
     }
@@ -317,7 +334,7 @@ export class IssueService {
       customer,
       serviceCents: input.serviceCents,
       ...(foreign ? { foreign } : {}),
-      simplesPercent: input.simplesPercent ?? fiscal.simplesPercent,
+      simplesPercent,
       ...(issRate !== undefined ? { issRate } : {}),
       ...(input.issRetained ? { issRetained: true } : {}),
     };
