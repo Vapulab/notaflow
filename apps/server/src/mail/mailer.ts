@@ -1,10 +1,13 @@
 import { type Dispatcher, request } from 'undici';
 
+export type MailKind = 'code' | 'invite' | 'welcome' | 'notice';
+
 export interface MailMessage {
   to: string;
   subject: string;
   html: string;
   text: string;
+  kind?: MailKind; // what the outbox may retry: a login code is never resent
 }
 
 export type Mailer = (message: MailMessage) => Promise<void>;

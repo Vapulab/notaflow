@@ -98,7 +98,7 @@ export function createAuth(deps: AuthDeps) {
     async sendVerificationOTP({ email, otp, type }) {
       if (type === 'change-email') throw refuse('FORBIDDEN', 'not_supported');
       try {
-        await mailer({ to: email, ...codeEmail(type, otp) });
+        await mailer({ to: email, kind: 'code', ...codeEmail(type, otp) });
       } catch (error) {
         deps.log?.(`code e-mail to @${email.split('@')[1] ?? ''} failed: ${String(error)}`);
         throw error;
@@ -146,7 +146,7 @@ export function createAuth(deps: AuthDeps) {
       revokeSessionsOnPasswordReset: true,
       // The generic answer keeps the e-mail private; the owner learns of the attempt by e-mail.
       onExistingUserSignUp: async ({ user }) => {
-        await mailer({ to: user.email, ...existingAccountEmail() });
+        await mailer({ to: user.email, kind: 'notice', ...existingAccountEmail() });
       },
     },
     emailVerification: { autoSignInAfterVerification: true },
@@ -177,8 +177,8 @@ export function createAuth(deps: AuthDeps) {
             const ip = requestContext.getStore()?.ip;
             if (ip) reservationsOf(ip).shift();
             // Not awaited: a slow or failed welcome e-mail must not fail the signup.
-            mailer({ to: user.email, ...welcomeEmail(user.name) }).catch((error: unknown) =>
-              deps.log?.(`welcome e-mail failed: ${String(error)}`),
+            mailer({ to: user.email, kind: 'welcome', ...welcomeEmail(user.name) }).catch(
+              (error: unknown) => deps.log?.(`welcome e-mail failed: ${String(error)}`),
             );
             audit.record({
               userEmail: user.email,

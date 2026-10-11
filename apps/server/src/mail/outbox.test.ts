@@ -1,0 +1,110 @@
+import { afterEach, beforeEach, expect, test } from 'vitest';
+import { openDatabase } from '../db/openDatabase';
+import { mailOutbox } from '../db/schema';
+import type { MailMessage } from './mailer';
+import { MailOutbox } from './outbox';
+
+let opened: ReturnType<typeof openDatabase>;
+let sent: MailMessage[];
+let failing: boolean;
+let errors: string[];
+let outbox: MailOutbox;
+const T0 = new Date('2026-10-11T12:00:00Z');
+const minutes = (n: number) => new Date(T0.getTime() + n * 60_000);
+const message = { to: 'pessoa@example.com', subject: 'Assunto', html: '<p>oi</p>', text: 'oi' };
+
+beforeEach(() => {
+  opened = openDatabase(':memory:');
+  sent = [];
+  failing = false;
+  errors = [];
+  outbox = new MailOutbox(
+    opened.db,
+    async (m) => {
+      if (failing) throw new Error('Resend answered 503');
+      sent.push(m);
+    },
+    (line) => errors.push(line),
+  );
+});
+afterEach(() => opened.close());
+
+const rows = () => opened.db.select().from(mailOutbox).all();
+
+test('a message is stored, sent at once, and its body is erased once sent', async () => {
+  expect(await outbox.send(message, 'invite', T0)).toBe(true);
+  expect(sent).toEqual([message]);
+  expect(rows()).toMatchObject([
+    { status: 'sent', attempts: 1, html: '', text: '', to: 'pessoa@example.com', kind: 'invite' },
+  ]);
+});
+
+test('a failed send stays pending and is retried after 1, 5, 30, and 120 minutes', async () => {
+  failing = true;
+  expect(await outbox.send(message, 'invite', T0)).toBe(false);
+  expect(rows()[0]).toMatchObject({
+    status: 'pending',
+    attempts: 1,
+    lastError: 'Error: Resend answered 503',
+  });
+  expect(rows()[0]?.nextAttemptAt).toEqual(minutes(1));
+  // Not yet due: nothing happens.
+  await outbox.deliverDue(minutes(0.5));
+  expect(rows()[0]?.attempts).toBe(1);
+  await outbox.deliverDue(minutes(1));
+  expect(rows()[0]).toMatchObject({ attempts: 2, nextAttemptAt: minutes(6) });
+  failing = false;
+  await outbox.deliverDue(minutes(6));
+  expect(rows()[0]).toMatchObject({ status: 'sent', attempts: 3 });
+  expect(sent).toHaveLength(1);
+});
+
+test('after the fifth failure the message goes to the dead-letter state and the log says so', async () => {
+  failing = true;
+  await outbox.send(message, 'invite', T0);
+  for (const at of [1, 6, 36, 156]) await outbox.deliverDue(minutes(at));
+  expect(rows()[0]).toMatchObject({ status: 'failed', attempts: 5 });
+  expect(errors.join('\n')).toContain('gave up');
+  expect(outbox.failed()).toHaveLength(1);
+});
+
+test('an admin retry sends a failed message again now', async () => {
+  failing = true;
+  await outbox.send(message, 'invite', T0);
+  for (const at of [1, 6, 36, 156]) await outbox.deliverDue(minutes(at));
+  failing = false;
+  const id = rows()[0]?.id ?? 0;
+  expect(await outbox.retry(id, minutes(200))).toBe(true);
+  expect(rows()[0]).toMatchObject({ status: 'sent' });
+  expect(sent).toEqual([message]);
+});
+
+test('a login code is useless after 10 minutes: it is not retried later, its body is erased, and it cannot be resent', async () => {
+  failing = true;
+  await outbox.send(message, 'code', T0);
+  await outbox.deliverDue(minutes(1));
+  await outbox.deliverDue(minutes(11));
+  expect(rows()[0]).toMatchObject({ status: 'failed', html: '', text: '' });
+  failing = false;
+  expect(await outbox.retry(rows()[0]?.id ?? 0, minutes(12))).toBe(false);
+  expect(sent).toEqual([]);
+});
+
+test('a slow worker never sends the same message twice at once', async () => {
+  failing = true;
+  await outbox.send(message, 'invite', T0);
+  failing = false;
+  await Promise.all([outbox.deliverDue(minutes(1)), outbox.deliverDue(minutes(1))]);
+  expect(sent).toHaveLength(1);
+});
+
+test('a message left as sending by a crash is picked up again after 5 minutes', async () => {
+  opened.db
+    .insert(mailOutbox)
+    .values({ ...message, kind: 'invite', status: 'sending', nextAttemptAt: T0, createdAt: T0 })
+    .run();
+  await outbox.deliverDue(minutes(2));
+  expect(sent).toEqual([]);
+  await outbox.deliverDue(minutes(6));
+  expect(sent).toEqual([message]);
+});

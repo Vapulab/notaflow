@@ -198,6 +198,23 @@ export const legalAcceptances = sqliteTable(
   (t) => [uniqueIndex('legal_acceptances_user_version').on(t.userId, t.version)],
 );
 
+// Every e-mail goes through here: sent at once, retried with backoff, and kept as failed (the dead letters).
+export const mailOutbox = sqliteTable('mail_outbox', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  kind: text('kind', { enum: ['code', 'invite', 'welcome', 'notice'] }).notNull(),
+  to: text('to').notNull(),
+  subject: text('subject').notNull(),
+  // Emptied once sent or given up: a login code is not kept.
+  html: text('html').notNull(),
+  text: text('text').notNull(),
+  status: text('status', { enum: ['pending', 'sending', 'sent', 'failed'] }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
+  lastError: text('last_error'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
+});
+
 export const customers = sqliteTable(
   'customers',
   {

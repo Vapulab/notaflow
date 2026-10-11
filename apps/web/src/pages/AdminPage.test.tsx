@@ -107,3 +107,43 @@ test('the users table shows each last access, or nunca', async () => {
   const talita = within(table).getByText('talita@example.com').closest('tr') as HTMLElement;
   expect(within(talita).getByText('nunca')).toBeTruthy();
 });
+
+test('the e-mails that failed for good can be resent, except login codes', async () => {
+  const calls = stubApi({
+    ...routes,
+    '/api/admin/mail/failed': [
+      {
+        id: 7,
+        kind: 'invite',
+        to: 'convidado@example.com',
+        subject: 'Convite para a conta Vapulab no NotaFlow',
+        attempts: 5,
+        lastError: 'Error: Resend answered 503',
+        createdAt: '2026-10-11T12:00:00Z',
+      },
+      {
+        id: 8,
+        kind: 'code',
+        to: 'pessoa@example.com',
+        subject: 'Seu código de acesso ao NotaFlow',
+        attempts: 2,
+        lastError: 'code expired',
+        createdAt: '2026-10-11T12:05:00Z',
+      },
+    ],
+    '/api/admin/mail/7/retry': { sent: true },
+  });
+  render(<AdminPage />);
+  const section = within(await screen.findByRole('region', { name: 'E-mails não entregues' }));
+  expect(await section.findByText('convidado@example.com')).toBeTruthy();
+  expect(section.getByText('Error: Resend answered 503')).toBeTruthy();
+  expect(section.getAllByRole('button', { name: 'Reenviar' })).toHaveLength(1);
+  expect(section.getByText('Código expirado, não se reenvia')).toBeTruthy();
+  await userEvent.setup().click(section.getByRole('button', { name: 'Reenviar' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.url === '/api/admin/mail/7/retry' && c.init?.method === 'POST'),
+    ).toBe(true),
+  );
+  expect(await section.findByText('E-mail reenviado.')).toBeTruthy();
+});

@@ -36,7 +36,7 @@ test('when the e-mail did not go, the owner learns how to tell the member', asyn
   await invite({ userId: 'u2', created: true, emailSent: false });
   expect(
     await screen.findByText(
-      `contador@example.com agora é membro da conta, mas o e-mail de convite não saiu. Avise a pessoa para entrar em ${window.location.host}/entrar com esse e-mail.`,
+      `contador@example.com agora é membro da conta. O e-mail de convite não saiu agora e será reenviado automaticamente nos próximos minutos. A pessoa também pode entrar em ${window.location.host}/entrar com esse e-mail.`,
     ),
   ).toBeTruthy();
 });
