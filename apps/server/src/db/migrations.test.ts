@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
+import { is } from 'drizzle-orm';
+import { getTableConfig, SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { afterEach, expect, test } from 'vitest';
 import { BUSINESS_TABLES } from './businessTables';
 import * as schema from './schema';
@@ -152,13 +153,8 @@ test('every business table has its no-delete trigger, and every table is classif
     .all()
     .map((t) => (t as { name: string }).name);
   for (const table of BUSINESS) expect(triggers, table).toContain(`${table}_no_delete`);
-  const tables = Object.values(schema)
-    .filter(
-      (value): value is SQLiteTable =>
-        typeof value === 'object' &&
-        value !== null &&
-        Symbol.for('drizzle:IsDrizzleTable') in value,
-    )
+  const tables = Object.values(schema as Record<string, unknown>)
+    .filter((value): value is SQLiteTable => is(value, SQLiteTable))
     .map((table) => getTableConfig(table).name)
     .filter((name) => name !== 'audit_log');
   expect([...tables].sort()).toEqual([...BUSINESS].sort());
