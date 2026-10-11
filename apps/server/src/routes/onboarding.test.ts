@@ -373,3 +373,63 @@ describe('the card step', () => {
     });
   });
 });
+
+describe('a second emitter', () => {
+  let agent: MockAgent;
+  let c: TestApp;
+  beforeEach(async () => {
+    agent = new MockAgent();
+    agent.disableNetConnect();
+    c = await createTestApp({ cnpjDispatcher: agent });
+  });
+  afterEach(() => c.close());
+
+  test('a done account adds an emitter through the card and the certificate; its step stays done', async () => {
+    const a = seedTenant(c.db, { accountName: 'A', email: 'dono@example.com' });
+    c.db.$client.prepare("UPDATE accounts SET onboarding_step = 'done'").run();
+    agent
+      .get('https://brasilapi.com.br')
+      .intercept({ path: '/api/cnpj/v1/12345678000195', method: 'GET' })
+      .reply(200, {
+        razao_social: 'EMPRESA TESTE LTDA',
+        descricao_situacao_cadastral: 'ATIVA',
+        codigo_municipio_ibge: 4113700,
+        uf: 'PR',
+        opcao_pelo_simples: false,
+        opcao_pelo_mei: true,
+      });
+    const headers = await c.as('dono@example.com');
+    const base = `/api/accounts/${a.accountId}/emitters/new`;
+    const early = await c.app.inject({
+      method: 'POST',
+      url: `${base}/certificate`,
+      headers,
+      payload: { pfxBase64: 'eA==', password: 'x' },
+    });
+    expect(early.statusCode).toBe(409);
+    expect(early.json()).toMatchObject({ error: 'card_required' });
+
+    const card = await c.app.inject({
+      method: 'POST',
+      url: `${base}/card`,
+      headers,
+      payload: { pdfBase64: (await syntheticCard()).toString('base64'), fileName: 'c.pdf' },
+    });
+    expect(card.statusCode).toBe(200);
+    const cert = makeTestCertificate({ cnpj: '12345678000195' });
+    const created = await c.app.inject({
+      method: 'POST',
+      url: `${base}/certificate`,
+      headers,
+      payload: { pfxBase64: cert.pfx.toString('base64'), password: cert.password },
+    });
+    expect(created.statusCode).toBe(201);
+    const row = c.db.$client
+      .prepare('SELECT onboarding_step AS step, cnpj_draft AS draft FROM accounts')
+      .get();
+    expect(row).toEqual({ step: 'done', draft: null });
+    expect(c.db.$client.prepare('SELECT simples_nacional FROM emitters').get()).toEqual({
+      simples_nacional: '2',
+    });
+  });
+});

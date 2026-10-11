@@ -87,155 +87,167 @@ export function onboardingRoutes(
     },
   );
 
-  app.post<Params & { Body: { pdfBase64: string; fileName: string } }>(
-    '/api/accounts/:accountId/onboarding/card',
-    {
-      // A 2 MB card is about 2.7 MB in base64; the decoded size is checked below.
-      bodyLimit: 3 * 1024 * 1024,
-      schema: {
-        body: {
-          type: 'object',
-          required: ['pdfBase64', 'fileName'],
-          additionalProperties: false,
-          properties: {
-            pdfBase64: { type: 'string', minLength: 1 },
-            fileName: { type: 'string', minLength: 1, maxLength: 200 },
+  // Onboarding moves the account through its steps; a finished account adds more emitters the same way.
+  for (const [prefix, stepful] of [
+    ['/api/accounts/:accountId/onboarding', true],
+    ['/api/accounts/:accountId/emitters/new', false],
+  ] as const) {
+    app.post<Params & { Body: { pdfBase64: string; fileName: string } }>(
+      `${prefix}/card`,
+      {
+        // A 2 MB card is about 2.7 MB in base64; the decoded size is checked below.
+        bodyLimit: 3 * 1024 * 1024,
+        schema: {
+          body: {
+            type: 'object',
+            required: ['pdfBase64', 'fileName'],
+            additionalProperties: false,
+            properties: {
+              pdfBase64: { type: 'string', minLength: 1 },
+              fileName: { type: 'string', minLength: 1, maxLength: 200 },
+            },
           },
         },
       },
-    },
-    async (request) => {
-      const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
-      atStep(ctx, 'card');
-      const pdf = Buffer.from(request.body.pdfBase64, 'base64');
-      if (pdf.length > MAX_CARD_BYTES) throw new HttpError(413, 'card_too_large');
-      let card;
-      try {
-        card = await readCard(pdf);
-      } catch (error) {
-        if (error instanceof CardError) throw new HttpError(422, error.code);
-        throw error;
-      }
-      refuseTaken(ctx, card.cnpj);
-      const draft = await lookup(card.cnpj);
-      const nameMismatch =
-        card.legalName !== null && normalize(card.legalName) !== normalize(draft.legalName);
-      const { fileName } = request.body;
-      const cnpj = card.cnpj;
-      // The step moves first: a parallel upload finds it moved and stores nothing.
-      db.transaction(() => {
-        move(ctx, 'card', 'certificate');
-        documents.addCnpjCard(ctx, { cnpj, fileName, content: pdf });
-        onboarding.setDraft(ctx, draft);
-      });
-      audit.record({
-        userEmail: identityOf(request).email,
-        accountId: ctx.accountId,
-        action: 'onboarding.card',
-        entity: card.cnpj,
-        result: 'ok',
-        detail: `${draft.source}${nameMismatch ? ', name differs' : ''}`,
-      });
-      return { draft, nameMismatch, municipalityName: nameOf(draft) };
-    },
-  );
+      async (request) => {
+        const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+        atStep(ctx, stepful ? 'card' : 'done');
+        const pdf = Buffer.from(request.body.pdfBase64, 'base64');
+        if (pdf.length > MAX_CARD_BYTES) throw new HttpError(413, 'card_too_large');
+        let card;
+        try {
+          card = await readCard(pdf);
+        } catch (error) {
+          if (error instanceof CardError) throw new HttpError(422, error.code);
+          throw error;
+        }
+        refuseTaken(ctx, card.cnpj);
+        const draft = await lookup(card.cnpj);
+        const nameMismatch =
+          card.legalName !== null && normalize(card.legalName) !== normalize(draft.legalName);
+        const { fileName } = request.body;
+        const cnpj = card.cnpj;
+        // The step moves first: a parallel upload finds it moved and stores nothing.
+        db.transaction(() => {
+          if (stepful) move(ctx, 'card', 'certificate');
+          documents.addCnpjCard(ctx, { cnpj, fileName, content: pdf });
+          onboarding.setDraft(ctx, draft);
+        });
+        audit.record({
+          userEmail: identityOf(request).email,
+          accountId: ctx.accountId,
+          action: 'onboarding.card',
+          entity: card.cnpj,
+          result: 'ok',
+          detail: `${draft.source}${nameMismatch ? ', name differs' : ''}`,
+        });
+        return { draft, nameMismatch, municipalityName: nameOf(draft) };
+      },
+    );
 
-  app.post<Params & { Body: { cnpj: string } }>(
-    '/api/accounts/:accountId/onboarding/cnpj',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['cnpj'],
-          additionalProperties: false,
-          properties: { cnpj: { type: 'string', minLength: 14, maxLength: 18 } },
+    app.post<Params & { Body: { cnpj: string } }>(
+      `${prefix}/cnpj`,
+      {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['cnpj'],
+            additionalProperties: false,
+            properties: { cnpj: { type: 'string', minLength: 14, maxLength: 18 } },
+          },
         },
       },
-    },
-    async (request) => {
-      const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
-      atStep(ctx, 'card');
-      const cnpj = request.body.cnpj.replace(/[./-]/g, '');
-      if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, 'invalid_cnpj');
-      refuseTaken(ctx, cnpj);
-      const draft = await lookup(cnpj);
-      db.transaction(() => {
-        move(ctx, 'card', 'certificate');
-        onboarding.setDraft(ctx, draft);
-      });
-      audit.record({
-        userEmail: identityOf(request).email,
-        accountId: ctx.accountId,
-        action: 'onboarding.card',
-        entity: cnpj,
-        result: 'ok',
-        detail: `${draft.source}, typed`,
-      });
-      return { draft, nameMismatch: false, municipalityName: nameOf(draft) };
-    },
-  );
+      async (request) => {
+        const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+        atStep(ctx, stepful ? 'card' : 'done');
+        const cnpj = request.body.cnpj.replace(/[./-]/g, '');
+        if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, 'invalid_cnpj');
+        refuseTaken(ctx, cnpj);
+        const draft = await lookup(cnpj);
+        db.transaction(() => {
+          if (stepful) move(ctx, 'card', 'certificate');
+          onboarding.setDraft(ctx, draft);
+        });
+        audit.record({
+          userEmail: identityOf(request).email,
+          accountId: ctx.accountId,
+          action: 'onboarding.card',
+          entity: cnpj,
+          result: 'ok',
+          detail: `${draft.source}, typed`,
+        });
+        return { draft, nameMismatch: false, municipalityName: nameOf(draft) };
+      },
+    );
 
-  app.post<
-    Params & {
-      Body: {
-        pfxBase64: string;
-        password: string;
-        municipalRegistration?: string;
-        advanced?: { simplesRegime?: '1' | '2' | '3'; specialRegime?: string; dpsSeries?: string };
-      };
-    }
-  >(
-    '/api/accounts/:accountId/onboarding/certificate',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['pfxBase64', 'password'],
-          additionalProperties: false,
-          properties: {
-            pfxBase64: { type: 'string', minLength: 1, maxLength: 200_000 },
-            password: { type: 'string', maxLength: 200 },
-            municipalRegistration: { type: 'string', minLength: 1, maxLength: 15 },
-            advanced: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                simplesRegime: { enum: ['1', '2', '3'] },
-                specialRegime: { enum: ['0', '1', '2', '3', '4', '5', '6', '9'] },
-                dpsSeries: { type: 'string', pattern: '^[0-9]{1,5}$' },
+    app.post<
+      Params & {
+        Body: {
+          pfxBase64: string;
+          password: string;
+          municipalRegistration?: string;
+          advanced?: {
+            simplesRegime?: '1' | '2' | '3';
+            specialRegime?: string;
+            dpsSeries?: string;
+          };
+        };
+      }
+    >(
+      `${prefix}/certificate`,
+      {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['pfxBase64', 'password'],
+            additionalProperties: false,
+            properties: {
+              pfxBase64: { type: 'string', minLength: 1, maxLength: 200_000 },
+              password: { type: 'string', maxLength: 200 },
+              municipalRegistration: { type: 'string', minLength: 1, maxLength: 15 },
+              advanced: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  simplesRegime: { enum: ['1', '2', '3'] },
+                  specialRegime: { enum: ['0', '1', '2', '3', '4', '5', '6', '9'] },
+                  dpsSeries: { type: 'string', pattern: '^[0-9]{1,5}$' },
+                },
               },
             },
           },
         },
       },
-    },
-    async (request, reply) => {
-      const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
-      atStep(ctx, 'certificate');
-      const draft = onboarding.draft(ctx);
-      if (!draft) throw new HttpError(409, 'card_required');
-      const { pfxBase64, password, municipalRegistration, advanced = {} } = request.body;
-      const emitter = await deps.emitterOnboarding.create(
-        ctx,
-        identityOf(request).email,
-        {
-          pfxBase64,
-          password,
-          municipality: draft.municipality,
-          ...(municipalRegistration ? { municipalRegistration } : {}),
-          simplesNacional: draft.simplesNacional,
-          ...(draft.simplesNacional === '3'
-            ? { simplesRegime: advanced.simplesRegime ?? '1' }
-            : {}),
-          specialRegime: advanced.specialRegime ?? '0',
-          dpsSeries: advanced.dpsSeries ?? '900',
-        },
-        { expectedCnpj: draft.cnpj },
-      );
-      onboarding.advance(ctx, 'certificate', 'fiscal');
-      return reply.status(201).send(emitter);
-    },
-  );
+      async (request, reply) => {
+        const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+        atStep(ctx, stepful ? 'certificate' : 'done');
+        const draft = onboarding.draft(ctx);
+        if (!draft) throw new HttpError(409, 'card_required');
+        const { pfxBase64, password, municipalRegistration, advanced = {} } = request.body;
+        const emitter = await deps.emitterOnboarding.create(
+          ctx,
+          identityOf(request).email,
+          {
+            pfxBase64,
+            password,
+            municipality: draft.municipality,
+            ...(municipalRegistration ? { municipalRegistration } : {}),
+            simplesNacional: draft.simplesNacional,
+            ...(draft.simplesNacional === '3'
+              ? { simplesRegime: advanced.simplesRegime ?? '1' }
+              : {}),
+            specialRegime: advanced.specialRegime ?? '0',
+            dpsSeries: advanced.dpsSeries ?? '900',
+          },
+          { expectedCnpj: draft.cnpj },
+        );
+        if (stepful) onboarding.advance(ctx, 'certificate', 'fiscal');
+        // A second emitter keeps no draft: the next one starts from its own card.
+        else onboarding.setDraft(ctx, null);
+        return reply.status(201).send(emitter);
+      },
+    );
+  }
 
   app.get<Params>('/api/accounts/:accountId/onboarding', async (request) => {
     const ctx = accountContext(request, request.params.accountId);
