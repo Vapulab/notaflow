@@ -1,0 +1,30 @@
+%% C4 level 1: system context. Render with diagrams/render.html (see README.md).
+flowchart TB
+  owner["<b>Company user</b><br/><i>[Person]</i><br/>Owner or member of a Simples Nacional company. Issues, copies, and cancels invoices."]
+  admin["<b>Platform admin</b><br/><i>[Person]</i><br/>Vapulab staff. Manages accounts, users, and dead-letter e-mails."]
+
+  notaflow["<b>NotaFlow</b><br/><i>[Software system]</i><br/>Issues, copies, cancels, and imports NFS-e for many companies, with the Simples rate by the law."]
+
+  nacional["<b>National NFS-e system</b><br/><i>[External system]</i><br/>Sefin Nacional receives DPS and events; the ADN returns each emitter's documents. mTLS with the company's A1 certificate."]
+  resend["<b>Resend</b><br/><i>[External system]</i><br/>Sends login codes, invites, and welcome e-mails."]
+  google["<b>Google</b><br/><i>[External system]</i><br/>Optional OAuth login."]
+  cloudflare["<b>Cloudflare</b><br/><i>[External system]</i><br/>DNS, tunnel to the VPS, and Turnstile against bots."]
+  lookups["<b>Public lookups</b><br/><i>[External systems]</i><br/>BrasilAPI and CNPJá (CNPJ), ViaCEP (CEP), Banco Central (PTAX), Have I Been Pwned (k-anonymity)."]
+  posthog["<b>PostHog</b><br/><i>[External system]</i><br/>Product analytics, no cookies, internal user id only."]
+
+  owner -- "Uses, in the browser [HTTPS]" --> notaflow
+  admin -- "Administers [HTTPS]" --> notaflow
+  notaflow -- "Issues, cancels, and reads invoices [HTTPS, mTLS]" --> nacional
+  notaflow -- "Sends e-mail [HTTPS API]" --> resend
+  notaflow -- "OAuth login [HTTPS]" --> google
+  cloudflare -- "Carries every request [Tunnel]" --> notaflow
+  notaflow -- "Looks up CNPJ, CEP, PTAX, breached passwords [HTTPS]" --> lookups
+  owner -. "Page views and product events [HTTPS]" .-> posthog
+  resend -. "Delivers e-mail" .-> owner
+
+  classDef person fill:#08427b,stroke:#052e56,color:#fff
+  classDef system fill:#1168bd,stroke:#0b4884,color:#fff
+  classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
+  class owner,admin person
+  class notaflow system
+  class nacional,resend,google,cloudflare,lookups,posthog external

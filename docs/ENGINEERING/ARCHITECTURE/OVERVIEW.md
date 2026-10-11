@@ -1,16 +1,32 @@
 # Architecture Overview
 
-NotaFlow is one app container behind a Cloudflare tunnel. A Fastify server holds the domain, the certificate vault, and the jobs, and it serves the React UI. Each invoice system is a provider package behind a port. The full design is in the [RFC](../RFCS/2026/10/RFC_NFSE_EMITTER.md).
+NotaFlow is one app container behind a Cloudflare tunnel. A Fastify server holds the domain, the certificate vault, the jobs, and the mail outbox, and it serves the React UI and the public pages. Each invoice system is a provider package behind a port. The full design is in the [RFC](../RFCS/2026/10/RFC_NFSE_EMITTER.md).
 
-```
-notaflow.vapulab.com
-   │  Cloudflare Access (email one-time PIN now, Google later)
-   ▼
-cloudflared ──► server (Fastify) ──► provider "nacional" ──► Sefin / ADN (mTLS)
- (container)       │   also serves the web build
-                   ├──► Signer (Node, or the Python sidecar)
-                   └──► SQLite (Docker volume), certificates encrypted at rest
-```
+The C4 diagrams below go from the outside in. Their sources and how to change them are in [diagrams/](diagrams/README.md).
+
+## System Context
+
+Who uses NotaFlow, and which external systems it talks to.
+
+![C4 system context: the company user and the platform admin use NotaFlow; NotaFlow talks to the national NFS-e system, Resend, Google, Cloudflare, PostHog, and the public lookups](diagrams/c4-1-context.png)
+
+## Containers
+
+The parts that run: the web app and the public pages in the browser, the tunnel, the API server, the SQLite database, the CNPJ card parser, and the backup timer.
+
+![C4 containers: the browser reaches the API server through cloudflared; the server uses SQLite, a card parser child process, the national system, Resend, and the lookups](diagrams/c4-2-containers.png)
+
+## Server Components
+
+Inside the API server: every request passes the auth hook, which gives the routes an account context; the services use the vault, the national provider, and the repositories.
+
+![C4 components of the API server: auth hook, Better Auth, routes, onboarding, issue service, sync service, certificate vault, national provider, repositories, mail outbox, audit log](diagrams/c4-3-server-components.png)
+
+## Deployment
+
+Production on the Hostinger VPS: one Docker Compose service behind the shared Cloudflare tunnel, deployed by GitHub Actions on every merge to `production`. The day-to-day commands are in [Deploy on the VM](../../TUTORIALS/DEPLOY_ON_VM.md).
+
+![C4 deployment: browser to Cloudflare to the northub tunnel container to notaflow-app-1 with its SQLite volume on the Hostinger VPS; GitHub Actions pushes to GHCR and deploys over SSH](diagrams/c4-4-deployment.png)
 
 ## Packages
 

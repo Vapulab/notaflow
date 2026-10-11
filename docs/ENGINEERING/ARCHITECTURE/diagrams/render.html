@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>NotaFlow C4 diagrams</title>
+    <!-- Renders one .mmd of this folder: render.html?file=c4-1-context.mmd. See README.md. -->
+    <style>
+      body { margin: 0; background: #ffffff; font-family: system-ui, 'Segoe UI', sans-serif; }
+      #out { display: inline-block; padding: 24px; }
+      /* Mermaid measures labels a little narrower than the browser draws them; the box padding absorbs it. */
+      #out foreignObject { overflow: visible; }
+    </style>
+  </head>
+  <body>
+    <div id="out"></div>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        flowchart: { htmlLabels: true, curve: 'basis', nodeSpacing: 40, rankSpacing: 60 },
+        themeVariables: { fontFamily: 'system-ui, Segoe UI, sans-serif', fontSize: '15px', lineColor: '#707070' },
+      });
+
+      // Mermaid does not wrap a long line in a label: boxes break at 28 characters, arrows at 22.
+      const wrapAt = (limit) => (line) => {
+        const lines = [];
+        let current = '';
+        for (const word of line.split(' ')) {
+          const longer = (current + ' ' + word).replace(/<[^>]+>/g, '').length > limit;
+          if (current && longer) {
+            lines.push(current);
+            current = word;
+          } else current = current ? current + ' ' + word : word;
+        }
+        return [...lines, current].join('<br/>');
+      };
+      const wrapLabel = (limit) => (label) => label.split('<br/>').map(wrapAt(limit)).join('<br/>');
+      const ARROW = /(--|-\.) "([^"]*)" (-->|\.->)/g;
+      const BOX = /\["([^"]*)"\]|\[\("([^"]*)"\)\]/g;
+      // A group title stays on one line.
+      const wrapLine = (line) =>
+        line.trim().startsWith('subgraph')
+          ? line
+          : line
+              .replace(ARROW, (_, a, label, b) => `${a} "${wrapLabel(22)(label)}" ${b}`)
+              .replace(BOX, (_, box, db) =>
+                box !== undefined ? `["${wrapLabel(28)(box)}"]` : `[("${wrapLabel(28)(db)}")]`,
+              );
+
+      const file = new URLSearchParams(location.search).get('file');
+      const raw = await (await fetch(file)).text();
+      const source = raw.split('\n').map(wrapLine).join('\n');
+      const { svg } = await mermaid.render('diagram', source);
+      const out = document.getElementById('out');
+      out.innerHTML = svg;
+      // Twice the natural size, so the PNG is sharp; the SVG scales without changing its layout.
+      const drawn = out.querySelector('svg');
+      drawn.style.maxWidth = 'none';
+      drawn.setAttribute('width', String(drawn.viewBox.baseVal.width * 2));
+      drawn.setAttribute('height', String(drawn.viewBox.baseVal.height * 2));
+      document.body.dataset.ready = 'true';
+    </script>
+  </body>
+</html>
