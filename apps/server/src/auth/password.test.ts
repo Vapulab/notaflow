@@ -44,7 +44,12 @@ const post = (url: string, payload: object, headers: Record<string, string> = {}
     remoteAddress: ip,
     headers: { origin: ORIGIN, 'content-type': 'application/json', ...headers },
   });
-const lastCode = () => /\b(\d{6})\b/.exec(t.mail.at(-1)?.text ?? '')?.[1] ?? '';
+// The latest e-mail with a code: the welcome e-mail can arrive after it.
+const lastCode = () =>
+  t.mail
+    .map((m) => /\b(\d{6})\b/.exec(m.text)?.[1])
+    .filter((code) => code !== undefined)
+    .at(-1) ?? '';
 const cookieOf = (response: { headers: Record<string, unknown> }) =>
   [response.headers['set-cookie']]
     .flat()
@@ -80,7 +85,7 @@ test('signup with a password sends a code, and only the code opens the session',
   });
   expect(signup.statusCode).toBe(200);
   expect(cookieOf(signup)).not.toContain('session_token');
-  expect(t.mail.at(-1)?.subject).toBe('Confirme seu e-mail no NotaFlow');
+  expect(t.mail.map((m) => m.subject)).toContain('Confirme seu e-mail no NotaFlow');
 
   const early = await post('/api/auth/sign-in/email', {
     email: 'nova@example.com',

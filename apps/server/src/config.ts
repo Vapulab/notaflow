@@ -45,6 +45,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       'APP_ORIGIN must be an origin such as https://nfse.example.com, with no path or trailing slash',
     );
   }
+  if (nodeEnv === 'production' && appOrigin.startsWith('http://')) {
+    problems.push('APP_ORIGIN must use https in production');
+  }
   const port = Number(env.PORT ?? 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     problems.push('PORT must be a whole number from 1 to 65535');

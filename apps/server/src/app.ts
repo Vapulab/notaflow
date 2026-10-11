@@ -61,10 +61,35 @@ export interface AppDeps {
   auth?: Auth;
 }
 
+// Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
+function requestForLog(request: {
+  method: string;
+  url: string;
+  host: string;
+  ip: string;
+  socket: { remotePort?: number | undefined };
+}) {
+  const url = request.url.startsWith('/api/auth/callback/')
+    ? (request.url.split('?')[0] ?? '')
+    : request.url;
+  return {
+    method: request.method,
+    url,
+    host: request.host,
+    remoteAddress: request.ip,
+    remotePort: request.socket.remotePort ?? 0,
+  };
+}
+
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { config, db } = deps;
+  const serializers = { req: requestForLog };
   const app = Fastify({
-    logger: deps.logStream ? { stream: deps.logStream } : config.nodeEnv !== 'test',
+    logger: deps.logStream
+      ? { stream: deps.logStream, serializers }
+      : config.nodeEnv === 'test'
+        ? false
+        : { serializers },
   });
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);

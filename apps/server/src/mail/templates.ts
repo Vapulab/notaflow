@@ -57,6 +57,16 @@ export function welcomeEmail(name: string): RenderedMail {
   };
 }
 
+export function existingAccountEmail(): RenderedMail {
+  const body =
+    'Alguém tentou criar uma conta no NotaFlow com este e-mail, mas ele já tem conta. Para entrar, use um código por e-mail em https://notaflow.vapulab.com/entrar. Se não foi você, ignore este e-mail.';
+  return {
+    subject: 'Você já tem conta no NotaFlow',
+    text: `${body}\n\n${FOOTER}\n`,
+    html: layout(`<p style="margin:0">${escapeHtml(body)}</p>`),
+  };
+}
+
 function layout(content: string): string {
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:24px;background:${COLOR.surface};color:${COLOR.fg};font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.5">
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid ${COLOR.border};border-radius:8px;padding:24px">

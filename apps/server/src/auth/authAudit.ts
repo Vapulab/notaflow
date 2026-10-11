@@ -1,4 +1,4 @@
-import { createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api';
 import { eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { authAccounts, users } from '../db/schema';
@@ -31,12 +31,14 @@ const NEEDS_ACTOR_BEFORE = new Set([
   '/passkey/verify-registration',
   '/unlink-account',
   '/change-password',
+  '/revoke-session',
+  '/update-user',
 ]);
 const actors = new WeakMap<RequestInfo, Actor>();
 const unlinkedProviders = new WeakMap<RequestInfo, string>();
 
 // Every login, code, and credential change goes to the audit log; a code is never written.
-export function authAuditHooks(db: Database, audit: AuditLog) {
+export function authAuditHooks(db: Database, audit: AuditLog, options: { signupOpen: boolean }) {
   const userByEmail = (email: string): Actor | null => {
     const row = db
       .select({ id: users.id, email: users.email })
@@ -64,6 +66,18 @@ export function authAuditHooks(db: Database, audit: AuditLog) {
   };
 
   const before = createAuthMiddleware(async (ctx) => {
+    // Closed for every e-mail alike, so the answer does not tell which ones have an account.
+    if (ctx.path === '/sign-up/email' && !options.signupOpen) {
+      const email = (ctx.body as { email?: unknown } | undefined)?.email;
+      record(
+        'auth.signup',
+        null,
+        typeof email === 'string' ? email : '',
+        'refused',
+        'signup_closed',
+      );
+      throw new APIError('FORBIDDEN', { code: 'signup_closed', message: 'signup_closed' });
+    }
     if (!NEEDS_ACTOR_BEFORE.has(ctx.path)) return;
     const store = requestContext.getStore();
     const session = await getSessionFromCtx(ctx);
@@ -104,7 +118,16 @@ export function authAuditHooks(db: Database, audit: AuditLog) {
       }
       return;
     }
-    if (failed) return;
+    if (failed) {
+      const returned = ctx.context.returned as { body?: { code?: unknown } } | undefined;
+      const reason = typeof returned?.body?.code === 'string' ? returned.body.code : undefined;
+      if (ctx.path === '/sign-up/email') {
+        record('auth.signup', userByEmail(typedEmail), typedEmail, 'refused', reason);
+      } else if (ctx.path === '/email-otp/reset-password') {
+        record('auth.password_reset', userByEmail(typedEmail), typedEmail, 'refused');
+      }
+      return;
+    }
     const code = CODE_PATHS[ctx.path];
     if (code !== undefined) {
       const kind = code || (typeof body.type === 'string' ? body.type : '');
@@ -117,6 +140,12 @@ export function authAuditHooks(db: Database, audit: AuditLog) {
         return;
       case '/sign-out':
         if (actor) record('auth.logout', actor, '', 'ok');
+        return;
+      case '/revoke-session':
+        if (actor) record('auth.session_revoked', actor, '', 'ok');
+        return;
+      case '/update-user':
+        if (actor) record('auth.profile_updated', actor, '', 'ok');
         return;
       case '/revoke-sessions':
       case '/revoke-other-sessions':

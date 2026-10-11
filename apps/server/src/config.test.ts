@@ -189,3 +189,12 @@ test('PORT must be a whole number from 1 to 65535', () => {
   );
   expect(loadConfig({ ...base, PORT: '8080' }).port).toBe(8080);
 });
+
+test('production needs an https APP_ORIGIN, so the session cookie is Secure', () => {
+  expect(problemsOf({ ...base, APP_ORIGIN: 'http://nfse.example.com' })).toContain(
+    'APP_ORIGIN must use https in production',
+  );
+  expect(
+    problemsOf({ ...base, NODE_ENV: 'development', APP_ORIGIN: 'http://localhost:3000' }),
+  ).toEqual([]);
+});

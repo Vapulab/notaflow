@@ -99,6 +99,9 @@ export function SignupPage() {
             <p className="text-sm text-muted">
               Enviamos um código para {email}. Digite-o para confirmar o e-mail.
             </p>
+            <p className="text-xs text-muted">
+              Se este e-mail já tinha conta, enviamos instruções para entrar em vez do código.
+            </p>
             <CodeField value={code} onChange={setCode} />
             <Button type="submit" variant="primary" disabled={busy}>
               Confirmar e-mail

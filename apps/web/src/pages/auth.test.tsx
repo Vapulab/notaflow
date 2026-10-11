@@ -166,6 +166,11 @@ test('signup with a password, then the code from the e-mail', async () => {
     'token-for-site',
   );
   await user.type(await screen.findByLabelText('Código de 6 dígitos'), '654321');
+  expect(
+    screen.getByText(
+      'Se este e-mail já tinha conta, enviamos instruções para entrar em vez do código.',
+    ),
+  ).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Confirmar e-mail' }));
   expect(authApi.verifyEmail).toHaveBeenCalledWith('pessoa@example.com', '654321');
   await waitFor(() => expect(window.location.pathname).toBe('/app'));

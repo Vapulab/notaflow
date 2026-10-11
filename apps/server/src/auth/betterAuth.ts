@@ -17,7 +17,7 @@ import {
   users,
 } from '../db/schema';
 import type { Mailer } from '../mail/mailer';
-import { codeEmail } from '../mail/templates';
+import { codeEmail, existingAccountEmail, welcomeEmail } from '../mail/templates';
 import { AuditLog } from '../repos/AuditLog';
 import { authAuditHooks, recordGoogleLinked } from './authAudit';
 import { requestContext } from '../requestContext';
@@ -46,25 +46,36 @@ export function createAuth(deps: AuthDeps) {
   const { config, db, mailer } = deps;
   const audit = new AuditLog(db);
 
+  // Signups in flight per IP: the audit row is written after the user, so parallel requests reserve first.
+  const reserved = new Map<string, number[]>();
+  const reservationsOf = (ip: string) => {
+    const live = (reserved.get(ip) ?? []).filter((at) => at > Date.now() - 60_000);
+    reserved.set(ip, live);
+    return live;
+  };
+
   // A new user only when signup is open, and at most N per IP per day (counted in the audit log).
   const beforeUserCreate = async () => {
     if (!config.signup.open) throw refuse('FORBIDDEN', 'signup_closed');
     const ip = requestContext.getStore()?.ip;
     if (!ip) return;
+    const inFlight = reservationsOf(ip);
     const row = db
       .select({ n: count() })
       .from(auditLog)
       .where(
         and(
           eq(auditLog.action, 'auth.signup'),
+          eq(auditLog.result, 'ok'),
           eq(auditLog.ip, ip),
           gte(auditLog.at, new Date(Date.now() - DAY_MS)),
         ),
       )
       .get();
-    if ((row?.n ?? 0) >= config.signup.limitPerIpPerDay) {
+    if ((row?.n ?? 0) + inFlight.length >= config.signup.limitPerIpPerDay) {
       throw refuse('TOO_MANY_REQUESTS', 'signup_limit');
     }
+    inFlight.push(Date.now());
   };
 
   // Better Auth finds users by e-mail without deleted_at, so a removed user is stopped here.
@@ -127,12 +138,16 @@ export function createAuth(deps: AuthDeps) {
           },
         }
       : {}),
-    hooks: authAuditHooks(db, audit),
+    hooks: authAuditHooks(db, audit, { signupOpen: config.signup.open }),
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
+      // The generic answer keeps the e-mail private; the owner learns of the attempt by e-mail.
+      onExistingUserSignUp: async ({ user }) => {
+        await mailer({ to: user.email, ...existingAccountEmail() });
+      },
     },
     emailVerification: { autoSignInAfterVerification: true },
     verification: { modelName: 'authVerifications' },
@@ -159,6 +174,12 @@ export function createAuth(deps: AuthDeps) {
             await beforeUserCreate();
           },
           after: async (user) => {
+            const ip = requestContext.getStore()?.ip;
+            if (ip) reservationsOf(ip).shift();
+            // Not awaited: a slow or failed welcome e-mail must not fail the signup.
+            mailer({ to: user.email, ...welcomeEmail(user.name) }).catch((error: unknown) =>
+              deps.log?.(`welcome e-mail failed: ${String(error)}`),
+            );
             audit.record({
               userEmail: user.email,
               accountId: null,
