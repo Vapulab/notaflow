@@ -52,7 +52,8 @@
         86063-250.
       </p>
       <p>
-        Canal do titular e do encarregado de dados:
+        A Vapulab é agente de tratamento de pequeno porte e, conforme o art. 11 da Resolução CD/ANPD
+        2/2022, não indicou encarregado. O canal para falar conosco sobre dados pessoais é
         <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a>. Outros assuntos:
         <a href="mailto:contato@vapulab.com">contato@vapulab.com</a>.
       </p>
@@ -66,7 +67,9 @@
         <li>
           <strong>Operadora:</strong> os dados dos clientes da sua empresa (os tomadores das notas)
           e das próprias notas são tratados pela Vapulab em nome da sua empresa, que é a
-          controladora deles. Tratamos esses dados só para executar o serviço que você pede.
+          controladora deles. Tratamos esses dados só para executar o serviço que você pede. Não
+          usamos esses dados para fins próprios. As regras desse tratamento estão nos
+          <a href="/termos">Termos de uso</a>.
         </li>
       </ul>
 
@@ -84,20 +87,27 @@
           <tr>
             <td>Nome, e-mail, senha (guardada só como hash), passkeys, identificador da conta Google</td>
             <td>Criar a conta, autenticar e falar com você sobre o serviço</td>
-            <td>Execução de contrato (V)</td>
+            <td>Execução de contrato ou de procedimentos preliminares (V), quando você é parte; legítimo interesse (IX), quando você age como representante ou membro convidado de uma empresa</td>
           </tr>
           <tr>
-            <td>Cartão CNPJ, dados da empresa, receita dos últimos 12 meses, configuração fiscal</td>
+            <td>E-mail de uma pessoa convidada</td>
+            <td>Enviar o convite</td>
+            <td>Legítimo interesse (IX)</td>
+          </tr>
+          <tr>
+            <td>Cartão CNPJ (o arquivo), dados da empresa, receita dos últimos 12 meses, configuração fiscal</td>
             <td>Cadastrar o emitente e calcular as alíquotas da nota</td>
             <td>Execução de contrato (V)</td>
           </tr>
           <tr>
-            <td>
-              Certificado digital A1 e a senha dele, que podem conter o nome e o CPF do responsável
-              pela empresa
-            </td>
+            <td>Dados públicos do CNPJ consultados na BrasilAPI ou no CNPJá, que podem trazer nomes de sócios e administradores</td>
+            <td>Conferir e cadastrar o emitente; guardamos só os dados da empresa e as atividades</td>
+            <td>Legítimo interesse (IX), dados tornados públicos (art. 7º, §§ 3º e 4º)</td>
+          </tr>
+          <tr>
+            <td>Certificado digital A1 e a senha dele, que podem conter o nome e o CPF do responsável pela empresa</td>
             <td>Assinar e enviar ao sistema nacional as notas e os cancelamentos que você pede, e consultar as notas do emitente</td>
-            <td>Execução de contrato (V)</td>
+            <td>Legítimo interesse (IX) em executar o serviço contratado pela empresa; o nome e o CPF são tratados só porque estão no certificado</td>
           </tr>
           <tr>
             <td>Notas fiscais e dados dos tomadores: nome, CPF ou CNPJ, NIF, endereço, e-mail, telefone</td>
@@ -110,29 +120,35 @@
             <td>Cumprimento de obrigação legal (II) e legítimo interesse (IX)</td>
           </tr>
           <tr>
+            <td>IP e sinais técnicos do navegador nas telas de cadastro e entrada</td>
+            <td>Bloquear robôs (Cloudflare Turnstile)</td>
+            <td>Legítimo interesse (IX)</td>
+          </tr>
+          <tr>
             <td>Aceite destes documentos: versão, data, IP e navegador</td>
             <td>Provar o aceite dos termos e desta política</td>
             <td>Exercício regular de direitos (VI)</td>
           </tr>
           <tr>
-            <td>Uso do serviço: páginas vistas e ações no app, ligadas a um identificador interno, sem o seu e-mail</td>
+            <td>Uso do serviço: páginas vistas e ações no app, ligadas a um identificador interno, sem o seu e-mail ou nome e sem o conteúdo das notas</td>
             <td>Entender o uso e melhorar o produto</td>
-            <td>Legítimo interesse (IX)</td>
+            <td>Legítimo interesse (IX). Você pode se opor pelo privacidade@vapulab.com, e paramos de medir o seu uso.</td>
           </tr>
         </tbody>
       </table>
       </div>
       <p>
-        Não vendemos dados pessoais e não os usamos para publicidade. Não tratamos dados de crianças
-        ou adolescentes: o serviço é para pessoas maiores de 18 anos que representam uma empresa.
+        Não vendemos dados pessoais e não os usamos para publicidade. O NotaFlow não se destina a
+        menores de 18 anos. Se uma nota tiver um tomador menor de idade, a empresa emitente, como
+        controladora, responde por esse tratamento.
       </p>
 
       <h2>4. Com quem compartilhamos</h2>
       <p>Só com quem é necessário para o serviço funcionar:</p>
       <ul>
         <li><strong>Sistema nacional da NFS-e</strong> (governo federal): recebe as notas e os cancelamentos, e devolve as notas do emitente.</li>
-        <li><strong>Provedor de hospedagem</strong> (servidor virtual): guarda o banco de dados e executa o serviço.</li>
-        <li><strong>Cloudflare</strong> (EUA): rede e proteção contra robôs (Turnstile) nas telas de cadastro e entrada.</li>
+        <li><strong>Hostinger, no Brasil</strong> (servidor virtual): guarda o banco de dados e as cópias de segurança, e executa o serviço.</li>
+        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile).</li>
         <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha e de convite.</li>
         <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
         <li><strong>PostHog</strong> (EUA): medição de uso do produto, sem cookies, sem gravar a tela e sem o seu e-mail.</li>
@@ -143,41 +159,56 @@
 
       <h2>5. Transferência internacional</h2>
       <p>
-        Alguns desses fornecedores guardam dados fora do Brasil, principalmente nos Estados Unidos.
-        A transferência segue o art. 33 da LGPD, com fornecedores que adotam cláusulas contratuais
-        e medidas de segurança compatíveis com a lei.
+        Cloudflare, Resend, Google e PostHog tratam dados fora do Brasil. Essas transferências se
+        apoiam no art. 33 da LGPD: nas cláusulas-padrão contratuais aprovadas pela ANPD (Resolução
+        CD/ANPD 19/2024), quando o fornecedor as adota, ou, quando a transferência é necessária para
+        executar o contrato com você, no inciso IX do art. 33. Você pode pedir pelo
+        <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a> mais informações sobre
+        cada transferência e a cópia das cláusulas aplicáveis.
       </p>
 
       <h2>6. Por quanto tempo guardamos</h2>
       <ul>
-        <li><strong>Conta:</strong> enquanto ela estiver ativa. Depois do encerramento, anonimizamos os dados pessoais, salvo o que a lei manda guardar.</li>
-        <li><strong>Notas e dados fiscais:</strong> pelo menos 5 anos, o prazo de guarda dos documentos fiscais. A fonte oficial das notas continua sendo o sistema nacional.</li>
-        <li><strong>Registros de acesso:</strong> pelo menos 6 meses, como exige o Marco Civil da Internet, e mais tempo quando ligados a uma nota ou a uma investigação.</li>
-        <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo. Você pode pedir a eliminação do arquivo a qualquer momento.</li>
+        <li><strong>Conta e cadastro:</strong> enquanto a conta estiver ativa. Depois do encerramento, anonimizamos os dados pessoais da conta em até 30 dias, salvo os registros dos itens abaixo.</li>
+        <li><strong>Notas e dados dos tomadores:</strong> guardamos em nome da empresa emitente enquanto a conta estiver ativa. Depois do encerramento, mantemos por mais 90 dias para a empresa pedir uma cópia e então anonimizamos os dados pessoais, salvo instrução diferente da empresa. A guarda fiscal de 5 anos (arts. 173 e 195, parágrafo único, do Código Tributário Nacional) é obrigação da empresa, e a fonte oficial das notas é o sistema nacional.</li>
+        <li><strong>Registros de acesso (IP, data e hora):</strong> 6 meses, como exige o art. 15 do Marco Civil da Internet. Depois, anonimizamos o IP, salvo ordem judicial ou investigação em curso.</li>
+        <li><strong>Trilha de auditoria e registro de aceite:</strong> até 5 anos depois do encerramento da conta, para a defesa da Vapulab e da empresa em processos (exercício regular de direitos).</li>
+        <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 14 dias.</li>
+        <li><strong>Cópias de segurança:</strong> 14 dias. Um dado anonimizado sai das cópias quando elas vencem.</li>
       </ul>
       <p>
-        O NotaFlow não apaga registros do banco de dados: um item removido sai das telas, e os dados
-        pessoais dele são anonimizados quando o titular pede e a lei permite.
+        O banco de dados do NotaFlow não apaga linhas. Quando um prazo acima termina, ou quando você
+        pede a eliminação e a lei permite, trocamos os dados pessoais por valores que não
+        identificam ninguém (anonimização, arts. 12 e 16 da LGPD).
       </p>
 
       <h2>7. Como protegemos</h2>
       <ul>
         <li>O certificado e a senha dele ficam cifrados com AES-256-GCM, com a chave fora do banco de dados.</li>
         <li>A conexão é sempre cifrada (HTTPS), e as senhas ficam guardadas só como hash.</li>
+        <li>A passkey usa a biometria só no seu aparelho; recebemos apenas uma chave pública.</li>
         <li>Cada conta só vê os próprios dados, e as ações relevantes ficam na trilha de auditoria.</li>
         <li>Fazemos cópias de segurança diárias do banco de dados.</li>
       </ul>
       <p>
-        Se houver um incidente de segurança que possa causar risco ou dano relevante a você, avisamos
-        você e a Autoridade Nacional de Proteção de Dados (ANPD), como manda o art. 48 da LGPD.
+        Se um incidente de segurança puder causar risco ou dano relevante a você, comunicamos a você
+        e à ANPD em até 3 dias úteis depois de sabermos que ele atingiu dados pessoais, como mandam o
+        art. 48 da LGPD e a Resolução CD/ANPD 15/2024. A comunicação diz o que aconteceu, quais
+        dados foram atingidos, os riscos, o que fizemos e o que você pode fazer. Quando o incidente
+        atingir dados que tratamos em nome da sua empresa, avisamos a empresa sem demora, para que
+        ela faça as comunicações que cabem a ela.
       </p>
 
       <h2>8. Cookies e armazenamento no navegador</h2>
       <ul>
-        <li><strong>Cookie de sessão:</strong> mantém você conectado. É essencial, e sem ele o app não funciona.</li>
-        <li><strong>Armazenamento local:</strong> guarda o tema claro ou escuro e o rascunho de uma nota em envio, para não perder o que foi digitado.</li>
+        <li><strong>Cookie de sessão (NotaFlow):</strong> mantém você conectado por até 30 dias. É essencial, e sem ele o app não funciona.</li>
+        <li><strong>Cookies da Cloudflare (por exemplo, __cf_bm e os do Turnstile):</strong> segurança e bloqueio de robôs. São essenciais.</li>
+        <li><strong>Armazenamento local do navegador:</strong> guarda o tema claro ou escuro e, durante o envio de uma nota, os dados desse envio, para não emitir a mesma nota duas vezes se a conexão cair. Esses dados saem do navegador quando a emissão termina.</li>
       </ul>
-      <p>Não usamos cookies de publicidade nem de rastreamento entre sites.</p>
+      <p>
+        A medição de uso (PostHog) não grava nada no seu navegador. Não usamos cookies de
+        publicidade nem de rastreamento entre sites.
+      </p>
 
       <h2>9. Os seus direitos</h2>
       <p>Pelo art. 18 da LGPD, você pode pedir, a qualquer momento:</p>
@@ -192,15 +223,19 @@
       </ul>
       <p>
         Escreva para <a href="mailto:privacidade@vapulab.com">privacidade@vapulab.com</a>. Podemos
-        pedir uma confirmação de identidade antes de atender. Respondemos em até 15 dias. Se o pedido
-        for sobre dados de um tomador de nota, encaminhamos à empresa emitente, que é a controladora
-        deles. Você também pode reclamar à ANPD.
+        pedir uma confirmação de identidade antes de atender. A confirmação simples de que tratamos
+        dados seus é imediata; a declaração completa sai em até 15 dias (art. 19 da LGPD). Quando
+        você pede a eliminação, anonimizamos os dados, salvo os que a lei manda guardar, e dizemos
+        quais ficam e por quê. Se o pedido for sobre dados de um tomador de nota, informamos ao
+        titular qual empresa é a controladora e encaminhamos o pedido a ela. Você também pode
+        reclamar à ANPD.
       </p>
 
       <h2>10. Mudanças nesta política</h2>
       <p>
-        Quando a política mudar de forma relevante, avisamos por e-mail ou no próprio serviço, e
-        pedimos o seu aceite da nova versão.
+        Quando a política mudar de forma relevante, avisamos por e-mail e no serviço com pelo menos
+        15 dias de antecedência, salvo quando a lei ou uma autoridade exigir prazo menor, e pedimos o
+        seu aceite da nova versão.
       </p>
     </main>
 
