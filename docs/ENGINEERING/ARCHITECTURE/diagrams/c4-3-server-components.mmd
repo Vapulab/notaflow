@@ -1,0 +1,59 @@
+%% C4 level 3: components of the API server (apps/server). Render with diagrams/render.html (see README.md).
+flowchart TB
+  web["<b>Web app / public pages</b><br/><i>[Container]</i>"]
+
+  subgraph boundary["API server [Fastify]"]
+    direction TB
+    authhook["<b>Auth hook and guards</b><br/><i>[Component: auth/authHook, guards]</i><br/>Session check, Origin check on writes, account context per route, owner and admin roles."]
+    betterauth["<b>Better Auth</b><br/><i>[Component: auth/betterAuth]</i><br/>E-mail code, password, passkey, Google. Signup limits, breached-password check."]
+    routes["<b>Routes</b><br/><i>[Component: routes/*]</i><br/>Accounts, members, emitters, fiscal, services, customers, invoices, issue, sync, onboarding, admin."]
+    onboarding["<b>Onboarding</b><br/><i>[Component: onboarding/*, EmitterOnboarding]</i><br/>CNPJ card, public CNPJ lookup, certificate step, fiscal step."]
+    issue["<b>Issue service</b><br/><i>[Component: issue/IssueService]</i><br/>New invoice, issue similar, cancel, reconcile; idempotency key; Simples rate and ISS by RBT12."]
+    sync["<b>Sync service and scheduler</b><br/><i>[Component: sync/*]</i><br/>Reads each emitter's documents from the ADN every 30 minutes, with a cursor per environment."]
+    vault["<b>Certificate vault</b><br/><i>[Component: vault/*]</i><br/>AES-256-GCM envelope: a data key per certificate, wrapped by the master key; a replaced key is destroyed."]
+    provider["<b>National provider</b><br/><i>[Component: packages/provider-nacional, signer-node]</i><br/>DPS and event XML, XSD-checked; XML signature; Sefin and ADN client over mTLS."]
+    repos["<b>Repositories</b><br/><i>[Component: repos/*]</i><br/>Every query needs the account context; soft delete only."]
+    outbox["<b>Mail outbox</b><br/><i>[Component: mail/outbox]</i><br/>Stores each e-mail, retries after 1, 5, 30, 120 minutes, keeps dead letters."]
+    audit["<b>Audit log</b><br/><i>[Component: repos/AuditLog]</i><br/>Append-only: who, what, when, IP, browser, request id."]
+  end
+
+  db[("<b>Database</b><br/><i>[Container: SQLite]</i>")]
+  nacional["<b>National NFS-e system</b><br/><i>[External system]</i>"]
+  resend["<b>Resend</b><br/><i>[External system]</i>"]
+  lookups["<b>Public lookups</b><br/><i>[External systems]</i>"]
+
+  web -- "JSON [HTTPS]" --> authhook
+  authhook -- "Session from" --> betterauth
+  authhook -- "Passes the account context to" --> routes
+  routes --> onboarding
+  routes --> issue
+  routes -- "Starts a sync" --> sync
+  onboarding -- "Seals the certificate" --> vault
+  issue -- "Loads the certificate" --> vault
+  sync -- "Loads the certificate" --> vault
+  issue -- "Builds, signs, and sends" --> provider
+  sync -- "Fetches documents" --> provider
+  provider -- "[HTTPS, mTLS]" --> nacional
+  onboarding -- "CNPJ, CEP [HTTPS]" --> lookups
+  issue -- "PTAX [HTTPS]" --> lookups
+  routes --> repos
+  issue --> repos
+  sync --> repos
+  vault --> repos
+  repos -- "[better-sqlite3]" --> db
+  betterauth -- "Codes, welcome" --> outbox
+  routes -- "Invites" --> outbox
+  outbox -- "[HTTPS API]" --> resend
+  outbox --> db
+  routes -- "Records actions" --> audit
+  issue -- "Records actions" --> audit
+  audit --> db
+
+  classDef person fill:#08427b,stroke:#052e56,color:#fff
+  classDef container fill:#438dd5,stroke:#2e6295,color:#fff
+  classDef component fill:#85bbf0,stroke:#5d82a8,color:#0b2540
+  classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
+  class web,db container
+  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit component
+  class nacional,resend,lookups external
+  style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

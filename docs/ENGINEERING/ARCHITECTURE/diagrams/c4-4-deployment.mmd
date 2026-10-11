@@ -1,0 +1,40 @@
+%% C4 deployment: production. Render with diagrams/render.html (see README.md).
+flowchart LR
+  browser["<b>Browser</b><br/><i>[Device]</i><br/>Web app and public pages"]
+
+  subgraph cf["Cloudflare [Edge]"]
+    edge["<b>notaflow.vapulab.com</b><br/><i>[DNS, TLS, Tunnel]</i>"]
+  end
+
+  subgraph vps["Hostinger VPS, Brazil"]
+    direction TB
+    subgraph compose["Docker Compose"]
+      app["<b>notaflow-app-1</b><br/><i>[Container: the GHCR image of the commit]</i><br/>API server and web build. Its env comes from /opt/notaflow/.env."]
+      vol[("<b>/data volume</b><br/><i>[SQLite]</i><br/>notaflow.db and backups/")]
+    end
+    cloudflared["<b>northub-tunnel-1</b><br/><i>[Container: cloudflared]</i><br/>One tunnel shared with vapulab.com and northub"]
+    timer["<b>notaflow-backup.timer</b><br/><i>[systemd]</i><br/>Daily at 06:00 UTC, docker exec of the backup command"]
+  end
+
+  subgraph gh["GitHub"]
+    actions["<b>GitHub Actions</b><br/><i>[CI and Deploy]</i>"]
+    ghcr["<b>GHCR</b><br/><i>[Image registry]</i>"]
+  end
+
+  browser -- "HTTPS" --> edge
+  edge -- "Tunnel" --> cloudflared
+  cloudflared -- "HTTP, Docker network" --> app
+  app --> vol
+  timer -- "docker exec" --> app
+  actions -- "Push image" --> ghcr
+  actions -- "SSH: set IMAGE, compose up" --> app
+  app -. "Pull" .-> ghcr
+
+  classDef node fill:#438dd5,stroke:#2e6295,color:#fff
+  classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
+  class app,vol,cloudflared,timer node
+  class browser,edge,actions,ghcr external
+  style vps fill:#f5f8fc,stroke:#1168bd,color:#0b4884
+  style compose fill:#eaf2fb,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884
+  style cf fill:#f7f7f7,stroke:#8a8a8a,color:#333
+  style gh fill:#f7f7f7,stroke:#8a8a8a,color:#333

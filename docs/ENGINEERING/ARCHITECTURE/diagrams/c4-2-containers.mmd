@@ -1,0 +1,45 @@
+%% C4 level 2: containers of NotaFlow. Render with diagrams/render.html (see README.md).
+flowchart TB
+  user["<b>Company user / Platform admin</b><br/><i>[Person]</i>"]
+
+  subgraph boundary["NotaFlow [Software system]"]
+    direction TB
+    web["<b>Web app</b><br/><i>[Container: React, Vite]</i><br/>The app under /app and the platform admin under /admin. Runs in the browser."]
+    pages["<b>Public pages</b><br/><i>[Container: static HTML, Tailwind]</i><br/>Landing at /, /termos, /privacidade."]
+    tunnel["<b>cloudflared</b><br/><i>[Container: Docker]</i><br/>Cloudflare Tunnel; no port of the VPS is open to the internet."]
+    server["<b>API server</b><br/><i>[Container: Node 22, Fastify, Better Auth]</i><br/>REST API under /api, login, issue and cancel, sync, onboarding, certificate vault, mail outbox. Serves the web build."]
+    db[("<b>Database</b><br/><i>[Container: SQLite on a Docker volume]</i><br/>Accounts, emitters, sealed certificates, invoices, audit log, mail outbox. Rows are never deleted.")]
+    backup["<b>Backup timer</b><br/><i>[Container: systemd timer]</i><br/>Online SQLite backup every day, 14 kept."]
+    cardworker["<b>CNPJ card parser</b><br/><i>[Container: Node child process]</i><br/>Reads the uploaded PDF text, 128 MB of memory, at most 2 at a time."]
+  end
+
+  nacional["<b>National NFS-e system</b><br/><i>[External system]</i><br/>Sefin Nacional and ADN"]
+  resend["<b>Resend</b><br/><i>[External system]</i>"]
+  others["<b>Google, Turnstile, BrasilAPI, CNPJá, ViaCEP, Banco Central, HIBP</b><br/><i>[External systems]</i>"]
+  posthog["<b>PostHog</b><br/><i>[External system]</i>"]
+  ci["<b>GitHub Actions + GHCR</b><br/><i>[External system]</i><br/>Builds the image on a merge to production and deploys it over SSH."]
+
+  user -- "Visits [HTTPS]" --> pages
+  user -- "Uses [HTTPS]" --> web
+  web -- "JSON over /api [HTTPS through the tunnel]" --> tunnel
+  pages -- "Public config [HTTPS]" --> tunnel
+  tunnel -- "Forwards [HTTP, Docker network]" --> server
+  server -- "Reads and writes [better-sqlite3]" --> db
+  server -- "Spawns per upload [IPC]" --> cardworker
+  backup -- "Copies [SQLite online backup]" --> db
+  server -- "DPS, events, ADN reads [HTTPS, mTLS]" --> nacional
+  server -- "E-mail through the outbox [HTTPS]" --> resend
+  server -- "Login, captcha, lookups [HTTPS]" --> others
+  web -. "Events [HTTPS]" .-> posthog
+  pages -. "Page views [HTTPS]" .-> posthog
+  ci -- "Pulls the new image, docker compose up [SSH]" --> server
+
+  classDef person fill:#08427b,stroke:#052e56,color:#fff
+  classDef container fill:#438dd5,stroke:#2e6295,color:#fff
+  classDef db fill:#438dd5,stroke:#2e6295,color:#fff
+  classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
+  class user person
+  class web,pages,tunnel,server,backup,cardworker container
+  class db db
+  class nacional,resend,others,posthog,ci external
+  style boundary fill:#f5f8fc,stroke:#1168bd,stroke-dasharray:6 4,color:#0b4884
