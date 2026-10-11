@@ -48,7 +48,9 @@ test('GET /api/me returns the user and accounts of the session', async () => {
     email: 'lincoln@example.com',
     name: 'lincoln',
     platformRole: 'user',
-    accounts: [{ id: a.accountId, name: 'Vapulab', role: 'owner', status: 'active' }],
+    accounts: [
+      { id: a.accountId, name: 'Vapulab', role: 'owner', status: 'active', onboardingStep: 'card' },
+    ],
   });
 });
 

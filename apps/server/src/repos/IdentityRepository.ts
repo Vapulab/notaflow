@@ -2,6 +2,7 @@ import type { AccountRole } from '@notaflow/core';
 import { and, eq, isNull, lt, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { notDeleted } from '../db/stamps';
+import type { OnboardingStep } from '../onboarding/types';
 import { accounts, memberships, users } from '../db/schema';
 
 export interface Identity {
@@ -14,6 +15,7 @@ export interface Identity {
     accountName: string;
     role: AccountRole;
     accountStatus: 'active' | 'suspended';
+    onboardingStep: OnboardingStep;
   }[];
 }
 
@@ -42,6 +44,7 @@ export class IdentityRepository {
         accountName: accounts.name,
         role: memberships.role,
         accountStatus: accounts.status,
+        onboardingStep: accounts.onboardingStep,
       })
       .from(memberships)
       .innerJoin(accounts, eq(accounts.id, memberships.accountId))

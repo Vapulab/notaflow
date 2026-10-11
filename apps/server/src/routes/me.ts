@@ -15,6 +15,7 @@ export function meRoutes(app: FastifyInstance): void {
         name: m.accountName,
         role: m.role,
         status: m.accountStatus,
+        onboardingStep: m.onboardingStep,
       })),
     };
   });
