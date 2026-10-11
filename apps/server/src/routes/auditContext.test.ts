@@ -68,3 +68,46 @@ test('an entry written outside a request has no request data', () => {
   });
   expect(lastRow()).toEqual({ ip: null, user_agent: null, request_id: null });
 });
+
+test('the request data stays inside its request, even for the code that awaited it', async () => {
+  await editCustomer({ 'user-agent': 'Navegador/1.0' }, '203.0.113.7');
+  new AuditLog(t.db).record({
+    userEmail: 'system',
+    accountId: null,
+    action: 'sync.run',
+    entity: 'e1',
+    result: 'ok',
+  });
+  expect(lastRow()).toEqual({ ip: null, user_agent: null, request_id: null });
+});
+
+test('over real HTTP, a JSON body request still records its browser and id', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const emitter = new EmitterRepository(t.db).create(a, {
+    cnpj: '12345678000195',
+    companyName: 'EMPRESA',
+    municipality: '4113700',
+    simplesNacional: '3',
+    specialRegime: '0',
+    dpsSeries: '900',
+  });
+  const id =
+    new CustomerRepository(t.db).upsertImported(a, emitter.id, {
+      document: { type: 'CNPJ', value: '11222333000181' },
+      name: 'Cliente',
+    }) ?? '';
+  const address = await t.app.listen({ port: 0, host: '127.0.0.1' });
+  const response = await fetch(`${address}/api/accounts/${a.accountId}/customers/${id}`, {
+    method: 'PUT',
+    headers: {
+      ...(await t.as('a@example.com')),
+      'content-type': 'application/json',
+      'user-agent': 'Navegador/2.0',
+    },
+    body: JSON.stringify({ email: 'contas@example.com' }),
+  });
+  expect(response.status).toBe(200);
+  const row = lastRow();
+  expect(row).toMatchObject({ ip: '127.0.0.1', user_agent: 'Navegador/2.0' });
+  expect(row.request_id).toMatch(/\S+/);
+});

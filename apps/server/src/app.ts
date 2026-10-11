@@ -70,15 +70,16 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   app.addHook('onRequest', (request, _reply, done) => {
     const cf = request.headers['cf-connecting-ip'];
-    requestContext.enterWith({
+    const info = {
       ip: clientIp(
         request.socket.remoteAddress ?? request.ip,
         typeof cf === 'string' ? cf : undefined,
       ),
       userAgent: request.headers['user-agent'] ?? null,
       requestId: request.id,
-    });
-    done();
+    };
+    // run, not enterWith: the data must not outlive the request in the caller's context.
+    requestContext.run(info, done);
   });
   app.setErrorHandler(handleError);
 
