@@ -171,6 +171,9 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
           )}
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
+            <a href="/app?tour=1" className={`text-sm ${linkClasses({ variant: 'muted' })}`}>
+              Ver o tour
+            </a>
             {me && (
               <a href={routeHref({ name: 'profile' })} title="Minha conta" aria-label="Minha conta">
                 <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />

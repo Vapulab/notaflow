@@ -64,3 +64,8 @@ test('isDefinitive: a refusal before anything is reserved, never an unclear answ
   expect(isDefinitive(new ApiError(429, 'http_429'))).toBe(false);
   expect(isDefinitive(new TypeError('Failed to fetch'))).toBe(false);
 });
+
+test('the header offers the tour again', () => {
+  renderWithMe(<Layout title="Notas">x</Layout>, meFor('user'));
+  expect(screen.getByRole('link', { name: 'Ver o tour' }).getAttribute('href')).toBe('/app?tour=1');
+});

@@ -148,7 +148,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
   publicConfigRoutes(app, config);
-  meRoutes(app);
+  meRoutes(app, db);
   adminRoutes(app, db);
   memberRoutes(app, db);
   onboardingRoutes(app, {

@@ -2,7 +2,10 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { stubApi } from '../test/stubApi';
+import * as tour from '../tour/tour';
 import { HomePage } from './HomePage';
+
+vi.mock('../tour/tour', () => ({ startTour: vi.fn() }));
 
 afterEach(() => {
   cleanup();
@@ -99,4 +102,41 @@ test('a member of an unfinished account waits for the owner', async () => {
   render(<HomePage />);
   expect(await screen.findByText('O dono da conta ainda está concluindo o cadastro.')).toBeTruthy();
   expect(window.location.pathname).toBe('/app');
+});
+
+test('the first visit to a finished account starts the tour, and closing it is remembered', async () => {
+  window.history.replaceState(null, '', '/app');
+  const calls = stubApi({
+    '/api/me': {
+      ...meWith([{ ...account('acc', 'done'), needsFiscalConfig: true }]),
+      tourSeenAt: null,
+    },
+    '/api/me/tour-seen': {},
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
+  const options = vi.mocked(tour.startTour).mock.calls[0]?.[0];
+  expect(options?.needsFiscalConfig).toBe(true);
+  expect(document.querySelector('[data-tour="nova-nota"]')).not.toBeNull();
+  options?.onDone();
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === '/api/me/tour-seen' && c.init?.method === 'POST')).toBe(
+      true,
+    ),
+  );
+});
+
+test('a seen tour does not start again, unless asked with ?tour=1', async () => {
+  vi.mocked(tour.startTour).mockClear();
+  window.history.replaceState(null, '', '/app');
+  stubApi({
+    '/api/me': { ...meWith([account('acc', 'done')]), tourSeenAt: '2026-10-11T00:00:00Z' },
+  });
+  render(<HomePage />);
+  await screen.findByText('Nova nota');
+  expect(tour.startTour).not.toHaveBeenCalled();
+  cleanup();
+  window.history.replaceState(null, '', '/app?tour=1');
+  render(<HomePage />);
+  await waitFor(() => expect(tour.startTour).toHaveBeenCalledOnce());
 });

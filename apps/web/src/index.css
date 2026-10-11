@@ -2,3 +2,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* The tour popover (driver.js) in the Malphas tokens, so it follows light and dark. */
+.driver-popover.notaflow-tour {
+  background-color: rgb(var(--color-surface));
+  color: rgb(var(--color-fg));
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius);
+}
+.driver-popover.notaflow-tour .driver-popover-title {
+  font-family: var(--font-display);
+}
+.driver-popover.notaflow-tour .driver-popover-description,
+.driver-popover.notaflow-tour .driver-popover-progress-text {
+  color: rgb(var(--color-muted));
+}
+.driver-popover.notaflow-tour .driver-popover-footer button {
+  background-color: rgb(var(--color-primary));
+  color: rgb(var(--color-primary-fg));
+  border: none;
+  text-shadow: none;
+  border-radius: var(--radius);
+}
+.driver-popover.notaflow-tour .driver-popover-arrow-side-left {
+  border-left-color: rgb(var(--color-surface));
+}
+.driver-popover.notaflow-tour .driver-popover-arrow-side-right {
+  border-right-color: rgb(var(--color-surface));
+}
+.driver-popover.notaflow-tour .driver-popover-arrow-side-top {
+  border-top-color: rgb(var(--color-surface));
+}
+.driver-popover.notaflow-tour .driver-popover-arrow-side-bottom {
+  border-bottom-color: rgb(var(--color-surface));
+}

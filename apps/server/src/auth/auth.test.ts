@@ -48,8 +48,16 @@ test('GET /api/me returns the user and accounts of the session', async () => {
     email: 'lincoln@example.com',
     name: 'lincoln',
     platformRole: 'user',
+    tourSeenAt: null,
     accounts: [
-      { id: a.accountId, name: 'Vapulab', role: 'owner', status: 'active', onboardingStep: 'card' },
+      {
+        id: a.accountId,
+        name: 'Vapulab',
+        role: 'owner',
+        status: 'active',
+        onboardingStep: 'card',
+        needsFiscalConfig: false,
+      },
     ],
   });
 });
@@ -118,4 +126,33 @@ test('a session in use renews: after a day, the cookie and the expiry move forwa
     expires_at: number;
   };
   expect(row.expires_at).toBeGreaterThan(old + day / 2);
+});
+
+test('the tour is marked as seen once, and /api/me tells which accounts lack a fiscal configuration', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  t.db.$client
+    .prepare(
+      `INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series)
+       VALUES ('e1', ?, '12345678000195', 'EMPRESA', '4113700', '3', '0', '900')`,
+    )
+    .run(a.accountId);
+  const headers = await t.as('a@example.com');
+  const before = await t.app.inject({ method: 'GET', url: '/api/me', headers });
+  expect(before.json()).toMatchObject({
+    tourSeenAt: null,
+    accounts: [{ id: a.accountId, needsFiscalConfig: true }],
+  });
+  const seen = await t.app.inject({
+    method: 'POST',
+    url: '/api/me/tour-seen',
+    headers,
+    payload: {},
+  });
+  expect(seen.statusCode).toBe(204);
+  t.db.$client.prepare("UPDATE emitters SET simples_annex = 'III', simples_percent = 600").run();
+  const after = await t.app.inject({ method: 'GET', url: '/api/me', headers });
+  expect(after.json()).toMatchObject({
+    tourSeenAt: expect.any(String),
+    accounts: [{ needsFiscalConfig: false }],
+  });
 });

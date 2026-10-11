@@ -56,12 +56,14 @@ export interface Me {
   email: string;
   name: string;
   platformRole: 'admin' | 'user';
+  tourSeenAt?: string | null;
   accounts: {
     id: string;
     name: string;
     role: 'owner' | 'member';
     status: 'active' | 'suspended';
     onboardingStep: OnboardingStep;
+    needsFiscalConfig?: boolean;
   }[];
 }
 
