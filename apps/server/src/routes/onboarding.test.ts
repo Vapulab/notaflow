@@ -37,7 +37,7 @@ test('a new user names the account, becomes its owner, and goes to the card step
     accounts: [{ id: accountId, name: 'Minha Empresa', role: 'owner', onboardingStep: 'card' }],
   });
   const state = await call('GET', `/api/accounts/${accountId}/onboarding`, 'nova@example.com');
-  expect(state.json()).toEqual({ step: 'card', draft: null });
+  expect(state.json()).toEqual({ step: 'card', draft: null, municipalityName: null });
   const entry = t.db.$client
     .prepare("SELECT result FROM audit_log WHERE action = 'account.create'")
     .get();
@@ -182,6 +182,7 @@ describe('the card step', () => {
         source: 'brasilapi',
       },
       nameMismatch: false,
+      municipalityName: 'Londrina',
     });
     const [doc] = documents();
     expect(doc?.cnpj).toBe('12345678000195');
@@ -349,5 +350,26 @@ describe('the card step', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: 'WRONG_PASSWORD' });
     expect(stepOf(accountId)).toBe('certificate');
+  });
+  test('the answers name the municipality, and "Trocar cartão" goes back to the card step', async () => {
+    const accountId = await atCertificate();
+    const state = await c.app.inject({
+      method: 'GET',
+      url: `/api/accounts/${accountId}/onboarding`,
+      headers: await c.as('nova@example.com'),
+    });
+    expect(state.json()).toMatchObject({ step: 'certificate', municipalityName: 'Londrina' });
+    const back = await c.app.inject({
+      method: 'POST',
+      url: `/api/accounts/${accountId}/onboarding/back-to-card`,
+      headers: await c.as('nova@example.com'),
+      payload: {},
+    });
+    expect(back.json()).toEqual({ step: 'card' });
+    expect(stepOf(accountId)).toBe('card');
+    answer(active);
+    expect((await sendCard(accountId, await syntheticCard())).json()).toMatchObject({
+      municipalityName: 'Londrina',
+    });
   });
 });

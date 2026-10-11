@@ -2,6 +2,7 @@ import type { AccountContext } from '@notaflow/core';
 import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
 import { accountContext, identityOf } from '../auth/guards';
+import { municipality } from '../data/places';
 import type { Database } from '../db/openDatabase';
 import type { EmitterOnboarding } from '../emitters/EmitterOnboarding';
 import { HttpError } from '../httpError';
@@ -135,7 +136,7 @@ export function onboardingRoutes(
         result: 'ok',
         detail: `${draft.source}${nameMismatch ? ', name differs' : ''}`,
       });
-      return { draft, nameMismatch };
+      return { draft, nameMismatch, municipalityName: nameOf(draft) };
     },
   );
 
@@ -170,7 +171,7 @@ export function onboardingRoutes(
         result: 'ok',
         detail: `${draft.source}, typed`,
       });
-      return { draft, nameMismatch: false };
+      return { draft, nameMismatch: false, municipalityName: nameOf(draft) };
     },
   );
 
@@ -238,7 +239,18 @@ export function onboardingRoutes(
 
   app.get<Params>('/api/accounts/:accountId/onboarding', async (request) => {
     const ctx = accountContext(request, request.params.accountId);
-    return { step: onboarding.step(ctx), draft: onboarding.draft(ctx) };
+    const draft = onboarding.draft(ctx);
+    return { step: onboarding.step(ctx), draft, municipalityName: draft ? nameOf(draft) : null };
+  });
+
+  // "Trocar cartão": the confirmed data was not this company's; the card step runs again.
+  app.post<Params>('/api/accounts/:accountId/onboarding/back-to-card', async (request) => {
+    const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+    return db.transaction(() => {
+      const moved = move(ctx, 'certificate', 'card');
+      onboarding.setDraft(ctx, null);
+      return moved;
+    });
   });
 
   app.post<Params>('/api/accounts/:accountId/onboarding/fiscal-done', async (request) =>
@@ -266,4 +278,8 @@ function normalize(name: string): string {
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, ' ')
     .trim();
+}
+
+function nameOf(draft: CnpjDraft): string | null {
+  return municipality(draft.municipality)?.name ?? null;
 }
