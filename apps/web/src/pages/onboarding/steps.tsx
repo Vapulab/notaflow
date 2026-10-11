@@ -348,11 +348,12 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   };
   const save = (event: FormEvent) => {
     event.preventDefault();
-    if (!ready || !emitter || band === null || annex === null || issRate === null) return;
+    if (!ready || !emitter || revenueCents === null || annex === null || issRate === null) return;
     void run(async () => {
       await api.put(`${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal`, {
         simplesAnnex: annex,
-        simplesBand: band,
+        // The server derives the band and the rates of each invoice from the revenue.
+        simplesRbt12Cents: revenueCents,
         issRate,
         ibscbsRegime: regime,
       });

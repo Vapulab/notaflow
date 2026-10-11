@@ -33,18 +33,16 @@ const emitter = {
   dpsSeries: '900',
   certificate: null,
 };
-const bands = {
-  III: [600, 1120, 1350, 1600, 2100, 3300],
-  V: [1550, 1800, 1950, 2050, 2300, 3050],
-};
 const fiscal = {
   simplesAnnex: 'III',
   simplesBand: 2,
-  simplesPercent: 1120,
+  simplesPercent: 613,
+  simplesRbt12Cents: 18_470_000,
+  simplesRbt12At: new Date().toISOString(),
+  rates: { domestic: 613, export: 312 },
   issRate: 200,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
-  bands,
 };
 const service = {
   id: 's1',
@@ -140,6 +138,9 @@ test('without a fiscal configuration the owner gets a link and a member is told 
         simplesPercent: null,
         simplesAnnex: null,
         simplesBand: null,
+        simplesRbt12Cents: null,
+        simplesRbt12At: null,
+        rates: null,
       },
     }),
   );
@@ -152,7 +153,7 @@ test('without a fiscal configuration the owner gets a link and a member is told 
   expect(await screen.findByText(/Peça ao dono da conta/)).toBeTruthy();
 });
 
-test('a Brazil invoice: the service fills the description, and the default band is not sent', async () => {
+test('a Brazil invoice: the service fills the description, and the computed rate is not sent', async () => {
   const calls = stubApi(
     routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued', number: '7' } }),
   );
@@ -162,14 +163,14 @@ test('a Brazil invoice: the service fills the description, and the default band 
   expect((screen.getByLabelText('Descrição') as HTMLTextAreaElement).value).toBe(
     'Desenvolvimento de software',
   );
-  expect((screen.getByLabelText('Faixa do Simples') as HTMLSelectElement).value).toBe('2');
+  expect(screen.getByText('6,13% (faixa 2)')).toBeTruthy();
   expect(screen.getByText('ISS no DAS (não retido)')).toBeTruthy();
   expect(screen.queryByLabelText('Moeda')).toBeNull();
   expect(calls.some((c) => c.url.includes('/customers?emitterId=em1&q=Clie'))).toBe(true);
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   const review = screen.getByRole('table');
   expect(within(review).getByText('Cliente Teste Ltda')).toBeTruthy();
-  expect(within(review).getByText('Faixa 2 – 11,20%')).toBeTruthy();
+  expect(within(review).getByText('6,13% (faixa 2)')).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
   await waitFor(() =>
     expect(window.location.pathname + window.location.search).toBe('/app/acc/notas/new1'),
@@ -186,16 +187,14 @@ test('a Brazil invoice: the service fills the description, and the default band 
   });
 });
 
-test('another band sends its percent', async () => {
-  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+test('a revenue informed before this month asks to be updated', async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesRbt12At: '2020-01-15T12:00:00Z' },
+    }),
+  );
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
-  const user = userEvent.setup();
-  await fillBrazil(user);
-  await user.selectOptions(screen.getByLabelText('Faixa do Simples'), '3');
-  await user.click(screen.getByRole('button', { name: 'Revisar' }));
-  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
-  await waitFor(() => expect(sent(calls)).toHaveLength(1));
-  expect(JSON.parse(String(sent(calls)[0]?.init?.body))).toMatchObject({ simplesPercent: 1350 });
+  expect(await screen.findByText(/Atualize a receita dos últimos 12 meses/)).toBeTruthy();
 });
 
 test('a customer abroad: currency, foreign amount, and reais from the PTAX of the competence', async () => {
@@ -205,6 +204,8 @@ test('a customer abroad: currency, foreign amount, and reais from the PTAX of th
   await pickCustomer(user, 'Foreign Customer Inc');
   await user.selectOptions(screen.getByLabelText('Serviço'), 's1');
   expect(screen.getByText('Exportação: sem ISS')).toBeTruthy();
+  // An export leaves out ISS, PIS, and COFINS from the Simples rate.
+  expect(screen.getByText('3,12% (faixa 2, exportação sem ISS, PIS e COFINS)')).toBeTruthy();
   expect((screen.getByLabelText('Moeda') as HTMLSelectElement).value).toBe('220');
   await user.type(screen.getByLabelText('Valor em USD'), '1.234,00');
   const brl = screen.getByLabelText('Valor em reais') as HTMLInputElement;
@@ -454,7 +455,7 @@ test('the review shows the typed Simples percent in place of the band', async ()
   await user.type(screen.getByLabelText('Outro percentual do Simples (%)'), '7,50');
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   expect(within(screen.getByRole('table')).getByText('Percentual informado: 7,50%')).toBeTruthy();
-  expect(within(screen.getByRole('table')).queryByText('Faixa 2 – 11,20%')).toBeNull();
+  expect(within(screen.getByRole('table')).queryByText('6,13% (faixa 2)')).toBeNull();
 });
 
 test('an incomplete IBS/CBS group blocks the review with a hint', async () => {

@@ -325,7 +325,7 @@ test('the fiscal step shows the activity and asks only the revenue and the payro
   );
   expect(JSON.parse(String(put?.init?.body))).toEqual({
     simplesAnnex: 'III',
-    simplesBand: 2,
+    simplesRbt12Cents: 25_000_000,
     issRate: 200,
     ibscbsRegime: 'inside_das',
   });
@@ -347,7 +347,10 @@ test('a payroll under 28% means Anexo V', async () => {
   const put = calls.find(
     (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
   );
-  expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'V', simplesBand: 1 });
+  expect(JSON.parse(String(put?.init?.body))).toMatchObject({
+    simplesAnnex: 'V',
+    simplesRbt12Cents: 9_000_000,
+  });
 });
 
 test('a revenue above the Simples limit is explained, and nothing is saved', async () => {

@@ -59,7 +59,7 @@ import {
   EXPORT_FIELDS,
   serviceFields,
 } from './completeMode';
-import { bandLabel } from './FiscalConfigForm';
+import { revenueIsStale } from '../components/simplesRates';
 
 const CURRENCIES = { '220': 'USD', '978': 'EUR' } as const;
 type CurrencyCode = keyof typeof CURRENCIES;
@@ -73,7 +73,6 @@ interface Form {
   brl: string;
   currencyCode: CurrencyCode;
   foreign: string;
-  band: string; // 1 to 6, within the emitter's annex
   more: Complete | null; // "Mais opções", null while closed
 }
 
@@ -121,7 +120,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     brl: '',
     currencyCode: '220',
     foreign: '',
-    band: '',
     more: null,
   });
   const [discarding, setDiscarding] = useState(false);
@@ -156,7 +154,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 emitterId: customer.emitterId,
                 customer,
                 serviceId: '',
-                band: '',
                 more: null,
               },
         );
@@ -164,10 +161,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
       () => {},
     );
   }, [base, linked, send.restored]);
-
-  // The emitter's band is the default until the user picks another.
-  const defaultBand = fiscal.data?.simplesBand ? String(fiscal.data.simplesBand) : '';
-  const band = form.band || defaultBand;
 
   const customer = form.customer;
   const abroad =
@@ -232,22 +225,26 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   if (services.error) return <Alert variant="error">{errorText(services.error)}</Alert>;
   if (!fiscal.data || !services.data) return <Spinner />;
   const config = fiscal.data;
-  if (config.simplesPercent === null || !config.simplesAnnex) {
+  if (!config.rates || !config.simplesAnnex) {
     return roleIn(me, accountId) === 'owner' ? (
       <Alert variant="warning">
-        Configure o Simples e o ISS do emitente antes de emitir.{' '}
+        Informe a receita dos últimos 12 meses e o ISS do emitente antes de emitir.{' '}
         <Link href={routeHref({ name: 'emitter', accountId, emitterId: emitter.id })}>
           Configurar o emitente
         </Link>
       </Alert>
     ) : (
       <Alert variant="warning">
-        Peça ao dono da conta para configurar o Simples e o ISS do emitente antes de emitir.
+        Peça ao dono da conta para informar a receita dos últimos 12 meses e o ISS do emitente antes
+        de emitir.
       </Alert>
     );
   }
-  const annexBands = config.bands[config.simplesAnnex];
-  const bandPercent = annexBands[Number(band) - 1] ?? null;
+  // The rate of this invoice: the effective one, or the export one without ISS, PIS, and COFINS.
+  const ratePercent = abroad ? config.rates.export : config.rates.domestic;
+  const rateText = `${percentInput(ratePercent)}% (faixa ${config.simplesBand ?? ''}${
+    abroad ? ', exportação sem ISS, PIS e COFINS' : ''
+  })`;
   const activeServices = services.data.filter((s) => !s.archived);
   const currency = CURRENCIES[form.currencyCode];
 
@@ -270,7 +267,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     form.description.trim() !== '' &&
     brlCents !== null &&
     brlCents > 0 &&
-    bandPercent !== null &&
     (!abroad || (foreignCents !== null && foreignCents > 0 && rate !== null && !rateLoading));
 
   function chooseService(serviceId: string) {
@@ -304,9 +300,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
       ...(abroad && foreignCents
         ? { foreignCurrency: form.currencyCode, foreignAmountCents: foreignCents }
         : {}),
-      ...(band !== defaultBand && bandPercent !== null ? { simplesPercent: bandPercent } : {}),
       description: form.description.trim(),
-      // A typed Simples percent replaces the band.
+      // A typed Simples percent replaces the computed one.
       ...complete?.body,
     });
   }
@@ -333,12 +328,10 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           : formatCents(brlCents ?? 0),
       ],
       [
-        'Faixa do Simples',
+        'Alíquota do Simples',
         complete?.body.simplesPercent !== undefined
           ? `Percentual informado: ${percentInput(complete.body.simplesPercent)}%`
-          : bandPercent === null
-            ? ''
-            : bandLabel(Number(band), bandPercent),
+          : rateText,
       ],
       ['ISS', issLine],
     ];
@@ -429,7 +422,6 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   emitterId: e.target.value,
                   customer: null,
                   serviceId: '',
-                  band: '',
                   more: null,
                 }))
               }
@@ -539,15 +531,16 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Faixa do Simples">
-            <Select value={band} onChange={(e) => set('band', e.target.value)}>
-              {annexBands.map((percent, index) => (
-                <option key={index + 1} value={String(index + 1)}>
-                  {bandLabel(index + 1, percent)}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-fg">Alíquota do Simples</span>
+            <p className="text-sm text-muted">{rateText}</p>
+            {revenueIsStale(config.simplesRbt12At) && (
+              <Alert variant="warning">
+                Atualize a receita dos últimos 12 meses na configuração fiscal: a alíquota deste mês
+                depende dela.
+              </Alert>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-fg">ISS</span>
             <p className="text-sm text-muted">{issLine}</p>
