@@ -505,3 +505,30 @@ test('the customer field lists the emitter customers before anything is typed', 
   expect(screen.getByRole('option', { name: /Foreign Customer Inc/ })).toBeTruthy();
   expect(calls.some((c) => c.url === `${base}/customers?emitterId=em1`)).toBe(true);
 });
+
+test('Mais opções: a code suggested by the CNAEs can be chosen before any typing', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+      [`${base}/emitters/em1/service-codes/suggested`]: {
+        cnaes: ['6201501'],
+        codes: [{ code: '010201', description: 'Programação.' }],
+      },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByRole('combobox', { name: 'Código nacional' }));
+  await user.click(
+    await screen.findByRole('option', {
+      name: '01.02.01 – Programação.',
+    }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.overrides).toEqual({ nationalTaxCode: '010201' });
+});

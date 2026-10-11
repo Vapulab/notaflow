@@ -617,7 +617,11 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 }
                 onSelect={(option) =>
                   setMore({
-                    code: option ? (foundCodes.find((c) => c.code === option.value) ?? null) : null,
+                    code: option
+                      ? ([...foundCodes, ...suggestedCodes.codes].find(
+                          (c) => c.code === option.value,
+                        ) ?? null)
+                      : null,
                   })
                 }
                 placeholder="Busque pelo nome ou pelo código"
