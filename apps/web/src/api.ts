@@ -61,7 +61,27 @@ export interface Me {
     name: string;
     role: 'owner' | 'member';
     status: 'active' | 'suspended';
+    onboardingStep: OnboardingStep;
   }[];
+}
+
+export type OnboardingStep = 'company' | 'card' | 'certificate' | 'fiscal' | 'sync' | 'done';
+
+export interface CnpjDraft {
+  cnpj: string;
+  legalName: string;
+  tradeName: string | null;
+  municipality: string;
+  uf: string;
+  cnae: string | null;
+  simplesNacional: '1' | '2' | '3';
+  source: 'brasilapi' | 'cnpja';
+}
+
+export interface OnboardingState {
+  step: OnboardingStep;
+  draft: CnpjDraft | null;
+  municipalityName: string | null;
 }
 
 export interface Emitter {

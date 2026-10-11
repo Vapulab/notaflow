@@ -73,7 +73,7 @@ export function onboardingRoutes(
       const name = request.body.name.trim();
       if (!name) throw new HttpError(400, 'invalid_name');
       // One account per signup; joining more accounts is by invitation.
-      if (identity.memberships.length > 0) throw new HttpError(409, 'already_member');
+      if (identity.memberships.length > 0) throw new HttpError(409, 'already_has_account');
       const accountId = onboarding.createAccount(identity.userId, name);
       audit.record({
         userEmail: identity.email,

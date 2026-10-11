@@ -6,6 +6,7 @@ export type Route =
   | { name: 'reset' }
   | { name: 'home' }
   | { name: 'profile' }
+  | { name: 'onboarding'; accountId?: string }
   | { name: 'admin' }
   | { name: 'emitters'; accountId: string }
   | { name: 'emitter'; accountId: string; emitterId: string }
@@ -42,6 +43,10 @@ export function parseRoute(location: { pathname: string; search: string }): Rout
   if (first && parts.length === 1 && PUBLIC[first]) return PUBLIC[first];
   if (first !== 'app' || !accountId) return { name: 'home' };
   if (accountId === 'conta' && parts.length === 2) return { name: 'profile' };
+  if (accountId === 'comecar' && parts.length === 2) return { name: 'onboarding' };
+  if (accountId === 'comecar' && section && parts.length === 3) {
+    return { name: 'onboarding', accountId: section };
+  }
   if (RESERVED.has(accountId)) return { name: 'home' };
   const length = parts.length;
   switch (section) {
@@ -83,6 +88,8 @@ export function routeHref(route: Route): string {
       return '/app';
     case 'profile':
       return '/app/conta';
+    case 'onboarding':
+      return route.accountId ? `/app/comecar/${e(route.accountId)}` : '/app/comecar';
     case 'admin':
       return '/admin';
     case 'invoices':

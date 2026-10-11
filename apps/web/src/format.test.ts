@@ -5,6 +5,7 @@ import {
   centsInput,
   fileToBase64,
   formatCents,
+  formatCnpj,
   formatCompetence,
   formatDate,
   formatDateTime,
@@ -70,4 +71,10 @@ test('percents are hundredths shown with a comma', () => {
 
 test('a national service code is shown with dots', () => {
   expect(formatServiceCode('010701')).toBe('01.07.01');
+});
+
+test('formatCnpj punctuates 14 characters and leaves anything else as it is', () => {
+  expect(formatCnpj('12345678000195')).toBe('12.345.678/0001-95');
+  expect(formatCnpj('12ABC34501DE35')).toBe('12.ABC.345/01DE-35');
+  expect(formatCnpj('123')).toBe('123');
 });

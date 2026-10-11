@@ -19,6 +19,8 @@ const ROUTES: [string, Route][] = [
   ['/recuperar-senha', { name: 'reset' }],
   ['/app', { name: 'home' }],
   ['/app/conta', { name: 'profile' }],
+  ['/app/comecar', { name: 'onboarding' }],
+  ['/app/comecar/acc', { name: 'onboarding', accountId: 'acc' }],
   ['/admin', { name: 'admin' }],
   ['/app/acc/notas', { name: 'invoices', accountId: 'acc' }],
   ['/app/acc/notas/inv1', { name: 'invoice', accountId: 'acc', invoiceId: 'inv1' }],
@@ -42,7 +44,7 @@ test('ids that need encoding survive the round trip', () => {
   expect(at(routeHref(route))).toEqual(route);
 });
 
-test.each(['/', '/nada', '/app/acc', '/app/acc/desconhecido', '/app/comecar/notas'])(
+test.each(['/', '/nada', '/app/acc', '/app/acc/desconhecido', '/app/comecar/acc/extra'])(
   '%s is the home',
   (path) => {
     expect(at(path)).toEqual({ name: 'home' });

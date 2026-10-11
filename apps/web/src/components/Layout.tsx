@@ -26,6 +26,20 @@ export const ERROR_TEXT: Record<string, string> = {
   MISSING_RESPONSE: 'Confirme que você não é um robô e tente de novo.',
   VERIFICATION_FAILED: 'A verificação anti-robô falhou. Tente de novo.',
   INVALID_EMAIL: 'E-mail inválido.',
+  already_has_account: 'Você já participa de uma conta.',
+  invalid_name: 'Digite o nome da empresa.',
+  invalid_cnpj: 'O CNPJ deve ter 14 caracteres.',
+  card_unreadable:
+    'Não conseguimos ler este PDF. Envie o cartão baixado do site da Receita, ou digite o CNPJ.',
+  card_no_cnpj: 'Este PDF não traz um CNPJ. Envie o cartão CNPJ, ou digite o CNPJ.',
+  card_too_large: 'O PDF passa de 2 MB.',
+  cnpj_not_found: 'Este CNPJ não foi encontrado na consulta pública.',
+  cnpj_not_active: 'Este CNPJ não está ativo na Receita.',
+  cnpj_lookup_unavailable: 'A consulta do CNPJ não respondeu. Tente de novo em instantes.',
+  certificate_cnpj_mismatch:
+    'Este certificado é de outro CNPJ. Envie o certificado da empresa do cartão.',
+  card_required: 'Envie o cartão CNPJ antes do certificado.',
+  onboarding_step: 'Esta etapa já foi feita. Atualize a página.',
   // The browser closed or refused the passkey prompt; the cause stays in the browser.
   ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY: 'O navegador não concluiu a passkey. Tente de novo.',
   account_suspended: 'Esta conta está suspensa. Você pode consultar, mas não alterar.',
@@ -102,6 +116,9 @@ export function errorText(error: unknown): string {
       const rateText = typeof rate === 'string' ? rate.replace('.', ',') : '';
       const date = typeof rateDate === 'string' ? formatDate(`${rateDate}T12:00:00Z`) : '';
       return `${text} Valor esperado: ${formatCents(expectedCents)} (PTAX ${rateText} de ${date}).`;
+    }
+    if (error.code === 'cnpj_not_active' && typeof error.body.status === 'string') {
+      return `Este CNPJ não está ativo na Receita (situação: ${error.body.status}).`;
     }
     if (error.code === 'invalid_iss_rate' && typeof error.body.minimum === 'string') {
       return `A alíquota mínima deste serviço é ${error.body.minimum.replace('.', ',')}%.`;

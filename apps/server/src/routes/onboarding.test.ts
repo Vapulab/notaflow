@@ -50,7 +50,7 @@ test('a user who already belongs to an account cannot create another one this wa
     name: 'Outra',
   });
   expect(response.statusCode).toBe(409);
-  expect(response.json()).toMatchObject({ error: 'already_member' });
+  expect(response.json()).toMatchObject({ error: 'already_has_account' });
 });
 
 test('an empty or overlong name is refused', async () => {
