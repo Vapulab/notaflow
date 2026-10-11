@@ -7,6 +7,7 @@ import {
   Badge,
   Button,
   buttonClasses,
+  ButtonLink,
   Combobox,
   Field,
   FileInput,
@@ -109,4 +110,11 @@ test('a FileInput is a native file input whose button has the Malphas secondary 
   for (const token of ['file:border-border', 'file:bg-surface', 'file:text-fg', 'file:rounded']) {
     expect(input.className, token).toContain(token);
   }
+});
+
+test('a ButtonLink looks like the button only, without the link color that hides its text on hover', () => {
+  render(<ButtonLink href="/app">Nova nota</ButtonLink>);
+  const link = screen.getByRole('link', { name: 'Nova nota' });
+  expect(link.className).toBe(buttonClasses({ variant: 'primary' }));
+  expect(link.className).not.toContain('hover:text-primary');
 });

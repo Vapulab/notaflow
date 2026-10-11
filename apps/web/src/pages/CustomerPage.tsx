@@ -13,7 +13,7 @@ import { routeHref } from '../router';
 import {
   Alert,
   Button,
-  buttonClasses,
+  ButtonLink,
   CARD_CLASSES,
   Field,
   FORM_CLASSES,
@@ -35,8 +35,8 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
       </Link>
       {customer.data && (
         <div>
-          <Link
-            className={buttonClasses({ variant: 'primary' })}
+          <ButtonLink
+            variant="primary"
             href={routeHref({
               name: 'newInvoice',
               accountId: props.accountId,
@@ -44,7 +44,7 @@ export function CustomerPage(props: { accountId: string; customerId: string }) {
             })}
           >
             Emitir nota
-          </Link>
+          </ButtonLink>
         </div>
       )}
       {customer.error && <Alert variant="error">{errorText(customer.error)}</Alert>}

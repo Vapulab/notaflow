@@ -8,20 +8,20 @@ import { navigate, routeHref } from '../router';
 import {
   Alert,
   Badge,
-  type BadgeVariant,
   Button,
   buttonClasses,
-  CARD_CLASSES,
+  ButtonLink,
   Card,
+  CARD_CLASSES,
   Field,
   Input,
-  Link,
   Select,
   Table,
   TBody,
   TD,
   TH,
   THead,
+  type BadgeVariant,
 } from '../ui';
 
 export const STATUS_TEXT: Record<string, string> = {
@@ -101,12 +101,9 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
   return (
     <Layout title="Notas" accountId={accountId}>
       <div>
-        <Link
-          className={buttonClasses({ variant: 'primary' })}
-          href={routeHref({ name: 'newInvoice', accountId })}
-        >
+        <ButtonLink variant="primary" href={routeHref({ name: 'newInvoice', accountId })}>
           Nova nota
-        </Link>
+        </ButtonLink>
       </div>
       <form
         onSubmit={lookup}

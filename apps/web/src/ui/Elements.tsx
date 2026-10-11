@@ -101,6 +101,27 @@ export function Link({
   );
 }
 
+// A link that looks like a button; Link would add its own text color, which wins on hover.
+export function ButtonLink({
+  variant,
+  size,
+  className,
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement> & {
+  variant?: ButtonVariant;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  return (
+    <a
+      {...rest}
+      className={join(
+        buttonClasses({ ...(variant ? { variant } : {}), ...(size ? { size } : {}) }),
+        className,
+      )}
+    />
+  );
+}
+
 // Malphas Table keeps its own horizontal scroller, so a wide table never scrolls the page.
 export function Table({
   children,
