@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { seedTenant } from '../../test/fixtures';
-import { createTestApp, type TestApp } from '../../test/testApp';
+import { createTestApp, ORIGIN, type TestApp } from '../../test/testApp';
+import { softDelete } from '../db/stamps';
+import { users } from '../db/schema';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -8,40 +10,37 @@ beforeEach(async () => {
 });
 afterEach(() => t.close());
 
-test('GET /api/me without a token is 401', async () => {
+test('GET /api/me without a session is 401', async () => {
   const response = await t.app.inject({ method: 'GET', url: '/api/me' });
   expect(response.statusCode).toBe(401);
   expect(response.json()).toEqual({ error: 'unauthenticated' });
 });
 
-test('a token signed by another key is 401', async () => {
-  const other = await createTestApp();
-  const token = await other.tokenFor('a@example.com');
-  await other.close();
+test('a forged session cookie is 401', async () => {
   const response = await t.app.inject({
     method: 'GET',
     url: '/api/me',
-    headers: { 'cf-access-jwt-assertion': token },
+    headers: { cookie: 'notaflow.session_token=forged.value' },
   });
   expect(response.statusCode).toBe(401);
 });
 
-test('a valid token for an unknown email is 403 access_not_granted', async () => {
-  const response = await t.app.inject({
-    method: 'GET',
-    url: '/api/me',
-    headers: await t.as('x@example.com'),
-  });
-  expect(response.statusCode).toBe(403);
-  expect(response.json()).toEqual({ error: 'access_not_granted' });
+test('a session from another app instance (another secret store) is 401', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const other = await createTestApp();
+  seedTenant(other.db, { accountName: 'A', email: 'a@example.com' });
+  const cookie = await other.cookieFor('a@example.com');
+  await other.close();
+  const response = await t.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+  expect(response.statusCode).toBe(401);
 });
 
-test('GET /api/me returns the user and accounts, with the email matched in any case', async () => {
+test('GET /api/me returns the user and accounts of the session', async () => {
   const a = seedTenant(t.db, { accountName: 'Vapulab', email: 'lincoln@example.com' });
   const response = await t.app.inject({
     method: 'GET',
     url: '/api/me',
-    headers: await t.as('Lincoln@Example.com'),
+    headers: await t.as('lincoln@example.com'),
   });
   expect(response.statusCode).toBe(200);
   expect(response.json()).toEqual({
@@ -51,6 +50,14 @@ test('GET /api/me returns the user and accounts, with the email matched in any c
     platformRole: 'user',
     accounts: [{ id: a.accountId, name: 'Vapulab', role: 'owner', status: 'active' }],
   });
+});
+
+test('the session of a removed user is 401', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const headers = await t.as('a@example.com');
+  softDelete(t.db, users, a.userId, null);
+  const response = await t.app.inject({ method: 'GET', url: '/api/me', headers });
+  expect(response.statusCode).toBe(401);
 });
 
 test('a mutation without the app Origin is 403 bad_origin', async () => {
@@ -69,18 +76,29 @@ test('a mutation that is not JSON is 415 json_required', async () => {
   expect(response.json()).toEqual({ error: 'json_required' });
 });
 
-test('a rejected token is logged with a reason and without the token', async () => {
-  const lines: string[] = [];
-  const logged = await createTestApp({ logStream: { write: (line: string) => lines.push(line) } });
-  const response = await logged.app.inject({
-    method: 'GET',
-    url: '/api/me',
-    headers: { 'cf-access-jwt-assertion': 'not-a-jwt-secret-value' },
+test('Better Auth refuses its own routes from another origin', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const headers = { ...(await t.as('a@example.com')), origin: 'https://evil.example.com' };
+  const response = await t.app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-out',
+    headers,
+    payload: {},
   });
-  await logged.close();
+  expect(response.statusCode).toBe(403);
+  expect(t.db.$client.prepare('SELECT count(*) AS n FROM auth_sessions').get()).toEqual({ n: 1 });
+});
+
+test('sign-out ends the session', async () => {
+  seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const headers = await t.as('a@example.com');
+  const out = await t.app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-out',
+    headers: { ...headers, origin: ORIGIN },
+    payload: {},
+  });
+  expect(out.statusCode).toBe(200);
+  const response = await t.app.inject({ method: 'GET', url: '/api/me', headers });
   expect(response.statusCode).toBe(401);
-  const warning = lines.find((line) => line.includes('access token rejected'));
-  expect(warning).toBeDefined();
-  expect(warning).toContain('"reason"');
-  expect(lines.join(' ')).not.toContain('not-a-jwt-secret-value');
 });

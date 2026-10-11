@@ -116,6 +116,8 @@ export function createAuth(deps: AuthDeps) {
     rateLimit: { enabled: true, storage: 'memory' },
     advanced: {
       cookiePrefix: 'notaflow',
+      // Better Auth skips its origin check when NODE_ENV is test; tests must see production behavior.
+      disableOriginCheck: false,
       useSecureCookies: config.appOrigin.startsWith('https://'),
       database: { generateId: () => randomUUID() },
       ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },

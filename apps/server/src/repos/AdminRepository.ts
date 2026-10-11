@@ -3,7 +3,7 @@ import type { AccountRole, AdminContext } from '@notaflow/core';
 import { and, count, eq, like, or, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, removed, touched } from '../db/stamps';
-import { accounts, memberships, users } from '../db/schema';
+import { accounts, authSessions, memberships, users } from '../db/schema';
 
 // Platform scope: every method needs an AdminContext, which only the admin guard builds.
 export class AdminRepository {
@@ -136,6 +136,8 @@ export class AdminRepository {
         .set(removed(ctx))
         .where(and(eq(memberships.userId, userId), notDeleted(memberships)))
         .run();
+      // Sessions are credentials, not business rows: the anonymized user is logged out everywhere.
+      tx.delete(authSessions).where(eq(authSessions.userId, userId)).run();
       return true;
     });
   }

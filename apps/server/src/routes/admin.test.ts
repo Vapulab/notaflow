@@ -292,3 +292,21 @@ test('a platform admin cannot anonymize themself', async () => {
   expect(response.statusCode).toBe(409);
   expect(response.json()).toMatchObject({ error: 'cannot_anonymize_self' });
 });
+
+test('anonymizing a user ends their sessions', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
+  const userHeaders = await t.as('pessoa@example.com');
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/users/${a.userId}/anonymize`,
+    headers: await t.as('admin@example.com'),
+    payload: {},
+  });
+  expect(response.statusCode).toBe(204);
+  const left = t.db.$client
+    .prepare('SELECT count(*) AS n FROM auth_sessions WHERE user_id = ?')
+    .get(a.userId);
+  expect(left).toEqual({ n: 0 });
+  const me = await t.app.inject({ method: 'GET', url: '/api/me', headers: userHeaders });
+  expect(me.statusCode).toBe(401);
+});

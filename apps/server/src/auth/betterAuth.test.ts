@@ -171,12 +171,7 @@ test('the per-IP signup limit counts the real IP, not a forged internal header',
     ['um@example.com', 200],
     ['dois@example.com', 429],
   ] as const) {
-    await post(
-      '/api/auth/email-otp/send-verification-otp',
-      { email, type: 'sign-in' },
-      ip,
-      forged,
-    );
+    await post('/api/auth/email-otp/send-verification-otp', { email, type: 'sign-in' }, ip, forged);
     const response = await post(
       '/api/auth/sign-in/email-otp',
       { email, otp: lastCode() },

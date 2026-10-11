@@ -1,28 +1,29 @@
+import { fromNodeHeaders } from 'better-auth/node';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Config } from '../config';
 import { HttpError } from '../httpError';
-import type { IdentityRepository } from '../repos/IdentityRepository';
-import type { VerifyAccessToken } from './accessVerifier';
+import type { Identity, IdentityRepository } from '../repos/IdentityRepository';
 import { isApiPath } from '../web';
+import type { Auth } from './betterAuth';
 import { accountContext, adminContext } from './guards';
 
 const MUTATIONS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function registerAuth(
   app: FastifyInstance,
-  deps: { config: Config; identities: IdentityRepository; verifyAccessToken: VerifyAccessToken },
+  deps: { config: Config; identities: IdentityRepository; auth: Auth },
 ): void {
   app.decorateRequest('identity', null);
   app.addHook('onRequest', async (request) => {
     // The matched route, not the raw URL: the router decodes %61pi to api before matching.
     const route = request.routeOptions.url;
-    if (route === '/api/health') return;
+    if (route === '/api/health' || route === '/api/public/config') return;
     // Better Auth checks the origin of its own routes and needs no session to log in.
     if (route?.startsWith('/api/auth/')) return;
     if (route !== undefined ? !route.startsWith('/api/') : !isApiPath(request.url)) return;
-    const email = await emailOf(request, deps.config, deps.verifyAccessToken);
-    const identity = deps.identities.findByEmail(email);
-    if (!identity) throw new HttpError(403, 'access_not_granted');
+    const identity = await identityOf(request, deps);
+    // No user row means the user was removed after the session started.
+    if (!identity) throw new HttpError(401, 'unauthenticated');
     if (MUTATIONS.has(request.method)) {
       if (request.headers.origin !== deps.config.appOrigin) throw new HttpError(403, 'bad_origin');
       if (!(request.headers['content-type'] ?? '').startsWith('application/json')) {
@@ -43,21 +44,12 @@ export function registerAuth(
   });
 }
 
-async function emailOf(
+async function identityOf(
   request: FastifyRequest,
-  config: Config,
-  verify: VerifyAccessToken,
-): Promise<string> {
-  if (config.auth.mode === 'dev') return config.auth.email;
-  const token = request.headers['cf-access-jwt-assertion'];
-  if (typeof token !== 'string' || token === '') throw new HttpError(401, 'unauthenticated');
-  try {
-    return await verify(token);
-  } catch (error) {
-    request.log.warn(
-      { reason: (error as { code?: string }).code ?? (error as Error).name },
-      'access token rejected',
-    );
-    throw new HttpError(401, 'unauthenticated');
-  }
+  deps: { config: Config; identities: IdentityRepository; auth: Auth },
+): Promise<Identity | null> {
+  if (deps.config.auth.mode === 'dev') return deps.identities.findByEmail(deps.config.auth.email);
+  const session = await deps.auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
+  if (!session) throw new HttpError(401, 'unauthenticated');
+  return deps.identities.findById(session.user.id);
 }

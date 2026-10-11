@@ -2,7 +2,6 @@ import type { AccountContext } from '@notaflow/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
 import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
-import { remoteAccessVerifier, type VerifyAccessToken } from './auth/accessVerifier';
 import { registerAuth } from './auth/authHook';
 import { registerAuthRoutes } from './auth/authRoutes';
 import { type Auth, createAuth } from './auth/betterAuth';
@@ -30,6 +29,7 @@ import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
 import { meRoutes } from './routes/me';
+import { publicConfigRoutes } from './routes/publicConfig';
 import { memberRoutes } from './routes/members';
 import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
@@ -47,7 +47,6 @@ declare module 'fastify' {
 export interface AppDeps {
   config: Config;
   db: Database;
-  verifyAccessToken?: VerifyAccessToken;
   logStream?: { write(line: string): void };
   providerFactory?: ProviderFactory;
   issuerFactory?: IssuerFactory;
@@ -89,20 +88,14 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   app.setErrorHandler(handleError);
 
-  const verifyAccessToken =
-    deps.verifyAccessToken ??
-    (config.auth.mode === 'access'
-      ? remoteAccessVerifier(config.auth.teamDomain, config.auth.audience)
-      : async () => '');
-  registerAuth(app, { config, identities: new IdentityRepository(db), verifyAccessToken });
   const mailer =
     deps.mailer ??
     (config.mail.resendApiKey
       ? resendMailer({ apiKey: config.mail.resendApiKey, from: config.mail.from })
       : consoleMailer((line) => app.log.info(line)));
-  const auth =
-    deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
+  const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
   app.decorate('auth', auth);
+  registerAuth(app, { config, identities: new IdentityRepository(db), auth });
   registerAuthRoutes(app, auth, config.appOrigin);
 
   const providerFactory = deps.providerFactory ?? nacionalProviderFactory(config.nacionalUrls);
@@ -126,6 +119,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     });
 
   app.get('/api/health', async () => ({ status: 'ok' }));
+  publicConfigRoutes(app, config);
   meRoutes(app);
   adminRoutes(app, db);
   memberRoutes(app, db);

@@ -1,5 +1,5 @@
 import type { AccountRole } from '@notaflow/core';
-import { and, eq, isNull, lt, or } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { notDeleted } from '../db/stamps';
 import { accounts, memberships, users } from '../db/schema';
@@ -22,10 +22,18 @@ export class IdentityRepository {
   constructor(private readonly db: Database) {}
 
   findByEmail(email: string): Identity | null {
+    return this.identity(eq(users.email, email.toLowerCase()));
+  }
+
+  findById(userId: string): Identity | null {
+    return this.identity(eq(users.id, userId));
+  }
+
+  private identity(match: SQL): Identity | null {
     const user = this.db
       .select()
       .from(users)
-      .where(and(eq(users.email, email.toLowerCase()), notDeleted(users)))
+      .where(and(match, notDeleted(users)))
       .get();
     if (!user) return null;
     const rows = this.db

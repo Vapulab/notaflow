@@ -20,9 +20,8 @@ beforeAll(async () => {
     DATABASE_PATH: ':memory:',
     APP_ORIGIN: 'http://localhost:3000',
     NFSE_MASTER_KEY: Buffer.alloc(32).toString('base64'),
-    AUTH_MODE: 'access',
-    CF_ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com',
-    CF_ACCESS_AUD: 'aud',
+    AUTH_MODE: 'session',
+    BETTER_AUTH_SECRET: 'test-secret-'.repeat(4),
   });
   const opened = openDatabase(':memory:');
   close = opened.close;
@@ -30,9 +29,7 @@ beforeAll(async () => {
     config,
     db: opened.db,
     webRoot: root,
-    verifyAccessToken: async () => {
-      throw new Error('no token is valid here');
-    },
+    mailer: async () => {},
   });
   await app.ready();
 });
