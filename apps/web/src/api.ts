@@ -266,7 +266,8 @@ export interface FiscalConfig {
   simplesRbt12Cents: number | null;
   simplesRbt12At: string | null;
   // The rates of pTotTribSN for the saved revenue; an export leaves out ISS, PIS, and COFINS.
-  rates: { domestic: number; export: number } | null;
+  // iss: the retained ISS, the ISS share of the band; null in band 6, outside the DAS.
+  rates: { domestic: number; export: number; iss: number | null } | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null;

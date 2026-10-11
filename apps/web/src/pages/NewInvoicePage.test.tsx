@@ -39,8 +39,8 @@ const fiscal = {
   simplesPercent: 613,
   simplesRbt12Cents: 18_470_000,
   simplesRbt12At: new Date().toISOString(),
-  rates: { domestic: 613, export: 312 },
-  issRate: 200,
+  rates: { domestic: 613, export: 312, iss: 196 },
+  issRate: 196,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
 };
@@ -309,25 +309,25 @@ async function openMore(user: User) {
   await user.click(screen.getByRole('button', { name: 'Mais opções' }));
 }
 
-test('Mais opções: a CNPJ customer may retain the ISS, prefilled with the emitter rate', async () => {
+test('Mais opções: a CNPJ customer may retain the ISS, at the ISS share of the band', async () => {
   const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
   const user = userEvent.setup();
   await fillBrazil(user);
   await openMore(user);
   await user.click(screen.getByLabelText('ISS retido pelo cliente'));
-  expect((screen.getByLabelText('Alíquota de ISS (%)') as HTMLInputElement).value).toBe('2,00');
-  expect(screen.getByText('Mínimo para este serviço: 2,00%.')).toBeTruthy();
+  expect((screen.getByLabelText('Alíquota de ISS (%)') as HTMLInputElement).value).toBe('1,96');
+  expect(screen.getByText('Parcela do ISS na faixa 2 do Simples Nacional.')).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Revisar' }));
   expect(
-    within(screen.getByRole('table')).getByText('ISS retido pelo cliente: 2,00%'),
+    within(screen.getByRole('table')).getByText('ISS retido pelo cliente: 1,96%'),
   ).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
   await waitFor(() => expect(sent(calls)).toHaveLength(1));
-  expect(JSON.parse(String(sent(calls)[0]?.init?.body))).toMatchObject({
-    issRetained: true,
-    issRate: 200,
-  });
+  // The server applies the band's rate itself; only a changed rate goes in the body.
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.issRetained).toBe(true);
+  expect(body).not.toHaveProperty('issRate');
 });
 
 test('Mais opções: the works subitems accept a rate below 2%', async () => {
@@ -341,6 +341,10 @@ test('Mais opções: the works subitems accept a rate below 2%', async () => {
   await fillBrazil(user);
   await openMore(user);
   await user.click(screen.getByLabelText('ISS retido pelo cliente'));
+  // A typed rate, other than the band's, follows the minimum of the service.
+  const rate = screen.getByLabelText('Alíquota de ISS (%)');
+  await user.clear(rate);
+  await user.type(rate, '150');
   expect(screen.getByText('Mínimo para este serviço: acima de zero.')).toBeTruthy();
 });
 

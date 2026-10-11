@@ -50,7 +50,9 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
       setMessage({ variant: 'error', text: 'Informe a receita bruta dos últimos 12 meses.' });
       return;
     }
-    if (issRate === null || issRate > 500) {
+    // Only band 6 has no ISS share: its ISS goes outside the DAS, at the municipal rate.
+    const typedIss = rates?.iss === null;
+    if (typedIss && (issRate === null || issRate > 500)) {
       setMessage({
         variant: 'error',
         text: 'Informe a alíquota de ISS até 5,00%, por exemplo 2,00.',
@@ -62,7 +64,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
       const saved = await api.put<FiscalConfig>(props.url, {
         simplesAnnex: annex,
         simplesRbt12Cents: rbt12Cents,
-        issRate,
+        ...(typedIss && issRate !== null ? { issRate } : {}),
         ibscbsRegime: regime,
         ...(from ? { ibscbsRegimeFrom: from } : {}),
       });
@@ -106,9 +108,14 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
           >
             <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
           </Field>
-          <Field label="Alíquota de ISS (%)" hint="Usada quando o cliente retém o ISS.">
-            <AmountInput unit="%" value={iss} onValueChange={setIss} />
-          </Field>
+          {rates?.iss === null && (
+            <Field
+              label="Alíquota de ISS (%)"
+              hint="Na faixa 6 o ISS sai do DAS: a alíquota do município, usada quando o cliente retém o ISS."
+            >
+              <AmountInput unit="%" value={iss} onValueChange={setIss} />
+            </Field>
+          )}
           <Field label="Regime do IBS/CBS">
             <Select
               value={regime}

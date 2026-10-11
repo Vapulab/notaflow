@@ -140,14 +140,24 @@ describe('buildTemplate', () => {
     expectValidAndInverse(template);
   });
 
-  test('a retained ISS below the legal minimum of its service is refused', () => {
-    expect(() => buildTemplate({ ...domestic, issRetained: true, issRate: 199 })).toThrow(
+  test('a retained ISS below the legal minimum of its service is refused outside the Simples', () => {
+    const regular = {
+      ...domestic,
+      emitter: { ...domestic.emitter, simplesNacional: '1' as const },
+    };
+    expect(() => buildTemplate({ ...regular, issRetained: true, issRate: 199 })).toThrow(
       RangeError,
     );
     const works = { ...domestic.service, nationalTaxCode: '070202' };
     expect(
       buildTemplate({ ...domestic, service: works, issRetained: true, issRate: 150 }).tax,
     ).toMatchObject({ issRatePercent: '1.50' });
+  });
+
+  test('a Simples ME or EPP retains the ISS share of its band, even below 2%', () => {
+    expect(buildTemplate({ ...domestic, issRetained: true, issRate: 192 }).tax).toMatchObject({
+      issRatePercent: '1.92',
+    });
   });
 
   test('a retained ISS without a rate is refused', () => {

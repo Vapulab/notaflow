@@ -28,8 +28,8 @@ const fiscal = {
   simplesPercent: 600,
   simplesRbt12Cents: 12_000_000,
   simplesRbt12At: new Date().toISOString(),
-  rates: { domestic: 600, export: 305 },
-  issRate: 200,
+  rates: { domestic: 600, export: 305, iss: 201 },
+  issRate: 201,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
 };
@@ -52,29 +52,31 @@ const routes = (overrides: Record<string, unknown> = {}) => ({
 const bodyOf = (calls: StubCall[], method: string) =>
   JSON.parse(String(calls.filter((c) => c.init?.method === method).at(-1)?.init?.body)) as unknown;
 
-test('the owner sets the annex and the revenue; the band and both rates are shown', async () => {
+test('the owner sets the annex and the revenue; the band, both rates and the ISS are shown', async () => {
   const calls = stubApi(
-    routes({ [`${base}/simples-rates`]: { band: 2, domestic: 1575, export: 1084 } }),
+    routes({ [`${base}/simples-rates`]: { band: 2, domestic: 1575, export: 1084, iss: 268 } }),
   );
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
   const user = userEvent.setup();
   expect(
-    await screen.findByText('Faixa 1 · alíquota efetiva 6,00% · exportação 3,05%'),
+    await screen.findByText(
+      'Faixa 1 · alíquota efetiva 6,00% · exportação 3,05% · ISS retido 2,01%',
+    ),
   ).toBeTruthy();
   await user.selectOptions(screen.getByLabelText('Anexo do Simples'), 'V');
   const revenue = screen.getByLabelText('Receita bruta dos últimos 12 meses (R$)');
   await user.clear(revenue);
   await user.type(revenue, '200.000,00');
   expect(
-    await screen.findByText('Faixa 2 · alíquota efetiva 15,75% · exportação 10,84%'),
+    await screen.findByText(
+      'Faixa 2 · alíquota efetiva 15,75% · exportação 10,84% · ISS retido 2,68%',
+    ),
   ).toBeTruthy();
   expect(calls.some((c) => c.url === `${base}/simples-rates?annex=V&rbt12Cents=20000000`)).toBe(
     true,
   );
-  const iss = screen.getByLabelText('Alíquota de ISS (%)');
-  await user.clear(iss);
-  await user.type(iss, '350');
-  expect(iss).toHaveProperty('value', '3,50');
+  // The ISS comes from the band: there is nothing to type.
+  expect(screen.queryByLabelText('Alíquota de ISS (%)')).toBeNull();
   await user.selectOptions(screen.getByLabelText('Regime do IBS/CBS'), 'regular');
   await user.type(screen.getByLabelText('Desde'), '2027-01-01');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
@@ -82,7 +84,6 @@ test('the owner sets the annex and the revenue; the band and both rates are show
   expect(bodyOf(calls, 'PUT')).toEqual({
     simplesAnnex: 'V',
     simplesRbt12Cents: 20_000_000,
-    issRate: 350,
     ibscbsRegime: 'regular',
     ibscbsRegimeFrom: '2027-01-01',
   });
@@ -192,14 +193,13 @@ test('the missing-configuration warning goes away once the owner saves', async (
         rates: null,
         issRate: null,
       },
-      [`${base}/simples-rates`]: { band: 1, domestic: 600, export: 305 },
+      [`${base}/simples-rates`]: { band: 1, domestic: 600, export: 305, iss: 201 },
     }),
   );
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
   const user = userEvent.setup();
   expect(await screen.findByText(/Sem esta configuração/)).toBeTruthy();
   await user.type(screen.getByLabelText('Receita bruta dos últimos 12 meses (R$)'), '120.000,00');
-  await user.type(screen.getByLabelText('Alíquota de ISS (%)'), '2,00');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
   expect(await screen.findByText('Configuração salva.')).toBeTruthy();
   expect(screen.queryByText(/Sem esta configuração/)).toBeNull();
@@ -253,4 +253,21 @@ test('a code suggested before any typing is the code the new service saves', asy
   await waitFor(() => expect(calls.some((c) => c.init?.method === 'POST')).toBe(true));
   const post = calls.find((c) => c.init?.method === 'POST');
   expect(JSON.parse(String(post?.init?.body))).toMatchObject({ nationalTaxCode: '010201' });
+});
+
+test('in band 6 the ISS goes outside the DAS, so its rate is typed', async () => {
+  const calls = stubApi(
+    routes({ [`${base}/simples-rates`]: { band: 6, domestic: 1950, export: 1300, iss: null } }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  const revenue = await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
+  await user.clear(revenue);
+  await user.type(revenue, '400000000');
+  const iss = await screen.findByLabelText('Alíquota de ISS (%)');
+  await user.clear(iss);
+  await user.type(iss, '300');
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
+  expect(bodyOf(calls, 'PUT')).toMatchObject({ simplesRbt12Cents: 400_000_000, issRate: 300 });
 });

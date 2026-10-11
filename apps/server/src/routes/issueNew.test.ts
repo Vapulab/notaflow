@@ -33,7 +33,7 @@ test('a Brazil invoice is issued with the service and the Simples percent, witho
   expect(xml).toContain('<CNPJ>11222333000181</CNPJ>');
 });
 
-test('a retained ISS takes the emitter ISS rate, and the overrides replace the defaults', async () => {
+test('a retained ISS takes the ISS share of the band, and the overrides replace the defaults', async () => {
   const s = await withNewInvoiceSetup(t);
   const response = await s.call('POST', '/invoices/new', {
     emitterId: s.emitterId,
@@ -47,7 +47,8 @@ test('a retained ISS takes the emitter ISS rate, and the overrides replace the d
   });
   const xml = xmlOf(t, s.a, response.json<{ id: string }>().id);
   expect(xml).toContain('<tpRetISSQN>2</tpRetISSQN>');
-  expect(xml).toContain('<pAliq>2.00</pAliq>');
+  // RBT12 R$ 120.000,00: Anexo III band 1, 6% with an ISS share of 33.5%.
+  expect(xml).toContain('<pAliq>2.01</pAliq>');
   expect(xml).toContain('<pTotTribSN>11.20</pTotTribSN>');
   expect(xml).toContain('<xDescServ>Sprint de outubro</xDescServ>');
 });

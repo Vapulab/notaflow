@@ -10,7 +10,7 @@ import {
 import { AmountInput } from '../../components/AmountInput';
 import { errorText } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
-import { fileToBase64, formatCnpj, parseCents, parsePercent, percentInput } from '../../format';
+import { fileToBase64, formatCnpj, parseCents, parsePercent } from '../../format';
 import { maskCnpj } from '../../masks';
 import { navigate } from '../../router';
 import {
@@ -332,7 +332,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const [revenue, setRevenue] = useState('');
   const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
   const [annexChoice, setAnnexChoice] = useState<'III' | 'V' | null>(null);
-  const [iss, setIss] = useState(percentInput(200));
+  const [iss, setIss] = useState('');
   const [regime, setRegime] = useState<'inside_das' | 'regular'>('inside_das');
   const { busy, error, run } = useStepAction();
 
@@ -342,7 +342,13 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
   const annex = annexChoice ?? (payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
   const issRate = parsePercent(iss);
-  const ready = !!emitter && band !== null && annex !== null && issRate !== null && issRate <= 500;
+  // Only band 6 has no ISS share in the DAS; elsewhere the server takes the ISS from the band.
+  const typedIss = band === 6;
+  const ready =
+    !!emitter &&
+    band !== null &&
+    annex !== null &&
+    (!typedIss || (issRate !== null && issRate <= 500));
 
   const finish = async () => {
     await api.post(`${base}/onboarding/fiscal-done`, {});
@@ -350,13 +356,13 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   };
   const save = (event: FormEvent) => {
     event.preventDefault();
-    if (!ready || !emitter || revenueCents === null || annex === null || issRate === null) return;
+    if (!ready || !emitter || revenueCents === null || annex === null) return;
     void run(async () => {
       await api.put(`${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal`, {
         simplesAnnex: annex,
         // The server derives the band and the rates of each invoice from the revenue.
         simplesRbt12Cents: revenueCents,
-        issRate,
+        ...(typedIss && issRate !== null ? { issRate } : {}),
         ibscbsRegime: regime,
       });
       await finish();
@@ -386,6 +392,14 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
           <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
         </Field>
         {band !== null && <p className="text-sm text-fg">Faixa {band} do Simples Nacional</p>}
+        {typedIss && (
+          <Field
+            label="Alíquota de ISS (%)"
+            hint="Na faixa 6 o ISS sai do DAS: a alíquota do município, usada quando o cliente retém o ISS."
+          >
+            <AmountInput unit="%" value={iss} onValueChange={setIss} />
+          </Field>
+        )}
         {overLimit && (
           <Alert variant="warning">
             Acima de R$ 4.800.000,00 a empresa sai do Simples Nacional.
@@ -433,12 +447,6 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
                 <option value="III">Anexo III</option>
                 <option value="V">Anexo V</option>
               </Select>
-            </Field>
-            <Field
-              label="Alíquota de ISS (%)"
-              hint="Usada quando o cliente retém o ISS. O mínimo legal é 2,00."
-            >
-              <AmountInput unit="%" value={iss} onValueChange={setIss} />
             </Field>
             <Field label="Regime do IBS/CBS">
               <Select

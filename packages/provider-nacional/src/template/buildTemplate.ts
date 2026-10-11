@@ -33,8 +33,10 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
   if (retained && input.issRate === undefined) {
     throw new RangeError('A retained ISS needs the ISS rate.');
   }
+  // A Simples ME or EPP retains the ISS share of its band, which may be below the 2% of LC 116.
   if (
     retained &&
+    input.emitter.simplesNacional !== '3' &&
     input.issRate !== undefined &&
     input.issRate < minimumIssRate(service.nationalTaxCode)
   ) {

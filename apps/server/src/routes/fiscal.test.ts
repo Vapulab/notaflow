@@ -50,8 +50,9 @@ test('the owner saves the revenue of the last 12 months; the server derives the 
     simplesRbt12Cents: 18_470_000,
     simplesRbt12At: expect.any(String),
     // The effective rate of Anexo III band 2, and on an export without ISS, Cofins, and PIS.
-    rates: { domestic: 613, export: 312 },
-    issRate: 200,
+    rates: { domestic: 613, export: 312, iss: 196 },
+    // The ISS share of the band (CGSN 140, art. 27), not the typed rate.
+    issRate: 196,
   });
   const entry = new AuditLog(t.db).list().at(-1);
   expect(entry).toMatchObject({ action: 'emitter.fiscal', result: 'ok' });
@@ -83,7 +84,7 @@ test('a preview gives the band and both rates for any revenue, without saving', 
     url: `/api/accounts/${a.accountId}/simples-rates?annex=V&rbt12Cents=10000000`,
     headers: await t.as('a@example.com'),
   });
-  expect(response.json()).toEqual({ band: 1, domestic: 1550, export: 1067 });
+  expect(response.json()).toEqual({ band: 1, domestic: 1550, export: 1067, iss: 217 });
   const outside = await t.app.inject({
     method: 'GET',
     url: `/api/accounts/${a.accountId}/simples-rates?annex=III&rbt12Cents=500000000`,
@@ -132,4 +133,28 @@ test('without a revenue the answer has no rates', async () => {
     simplesRbt12Cents: null,
     rates: null,
   });
+});
+
+test('the ISS rate comes from the band; only band 6, outside the DAS, takes a typed one', async () => {
+  const { url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  const { issRate: _typed, ...withoutIss } = body;
+  const derived = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...withoutIss, simplesRbt12Cents: 21_600_000 },
+  });
+  expect(derived.json()).toMatchObject({ issRate: 220, rates: { iss: 220 } });
+  const band6 = { ...withoutIss, simplesRbt12Cents: 400_000_000 };
+  const missing = await t.app.inject({ method: 'PUT', url, headers, payload: band6 });
+  expect(missing.statusCode).toBe(400);
+  expect(missing.json()).toMatchObject({ error: 'iss_rate_required' });
+  const typed = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...band6, issRate: 300 },
+  });
+  expect(typed.json()).toMatchObject({ issRate: 300, rates: { iss: null } });
 });

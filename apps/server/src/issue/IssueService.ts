@@ -13,6 +13,7 @@ import {
   minimumIssRate,
   parseNfseXml,
   readTemplate,
+  simplesIssRate,
   simplesRate,
   TemplateUnsupportedError,
 } from '@notaflow/provider-nacional';
@@ -282,7 +283,13 @@ export class IssueService {
     }
     const now = this.now();
     checkCompetence(input.competence, now);
-    const issRate = input.issRate ?? fiscal.issRate ?? undefined;
+    // The ISS share of the band is the law (CGSN 140, art. 27), even below 2%; a typed rate is not.
+    const bandIss =
+      fiscal.simplesAnnex && fiscal.simplesRbt12Cents !== null
+        ? simplesIssRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents)
+        : null;
+    const fromBand = input.issRate === undefined && bandIss !== null;
+    const issRate = input.issRate ?? bandIss ?? fiscal.issRate ?? undefined;
     if (input.issRetained) {
       // Only a Brazilian legal entity withholds the ISS; an export has no ISS to withhold.
       if (abroad || customer.document.type === 'CPF') {
@@ -290,7 +297,7 @@ export class IssueService {
       }
       if (issRate === undefined) throw new HttpError(409, 'fiscal_config_missing');
       const minimum = minimumIssRate(service.nationalTaxCode);
-      if (issRate < minimum) {
+      if (!fromBand && issRate < minimum) {
         throw new HttpError(400, 'invalid_iss_rate', undefined, {
           minimum: (minimum / 100).toFixed(2),
         });

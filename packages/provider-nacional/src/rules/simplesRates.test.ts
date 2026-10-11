@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { simplesBand, simplesRate } from './simplesRates';
+import { simplesBand, simplesIssRate, simplesRate } from './simplesRates';
 
 const reais = (value: number) => Math.round(value * 100);
 
@@ -60,5 +60,27 @@ describe('simplesRate (LC 123/2006, annexes III and V)', () => {
 
   test('outside the Simples there is no rate', () => {
     expect(() => simplesRate('III', reais(5_000_000), { export: false })).toThrow(RangeError);
+  });
+});
+
+describe('simplesIssRate', () => {
+  // CGSN 140, art. 27: a retained ISS is the effective ISS share of the band of the revenue.
+  test.each([
+    ['III', 54_000, 201],
+    ['III', 216_000, 220],
+    ['III', 180_000.01, 192],
+    ['V', 100_000, 217],
+    ['III', 2_000_000, 493],
+  ] as const)('Anexo %s, RBT12 %s: ISS %s hundredths', (annex, rbt12, iss) => {
+    expect(simplesIssRate(annex, reais(rbt12))).toBe(iss);
+  });
+
+  test('Anexo III band 5 above the threshold: the ISS is capped at 5%', () => {
+    expect(simplesIssRate('III', reais(3_500_000))).toBe(500);
+  });
+
+  test('band 6 has no ISS share: the ISS goes outside the DAS, with the municipal rate', () => {
+    expect(simplesIssRate('III', reais(4_000_000))).toBeNull();
+    expect(simplesIssRate('V', reais(4_000_000))).toBeNull();
   });
 });
