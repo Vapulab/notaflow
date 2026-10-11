@@ -151,7 +151,11 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
           )}
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
-            {me && <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />}
+            {me && (
+              <a href={routeHref({ name: 'profile' })} title="Minha conta" aria-label="Minha conta">
+                <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />
+              </a>
+            )}
             <button
               type="button"
               onClick={() => {

@@ -11,6 +11,7 @@ import { IssuePage } from './pages/IssuePage';
 import { MembersPage } from './pages/MembersPage';
 import { LoginPage } from './pages/LoginPage';
 import { NewInvoicePage } from './pages/NewInvoicePage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ResetPage } from './pages/ResetPage';
 import { SignupPage } from './pages/SignupPage';
 import { type Route, useRoute } from './router';
@@ -61,6 +62,8 @@ function Screen({ route }: { route: Route }) {
       return <MembersPage accountId={route.accountId} />;
     case 'admin':
       return <AdminPage />;
+    case 'profile':
+      return <ProfilePage />;
     default:
       return <HomePage />;
   }

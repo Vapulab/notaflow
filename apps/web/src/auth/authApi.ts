@@ -65,3 +65,73 @@ export async function signInWithPasskey(): Promise<void> {
 export async function signOut(): Promise<void> {
   await unwrap(authClient.signOut());
 }
+
+export interface LinkedAccount {
+  id: string;
+  providerId: string;
+}
+
+export interface PasskeyItem {
+  id: string;
+  name: string | null;
+  createdAt: string;
+}
+
+export interface SessionItem {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  updatedAt: string;
+  current: boolean;
+}
+
+const iso = (value: Date | string | null | undefined) =>
+  value ? new Date(value).toISOString() : new Date(0).toISOString();
+
+export async function updateName(name: string): Promise<void> {
+  await unwrap(authClient.updateUser({ name }));
+}
+
+export async function listAccounts(): Promise<LinkedAccount[]> {
+  const accounts = (await unwrap(authClient.listAccounts())) ?? [];
+  return accounts.map((a) => ({ id: a.id, providerId: a.providerId }));
+}
+
+export async function linkGoogle(): Promise<void> {
+  await unwrap(authClient.linkSocial({ provider: 'google', callbackURL: '/app/conta' }));
+}
+
+export async function unlinkAccount(accountId: string): Promise<void> {
+  await unwrap(authClient.unlinkAccount({ accountId }));
+}
+
+export async function listPasskeys(): Promise<PasskeyItem[]> {
+  const passkeys = (await unwrap(authClient.passkey.listUserPasskeys())) ?? [];
+  return passkeys.map((p) => ({ id: p.id, name: p.name ?? null, createdAt: iso(p.createdAt) }));
+}
+
+export async function addPasskey(name: string): Promise<void> {
+  await unwrap(authClient.passkey.addPasskey({ name }));
+}
+
+export async function deletePasskey(id: string): Promise<void> {
+  await unwrap(authClient.passkey.deletePasskey({ id }));
+}
+
+export async function listSessions(): Promise<SessionItem[]> {
+  const [sessions, current] = await Promise.all([
+    unwrap(authClient.listSessions()),
+    unwrap(authClient.getSession()),
+  ]);
+  return (sessions ?? []).map((s) => ({
+    id: s.id,
+    userAgent: s.userAgent ?? null,
+    ipAddress: s.ipAddress ?? null,
+    updatedAt: iso(s.updatedAt),
+    current: s.id === current?.session.id,
+  }));
+}
+
+export async function revokeSessions(): Promise<void> {
+  await unwrap(authClient.revokeSessions());
+}
