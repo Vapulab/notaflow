@@ -3,6 +3,7 @@ import { api, type CepAnswer, type Country, type Municipality, type PartyAddress
 import { Alert, Combobox, type ComboboxOption, Field, Input } from '../ui';
 import { errorText } from './Layout';
 import { useSearch } from './useSearch';
+import { maskCep } from '../masks';
 
 export interface AddressValue {
   kind: 'domestic' | 'foreign';
@@ -187,7 +188,7 @@ export function AddressFields(props: {
           <Field label="CEP">
             <Input
               inputMode="numeric"
-              value={value.zip}
+              value={maskCep(value.zip)}
               onChange={(e) => set({ zip: e.target.value.replace(/\D/g, '').slice(0, 8) })}
               onBlur={() => void lookUpCep()}
             />

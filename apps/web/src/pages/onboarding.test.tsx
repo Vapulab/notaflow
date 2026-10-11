@@ -126,7 +126,8 @@ test('a card that cannot be read offers to type the CNPJ', async () => {
   );
   await user.click(screen.getByRole('button', { name: 'Enviar cartão' }));
   await user.click(await screen.findByRole('button', { name: 'Digitar o CNPJ' }));
-  await user.type(screen.getByLabelText('CNPJ'), '12.345.678/0001-95');
+  await user.type(screen.getByLabelText('CNPJ'), '12345678000195');
+  expect(screen.getByLabelText('CNPJ')).toHaveProperty('value', '12.345.678/0001-95');
   await user.click(screen.getByRole('button', { name: 'Consultar CNPJ' }));
   const sent = calls.find((c) => c.url === `${base}/onboarding/cnpj`);
   expect(JSON.parse(String(sent?.init?.body))).toEqual({ cnpj: '12.345.678/0001-95' });

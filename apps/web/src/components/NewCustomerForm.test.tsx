@@ -206,3 +206,19 @@ test('a municipal registration typed for Brazil is not sent for a customer abroa
   await waitFor(() => expect(calls.some((c) => c.init?.method === 'POST')).toBe(true));
   expect(posted(calls)).not.toHaveProperty('municipalRegistration');
 });
+
+test('the CNPJ, the CPF, the CEP and the phone of a Brazil customer are masked while typed', async () => {
+  stubApi({ ...cep });
+  const { user } = renderForm();
+  await user.click(screen.getByRole('radio', { name: 'Cliente no Brasil' }));
+  await user.type(screen.getByLabelText('CNPJ'), '11222333000181');
+  expect(screen.getByLabelText('CNPJ')).toHaveProperty('value', '11.222.333/0001-81');
+  await user.type(screen.getByLabelText('CEP'), '86010000');
+  expect(screen.getByLabelText('CEP')).toHaveProperty('value', '86010-000');
+  await user.type(screen.getByLabelText('Telefone'), '43999998888');
+  expect(screen.getByLabelText('Telefone')).toHaveProperty('value', '(43) 99999-8888');
+  await user.selectOptions(screen.getByLabelText('Tipo de documento'), 'CPF');
+  await user.clear(screen.getByLabelText('CPF'));
+  await user.type(screen.getByLabelText('CPF'), '12345678901');
+  expect(screen.getByLabelText('CPF')).toHaveProperty('value', '123.456.789-01');
+});

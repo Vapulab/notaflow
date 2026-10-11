@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { ApiError, api, type Customer, type Emitter } from '../api';
 import { Alert, Button, Field, Input, Select } from '../ui';
 import { type AddressValue, AddressFields, emptyAddress, toPartyAddress } from './AddressFields';
+import { maskCnpj, maskCpf, maskPhone } from '../masks';
 import { errorText } from './Layout';
 
 type Place = 'brazil' | 'abroad';
@@ -37,9 +38,13 @@ export function NewCustomerForm(props: {
   const [busy, setBusy] = useState(false);
 
   const set = (field: Text) => (value: string) => setText((t) => ({ ...t, [field]: value }));
-  const input = (field: Text, label: string, type = 'text') => (
+  const input = (field: Text, label: string, type = 'text', mask?: (text: string) => string) => (
     <Field label={label}>
-      <Input type={type} value={text[field]} onChange={(e) => set(field)(e.target.value)} />
+      <Input
+        type={type}
+        value={text[field]}
+        onChange={(e) => set(field)(mask ? mask(e.target.value) : e.target.value)}
+      />
     </Field>
   );
 
@@ -132,13 +137,17 @@ export function NewCustomerForm(props: {
           <Field label="Tipo de documento">
             <Select
               value={documentType}
-              onChange={(e) => setDocumentType(e.target.value as 'CNPJ' | 'CPF')}
+              onChange={(e) => {
+                const next = e.target.value as 'CNPJ' | 'CPF';
+                setDocumentType(next);
+                set('document')((next === 'CPF' ? maskCpf : maskCnpj)(text.document));
+              }}
             >
               <option value="CNPJ">CNPJ</option>
               <option value="CPF">CPF</option>
             </Select>
           </Field>
-          {input('document', documentType)}
+          {input('document', documentType, 'text', documentType === 'CPF' ? maskCpf : maskCnpj)}
         </div>
       )}
       {place === 'abroad' && (
@@ -156,7 +165,7 @@ export function NewCustomerForm(props: {
           {input('name', 'Nome ou razão social')}
           <div className="grid gap-4 sm:grid-cols-3">
             {input('email', 'E-mail', 'email')}
-            {input('phone', 'Telefone')}
+            {input('phone', 'Telefone', 'tel', place === 'brazil' ? maskPhone : undefined)}
             {place === 'brazil' && input('municipalRegistration', 'Inscrição municipal')}
           </div>
           <AddressFields accountId={props.accountId} value={address} onChange={setAddress} />

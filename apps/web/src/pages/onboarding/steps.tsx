@@ -7,9 +7,11 @@ import {
   type InvoicePage,
   type OnboardingState,
 } from '../../api';
+import { AmountInput } from '../../components/AmountInput';
 import { errorText } from '../../components/Layout';
 import { useAsync } from '../../components/useAsync';
 import { fileToBase64, formatCnpj, parseCents, parsePercent, percentInput } from '../../format';
+import { maskCnpj } from '../../masks';
 import { navigate } from '../../router';
 import {
   Alert,
@@ -138,7 +140,7 @@ export function CardStep(props: { prefix: string; onDone: OnDone }) {
           <Field label="CNPJ">
             <Input
               value={cnpj}
-              onChange={(e) => setCnpj(e.target.value)}
+              onChange={(e) => setCnpj(maskCnpj(e.target.value))}
               autoCapitalize="characters"
               required
               maxLength={18}
@@ -381,7 +383,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
           label="Receita bruta dos últimos 12 meses (R$)"
           hint="Empresa com menos de 12 meses: a média mensal vezes 12."
         >
-          <Input value={revenue} onChange={(e) => setRevenue(e.target.value)} inputMode="decimal" />
+          <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
         </Field>
         {band !== null && <p className="text-sm text-fg">Faixa {band} do Simples Nacional</p>}
         {overLimit && (
@@ -436,7 +438,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
               label="Alíquota de ISS (%)"
               hint="Usada quando o cliente retém o ISS. O mínimo legal é 2,00."
             >
-              <Input value={iss} onChange={(e) => setIss(e.target.value)} inputMode="decimal" />
+              <AmountInput unit="%" value={iss} onValueChange={setIss} />
             </Field>
             <Field label="Regime do IBS/CBS">
               <Select

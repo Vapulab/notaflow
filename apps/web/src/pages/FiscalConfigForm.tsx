@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { api, type FiscalConfig } from '../api';
+import { AmountInput } from '../components/AmountInput';
 import { errorText } from '../components/Layout';
 import {
   RBT12_LABEL,
@@ -103,14 +104,10 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
                 : 'A soma das receitas dos 12 meses antes do mês da nota.'
             }
           >
-            <Input
-              inputMode="decimal"
-              value={revenue}
-              onChange={(e) => setRevenue(e.target.value)}
-            />
+            <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
           </Field>
           <Field label="Alíquota de ISS (%)" hint="Usada quando o cliente retém o ISS.">
-            <Input inputMode="decimal" value={iss} onChange={(e) => setIss(e.target.value)} />
+            <AmountInput unit="%" value={iss} onValueChange={setIss} />
           </Field>
           <Field label="Regime do IBS/CBS">
             <Select

@@ -73,7 +73,8 @@ test('the owner sets the annex and the revenue; the band and both rates are show
   );
   const iss = screen.getByLabelText('Alíquota de ISS (%)');
   await user.clear(iss);
-  await user.type(iss, '3,5');
+  await user.type(iss, '350');
+  expect(iss).toHaveProperty('value', '3,50');
   await user.selectOptions(screen.getByLabelText('Regime do IBS/CBS'), 'regular');
   await user.type(screen.getByLabelText('Desde'), '2027-01-01');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));

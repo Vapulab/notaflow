@@ -8,6 +8,7 @@ import {
   type Service,
   type ServiceCode,
 } from '../api';
+import { AmountInput, currencySymbol } from '../components/AmountInput';
 import { DiscardPendingDialog } from '../components/DiscardPendingDialog';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
@@ -536,10 +537,10 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 </Select>
               </Field>
               <Field label={`Valor em ${currency}`}>
-                <Input
-                  inputMode="decimal"
+                <AmountInput
+                  unit={currencySymbol(currency)}
                   value={form.foreign}
-                  onChange={(e) => set('foreign', e.target.value)}
+                  onValueChange={(text) => set('foreign', text)}
                 />
               </Field>
             </div>
@@ -553,11 +554,11 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           </div>
         )}
         <Field label="Valor em reais">
-          <Input
-            inputMode="decimal"
+          <AmountInput
+            unit="R$"
             readOnly={abroad}
             value={form.brl}
-            onChange={(e) => set('brl', e.target.value)}
+            onValueChange={(text) => set('brl', text)}
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -602,18 +603,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             <div className="grid gap-4 sm:grid-cols-2">
               {canRetain && more.issRetained && (
                 <Field label="Alíquota de ISS (%)" hint={issMinimumHint(effectiveCode)}>
-                  <Input
-                    inputMode="decimal"
+                  <AmountInput
+                    unit="%"
                     value={more.issRate}
-                    onChange={(e) => setMore({ issRate: e.target.value })}
+                    onValueChange={(text) => setMore({ issRate: text })}
                   />
                 </Field>
               )}
               <Field label="Outro percentual do Simples (%)" hint="Em branco: a faixa escolhida.">
-                <Input
-                  inputMode="decimal"
+                <AmountInput
+                  unit="%"
                   value={more.simplesOther}
-                  onChange={(e) => setMore({ simplesOther: e.target.value })}
+                  onValueChange={(text) => setMore({ simplesOther: text })}
                 />
               </Field>
             </div>

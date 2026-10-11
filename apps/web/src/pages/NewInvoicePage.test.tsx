@@ -582,3 +582,16 @@ test('Serviço: a member, who cannot register services, sees no suggestions ther
   await screen.findByLabelText('Serviço');
   expect(screen.queryByRole('option', { name: /^Cadastrar:/ })).toBeNull();
 });
+
+test('the amounts fill like a cash register, with the currency inside the field', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await user.type(await screen.findByLabelText('Valor em reais'), '123456');
+  expect(screen.getByLabelText('Valor em reais')).toHaveProperty('value', '1.234,56');
+  expect(screen.getByText('R$')).toBeTruthy();
+  await pickCustomer(user, 'Foreign Customer Inc');
+  await user.type(screen.getByLabelText('Valor em USD'), '100000');
+  expect(screen.getByLabelText('Valor em USD')).toHaveProperty('value', '1.000,00');
+  expect(screen.getByText('US$')).toBeTruthy();
+});

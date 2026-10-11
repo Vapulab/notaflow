@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { api, type Customer, type Draft, type Emitter, type ExchangeRate } from '../api';
+import { AmountInput, currencySymbol } from '../components/AmountInput';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
 import { Layout, errorText } from '../components/Layout';
@@ -277,10 +278,10 @@ function IssueFlow(props: {
         {draft.foreign && (
           <div className="flex flex-col gap-2">
             <Field label={`Valor em ${draft.foreign.currency}`}>
-              <Input
-                inputMode="decimal"
+              <AmountInput
+                unit={currencySymbol(draft.foreign.currency)}
                 value={form.foreign}
-                onChange={(e) => set('foreign')(e.target.value)}
+                onValueChange={set('foreign')}
               />
             </Field>
             {rateLoading && <p className="text-sm text-muted">Buscando a cotação PTAX…</p>}
@@ -293,11 +294,11 @@ function IssueFlow(props: {
           </div>
         )}
         <Field label="Valor em reais">
-          <Input
-            inputMode="decimal"
+          <AmountInput
+            unit="R$"
             readOnly={draft.foreign !== null}
             value={form.brl}
-            onChange={(e) => set('brl')(e.target.value)}
+            onValueChange={set('brl')}
           />
         </Field>
         {brlCents === null && <p className="text-sm text-danger">Valor inválido.</p>}
