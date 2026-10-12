@@ -18,6 +18,7 @@ export default defineConfig({
         landing: resolve(root, 'landing.html'),
         termos: resolve(root, 'termos.html'),
         privacidade: resolve(root, 'privacidade.html'),
+        notFound: resolve(root, '404.html'),
       },
     },
   },

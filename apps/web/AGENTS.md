@@ -19,3 +19,5 @@ The React UI, built with Vite and styled with the Malphas design system. It talk
 6. Both issue screens send through `useIssueSend`; never post an issue without the idempotency key and the pending-send storage.
 7. Addresses use `AddressFields`; never ask the user to type an IBGE or ISO code.
 8. Links are plain `<a href={routeHref(...)}>`: `useRoute` keeps internal clicks in the app. Code moves with `navigate()`, never `window.location`.
+9. A screen under a new path root (not `/app`, `/admin`, `/entrar`, `/cadastro`, `/recuperar-senha`) needs that root in `APP_PATHS` in `apps/server/src/web.ts`; any other path answers the 404 page.
+10. A new public page is a Vite input (`vite.config.ts`) and an entry of `STATIC_PAGES` in `apps/server/src/web.ts`, which also puts it in the sitemap. After an FAQ edit on the landing, run `pnpm seo:faq`.

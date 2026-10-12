@@ -48,3 +48,4 @@ A change to the architecture (a new external system, container, server component
 | `pnpm fake:nacional` | Local fake of the Sefin and the ADN on port 4010 |
 | `pnpm spike:sefin` | Stage 0 spike against produção restrita (needs `.env.local`) |
 | `pnpm spike:template-check` | Read-only check that every invoice in the local database can serve as a template |
+| `pnpm seo:faq` | Rewrite the FAQ of the landing's JSON-LD from the questions on the page; run it after any FAQ edit |

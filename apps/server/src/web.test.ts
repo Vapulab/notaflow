@@ -19,6 +19,8 @@ beforeAll(async () => {
   writeFileSync(join(root, 'landing.html'), '<!doctype html><main>landing</main>');
   writeFileSync(join(root, 'termos.html'), '<!doctype html><main>termos</main>');
   writeFileSync(join(root, 'privacidade.html'), '<!doctype html><main>privacidade</main>');
+  writeFileSync(join(root, '404.html'), '<!doctype html><main>nao-encontrada</main>');
+  writeFileSync(join(root, 'llms.txt'), '# NotaFlow');
   config = loadConfig({
     NODE_ENV: 'test',
     DATABASE_PATH: ':memory:',
@@ -70,11 +72,16 @@ test('without a built landing the root serves the app', async () => {
   rmSync(bare, { recursive: true, force: true });
 });
 
-test('an unknown page path falls back to index.html without authentication', async () => {
-  const response = await app.inject({ url: '/qualquer/coisa' });
-  expect(response.statusCode).toBe(200);
-  expect(response.body).toContain('id="root"');
-});
+test.each(['/qualquer/coisa', '/robots', '/termos/x', '/apps'])(
+  'an unknown page path %s answers 404 with the 404 page, never the app',
+  async (url) => {
+    const response = await app.inject({ url });
+    expect(response.statusCode).toBe(404);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.headers['x-robots-tag']).toBe('noindex');
+    expect(response.body).toContain('nao-encontrada');
+  },
+);
 
 test('an unknown /api path still needs authentication, also when percent-encoded', async () => {
   expect((await app.inject({ url: '/api/nao-existe' })).statusCode).toBe(401);
@@ -94,10 +101,64 @@ test.each([
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toContain('text/html');
   expect(response.body).toContain('id="root"');
+  // The app screens are empty to a crawler and need a login: keep them out of search results.
+  expect(response.headers['x-robots-tag']).toBe('noindex');
+});
+
+test('the public pages may be indexed', async () => {
+  for (const url of ['/', '/termos', '/privacidade']) {
+    expect((await app.inject({ url })).headers['x-robots-tag']).toBeUndefined();
+  }
+});
+
+test('robots.txt allows the site, keeps crawlers out of the app and the API, and names the sitemap', async () => {
+  const response = await app.inject({ url: '/robots.txt' });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toContain('text/plain');
+  expect(response.body).toContain('User-agent: *\nAllow: /\n');
+  for (const path of ['/app', '/admin', '/api/', '/entrar', '/cadastro', '/recuperar-senha']) {
+    expect(response.body).toContain(`Disallow: ${path}\n`);
+  }
+  expect(response.body).toContain('Sitemap: http://localhost:3000/sitemap.xml');
+});
+
+test('the sitemap lists the public pages at the app origin', async () => {
+  const response = await app.inject({ url: '/sitemap.xml' });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toContain('application/xml');
+  const locs = [...response.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  expect(locs).toEqual([
+    'http://localhost:3000/',
+    'http://localhost:3000/termos',
+    'http://localhost:3000/privacidade',
+  ]);
+});
+
+test('llms.txt is served as text', async () => {
+  const response = await app.inject({ url: '/llms.txt' });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toContain('text/plain');
+});
+
+test('hashed assets are cached for a year; pages are revalidated', async () => {
+  expect((await app.inject({ url: '/assets/app.js' })).headers['cache-control']).toBe(
+    'public, max-age=31536000, immutable',
+  );
+  expect((await app.inject({ url: '/' })).headers['cache-control']).toBe('no-cache');
+  expect((await app.inject({ url: '/app' })).headers['cache-control']).toBe('no-cache');
 });
 
 test('an /api path never falls back to the app page', async () => {
   const response = await app.inject({ url: '/api/nothing' });
   expect(response.statusCode).toBe(401);
   expect(response.headers['content-type']).toContain('application/json');
+});
+
+test('a HEAD request gets the same status and headers as GET', async () => {
+  const app200 = await app.inject({ method: 'HEAD', url: '/app' });
+  expect(app200.statusCode).toBe(200);
+  expect(app200.headers['x-robots-tag']).toBe('noindex');
+  const missing = await app.inject({ method: 'HEAD', url: '/nao-existe' });
+  expect(missing.statusCode).toBe(404);
+  expect(missing.headers['content-type']).toContain('text/html');
 });
