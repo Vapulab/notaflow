@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as authApi from '../auth/authApi';
 import { stubApi } from '../test/stubApi';
-import { meFor, renderWithMe } from '../test/renderWithMe';
+import { meFor, PatchableMe, renderWithMe } from '../test/renderWithMe';
 import { ProfilePage } from './ProfilePage';
 
 vi.mock('../auth/authApi');
@@ -168,4 +168,26 @@ test('the reminders by e-mail can be turned off and on again', async () => {
     { lifecycleEmails: true },
   ]);
   expect(sent[0]?.init?.method).toBe('PUT');
+});
+
+test('the reminders choice survives leaving the profile and coming back', async () => {
+  account();
+  stubApi({ '/api/me/preferences': {} });
+  const user = userEvent.setup();
+  const screenOf = (show: boolean) => (
+    <PatchableMe me={{ ...meFor('user'), lifecycleEmails: true }}>
+      {show ? <ProfilePage /> : <p>Outra tela</p>}
+    </PatchableMe>
+  );
+  const view = render(screenOf(true));
+  await user.click(await screen.findByRole('checkbox', { name: /Receber lembretes/ }));
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('checkbox', { name: /Receber lembretes/ }) as HTMLInputElement).checked,
+    ).toBe(false),
+  );
+  view.rerender(screenOf(false));
+  view.rerender(screenOf(true));
+  const again = await screen.findByRole('checkbox', { name: /Receber lembretes/ });
+  expect((again as HTMLInputElement).checked).toBe(false);
 });

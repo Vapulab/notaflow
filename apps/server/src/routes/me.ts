@@ -32,7 +32,13 @@ export function meRoutes(
       legalVersion: LEGAL_VERSION,
       legalAccepted: legal.hasAccepted(identity.userId, LEGAL_VERSION),
       // An update of the policy: a banner shown once, never a new acceptance.
-      policyNotice: notice && !notices.hasSeen(identity.userId, notice.id) ? notice : null,
+      // Hidden once seen, or when a later version that the user accepted already carries it.
+      policyNotice:
+        notice &&
+        !notices.hasSeen(identity.userId, notice.id) &&
+        !legal.hasAcceptedSince(identity.userId, notice.date)
+          ? notice
+          : null,
       lifecycleEmails: !lifecycle.isOptedOut(identity.userId),
       accounts: identity.memberships.map((m) => ({
         id: m.accountId,

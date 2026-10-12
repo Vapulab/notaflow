@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { legalAcceptances } from '../db/schema';
 import { requestContext } from '../requestContext';
@@ -13,6 +13,17 @@ export class LegalAcceptanceRepository {
         .select({ id: legalAcceptances.id })
         .from(legalAcceptances)
         .where(and(eq(legalAcceptances.userId, userId), eq(legalAcceptances.version, version)))
+        .get() !== undefined
+    );
+  }
+
+  // Versions start with their date (YYYY-MM-DD), so a version from that day on sorts at or after it.
+  hasAcceptedSince(userId: string, date: string): boolean {
+    return (
+      this.db
+        .select({ id: legalAcceptances.id })
+        .from(legalAcceptances)
+        .where(and(eq(legalAcceptances.userId, userId), gte(legalAcceptances.version, date)))
         .get() !== undefined
     );
   }

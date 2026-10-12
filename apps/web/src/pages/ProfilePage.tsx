@@ -18,7 +18,7 @@ import { CodeField } from '../auth/CodeField';
 import { usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
 import { errorText, Layout } from '../components/Layout';
-import { useMe } from '../components/MeContext';
+import { useMe, usePatchMe } from '../components/MeContext';
 import { useAsync } from '../components/useAsync';
 import { formatDateTime } from '../format';
 import { navigate } from '../router';
@@ -92,12 +92,14 @@ export function ProfilePage() {
 // The reminders of RFC_LIFECYCLE_EMAILS; service e-mails, such as login codes, always go.
 function RemindersToggle(props: { initial: boolean }) {
   const [on, setOn] = useState(props.initial);
+  const patchMe = usePatchMe();
   const action = useAction();
   const change = (next: boolean) =>
     action.run(async () => {
       setOn(next);
       try {
         await api.put('/api/me/preferences', { lifecycleEmails: next });
+        patchMe({ lifecycleEmails: next });
       } catch (failure) {
         setOn(!next);
         throw failure;

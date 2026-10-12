@@ -143,3 +143,19 @@ test('an opt-out also cancels a failed lifecycle e-mail, so the admin retry cann
   expect(row()?.s).toBe('cancelled');
   expect(sent).toHaveLength(0);
 });
+
+test('an e-mail sent at once also keeps its reply-to and headers', async () => {
+  await outbox.send(
+    {
+      ...message,
+      replyTo: 'contato@vapulab.com',
+      headers: { 'List-Unsubscribe': '<https://x/u>' },
+    },
+    'lifecycle',
+    T0,
+  );
+  expect(sent[0]).toMatchObject({
+    replyTo: 'contato@vapulab.com',
+    headers: { 'List-Unsubscribe': '<https://x/u>' },
+  });
+});
