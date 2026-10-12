@@ -382,7 +382,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(notaflow_accounts)) - (sum(notaflow_accounts) offset 1d)",
+          "expr": "sum(notaflow_accounts) - sum(notaflow_accounts offset 1d)",
           "refId": "A",
           "legendFormat": "{{status}}",
           "interval": "1d"
@@ -435,7 +435,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(notaflow_emitters{environment=\"producao\"})) - (sum(notaflow_emitters{environment=\"producao\"}) offset 1d)",
+          "expr": "sum(notaflow_emitters{environment=\"producao\"}) - sum(notaflow_emitters{environment=\"producao\"} offset 1d)",
           "refId": "A",
           "legendFormat": "{{status}}",
           "interval": "1d"
@@ -488,7 +488,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=~\"issued|cancelled\"})) - (sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=~\"issued|cancelled\"}) offset 1d)",
+          "expr": "sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=~\"issued|cancelled\"}) - sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=~\"issued|cancelled\"} offset 1d)",
           "refId": "A",
           "legendFormat": "{{status}}",
           "interval": "1d"
@@ -541,7 +541,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=\"cancelled\"})) - (sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=\"cancelled\"}) offset 1d)",
+          "expr": "sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=\"cancelled\"}) - sum(notaflow_invoices{origin=\"app\", environment=\"producao\", status=\"cancelled\"} offset 1d)",
           "refId": "A",
           "legendFormat": "{{status}}",
           "interval": "1d"
@@ -853,7 +853,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum by (phase) (notaflow_lifecycle_emails)) - (sum by (phase) (notaflow_lifecycle_emails) offset 1d)",
+          "expr": "sum by (phase) (notaflow_lifecycle_emails) - sum by (phase) (notaflow_lifecycle_emails offset 1d)",
           "refId": "A",
           "legendFormat": "{{phase}}",
           "interval": "1d"
