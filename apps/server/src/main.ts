@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { buildApp } from './app';
 import { ConfigError, loadConfig } from './config';
 import { openDatabase } from './db/openDatabase';
+import { startMetricsServer } from './metrics/server';
 import { SyncTargetRepository } from './repos/SyncTargetRepository';
 import { runAllOnce, startScheduler } from './sync/scheduler';
 
@@ -20,6 +21,9 @@ try {
     ...(existsSync(join(webRoot, 'index.html')) ? { webRoot } : {}),
   });
   await app.listen({ host: config.host, port: config.port });
+  if (config.metricsPort) {
+    await startMetricsServer(app.metrics, { host: config.host, port: config.metricsPort });
+  }
   const targets = new SyncTargetRepository(db);
   startScheduler(
     () =>

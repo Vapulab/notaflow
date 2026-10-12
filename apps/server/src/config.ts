@@ -20,6 +20,8 @@ export interface Config {
   posthog: { token: string; host: string } | null;
   // Only behind the Cloudflare tunnel: then cf-connecting-ip is the real client IP.
   trustCloudflareIp: boolean;
+  // The Prometheus listener, inside the container only; null turns it off.
+  metricsPort: number | null;
   nacionalUrls?: { sefin: string; adn: string };
 }
 
@@ -102,6 +104,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('NACIONAL_FAKE_URL is not allowed with NODE_ENV=production');
   }
 
+  const metricsPort = Number(env.METRICS_PORT ?? '9464');
+  if (!Number.isInteger(metricsPort) || metricsPort < 0 || metricsPort > 65535) {
+    problems.push('METRICS_PORT must be a port number, or 0 to turn it off');
+  }
+
   const trustCloudflareIp = env.TRUST_CLOUDFLARE_IP ?? 'false';
   if (trustCloudflareIp !== 'true' && trustCloudflareIp !== 'false') {
     problems.push('TRUST_CLOUDFLARE_IP must be true or false');
@@ -128,6 +135,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
         : { siteKey: turnstile[0], secretKey: turnstile[1] },
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
     trustCloudflareIp: trustCloudflareIp === 'true',
+    metricsPort: metricsPort === 0 ? null : metricsPort,
     posthog: env.POSTHOG_TOKEN
       ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }
       : null,

@@ -210,3 +210,10 @@ test('PostHog is on only with a token, at the US host unless told otherwise', ()
       .posthog,
   ).toEqual({ token: 'phc_test', host: 'https://eu.i.posthog.com' });
 });
+
+test('the metrics listener is on port 9464 unless told otherwise; 0 turns it off', () => {
+  expect(loadConfig(base).metricsPort).toBe(9464);
+  expect(loadConfig({ ...base, METRICS_PORT: '9100' }).metricsPort).toBe(9100);
+  expect(loadConfig({ ...base, METRICS_PORT: '0' }).metricsPort).toBeNull();
+  expect(() => loadConfig({ ...base, METRICS_PORT: 'x' })).toThrow(/METRICS_PORT/);
+});

@@ -39,6 +39,7 @@ export class SyncService {
       retryDelaysMs?: number[];
       maxBatches?: number;
       now?: () => Date;
+      onRun?: (emitterId: string, error: string | null, at: Date) => void;
     },
   ) {
     this.emitters = new EmitterRepository(deps.db);
@@ -100,7 +101,9 @@ export class SyncService {
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
-    this.state.recordRun(ctx, emitterId, environment, { at: this.now(), error: result.error });
+    const at = this.now();
+    this.state.recordRun(ctx, emitterId, environment, { at, error: result.error });
+    this.deps.onRun?.(emitterId, result.error, at);
     return result;
   }
 
