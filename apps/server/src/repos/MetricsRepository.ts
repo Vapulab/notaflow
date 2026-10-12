@@ -2,7 +2,15 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { and, count, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { accounts, certificates, emitters, invoices, mailOutbox, users } from '../db/schema';
+import {
+  accounts,
+  certificates,
+  emitters,
+  invoices,
+  lifecycleEmails,
+  mailOutbox,
+  users,
+} from '../db/schema';
 import { notDeleted } from '../db/stamps';
 import type { MetricSources } from '../metrics/metrics';
 
@@ -65,6 +73,14 @@ export class MetricsRepository implements MetricSources {
       .from(invoices)
       .where(notDeleted(invoices))
       .groupBy(invoices.origin, invoices.status, invoices.environment)
+      .all();
+  }
+
+  lifecycleCounts() {
+    return this.db
+      .select({ phase: lifecycleEmails.phase, step: lifecycleEmails.step, count: count() })
+      .from(lifecycleEmails)
+      .groupBy(lifecycleEmails.phase, lifecycleEmails.step)
       .all();
   }
 

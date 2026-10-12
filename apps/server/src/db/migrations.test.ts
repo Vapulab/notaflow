@@ -215,3 +215,30 @@ test('stage 3c: only an account with an active emitter skips onboarding', () => 
   ]);
   client.close();
 });
+
+test('0016 backfills onboarding_done_at from the oldest emitter, and the new tables are append only', () => {
+  const client = new BetterSqlite3(':memory:');
+  migrate(drizzle(client), { migrationsFolder: migrationsUpTo(15) });
+  const run = (sql: string) => client.prepare(sql).run();
+  run(`INSERT INTO accounts (id, name, created_at, onboarding_step) VALUES ('a1', 'A', ${T0}, 'done')`);
+  run(`INSERT INTO accounts (id, name, created_at, onboarding_step) VALUES ('a2', 'B', ${T0}, 'card')`);
+  run(`INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series, created_at)
+       VALUES ('e1', 'a1', '12345678000195', 'EMPRESA', '4113700', '3', '0', '900', ${T0 + 5000})`);
+  run(`INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series, created_at)
+       VALUES ('e2', 'a1', '11222333000181', 'OUTRA', '4113700', '3', '0', '900', ${T0 + 9000})`);
+  run(`INSERT INTO users (id, email, name, created_at) VALUES ('u1', 'pessoa@example.com', 'Pessoa', ${T0})`);
+  migrate(drizzle(client), { migrationsFolder: MIGRATIONS });
+
+  expect(client.prepare('SELECT id, onboarding_done_at AS d FROM accounts ORDER BY id').all()).toEqual([
+    { id: 'a1', d: T0 + 5000 },
+    { id: 'a2', d: null },
+  ]);
+  const insert = (sentAt: number) =>
+    run(`INSERT INTO lifecycle_emails (user_id, account_id, phase, step, variant, anchor_at, sent_at)
+         VALUES ('u1', 'a1', 'activation', 1, 'card', ${T0}, ${sentAt})`);
+  insert(T0);
+  expect(() => insert(T0 + 1)).toThrow(/UNIQUE/);
+  expect(() => run('DELETE FROM lifecycle_emails')).toThrow(/append only/);
+  run(`INSERT INTO policy_notice_views (user_id, notice_id, seen_at) VALUES ('u1', 'n1', ${T0})`);
+  expect(() => run('UPDATE policy_notice_views SET notice_id = 2')).toThrow(/append only/);
+});

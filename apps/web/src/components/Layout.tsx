@@ -4,6 +4,7 @@ import { formatCents, formatDate } from '../format';
 import { resetAnalytics } from '../analytics/analytics';
 import { signOut } from '../auth/authApi';
 import { navigate, routeHref, useRoute } from '../router';
+import { PolicyNotice } from './PolicyNotice';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, Logo, ThemeToggle } from '../ui';
 
@@ -201,6 +202,9 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
         </nav>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">
+        <div className="mb-6 empty:hidden">
+          <PolicyNotice />
+        </div>
         <h1 className="mb-6 font-display text-2xl font-semibold text-fg">{props.title}</h1>
         <div className="flex flex-col gap-6">{props.children}</div>
       </main>

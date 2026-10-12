@@ -20,9 +20,9 @@ The parts that run: the web app and the public pages in the browser, the tunnel,
 
 ## Server Components
 
-Inside the API server: every request passes the auth hook, which gives the routes an account context; the services use the vault, the national provider, and the repositories. Each request is counted by module in the metrics, and each 5xx goes to the error reporter.
+Inside the API server: every request passes the auth hook, which gives the routes an account context; the services use the vault, the national provider, and the repositories. Each request is counted by module in the metrics, and each 5xx goes to the error reporter. The lifecycle service sends the onboarding, first-invoice, and reactivation reminders through the mail outbox.
 
-![C4 components of the API server: auth hook, Better Auth, routes, onboarding, issue service, sync service, certificate vault, national provider, repositories, mail outbox, audit log, metrics, error reporter](diagrams/c4-3-server-components.png)
+![C4 components of the API server: auth hook, Better Auth, routes, onboarding, issue service, sync service, certificate vault, national provider, repositories, mail outbox, audit log, metrics, error reporter, lifecycle service](diagrams/c4-3-server-components.png)
 
 ## Deployment
 

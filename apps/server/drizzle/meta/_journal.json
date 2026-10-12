@@ -113,6 +113,13 @@
       "when": 1791737677451,
       "tag": "0015_mail_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1791830897616,
+      "tag": "0016_lifecycle",
+      "breakpoints": true
     }
   ]
 }

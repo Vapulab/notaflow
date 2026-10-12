@@ -17,6 +17,8 @@ export const BUSINESS_TABLES = [
 export const OTHER_TABLES = [
   'audit_log',
   'legal_acceptances',
+  'lifecycle_emails',
+  'policy_notice_views',
   'mail_outbox',
   'auth_sessions',
   'auth_accounts',

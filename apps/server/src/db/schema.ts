@@ -47,6 +47,8 @@ export const accounts = sqliteTable('accounts', {
     .default('card'),
   // The confirmed card data (JSON) between the card step and the certificate step.
   cnpjDraft: text('cnpj_draft'),
+  // When onboarding reached 'done'; the lifecycle e-mails count from it.
+  onboardingDoneAt: integer('onboarding_done_at', { mode: 'timestamp_ms' }),
   // The card of the draft, gzipped; it becomes an account document only once the certificate proves the company.
   cnpjDraftCard: blob('cnpj_draft_card', { mode: 'buffer' }),
   cnpjDraftCardName: text('cnpj_draft_card_name'),
@@ -66,6 +68,8 @@ export const users = sqliteTable(
       .notNull()
       .default('user'),
     lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
+    // Set when the person refuses the lifecycle reminders; null means they get them.
+    lifecycleOptOutAt: integer('lifecycle_opt_out_at', { mode: 'timestamp_ms' }),
     emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     image: text('image'),
     tourSeenAt: integer('tour_seen_at', { mode: 'timestamp_ms' }),
@@ -201,19 +205,57 @@ export const legalAcceptances = sqliteTable(
 // Every e-mail goes through here: sent at once, retried with backoff, and kept as failed (the dead letters).
 export const mailOutbox = sqliteTable('mail_outbox', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  kind: text('kind', { enum: ['code', 'invite', 'welcome', 'notice'] }).notNull(),
+  kind: text('kind', { enum: ['code', 'invite', 'welcome', 'notice', 'lifecycle'] }).notNull(),
   to: text('to').notNull(),
   subject: text('subject').notNull(),
   // Emptied once sent or given up: a login code is not kept.
   html: text('html').notNull(),
   text: text('text').notNull(),
-  status: text('status', { enum: ['pending', 'sending', 'sent', 'failed'] }).notNull(),
+  status: text('status', { enum: ['pending', 'sending', 'sent', 'failed', 'cancelled'] }).notNull(),
+  replyTo: text('reply_to'),
+  headers: text('headers', { mode: 'json' }).$type<Record<string, string>>(),
   attempts: integer('attempts').notNull().default(0),
   nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
   lastError: text('last_error'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
 });
+
+// One row per lifecycle e-mail sent; the unique index is what stops a second send.
+export const lifecycleEmails = sqliteTable(
+  'lifecycle_emails',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    phase: text('phase', { enum: ['activation', 'first_invoice', 'reactivation'] }).notNull(),
+    step: integer('step').notNull(),
+    variant: text('variant').notNull(),
+    anchorAt: integer('anchor_at', { mode: 'timestamp_ms' }).notNull(),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('lifecycle_emails_once').on(t.userId, t.accountId, t.phase, t.step, t.anchorAt),
+  ],
+);
+
+// Who saw which policy notice: the proof that an update was shown.
+export const policyNoticeViews = sqliteTable(
+  'policy_notice_views',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    noticeId: text('notice_id').notNull(),
+    seenAt: integer('seen_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [uniqueIndex('policy_notice_views_once').on(t.userId, t.noticeId)],
+);
 
 export const customers = sqliteTable(
   'customers',

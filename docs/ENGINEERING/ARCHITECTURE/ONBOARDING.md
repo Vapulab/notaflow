@@ -60,3 +60,7 @@ A finished account adds more emitters from Emitentes, through `POST /api/account
 
 - **First visit:** the tour runs when `users.tour_seen_at` is null. Closing or finishing it calls `POST /api/me/tour-seen`.
 - **Again:** "Ver o tour" in the header opens `/app?tour=1`.
+
+## Reminders
+
+An owner whose onboarding stops gets up to two reminder e-mails, on day 1 and day 4 after the account was created. The copy follows the step where the account stopped: the CNPJ card, the certificate, or the revenue. After onboarding ends (`accounts.onboarding_done_at`), an account with no production invoice issued by NotaFlow gets two more, on day 3 and day 7. The `LifecycleService` sends them, together with the reactivation e-mails; see the [Lifecycle E-mails RFC](../RFCS/2026/10/RFC_LIFECYCLE_EMAILS.md).

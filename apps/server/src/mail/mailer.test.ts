@@ -39,6 +39,29 @@ test('resendMailer posts the message to Resend with the key and no reply address
   });
 });
 
+test('resendMailer passes the reply-to and the headers when a message has them', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  let body: Record<string, unknown> = {};
+  agent
+    .get('https://api.resend.com')
+    .intercept({ path: '/emails', method: 'POST' })
+    .reply(200, (options) => {
+      body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      return { id: 'e1' };
+    });
+  const mailer = resendMailer({ apiKey: 'k', from: 'NotaFlow <n@example.com>', dispatcher: agent });
+  await mailer({
+    ...message,
+    replyTo: 'contato@vapulab.com',
+    headers: { 'List-Unsubscribe': '<https://x/u>' },
+  });
+  expect(body).toMatchObject({
+    reply_to: 'contato@vapulab.com',
+    headers: { 'List-Unsubscribe': '<https://x/u>' },
+  });
+});
+
 test('a Resend error names the status and never the key', async () => {
   const agent = new MockAgent();
   agent.disableNetConnect();

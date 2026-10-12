@@ -1,6 +1,6 @@
 import { type Dispatcher, request } from 'undici';
 
-export type MailKind = 'code' | 'invite' | 'welcome' | 'notice';
+export type MailKind = 'code' | 'invite' | 'welcome' | 'notice' | 'lifecycle';
 
 export interface MailMessage {
   to: string;
@@ -8,11 +8,12 @@ export interface MailMessage {
   html: string;
   text: string;
   kind?: MailKind; // what the outbox may retry: a login code is never resent
+  replyTo?: string;
+  headers?: Record<string, string>;
 }
 
 export type Mailer = (message: MailMessage) => Promise<void>;
 
-// No reply_to: the sender is nao-responda, and every e-mail says it is not answered.
 export function resendMailer(options: {
   apiKey: string;
   from: string;
@@ -28,6 +29,8 @@ export function resendMailer(options: {
         subject: message.subject,
         html: message.html,
         text: message.text,
+        ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+        ...(message.headers ? { headers: message.headers } : {}),
       }),
       ...(options.dispatcher ? { dispatcher: options.dispatcher } : {}),
     });

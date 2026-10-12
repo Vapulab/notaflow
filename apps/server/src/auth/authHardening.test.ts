@@ -70,7 +70,7 @@ test('a new user gets the welcome e-mail', async () => {
     type: 'sign-in',
   });
   await post('/api/auth/sign-in/email-otp', { email: 'nova@example.com', otp: lastCode() });
-  await expect.poll(() => t.mail.map((m) => m.subject)).toContain('Boas-vindas ao NotaFlow');
+  await expect.poll(() => t.mail.map((m) => m.subject)).toContain('Boas-vindas ao NotaFlow: sua primeira nota em 4 passos');
 });
 
 test('with signup closed, password signup answers the same for a known and an unknown e-mail', async () => {

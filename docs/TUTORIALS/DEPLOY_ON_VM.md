@@ -112,6 +112,17 @@ The app has its own login (Better Auth, stage 3b): e-mail code, Google, password
 
 Cloudflare Access protected the hostname until the stage 3b cut-over. After it, the hostname is public; the tunnel, the WAF, and Turnstile stay.
 
+## Lifecycle reminders
+
+The reminders of the [Lifecycle E-mails RFC](../ENGINEERING/RFCS/2026/10/RFC_LIFECYCLE_EMAILS.md) stay off until `LIFECYCLE_START_AT` is set in `/opt/notaflow/.env`. The terms promise 15 days of notice for this change, so the release goes in this order:
+
+1. Merge and deploy. The new terms ask every user to accept them.
+2. On the same day, queue the notice e-mail to every user, with the start date 15 days later:
+   `ssh vapulab "docker exec notaflow-app-1 node --import tsx apps/server/src/policyNotice.ts 2026-10-28"`
+3. Add `LIFECYCLE_START_AT=2026-10-28` (the same date) to `/opt/notaflow/.env`, then run `cd /opt/notaflow && docker compose up -d`.
+
+From that date, the service runs every 15 minutes, only Monday to Friday from 09:00 to 17:00 in Sao Paulo (holidays are not skipped). The reminders sent are in the "5. Negócio" panel. A user stops them by the link in each e-mail or in the profile.
+
 ## E-mail outbox
 
 Every e-mail goes through the `mail_outbox` table before Resend.

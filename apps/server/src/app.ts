@@ -30,6 +30,12 @@ import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
+import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
+import { LifecycleService } from './lifecycle/LifecycleService';
+import { registerUnsubscribe, unsubscribeUrl } from './lifecycle/unsubscribe';
+import { AuditLog } from './repos/AuditLog';
+import { lifecycleEmail } from './mail/templates';
+import { LifecycleRepository } from './repos/LifecycleRepository';
 import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { adminMailRoutes } from './routes/adminMail';
@@ -40,7 +46,12 @@ import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
 import { Metrics, moduleOf } from './metrics/metrics';
-import { type ErrorReporter, noErrorReporter, sentryReporter, statusOf } from './observability/errors';
+import {
+  type ErrorReporter,
+  noErrorReporter,
+  sentryReporter,
+  statusOf,
+} from './observability/errors';
 import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
 import { isApiPath, registerWeb } from './web';
@@ -50,12 +61,15 @@ declare module 'fastify' {
     routeList: { method: string; url: string }[];
     syncService: SyncService;
     metrics: Metrics;
+    lifecycle: LifecycleService;
     mailOutbox: MailOutbox;
     auth: Auth;
   }
 }
 
 export interface AppDeps {
+  // Tests inject a notice; production uses POLICY_NOTICE.
+  policyNotice?: PolicyNotice | null;
   config: Config;
   db: Database;
   logStream?: { write(line: string): void };
@@ -150,6 +164,23 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
   const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
   app.decorate('mailOutbox', outbox);
+  const lifecycleRepo = new LifecycleRepository(db, LIFECYCLE_LEGAL_VERSION);
+  app.decorate(
+    'lifecycle',
+    new LifecycleService({
+      repo: lifecycleRepo,
+      outbox,
+      startAt: config.lifecycleStartAt,
+      render: lifecycleEmail,
+      unsubscribeUrl: (userId) => unsubscribeUrl(config.appOrigin, userId, config.authSecret),
+    }),
+  );
+  registerUnsubscribe(app, {
+    repo: lifecycleRepo,
+    outbox,
+    audit: new AuditLog(db),
+    secret: config.authSecret,
+  });
   const mailer = outbox.mailer();
   const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
   app.decorate('auth', auth);
@@ -195,7 +226,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
   publicConfigRoutes(app, config);
-  meRoutes(app, db);
+  meRoutes(app, db, deps.policyNotice === undefined ? POLICY_NOTICE : deps.policyNotice);
   adminRoutes(app, db);
   memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });
   adminMailRoutes(app, { db, outbox });

@@ -23,6 +23,7 @@ export interface MetricSources {
   userCount(): number;
   emitterCounts(): { environment: string; count: number }[];
   invoiceCounts(): { origin: string; status: string; environment: string; count: number }[];
+  lifecycleCounts(): { phase: string; step: number; count: number }[];
 }
 
 export class Metrics {
@@ -142,6 +143,18 @@ export class Metrics {
             { origin: row.origin, status: row.status, environment: row.environment },
             row.count,
           );
+        }
+      },
+    });
+    new Gauge({
+      name: 'notaflow_lifecycle_emails',
+      help: 'Lifecycle reminders sent, by phase and step',
+      labelNames: ['phase', 'step'],
+      registers,
+      collect() {
+        this.reset();
+        for (const row of sources.lifecycleCounts()) {
+          this.set({ phase: row.phase, step: String(row.step) }, row.count);
         }
       },
     });
