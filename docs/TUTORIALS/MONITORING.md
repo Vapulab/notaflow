@@ -20,7 +20,7 @@ The panels come from the files in `deploy/monitoring/grafana/dashboards`. A chan
 
 ## Alerts
 
-The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them with `promtool test rules`. Alertmanager sends a firing alert to the channel, sends it again every 4 hours while it is open, and sends a message when it is resolved.
+The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them with `promtool test rules`. Each Discord message has the alert, its summary, its module, a link to the Overview panel, and a link to this table (`alertmanager/templates/discord.tmpl`). Alertmanager sends a firing alert to the channel, sends it again every 4 hours while it is open, and sends a message when it is resolved.
 
 | Alert | What to do |
 | --- | --- |

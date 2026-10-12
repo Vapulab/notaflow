@@ -1,0 +1,12 @@
+{{/* The default Discord message links to Prometheus inside the VPS; this one links to what Lincoln can open. */}}
+{{ define "notaflow.discord.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+{{- end }}
+
+{{ define "notaflow.discord.message" -}}
+{{ range .Alerts -}}
+{{ if eq .Status "firing" }}🔴{{ else }}🟢{{ end }} {{ .Annotations.summary }}{{ if .Labels.module }} (module {{ .Labels.module }}){{ end }}
+{{ end -}}
+Panel: https://grafana.vapulab.com/d/overview
+What to do: https://github.com/darkanum/notaflow/blob/production/docs/TUTORIALS/MONITORING.md#alerts
+{{- end }}
