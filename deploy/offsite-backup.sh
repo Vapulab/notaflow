@@ -22,3 +22,9 @@ printf 'user = "%s:%s"\n' "$R2_ACCESS_KEY_ID" "$R2_SECRET_ACCESS_KEY" |
     --upload-file "$work/$name.gz.age" "$R2_ENDPOINT/$R2_BUCKET/$name.gz.age"
 
 echo "Sent $name.gz.age to $R2_BUCKET"
+
+# node-exporter reads this file (deploy/monitoring); written then renamed, so a scrape never sees half of it.
+textfile=/var/lib/node_exporter/textfile
+mkdir -p "$textfile"
+printf 'backup_last_timestamp_seconds{kind="offsite"} %s\n' "$(date +%s)" > "$textfile/notaflow_backup.prom.tmp"
+mv "$textfile/notaflow_backup.prom.tmp" "$textfile/notaflow_backup.prom"

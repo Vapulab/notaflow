@@ -93,3 +93,12 @@ test('a sync run counts by result and keeps the time of the last success', async
     new RegExp(`sync_last_success_timestamp_seconds\\{emitter="${s.emitterId}"\\} \\d+`),
   );
 });
+
+test('every log line of a request, the completion line too, carries its module', async () => {
+  const lines: string[] = [];
+  const logged = await createTestApp({ logStream: { write: (line: string) => lines.push(line) } });
+  await logged.app.inject({ method: 'GET', url: '/api/health' });
+  await logged.close();
+  const completed = lines.map((line) => JSON.parse(line)).find((l) => l.msg === 'request completed');
+  expect(completed).toMatchObject({ module: 'app' });
+});

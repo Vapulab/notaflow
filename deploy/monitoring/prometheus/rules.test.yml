@@ -1,0 +1,109 @@
+# promtool test rules: each alert fires on the series it watches, and stays quiet on healthy ones.
+rule_files:
+  - rules.yml
+
+evaluation_interval: 30s
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{instance="https://notaflow.vapulab.com/api/health"}'
+        values: '1 0 0 0 0'
+      - series: 'probe_success{instance="https://vapulab.com/"}'
+        values: '1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: SiteDown
+        exp_alerts:
+          - exp_labels: { severity: critical, service: probe, instance: 'https://notaflow.vapulab.com/api/health' }
+            exp_annotations: { summary: 'https://notaflow.vapulab.com/api/health is not answering 2xx' }
+
+  - interval: 1m
+    input_series:
+      # 100 requests a minute; 5 of them 5xx from minute 0 on.
+      - series: 'http_requests_total{job="notaflow", module="issue", method="POST", status="200"}'
+        values: '0+95x30'
+      - series: 'http_requests_total{job="notaflow", module="issue", method="POST", status="502"}'
+        values: '0+5x30'
+      - series: 'http_requests_total{job="notaflow", module="app", method="GET", status="200"}'
+        values: '0+100x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: ApiErrors
+        exp_alerts:
+          - exp_labels: { severity: critical, service: notaflow, module: issue }
+            exp_annotations: { summary: 'NotaFlow module issue: 5% of requests answer 5xx' }
+
+  - interval: 1m
+    input_series:
+      - series: 'invoices_issued_total{result="issued"}'
+        values: '0 1 2 3'
+      - series: 'invoices_issued_total{result="uncertain"}'
+        values: '0 0 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: InvoicesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: issue, result: uncertain }
+            exp_annotations: { summary: 'NotaFlow: 1 invoice attempts ended uncertain in 15 minutes' }
+
+  - interval: 1m
+    input_series:
+      - series: 'mail_outbox_messages{status="failed"}'
+        values: '0 0 2'
+      - series: 'mail_outbox_messages{status="pending"}'
+        values: '3 3 3'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DeadLetters
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: DeadLetters
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: mail, status: failed }
+            exp_annotations: { summary: 'NotaFlow: 2 e-mails failed for good; retry them in /admin' }
+
+  - interval: 1h
+    input_series:
+      # Unix 0 is the start of the test clock; the local backup ran at 0, the off-site one keeps running.
+      - series: 'backup_last_timestamp_seconds{kind="local"}'
+        values: '0x30'
+      - series: 'backup_last_timestamp_seconds{kind="offsite"}'
+        values: '0+3600x30'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels: { severity: critical, service: notaflow, kind: local }
+            exp_annotations: { summary: 'NotaFlow: the newest local backup is 1d 3h 0m 0s old' }
+      - eval_time: 27h
+        alertname: BackupMissing
+        exp_alerts: []
+
+  - interval: 1h
+    input_series:
+      - series: 'backup_last_timestamp_seconds{kind="local"}'
+        values: '0+3600x5'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: BackupMissing
+        exp_alerts:
+          - exp_labels: { severity: critical, service: notaflow, kind: offsite }
+            exp_annotations: { summary: 'NotaFlow: a local or off-site backup reports no time at all' }
+
+  - interval: 1d
+    input_series:
+      - series: 'certificate_expiry_timestamp_seconds{emitter="e1"}'
+        values: '3456000x15'
+    alert_rule_test:
+      - eval_time: 9d
+        alertname: CertificateExpiring
+        exp_alerts: []
+      - eval_time: 11d
+        alertname: CertificateExpiring
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: onboarding, emitter: e1 }
+            exp_annotations: { summary: 'NotaFlow: the certificate of emitter e1 expires in 29d 0h 0m 0s' }
