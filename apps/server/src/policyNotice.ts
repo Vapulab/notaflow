@@ -1,19 +1,28 @@
-import { isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config';
 import { type Database, openDatabase } from './db/openDatabase';
-import { users } from './db/schema';
+import { mailOutbox, users } from './db/schema';
 import { MailOutbox } from './mail/outbox';
 import { legalChangeEmail } from './mail/templates';
 
-// Queues the legal change e-mail for every user who was not removed; the running app's outbox sends it.
+// Queues the legal change e-mail for every user who was not removed and did not get it yet, so a second run sends nothing twice.
 export function sendLegalChangeNotice(db: Database, outbox: MailOutbox, startDate: string): number {
   const mail = legalChangeEmail(startDate);
+  const already = new Set(
+    db
+      .select({ to: mailOutbox.to })
+      .from(mailOutbox)
+      .where(and(eq(mailOutbox.kind, 'notice'), eq(mailOutbox.subject, mail.subject)))
+      .all()
+      .map((row) => row.to),
+  );
   const recipients = db
     .select({ email: users.email })
     .from(users)
     .where(isNull(users.deletedAt))
-    .all();
+    .all()
+    .filter(({ email }) => !already.has(email));
   for (const { email } of recipients) outbox.queue({ to: email, ...mail }, 'notice');
   return recipients.length;
 }

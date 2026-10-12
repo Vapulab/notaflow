@@ -31,3 +31,17 @@ test('the legal change notice goes once to every user who was not removed', () =
   expect(rows.map((r) => r.to).sort()).toEqual(['dois@example.com', 'um@example.com']);
   expect(rows.every((r) => r.kind === 'notice')).toBe(true);
 });
+
+test('running the notice twice sends it once', () => {
+  seedUser(opened.db, 'um@example.com');
+  const outbox = new MailOutbox(
+    opened.db,
+    async () => {},
+    () => {},
+  );
+  expect(sendLegalChangeNotice(opened.db, outbox, '2026-10-28')).toBe(1);
+  seedUser(opened.db, 'novo@example.com');
+  expect(sendLegalChangeNotice(opened.db, outbox, '2026-10-28')).toBe(1);
+  const rows = opened.db.select({ to: mailOutbox.to }).from(mailOutbox).all();
+  expect(rows.map((r) => r.to).sort()).toEqual(['novo@example.com', 'um@example.com']);
+});

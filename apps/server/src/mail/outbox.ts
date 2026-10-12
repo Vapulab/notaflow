@@ -23,7 +23,7 @@ export class MailOutbox {
 
   // True when delivered now; false when it waits for a retry.
   async send(message: MailMessage, kind: MailKind, now = new Date()): Promise<boolean> {
-    const { to, subject, html, text } = message;
+    const { to, subject, html, text, replyTo, headers } = message;
     const row = this.db
       .insert(mailOutbox)
       .values({
@@ -32,6 +32,8 @@ export class MailOutbox {
         html,
         text,
         kind,
+        replyTo: replyTo ?? null,
+        headers: headers ?? null,
         status: 'sending',
         nextAttemptAt: now,
         createdAt: now,
