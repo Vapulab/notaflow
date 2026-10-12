@@ -1,0 +1,18 @@
+route:
+  receiver: channel
+  group_by: [alertname, service, module]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: channel
+    # Discord. For Slack, use slack_configs with api_url_file and the same file.
+    discord_configs:
+      - webhook_url_file: /run/secrets/alert_webhook_url
+        send_resolved: true
+
+inhibit_rules:
+  # NotaFlow down explains its API errors and slow answers.
+  - source_matchers: [alertname="SiteDown", instance=~"https://notaflow.vapulab.com/.*"]
+    target_matchers: [alertname=~"ApiErrors|ApiSlow"]

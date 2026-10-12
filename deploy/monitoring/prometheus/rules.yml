@@ -1,0 +1,93 @@
+# The alerts of RFC_MONITORING. Each one names its service and, for NotaFlow, its module.
+groups:
+  - name: sites
+    rules:
+      - alert: SiteDown
+        expr: probe_success == 0
+        for: 2m
+        labels: { severity: critical, service: probe }
+        annotations:
+          summary: '{{ $labels.instance }} is not answering 2xx'
+
+      - alert: MonitoringTargetDown
+        expr: up == 0
+        for: 5m
+        labels: { severity: warning, service: monitoring }
+        annotations:
+          summary: 'Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}'
+
+  - name: notaflow
+    rules:
+      - alert: ApiErrors
+        expr: |
+          sum by (module) (rate(http_requests_total{job="notaflow", status=~"5.."}[10m]))
+            / sum by (module) (rate(http_requests_total{job="notaflow"}[10m])) > 0.02
+        for: 10m
+        labels: { severity: critical, service: notaflow }
+        annotations:
+          summary: 'NotaFlow module {{ $labels.module }}: {{ $value | humanizePercentage }} of requests answer 5xx'
+
+      - alert: ApiSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (module, le) (rate(http_request_duration_seconds_bucket{job="notaflow"}[10m]))) > 2
+        for: 10m
+        labels: { severity: warning, service: notaflow }
+        annotations:
+          summary: 'NotaFlow module {{ $labels.module }}: p95 latency is {{ $value | humanizeDuration }}'
+
+      - alert: InvoicesFailing
+        expr: sum by (result) (increase(invoices_issued_total{result=~"rejected|uncertain"}[15m])) > 0
+        labels: { severity: warning, service: notaflow, module: issue }
+        annotations:
+          summary: 'NotaFlow: {{ $value | humanize }} invoice attempts ended {{ $labels.result }} in 15 minutes'
+
+      - alert: SyncStale
+        expr: time() - sync_last_success_timestamp_seconds > 2 * 3600
+        labels: { severity: warning, service: notaflow, module: sync }
+        annotations:
+          summary: 'NotaFlow: emitter {{ $labels.emitter }} has had no successful sync for {{ $value | humanizeDuration }}'
+
+      - alert: DeadLetters
+        expr: mail_outbox_messages{status="failed"} > 0
+        labels: { severity: warning, service: notaflow, module: mail }
+        annotations:
+          summary: 'NotaFlow: {{ $value }} e-mails failed for good; retry them in /admin'
+
+      - alert: CertificateExpiring
+        expr: certificate_expiry_timestamp_seconds - time() < 30 * 86400
+        labels: { severity: warning, service: notaflow, module: onboarding }
+        annotations:
+          summary: 'NotaFlow: the certificate of emitter {{ $labels.emitter }} expires in {{ $value | humanizeDuration }}'
+
+  - name: backups
+    rules:
+      - alert: BackupStale
+        expr: time() - backup_last_timestamp_seconds > 26 * 3600
+        labels: { severity: critical, service: notaflow }
+        annotations:
+          summary: 'NotaFlow: the newest {{ $labels.kind }} backup is {{ $value | humanizeDuration }} old'
+
+      - alert: BackupMissing
+        expr: absent(backup_last_timestamp_seconds{kind="local"}) or absent(backup_last_timestamp_seconds{kind="offsite"})
+        for: 1h
+        labels: { severity: critical, service: notaflow }
+        annotations:
+          summary: 'NotaFlow: a local or off-site backup reports no time at all'
+
+  - name: host
+    rules:
+      - alert: DiskFilling
+        expr: |
+          1 - node_filesystem_avail_bytes{mountpoint="/", fstype!="rootfs"}
+            / node_filesystem_size_bytes{mountpoint="/", fstype!="rootfs"} > 0.8
+        for: 10m
+        labels: { severity: warning, service: host }
+        annotations:
+          summary: 'VPS: the root disk is {{ $value | humanizePercentage }} full'
+
+      - alert: ContainerRestarting
+        expr: changes(container_start_time_seconds{name!=""}[15m]) > 2
+        labels: { severity: warning, service: containers }
+        annotations:
+          summary: 'Container {{ $labels.name }} restarted {{ $value }} times in 15 minutes'

@@ -22,3 +22,27 @@ jobs:
       - run: pytest services/signer-py
       - uses: gitleaks/gitleaks-action@v3
         env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+  monitoring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prometheus config and alert rules
+        run: |
+          docker run --rm -v "$PWD/deploy/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
+            --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
+          docker run --rm -v "$PWD/deploy/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
+            --entrypoint promtool prom/prometheus:v3.5.0 test rules rules.test.yml
+      - name: Alertmanager config
+        run: |
+          docker run --rm -v "$PWD/deploy/monitoring/alertmanager:/etc/alertmanager:ro" \
+            --entrypoint amtool prom/alertmanager:v0.28.1 check-config /etc/alertmanager/alertmanager.yml
+      - name: Loki, Alloy, and blackbox config
+        run: |
+          docker run --rm -v "$PWD/deploy/monitoring/loki:/etc/loki:ro" grafana/loki:3.5.3 \
+            -config.file=/etc/loki/loki.yml -verify-config
+          docker run --rm -v "$PWD/deploy/monitoring/alloy:/etc/alloy:ro" grafana/alloy:v1.10.0 \
+            fmt /etc/alloy/config.alloy > /dev/null
+          docker run --rm -v "$PWD/deploy/monitoring/blackbox:/etc/blackbox:ro" prom/blackbox-exporter:v0.27.0 \
+            --config.file=/etc/blackbox/blackbox.yml --config.check
+      - name: Dashboards are valid JSON
+        run: for f in deploy/monitoring/grafana/dashboards/*.json; do jq empty "$f"; done

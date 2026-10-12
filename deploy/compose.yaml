@@ -18,6 +18,9 @@ services:
     networks:
       northub:
         aliases: [notaflow]
+      # Prometheus scrapes /metrics on port 9464 here (deploy/monitoring).
+      monitoring:
+        aliases: [notaflow]
 
 volumes:
   data:
@@ -25,4 +28,7 @@ volumes:
 networks:
   northub:
     name: northub_default
+    external: true
+  monitoring:
+    name: monitoring
     external: true
