@@ -8,5 +8,8 @@ export function publicConfigRoutes(app: FastifyInstance, config: Config): void {
     turnstileSiteKey: config.turnstile?.siteKey ?? null,
     signupOpen: config.signup.open,
     posthog: config.posthog,
+    sentry: config.sentry.webDsn
+      ? { dsn: config.sentry.webDsn, release: config.sentry.release, environment: config.nodeEnv }
+      : null,
   }));
 }

@@ -22,6 +22,8 @@ export interface Config {
   trustCloudflareIp: boolean;
   // The Prometheus listener, inside the container only; null turns it off.
   metricsPort: number | null;
+  // The release is the tag of the running image, so an error points at its commit.
+  sentry: { serverDsn: string | null; webDsn: string | null; release: string | null };
   nacionalUrls?: { sefin: string; adn: string };
 }
 
@@ -114,6 +116,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('TRUST_CLOUDFLARE_IP must be true or false');
   }
 
+  for (const name of ['SENTRY_DSN_SERVER', 'SENTRY_DSN_WEB']) {
+    const dsn = env[name];
+    if (dsn && !URL.canParse(dsn)) problems.push(`${name} must be a Sentry DSN URL`);
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
   return {
     nodeEnv: nodeEnv as Config['nodeEnv'],
@@ -136,6 +143,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
     trustCloudflareIp: trustCloudflareIp === 'true',
     metricsPort: metricsPort === 0 ? null : metricsPort,
+    sentry: {
+      serverDsn: env.SENTRY_DSN_SERVER || null,
+      webDsn: env.SENTRY_DSN_WEB || null,
+      release: /:([^:/]+)$/.exec(env.IMAGE ?? '')?.[1] ?? null,
+    },
     posthog: env.POSTHOG_TOKEN
       ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }
       : null,
