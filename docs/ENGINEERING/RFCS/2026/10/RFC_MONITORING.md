@@ -50,7 +50,7 @@ Non-goals:
 
 | Component | Role | Retention |
 | --- | --- | --- |
-| Prometheus | Scrapes the app, the host, the containers, and the probes | 15 days |
+| Prometheus | Scrapes the app, the host, the containers, and the probes | 400 days, at most 10 GB (15 days until 2026-10-12, when the business panel needed a year of history) |
 | Alertmanager | Routes alerts to the webhook, groups them, and repeats an open alert every 4 hours | n/a |
 | Loki | Stores the logs | 14 days |
 | Grafana Alloy | Reads the logs of every container through the Docker socket (read only) and sends them to Loki, labeled by container and, for NotaFlow, by module | n/a |
@@ -89,6 +89,7 @@ Only Grafana joins the `northub_default` network (for the tunnel). The other com
 - `sync_runs_total{result}` and `sync_last_success_timestamp_seconds{emitter}`. The emitter is an internal id, not a CNPJ.
 - `mail_outbox_messages{status}`, a gauge for `pending`, `failed` (the dead letters), and `sent` in the last day.
 - `certificate_expiry_timestamp_seconds{emitter}`.
+- `notaflow_accounts{status}`, `notaflow_users`, `notaflow_emitters{environment}`, and `notaflow_invoices{origin, status, environment}`: business totals read from the database at scrape time. `origin` is `app` (issued by NotaFlow) or `synced` (imported).
 - `backup_last_timestamp_seconds{kind}`, where `kind` is `local` or `offsite`. The local value comes from the newest file in `/data/backups`. The off-site timer writes its last success to a textfile that node-exporter reads.
 
 **Logs.** pino already writes JSON. Each log line of a request gets the same `module` field, so Loki can filter by module.

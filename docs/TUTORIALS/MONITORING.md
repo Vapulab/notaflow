@@ -1,6 +1,6 @@
 # Monitoring
 
-The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [deploy/monitoring](../../deploy/monitoring). It collects metrics and logs, sends alerts to the team channel, and shows four Grafana panels at [grafana.vapulab.com](https://grafana.vapulab.com). The design is in the [Monitoring RFC](../ENGINEERING/RFCS/2026/10/RFC_MONITORING.md).
+The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [deploy/monitoring](../../deploy/monitoring). It collects metrics and logs, sends alerts to the team channel, and shows five Grafana panels at [grafana.vapulab.com](https://grafana.vapulab.com). The design is in the [Monitoring RFC](../ENGINEERING/RFCS/2026/10/RFC_MONITORING.md).
 
 ## Open the panels
 
@@ -15,6 +15,7 @@ The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [dep
 | 2. NotaFlow by module | See the requests, the 5xx rate, the p95 latency, and the warnings of each module. The **Business** row has the invoices, sync, mail outbox, certificates, and backups. |
 | 3. VPS and containers | See the CPU, memory, disk, and network of the host and of each container. |
 | 4. Logs | Search the logs. Filter by container and by NotaFlow module, and type a text in **Search**. |
+| 5. Negócio | See the accounts, users, companies in production, invoices issued by NotaFlow, cancellations, and imported invoices, and each of them per day. Test data (produção restrita) is in a closed row at the bottom. |
 
 The panels come from the files in `deploy/monitoring/grafana/dashboards`. A change made in the Grafana UI is not saved. To change a panel, edit its JSON file and install it again (see below).
 
