@@ -108,7 +108,7 @@ The "highest due step" rule means an old account gets only its latest reminder a
 Rules for all lifecycle e-mails:
 
 - From `NotaFlow <nao-responda@notaflow.vapulab.com>`, with `Reply-To: contato@vapulab.com`. The footer invites a reply instead of "não recebe respostas".
-- The footer has the opt-out link. The headers are `List-Unsubscribe: <https://notaflow.vapulab.com/api/public/lifecycle/unsubscribe?...>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
+- The footer has the opt-out link. The headers are `List-Unsubscribe: <https://notaflow.vapulab.com/lembretes/descadastrar?u=...&t=...>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
 - The same layout and inline styles as the current templates, and a plain-text part.
 - Lincoln approves the final text of every e-mail before the merge.
 
@@ -117,7 +117,7 @@ The welcome e-mail stays a service e-mail: no opt-out link, sent to every new us
 ### Opt-out
 
 - The link carries the user id and an HMAC-SHA256 of it, with a key derived from `BETTER_AUTH_SECRET` and the label `lifecycle-unsubscribe`. No login is needed, and nobody can opt out another person.
-- `GET /api/public/lifecycle/unsubscribe` answers a small HTML page with a "Confirmar" button. A mail scanner that opens links does not opt anybody out.
+- `GET /lembretes/descadastrar` answers a small HTML page with a "Confirmar" button. A mail scanner that opens links does not opt anybody out. The path is outside `/api` on purpose: `/api` requires a session, the app Origin, and a JSON body, and the one-click POST of a mail provider has none of them.
 - `POST` on the same path, with the same parameters, sets `users.lifecycle_opt_out_at`. Gmail and Yahoo call it for one-click unsubscribe.
 - An opt-out also cancels that user's lifecycle e-mails still waiting in the outbox: their status becomes `cancelled` (rows are never deleted). The outbox never sends a `cancelled` row. The objection takes effect at once (LGPD, art. 18, § 2).
 - The profile page has a toggle "Receber lembretes e dicas por e-mail". It clears or sets the same column through `PUT /api/me/preferences`.
