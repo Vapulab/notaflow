@@ -146,6 +146,7 @@ describe('every /api route', () => {
       turnstileSiteKey: null,
       signupOpen: true,
       posthog: null,
+      sentry: null,
     });
   });
 

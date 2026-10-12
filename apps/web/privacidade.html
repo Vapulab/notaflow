@@ -55,7 +55,7 @@
       <h1 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
         Política de privacidade
       </h1>
-      <p class="text-sm text-muted">Versão 2026-10-11.2, de 11 de outubro de 2026.</p>
+      <p class="text-sm text-muted">Versão 2026-10-12, de 12 de outubro de 2026.</p>
 
       <p>
         Esta política explica quais dados pessoais o NotaFlow trata, para quê, com quem os
@@ -171,6 +171,7 @@
         <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha e de convite.</li>
         <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
         <li><strong>PostHog</strong> (EUA): medição de uso do produto e gravações da navegação com todo o texto mascarado, sem cookies, sem o seu e-mail e sem o seu IP.</li>
+        <li><strong>Sentry</strong> (EUA): recebe os relatórios de erro técnicos do NotaFlow, para corrigirmos falhas. Antes de sair, o relatório perde e-mails, CPFs, CNPJs, cookies, cabeçalhos e parâmetros de busca; ele não leva o seu IP nem o seu nome, só o identificador interno do usuário.</li>
         <li><strong>BrasilAPI e CNPJá</strong>: consulta pública do CNPJ da sua empresa; <strong>ViaCEP</strong>: consulta de endereço pelo CEP; <strong>Banco Central</strong>: cotação PTAX. Essas consultas enviam só o CNPJ, o CEP ou a data.</li>
         <li><strong>Have I Been Pwned</strong>: confere se uma senha nova já vazou. Enviamos só o começo do hash da senha, nunca a senha.</li>
         <li><strong>Autoridades</strong>: quando a lei ou uma ordem judicial exigir.</li>
@@ -178,7 +179,7 @@
 
       <h2>5. Transferência internacional</h2>
       <p>
-        Cloudflare, Resend, Google e PostHog tratam dados fora do Brasil. Essas transferências se
+        Cloudflare, Resend, Google, PostHog e Sentry tratam dados fora do Brasil. Essas transferências se
         apoiam no art. 33 da LGPD: nas cláusulas-padrão contratuais aprovadas pela ANPD (Resolução
         CD/ANPD 19/2024), quando o fornecedor as adota, ou, quando a transferência é necessária para
         executar o contrato com você, no inciso IX do art. 33. Você pode pedir pelo
@@ -194,6 +195,7 @@
         <li><strong>Trilha de auditoria e registro de aceite:</strong> até 5 anos depois do encerramento da conta, para a defesa da Vapulab e da empresa em processos (exercício regular de direitos).</li>
         <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 30 dias.</li>
         <li><strong>Gravações da navegação:</strong> até 30 dias no PostHog, sem nenhum texto legível.</li>
+        <li><strong>Relatórios de erro:</strong> até 30 dias no Sentry.</li>
         <li><strong>Cópias de segurança:</strong> 14 dias no nosso servidor e 30 dias, cifradas, na Cloudflare. Um dado anonimizado sai das cópias quando elas vencem.</li>
       </ul>
       <p>

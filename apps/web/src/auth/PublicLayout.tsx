@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { api } from '../api';
 import { useAsync } from '../components/useAsync';
+import type { ErrorTrackingConfig } from '../observability/errors';
 import { Card, Logo, Spinner, ThemeToggle } from '../ui';
 
 export interface PublicConfig {
@@ -8,6 +9,7 @@ export interface PublicConfig {
   turnstileSiteKey: string | null;
   signupOpen: boolean;
   posthog?: { token: string; host: string } | null;
+  sentry?: ErrorTrackingConfig | null;
 }
 
 export function usePublicConfig() {

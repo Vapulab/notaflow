@@ -11,6 +11,7 @@ flowchart TB
   cloudflare["<b>Cloudflare</b><br/><i>[External system]</i><br/>DNS, tunnel to the VPS, Turnstile against bots, and R2 for the encrypted off-site backups."]
   lookups["<b>Public lookups</b><br/><i>[External systems]</i><br/>BrasilAPI and CNPJá (CNPJ), ViaCEP (CEP), Banco Central (PTAX), Have I Been Pwned (k-anonymity)."]
   posthog["<b>PostHog</b><br/><i>[External system]</i><br/>Product analytics, no cookies, internal user id only."]
+  sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Error reports from the server and the browser, scrubbed of personal data."]
 
   owner -- "Uses, in the browser [HTTPS]" --> notaflow
   admin -- "Administers [HTTPS]" --> notaflow
@@ -21,6 +22,7 @@ flowchart TB
   notaflow -- "Encrypted daily backup [HTTPS]" --> cloudflare
   notaflow -- "Looks up CNPJ, CEP, PTAX, breached passwords [HTTPS]" --> lookups
   owner -. "Page views and product events [HTTPS]" .-> posthog
+  notaflow -. "Error reports [HTTPS]" .-> sentry
   resend -. "Delivers e-mail" .-> owner
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
@@ -28,4 +30,4 @@ flowchart TB
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class owner,admin person
   class notaflow system
-  class nacional,resend,google,cloudflare,lookups,posthog external
+  class nacional,resend,google,cloudflare,lookups,posthog,sentry external

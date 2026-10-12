@@ -1,6 +1,7 @@
 import '../index.css';
 import './site.css';
 import { startAnalytics } from '../analytics/analytics';
+import { type ErrorTrackingConfig, startErrorTracking } from '../observability/errors';
 
 // The public pages share the app's theme choice (the Malphas storage key) and its toggle.
 const THEME_KEY = 'malphas-theme';
@@ -23,10 +24,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-t
   });
 }
 
-// The public pages count visits like the app, with the same privacy options.
+// The public pages count visits and report errors like the app, with the same privacy options.
 void fetch('/api/public/config')
   .then((response) => (response.ok ? response.json() : null))
-  .then((config: { posthog?: { token: string; host: string } | null } | null) =>
-    startAnalytics(config?.posthog ?? null),
+  .then(
+    (
+      config: {
+        posthog?: { token: string; host: string } | null;
+        sentry?: ErrorTrackingConfig | null;
+      } | null,
+    ) => {
+      void startErrorTracking(config?.sentry ?? null);
+      void startAnalytics(config?.posthog ?? null);
+    },
   )
   .catch(() => {});

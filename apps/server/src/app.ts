@@ -40,6 +40,7 @@ import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
 import { Metrics, moduleOf } from './metrics/metrics';
+import { type ErrorReporter, noErrorReporter, sentryReporter, statusOf } from './observability/errors';
 import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
 import { isApiPath, registerWeb } from './web';
@@ -70,6 +71,7 @@ export interface AppDeps {
   webRoot?: string;
   mailer?: Mailer;
   auth?: Auth;
+  errorReporter?: ErrorReporter;
 }
 
 // Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
@@ -124,6 +126,21 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     requestContext.run(info, done);
   });
   app.setErrorHandler(handleError);
+  const reporter =
+    deps.errorReporter ??
+    (config.sentry.serverDsn
+      ? sentryReporter({
+          dsn: config.sentry.serverDsn,
+          release: config.sentry.release ?? undefined,
+          environment: config.nodeEnv,
+        })
+      : noErrorReporter);
+  // Only server faults: a 4xx is the client's mistake and would bury the real errors.
+  app.addHook('onError', async (request, _reply, error) => {
+    if (statusOf(error) >= 500) {
+      reporter.capture(error, { module: routeModule(request), requestId: request.id });
+    }
+  });
 
   const transport =
     deps.mailer ??
@@ -215,6 +232,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerSecurityHeaders(app, {
     appOrigin: config.appOrigin,
     posthogHost: config.posthog?.host ?? null,
+    sentryDsn: config.sentry.webDsn,
     webRoot: deps.webRoot,
   });
   if (deps.webRoot) registerWeb(app, deps.webRoot);

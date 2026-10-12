@@ -25,11 +25,17 @@ export function inlineScriptHashes(webRoot: string | undefined): string[] {
 
 export function registerSecurityHeaders(
   app: FastifyInstance,
-  options: { appOrigin: string; posthogHost: string | null; webRoot: string | undefined },
+  options: {
+    appOrigin: string;
+    posthogHost: string | null;
+    sentryDsn: string | null;
+    webRoot: string | undefined;
+  },
 ): void {
   const posthog = options.posthogHost
     ? [options.posthogHost, options.posthogHost.replace('.i.posthog.com', '-assets.i.posthog.com')]
     : [];
+  const sentry = options.sentryDsn ? [new URL(options.sentryDsn).origin] : [];
   const pagePolicy = [
     "default-src 'self'",
     [
@@ -44,7 +50,7 @@ export function registerSecurityHeaders(
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    ['connect-src', "'self'", CLOUDFLARE_INSIGHTS, ...posthog].join(' '),
+    ['connect-src', "'self'", CLOUDFLARE_INSIGHTS, ...posthog, ...sentry].join(' '),
     `frame-src ${TURNSTILE}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",

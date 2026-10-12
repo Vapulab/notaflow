@@ -102,3 +102,12 @@ test('a revisit of a page answers 304 with the page policy, which the browser ke
   expect(revisit.statusCode).toBe(304);
   expect(revisit.headers['content-security-policy']).toContain("script-src 'self'");
 });
+
+test('with a browser Sentry DSN, a page may send its errors to that ingest host only', async () => {
+  const app = await appWith('http://localhost:3000', {
+    SENTRY_DSN_WEB: 'https://abc@o123.ingest.us.sentry.io/456',
+  });
+  const csp = String((await app.inject({ url: '/app' })).headers['content-security-policy']);
+  expect(csp).toMatch(/connect-src [^;]*https:\/\/o123\.ingest\.us\.sentry\.io/);
+  expect(csp).not.toMatch(/script-src [^;]*sentry/);
+});

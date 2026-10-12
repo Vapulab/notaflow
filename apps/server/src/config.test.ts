@@ -217,3 +217,20 @@ test('the metrics listener is on port 9464 unless told otherwise; 0 turns it off
   expect(loadConfig({ ...base, METRICS_PORT: '0' }).metricsPort).toBeNull();
   expect(() => loadConfig({ ...base, METRICS_PORT: 'x' })).toThrow(/METRICS_PORT/);
 });
+
+test('Sentry is on only with a DSN; the release is the tag of the running image', () => {
+  expect(loadConfig(base).sentry).toEqual({ serverDsn: null, webDsn: null, release: null });
+  expect(
+    loadConfig({
+      ...base,
+      SENTRY_DSN_SERVER: 'https://a@o1.ingest.us.sentry.io/1',
+      SENTRY_DSN_WEB: 'https://b@o1.ingest.us.sentry.io/2',
+      IMAGE: 'ghcr.io/darkanum/notaflow:e3944dc',
+    }).sentry,
+  ).toEqual({
+    serverDsn: 'https://a@o1.ingest.us.sentry.io/1',
+    webDsn: 'https://b@o1.ingest.us.sentry.io/2',
+    release: 'e3944dc',
+  });
+  expect(() => loadConfig({ ...base, SENTRY_DSN_WEB: 'not a url' })).toThrow(/SENTRY_DSN_WEB/);
+});
