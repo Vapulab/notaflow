@@ -15,6 +15,7 @@ flowchart TB
     repos["<b>Repositories</b><br/><i>[Component: repos/*]</i><br/>Every query needs the account context; soft delete only."]
     outbox["<b>Mail outbox</b><br/><i>[Component: mail/outbox]</i><br/>Stores each e-mail, retries after 1, 5, 30, 120 minutes, keeps dead letters."]
     metrics["<b>Metrics</b><br/><i>[Component: metrics/*, prom-client]</i><br/>Requests, errors, and latency by module; invoices, syncs, mail queue, certificates, backups. Port 9464, never public."]
+    lifecycle["<b>Lifecycle service</b><br/><i>[Component: lifecycle/*]</i><br/>Every 15 minutes in business hours: onboarding, first-invoice, and reactivation reminders to owners; signed opt-out."]
     errors["<b>Error reporter</b><br/><i>[Component: observability/errors, @sentry/node]</i><br/>Reports each 5xx with its module; removes e-mails, documents, cookies, headers, and queries first."]
     audit["<b>Audit log</b><br/><i>[Component: repos/AuditLog]</i><br/>Append-only: who, what, when, IP, browser, request id."]
   end
@@ -54,6 +55,8 @@ flowchart TB
   authhook -- "Counts each request by module" --> metrics
   issue -- "Invoice results" --> metrics
   sync -- "Sync results" --> metrics
+  lifecycle -- "Reads owners, steps, and the last invoice" --> repos
+  lifecycle -- "Queues reminders" --> outbox
   routes -- "Unhandled errors" --> errors
   errors -- "Scrubbed events [HTTPS]" --> sentry
 
@@ -62,6 +65,6 @@ flowchart TB
   classDef component fill:#85bbf0,stroke:#5d82a8,color:#0b2540
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class web,db container
-  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors component
+  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors,lifecycle component
   class nacional,resend,lookups,sentry external
   style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

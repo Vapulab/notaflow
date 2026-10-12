@@ -141,3 +141,16 @@ test('the business totals count accounts, users, emitters, and invoices by origi
     /notaflow_invoices\{origin="app",status="cancelled",environment="producao"\} 1/,
   );
 });
+
+test('the lifecycle e-mails sent are counted by phase and step', async () => {
+  const user = seedUser(t.db, 'dono@example.com');
+  t.db.$client.prepare("INSERT INTO accounts (id, name, created_at) VALUES ('a-l', 'A', 1)").run();
+  t.db.$client
+    .prepare(
+      `INSERT INTO lifecycle_emails (user_id, account_id, phase, step, variant, anchor_at, sent_at)
+       VALUES (?, 'a-l', 'activation', 1, 'card', 1, 2)`,
+    )
+    .run(user);
+  const text = await t.app.metrics.render();
+  expect(text).toMatch(/notaflow_lifecycle_emails\{phase="activation",step="1"\} 1/);
+});
