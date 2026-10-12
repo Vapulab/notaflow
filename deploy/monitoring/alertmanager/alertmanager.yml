@@ -1,3 +1,6 @@
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
 route:
   receiver: channel
   group_by: [alertname, service, module]
@@ -17,6 +20,8 @@ receivers:
     discord_configs:
       - webhook_url_file: /run/secrets/alert_webhook_url
         send_resolved: true
+        title: '{{ template "notaflow.discord.title" . }}'
+        message: '{{ template "notaflow.discord.message" . }}'
 
   - name: healthchecks
     webhook_configs:
