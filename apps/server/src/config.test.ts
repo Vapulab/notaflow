@@ -244,3 +244,11 @@ test('LIFECYCLE_START_AT is the day the reminders start, at midnight in Sao Paul
     /LIFECYCLE_START_AT/,
   );
 });
+
+test('an impossible LIFECYCLE_START_AT is refused, so a typo never starts the reminders early', () => {
+  for (const date of ['2026-13-01', '2026-02-30', '2026-00-10']) {
+    expect(() => loadConfig({ ...base, LIFECYCLE_START_AT: date }), date).toThrow(
+      /LIFECYCLE_START_AT/,
+    );
+  }
+});

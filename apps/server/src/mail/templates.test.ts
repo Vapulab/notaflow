@@ -18,6 +18,8 @@ const CASES = [
   ['activation', 2, 'certificate', 'Seu certificado A1 já chegou?'],
   ['activation', 1, 'fiscal', 'Último passo: a receita dos últimos 12 meses'],
   ['activation', 2, 'fiscal', 'Sua conta está quase pronta'],
+  ['activation', 1, 'finish', 'Falta só concluir o cadastro'],
+  ['activation', 2, 'finish', 'Sua conta está a um passo de emitir'],
   ['first_invoice', 1, '', 'Tudo pronto para a sua primeira nota'],
   ['first_invoice', 2, '', 'Sua primeira nota pelo NotaFlow'],
   ['reactivation', 1, '', 'Suas notas continuam aqui'],

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lte, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, ne } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 
 // A transaction handle works too, so a caller can queue in the same transaction as its own rows.
@@ -62,7 +62,7 @@ export class MailOutbox {
       .get().id;
   }
 
-  // An opt-out stops the reminders already waiting; they stay as cancelled rows.
+  // An opt-out stops the reminders waiting or dead-lettered, so no retry sends them; they stay as cancelled rows.
   cancelPendingLifecycle(to: string): number {
     return this.db
       .update(mailOutbox)
@@ -71,7 +71,7 @@ export class MailOutbox {
         and(
           eq(mailOutbox.to, to),
           eq(mailOutbox.kind, 'lifecycle'),
-          eq(mailOutbox.status, 'pending'),
+          inArray(mailOutbox.status, ['pending', 'failed']),
         ),
       )
       .run().changes;

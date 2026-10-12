@@ -44,7 +44,7 @@ test('the phase follows onboarding and production invoices; test invoices do not
     variant: 'certificate',
   });
   expect(phaseOf({ ...base, onboardingStep: 'fiscal' })).toMatchObject({ variant: 'fiscal' });
-  expect(phaseOf({ ...base, onboardingStep: 'sync' })).toMatchObject({ variant: 'fiscal' });
+  expect(phaseOf({ ...base, onboardingStep: 'sync' })).toMatchObject({ variant: 'finish' });
   const done = {
     ...base,
     onboardingStep: 'done' as const,

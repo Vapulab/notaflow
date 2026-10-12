@@ -46,8 +46,10 @@ export function registerUnsubscribe(
   deps: { repo: LifecycleRepository; outbox: MailOutbox; audit: AuditLog; secret: string },
 ): void {
   const userOf = (request: FastifyRequest) => {
-    const { u = '', t = '' } = request.query as { u?: string; t?: string };
-    if (!u || !t || !valid(u, t, deps.secret)) return null;
+    const { u, t } = request.query as { u?: unknown; t?: unknown };
+    // A repeated parameter arrives as an array: a bad link, never an error.
+    if (typeof u !== 'string' || typeof t !== 'string' || !u || !t) return null;
+    if (!valid(u, t, deps.secret)) return null;
     const email = deps.repo.activeEmail(u);
     return email ? { userId: u, email } : null;
   };
@@ -59,11 +61,10 @@ export function registerUnsubscribe(
       .send(html);
 
   app.register(async (scope) => {
-    // Gmail posts "List-Unsubscribe=One-Click" as a form; the parameters that matter are in the URL.
-    scope.addContentTypeParser(
-      'application/x-www-form-urlencoded',
-      { parseAs: 'string' },
-      (_request, body, done) => done(null, body),
+    // Mail providers post "List-Unsubscribe=One-Click" as a form or multipart; only the URL matters.
+    scope.removeAllContentTypeParsers();
+    scope.addContentTypeParser('*', { parseAs: 'string' }, (_request, body, done) =>
+      done(null, body),
     );
     scope.get(PATH, async (request, reply) => {
       if (!userOf(request)) return answer(reply, 400, INVALID);

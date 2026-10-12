@@ -35,3 +35,13 @@ test('without a notice nothing shows', () => {
   const { container } = renderWithMe(<PolicyNotice />, { ...meFor('user'), policyNotice: null });
   expect(container.textContent).toBe('');
 });
+
+test('after "Entendi", the next screen does not show the notice again', async () => {
+  stubApi({ '/api/me/policy-notice': {} });
+  const me = { ...meFor('user'), policyNotice: { ...notice, id: 'n2' } };
+  const first = renderWithMe(<PolicyNotice />, me);
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Entendi' }));
+  first.unmount();
+  const next = renderWithMe(<PolicyNotice />, me);
+  expect(next.container.textContent).toBe('');
+});

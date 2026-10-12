@@ -120,6 +120,9 @@ test('the privacy policy explains the reminder e-mails, their basis, and how to 
     expect(reminders, words).toContain(words);
   }
   expect(read('privacidade.html')).toContain('de convite, de boas-vindas e de lembretes');
+  // The service skips weekends, not holidays: the text promises only what the code does.
+  expect(reminders).toContain('de segunda a sexta');
+  expect(reminders).not.toContain('dia útil');
 });
 
 test('the terms and the policy separate a material change (acceptance, 15 days) from an update (notice)', () => {

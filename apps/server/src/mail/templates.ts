@@ -151,7 +151,7 @@ function escapeHtml(value: string): string {
 }
 
 type LifecyclePhase = 'activation' | 'first_invoice' | 'reactivation';
-type LifecycleVariant = '' | 'card' | 'certificate' | 'fiscal';
+type LifecycleVariant = '' | 'card' | 'certificate' | 'fiscal' | 'finish';
 
 interface ReminderCopy {
   subject: string;
@@ -185,6 +185,25 @@ function reminderCopy(phase: LifecyclePhase, step: 1 | 2, variant: LifecycleVari
             'Se tiver dúvida sobre qual certificado comprar, responda este e-mail: quem responde é uma pessoa.',
           ],
           button: { label: 'Enviar o certificado', path: onboarding.path },
+        };
+  }
+  if (phase === 'activation' && variant === 'finish') {
+    return step === 1
+      ? {
+          subject: 'Falta só concluir o cadastro',
+          paragraphs: [
+            'O cadastro da sua empresa no NotaFlow está quase pronto: o cartão CNPJ, o certificado e a receita já estão lá.',
+            'Falta só abrir o NotaFlow e concluir. Nesse passo ele busca no sistema nacional as notas que a sua empresa já emitiu e cadastra os clientes delas, e a emissão fica liberada.',
+          ],
+          button: { label: 'Concluir o cadastro', path: onboarding.path },
+        }
+      : {
+          subject: 'Sua conta está a um passo de emitir',
+          paragraphs: [
+            'Tudo o que o NotaFlow precisa da sua empresa já foi enviado. Falta só concluir o cadastro, e a primeira nota pode sair em seguida.',
+            'Se algo travou nesse último passo, responda este e-mail com o que aconteceu: quem responde é uma pessoa.',
+          ],
+          button: { label: 'Concluir o cadastro', path: onboarding.path },
         };
   }
   if (phase === 'activation' && variant === 'fiscal') {

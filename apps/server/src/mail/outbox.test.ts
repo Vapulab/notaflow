@@ -130,3 +130,16 @@ test('a cancelled lifecycle e-mail is never sent; only pending lifecycle rows of
   const statuses = opened.db.select({ s: mailOutbox.status }).from(mailOutbox).all();
   expect(statuses.map((r) => r.s).sort()).toEqual(['cancelled', 'sent', 'sent']);
 });
+
+test('an opt-out also cancels a failed lifecycle e-mail, so the admin retry cannot send it', async () => {
+  failing = true;
+  const id = outbox.queue({ ...message, subject: 'lembrete' }, 'lifecycle', T0);
+  for (const m of [0, 1, 6, 36, 156]) await outbox.deliverDue(minutes(m));
+  const row = () => opened.db.select({ s: mailOutbox.status }).from(mailOutbox).get();
+  expect(row()?.s).toBe('failed');
+  expect(outbox.cancelPendingLifecycle('pessoa@example.com')).toBe(1);
+  failing = false;
+  expect(await outbox.retry(id, minutes(200))).toBe(false);
+  expect(row()?.s).toBe('cancelled');
+  expect(sent).toHaveLength(0);
+});

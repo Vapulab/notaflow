@@ -114,7 +114,14 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   }
 
   const lifecycleStart = env.LIFECYCLE_START_AT || '';
-  if (lifecycleStart && !/^\d{4}-\d{2}-\d{2}$/.test(lifecycleStart)) {
+  // The date must exist: Date turns 2026-02-30 into March 2 and 2026-13-01 into an invalid date.
+  const lifecycleStartAt = lifecycleStart ? new Date(`${lifecycleStart}T00:00:00-03:00`) : null;
+  const realDate =
+    lifecycleStartAt !== null &&
+    !Number.isNaN(lifecycleStartAt.getTime()) &&
+    new Date(lifecycleStartAt.getTime() + 3 * 3600_000).toISOString().slice(0, 10) ===
+      lifecycleStart;
+  if (lifecycleStart && !realDate) {
     problems.push('LIFECYCLE_START_AT must be a date as YYYY-MM-DD');
   }
 
@@ -150,7 +157,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
     trustCloudflareIp: trustCloudflareIp === 'true',
     metricsPort: metricsPort === 0 ? null : metricsPort,
-    lifecycleStartAt: lifecycleStart ? new Date(`${lifecycleStart}T00:00:00-03:00`) : null,
+    lifecycleStartAt,
     sentry: {
       serverDsn: env.SENTRY_DSN_SERVER || null,
       webDsn: env.SENTRY_DSN_WEB || null,

@@ -1,7 +1,7 @@
 // When each lifecycle e-mail is due (RFC_LIFECYCLE_EMAILS): pure functions over dates.
 
 export type Phase = 'activation' | 'first_invoice' | 'reactivation';
-export type Variant = '' | 'card' | 'certificate' | 'fiscal';
+export type Variant = '' | 'card' | 'certificate' | 'fiscal' | 'finish';
 export type OnboardingStep = 'company' | 'card' | 'certificate' | 'fiscal' | 'sync' | 'done';
 
 export const PHASE_DAYS: Record<Phase, [number, number]> = {
@@ -66,7 +66,8 @@ const VARIANT: Record<Exclude<OnboardingStep, 'done'>, Variant> = {
   card: 'card',
   certificate: 'certificate',
   fiscal: 'fiscal',
-  sync: 'fiscal',
+  // The revenue is in; only the last click of onboarding is missing.
+  sync: 'finish',
 };
 
 export function phaseOf(c: Candidate): { phase: Phase; anchor: Date; variant: Variant } | null {

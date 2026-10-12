@@ -98,3 +98,31 @@ test('the profile turns the reminders off and on', async () => {
   expect((await me()).lifecycleEmails).toBe(true);
   expect(optOut()).toBeNull();
 });
+
+test('the one-click POST works with any encoding, and a repeated parameter is a bad link, not an error', async () => {
+  const token = signUnsubscribe(userId, secret);
+  const repeated = [
+    `/lembretes/descadastrar?u=${userId}&u=x&t=${token}`,
+    `/lembretes/descadastrar?u=${userId}&t=${token}&t=x`,
+  ];
+  for (const url of repeated) {
+    for (const method of ['GET', 'POST'] as const) {
+      const response = await t.app.inject({ method, url });
+      expect(response.statusCode, `${method} ${url}`).toBe(400);
+    }
+  }
+  const boundary = 'xYz';
+  const multipart = await t.app.inject({
+    method: 'POST',
+    url: path(userId, token),
+    headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+    payload: `--${boundary}
+Content-Disposition: form-data; name="List-Unsubscribe"
+
+One-Click
+--${boundary}--
+`,
+  });
+  expect(multipart.statusCode).toBe(200);
+  expect(optOut()).not.toBeNull();
+});
