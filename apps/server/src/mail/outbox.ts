@@ -1,5 +1,8 @@
 import { and, asc, desc, eq, lte, ne } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
+
+// A transaction handle works too, so a caller can queue in the same transaction as its own rows.
+type Writer = Pick<Database, 'insert'>;
 import { mailOutbox } from '../db/schema';
 import type { MailKind, Mailer, MailMessage } from './mailer';
 
@@ -36,6 +39,42 @@ export class MailOutbox {
       .returning({ id: mailOutbox.id })
       .get();
     return this.attempt(row.id, now);
+  }
+
+  // Stored as pending for the next deliverDue run; nothing is sent now.
+  queue(message: MailMessage, kind: MailKind, now = new Date(), db: Writer = this.db): number {
+    const { to, subject, html, text, replyTo, headers } = message;
+    return db
+      .insert(mailOutbox)
+      .values({
+        to,
+        subject,
+        html,
+        text,
+        kind,
+        replyTo: replyTo ?? null,
+        headers: headers ?? null,
+        status: 'pending',
+        nextAttemptAt: now,
+        createdAt: now,
+      })
+      .returning({ id: mailOutbox.id })
+      .get().id;
+  }
+
+  // An opt-out stops the reminders already waiting; they stay as cancelled rows.
+  cancelPendingLifecycle(to: string): number {
+    return this.db
+      .update(mailOutbox)
+      .set({ status: 'cancelled', html: '', text: '' })
+      .where(
+        and(
+          eq(mailOutbox.to, to),
+          eq(mailOutbox.kind, 'lifecycle'),
+          eq(mailOutbox.status, 'pending'),
+        ),
+      )
+      .run().changes;
   }
 
   // The adapter for code that only knows the Mailer type, such as Better Auth's hooks.
@@ -113,7 +152,14 @@ export class MailOutbox {
     }
     const attempts = row.attempts + 1;
     try {
-      await this.transport({ to: row.to, subject: row.subject, html: row.html, text: row.text });
+      await this.transport({
+        to: row.to,
+        subject: row.subject,
+        html: row.html,
+        text: row.text,
+        ...(row.replyTo ? { replyTo: row.replyTo } : {}),
+        ...(row.headers ? { headers: row.headers } : {}),
+      });
     } catch (error) {
       const lastError = String(error).slice(0, 500);
       if (attempts >= MAX_ATTEMPTS) {

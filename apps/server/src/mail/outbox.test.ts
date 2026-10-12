@@ -108,3 +108,25 @@ test('a message left as sending by a crash is picked up again after 5 minutes', 
   await outbox.deliverDue(minutes(6));
   expect(sent).toEqual([message]);
 });
+
+test('a queued lifecycle e-mail goes out with its reply-to and unsubscribe headers', async () => {
+  const headers = {
+    'List-Unsubscribe': '<https://x/u>',
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
+  outbox.queue({ ...message, replyTo: 'contato@vapulab.com', headers }, 'lifecycle', T0);
+  expect(sent).toHaveLength(0);
+  await outbox.deliverDue(T0);
+  expect(sent[0]).toMatchObject({ replyTo: 'contato@vapulab.com', headers });
+});
+
+test('a cancelled lifecycle e-mail is never sent; only pending lifecycle rows of that address are cancelled', async () => {
+  outbox.queue({ ...message, subject: 'a' }, 'lifecycle', T0);
+  outbox.queue({ ...message, subject: 'b' }, 'invite', T0);
+  outbox.queue({ ...message, to: 'outra@example.com', subject: 'c' }, 'lifecycle', T0);
+  expect(outbox.cancelPendingLifecycle('pessoa@example.com')).toBe(1);
+  await outbox.deliverDue(T0);
+  expect(sent.map((m) => m.subject).sort()).toEqual(['b', 'c']);
+  const statuses = opened.db.select({ s: mailOutbox.status }).from(mailOutbox).all();
+  expect(statuses.map((r) => r.s).sort()).toEqual(['cancelled', 'sent', 'sent']);
+});
