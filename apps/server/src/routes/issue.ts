@@ -138,6 +138,7 @@ export function issueRoutes(
         request.body,
         idempotencyKeyOf(request.headers),
       );
+      if (!repeat) app.metrics.invoice(view.status);
       return reply.status(repeat ? 200 : 201).send(view);
     },
   );
@@ -153,6 +154,7 @@ export function issueRoutes(
         request.body,
         idempotencyKeyOf(request.headers),
       );
+      if (!repeat) app.metrics.invoice(view.status);
       return reply.status(repeat ? 200 : 201).send(view);
     },
   );
@@ -166,13 +168,15 @@ export function issueRoutes(
     async (request) => {
       const ctx = accountContext(request, request.params.accountId, { write: true });
       const { reason, justification } = request.body;
-      return deps.issue.cancel(
+      const result = await deps.issue.cancel(
         ctx,
         identityOf(request).email,
         request.params.invoiceId,
         reason,
         justification,
       );
+      if (!result.alreadyCancelled) app.metrics.cancel(result.status);
+      return result;
     },
   );
 
@@ -180,7 +184,13 @@ export function issueRoutes(
     '/api/accounts/:accountId/invoices/:invoiceId/reconcile',
     async (request) => {
       const ctx = accountContext(request, request.params.accountId, { write: true });
-      return deps.issue.reconcile(ctx, identityOf(request).email, request.params.invoiceId);
+      const view = await deps.issue.reconcile(
+        ctx,
+        identityOf(request).email,
+        request.params.invoiceId,
+      );
+      app.metrics.invoice(`reconcile_${view.status}`);
+      return view;
     },
   );
 }

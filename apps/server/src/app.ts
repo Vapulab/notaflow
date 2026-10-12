@@ -1,5 +1,5 @@
 import type { AccountContext } from '@notaflow/core';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Dispatcher } from 'undici';
 import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
 import { registerAuth } from './auth/authHook';
@@ -39,13 +39,16 @@ import { EmitterOnboarding } from './emitters/EmitterOnboarding';
 import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
+import { Metrics, moduleOf } from './metrics/metrics';
+import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
-import { registerWeb } from './web';
+import { isApiPath, registerWeb } from './web';
 
 declare module 'fastify' {
   interface FastifyInstance {
     routeList: { method: string; url: string }[];
     syncService: SyncService;
+    metrics: Metrics;
     mailOutbox: MailOutbox;
     auth: Auth;
   }
@@ -136,6 +139,20 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerAuth(app, { config, identities: new IdentityRepository(db), auth });
   registerAuthRoutes(app, auth, config.appOrigin);
 
+  const metrics = new Metrics(new MetricsRepository(db, config.databasePath));
+  app.decorate('metrics', metrics);
+  app.addHook('onRequest', async (request) => {
+    request.log = request.log.child({ module: routeModule(request) });
+  });
+  app.addHook('onResponse', async (request, reply) => {
+    metrics.request(
+      routeModule(request),
+      request.method,
+      reply.statusCode,
+      reply.elapsedTime / 1000,
+    );
+  });
+
   const providerFactory = deps.providerFactory ?? nacionalProviderFactory(config.nacionalUrls);
   const certificates = new VaultCertificateStore(new CertificateRepository(db), config.masterKey);
   const syncService =
@@ -144,6 +161,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       db,
       certificates,
       providerFactory,
+      onRun: (emitterId, error, at) => metrics.syncRun(emitterId, error, at),
       ...(deps.syncRetryDelaysMs ? { retryDelaysMs: deps.syncRetryDelaysMs } : {}),
     });
   app.decorate('syncService', syncService);
@@ -201,4 +219,9 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   if (deps.webRoot) registerWeb(app, deps.webRoot);
   return app;
+}
+
+// The route pattern keeps the label set small; a request with no route (a 404) is the web app or the API by path.
+function routeModule(request: FastifyRequest) {
+  return moduleOf(request.routeOptions.url ?? (isApiPath(request.url) ? '/api/' : '/'));
 }
