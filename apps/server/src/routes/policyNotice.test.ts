@@ -55,3 +55,20 @@ test('a notice never asks for acceptance, and this release has none', async () =
   const none = await appWith(null);
   expect((await none.me()).policyNotice).toBeNull();
 });
+
+test('a user who accepted a version after the notice does not see it', async () => {
+  const s = await appWith(NOTICE);
+  const userId = (
+    t?.db.$client.prepare("SELECT id FROM users WHERE email = 'pessoa@example.com'").get() as {
+      id: string;
+    }
+  ).id;
+  t?.db.$client
+    .prepare("INSERT INTO legal_acceptances (user_id, version) VALUES (?, '2026-10-12.2')")
+    .run(userId);
+  expect((await s.me()).policyNotice).toEqual(NOTICE);
+  t?.db.$client
+    .prepare("INSERT INTO legal_acceptances (user_id, version) VALUES (?, '2026-11-05')")
+    .run(userId);
+  expect((await s.me()).policyNotice).toBeNull();
+});
