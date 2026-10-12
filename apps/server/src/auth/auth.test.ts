@@ -52,6 +52,7 @@ test('GET /api/me returns the user and accounts of the session', async () => {
     tourSeenAt: null,
     legalVersion: LEGAL_VERSION,
     legalAccepted: false,
+    policyNotice: null,
     accounts: [
       {
         id: a.accountId,
