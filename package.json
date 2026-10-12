@@ -21,6 +21,7 @@
     "spike:template-check": "tsx spikes/2026-10-template-check/run.ts",
     "malphas:check": "node scripts/malphas-check.mjs",
     "seo:faq": "node scripts/landing-faq-jsonld.mjs",
+    "notice:legal": "tsx --env-file=apps/server/.env.local apps/server/src/policyNotice.ts",
     "dev:server": "tsx --env-file=apps/server/.env.local apps/server/src/main.ts",
     "seed:admin": "tsx --env-file=apps/server/.env.local apps/server/src/seed.ts",
     "dev:web": "pnpm --filter @notaflow/web exec vite",

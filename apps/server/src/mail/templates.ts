@@ -90,6 +90,30 @@ ${FOOTER}
   };
 }
 
+// The release of a material change: the date the reminders start, and both texts.
+export function legalChangeEmail(startDate: string): RenderedMail {
+  const [year, month, day] = startDate.split('-');
+  const start = `${day}/${month}/${year}`;
+  const lines = [
+    'Atualizamos os termos de uso e a política de privacidade do NotaFlow. O que muda:',
+    `A partir de ${start}, o dono da conta pode receber lembretes por e-mail: quando o cadastro para no meio, antes da primeira nota e depois de muito tempo sem emitir. Todo lembrete tem um link para se descadastrar, e o perfil tem um interruptor para desligá-los.`,
+    'Daqui para frente, só uma mudança relevante (que reduz direitos, cria um preço ou muda a finalidade do tratamento) pede um novo aceite, com 15 dias de antecedência. As outras atualizações aparecem como um aviso no app.',
+    'Na próxima vez que entrar, o NotaFlow pede o seu aceite da nova versão.',
+  ];
+  const links = [
+    ['Termos de uso', 'https://notaflow.vapulab.com/termos'],
+    ['Política de privacidade', 'https://notaflow.vapulab.com/privacidade'],
+  ] as const;
+  return {
+    subject: 'Atualizamos os termos de uso e a política de privacidade',
+    text: `${lines.join('\n\n')}\n\n${links.map(([label, url]) => `${label}: ${url}`).join('\n')}\n\n${FOOTER}\n`,
+    html: layout(
+      `${lines.map((line) => `<p style="margin:0 0 16px">${escapeHtml(line)}</p>`).join('\n')}
+<p style="margin:0">${links.map(([label, url]) => `<a href="${url}" style="color:${COLOR.primary}">${label}</a>`).join(' · ')}</p>`,
+    ),
+  };
+}
+
 function layout(content: string): string {
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:24px;background:${COLOR.surface};color:${COLOR.fg};font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.5">
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid ${COLOR.border};border-radius:8px;padding:24px">
