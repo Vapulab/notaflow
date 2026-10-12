@@ -158,8 +158,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   const metrics = new Metrics(new MetricsRepository(db, config.databasePath));
   app.decorate('metrics', metrics);
-  app.addHook('onRequest', async (request) => {
+  app.addHook('onRequest', async (request, reply) => {
+    // Fastify writes "request completed" through reply.log, a separate reference.
     request.log = request.log.child({ module: routeModule(request) });
+    reply.log = request.log;
   });
   app.addHook('onResponse', async (request, reply) => {
     metrics.request(

@@ -11,6 +11,7 @@ flowchart TB
     db[("<b>Database</b><br/><i>[Container: SQLite on a Docker volume]</i><br/>Accounts, emitters, sealed certificates, invoices, audit log, mail outbox. Rows are never deleted.")]
     backup["<b>Backup timer</b><br/><i>[Container: systemd timer]</i><br/>Online SQLite backup every day, 14 kept; an encrypted copy goes to R2."]
     cardworker["<b>CNPJ card parser</b><br/><i>[Container: Node child process]</i><br/>Reads the uploaded PDF text, 128 MB of memory, at most 2 at a time."]
+    monitoring["<b>Monitoring stack</b><br/><i>[Containers: Prometheus, Alertmanager, Loki, Alloy, Grafana]</i><br/>Metrics by module, logs, alerts, and panels at grafana.vapulab.com."]
   end
 
   nacional["<b>National NFS-e system</b><br/><i>[External system]</i><br/>Sefin Nacional and ADN"]
@@ -38,6 +39,7 @@ flowchart TB
   server -. "5xx errors [HTTPS]" .-> sentry
   web -. "Uncaught errors [HTTPS]" .-> sentry
   pages -. "Uncaught errors [HTTPS]" .-> sentry
+  monitoring -- "Scrapes /metrics, reads logs" --> server
   ci -- "Pulls the new image, docker compose up [SSH]" --> server
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
@@ -45,7 +47,7 @@ flowchart TB
   classDef db fill:#438dd5,stroke:#2e6295,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class user person
-  class web,pages,tunnel,server,backup,cardworker container
+  class web,pages,tunnel,server,backup,cardworker,monitoring container
   class db db
   class nacional,resend,others,posthog,sentry,ci,r2 external
   style boundary fill:#f5f8fc,stroke:#1168bd,stroke-dasharray:6 4,color:#0b4884

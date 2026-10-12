@@ -4,6 +4,7 @@ flowchart LR
 
   subgraph cf["Cloudflare [Edge]"]
     edge["<b>notaflow.vapulab.com</b><br/><i>[DNS, TLS, Tunnel]</i>"]
+    access["<b>grafana.vapulab.com</b><br/><i>[Cloudflare Access]</i><br/>E-mail PIN, Lincoln only"]
   end
 
   subgraph vps["Hostinger VPS, Brazil (ufw: 22 only)"]
@@ -15,8 +16,16 @@ flowchart LR
     cloudflared["<b>northub-tunnel-1</b><br/><i>[Container: cloudflared]</i><br/>One tunnel shared with vapulab.com and northub"]
     timer["<b>notaflow-backup.timer</b><br/><i>[systemd]</i><br/>Daily at 06:00 UTC, docker exec of the backup command"]
     offsite["<b>notaflow-offsite-backup.timer</b><br/><i>[systemd]</i><br/>Daily at 06:30 UTC: gzip, age, upload over IPv4"]
+    subgraph mon["Monitoring (/opt/monitoring)"]
+      prom["<b>Prometheus + Alertmanager</b><br/><i>[Containers]</i><br/>Scrapes the app, host, containers, and probes; 15 days"]
+      logs["<b>Loki + Alloy</b><br/><i>[Containers]</i><br/>Every container's logs, by module; 14 days"]
+      exporters["<b>node-exporter, cAdvisor, blackbox</b><br/><i>[Containers]</i>"]
+      grafana["<b>Grafana</b><br/><i>[Container]</i><br/>4 provisioned panels"]
+    end
   end
 
+  channel["<b>Alert channel</b><br/><i>[Discord or Slack webhook]</i>"]
+  uptime["<b>UptimeRobot</b><br/><i>[Outside check]</i>"]
   r2[("<b>Cloudflare R2</b><br/><i>[Bucket notaflow-backups]</i><br/>Encrypted copies, deleted after 30 days")]
 
   subgraph gh["GitHub"]
@@ -34,12 +43,23 @@ flowchart LR
   actions -- "Push image" --> ghcr
   actions -- "SSH: set IMAGE, compose up" --> app
   app -. "Pull" .-> ghcr
+  prom -- "/metrics :9464, monitoring network" --> app
+  prom --> exporters
+  logs -- "Docker socket, read only" --> app
+  grafana --> prom
+  grafana --> logs
+  access -- "Tunnel" --> cloudflared
+  cloudflared --> grafana
+  prom -- "Alerts" --> channel
+  uptime -- "HTTPS every 5 min" --> edge
+  uptime -- "Alerts" --> channel
 
   classDef node fill:#438dd5,stroke:#2e6295,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
-  class app,vol,cloudflared,timer,offsite node
-  class browser,edge,actions,ghcr,r2 external
+  class app,vol,cloudflared,timer,offsite,prom,logs,exporters,grafana node
+  class browser,edge,access,actions,ghcr,r2,channel,uptime external
   style vps fill:#f5f8fc,stroke:#1168bd,color:#0b4884
   style compose fill:#eaf2fb,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884
   style cf fill:#f7f7f7,stroke:#8a8a8a,color:#333
+  style mon fill:#eaf2fb,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884
   style gh fill:#f7f7f7,stroke:#8a8a8a,color:#333

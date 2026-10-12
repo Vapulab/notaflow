@@ -131,3 +131,7 @@ docker exec -w /repo/apps/server notaflow-app-1 node -e "const D=require('better
 ## The tunnel
 
 The tunnel is shared. Before an edit, copy `config.yml` with a date suffix; after `docker compose restart tunnel` in `/opt/northub`, check that `https://vapulab.com`, `https://northub.tech`, and `https://notaflow.vapulab.com/api/health` still answer.
+
+## Monitoring
+
+The metrics, logs, alerts, and Grafana panels run in their own Compose project, `/opt/monitoring`. The NotaFlow app joins its `monitoring` network, so start that stack first on a new VPS. See [Monitoring](MONITORING.md).

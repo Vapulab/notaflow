@@ -95,8 +95,8 @@ Only Grafana joins the `northub_default` network (for the tunnel). The other com
 
 **Sentry.**
 
-- The server uses `@sentry/node` and the web uses `@sentry/react`. The release is the commit sha, and every event has a `module` tag.
-- No personal data leaves: `sendDefaultPii: false`; `beforeSend` removes request bodies, cookies, headers, query strings, IPs, and e-mails; the user is the internal id only.
+- The server uses `@sentry/node` and the web uses `@sentry/react`. The release is the image tag (the commit sha), and every event has a `module` tag.
+- No personal data leaves: every `dataCollection` category is off (Sentry 11 replaced `sendDefaultPii`, and collects by default); `beforeSend` removes request bodies, cookies, headers, query strings, IPs, and e-mails; the user is the internal id only.
 - The DSNs come from `SENTRY_DSN_SERVER` and `SENTRY_DSN_WEB`. Without them, nothing is sent.
 - The CSP adds the Sentry ingest host to `connect-src`.
 
