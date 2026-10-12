@@ -1,6 +1,6 @@
 # RFC: Lifecycle E-mails and Policy Notices
 
-**Status:** Approved in design (2026-10-12); plan to follow
+**Status:** Approved in design (2026-10-12), with the legal review below; plan to follow
 **Date:** 2026-10-12
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -29,7 +29,7 @@
 
 NotaFlow sends e-mails that bring a person back at three moments: when onboarding stops, when onboarding ends but no invoice follows, and when invoices stop. The welcome e-mail becomes a real guide to the first invoice. A service inside the API server decides who gets which e-mail and sends it through the existing mail outbox.
 
-The same work changes how a privacy policy update reaches users. Today every change blocks the app until the user accepts again. After this RFC, only a material change blocks the app; any other update shows a notice once.
+The same work changes how a privacy policy update reaches users. Today every change blocks the app until the user accepts again. After this RFC, only a material change blocks the app; any other update shows a notice once. Because our terms already promise acceptance and 15 days of notice for any change to the processing of data, this new rule ships as one last material change, and the reminders start 15 days after it.
 
 ---
 
@@ -53,7 +53,8 @@ The same work changes how a privacy policy update reaches users. Today every cha
 | Recipients | Owners of the account (role `owner`) | Invited members did not choose the product. |
 | When | Business days, 09:00 to 17:00 America/Sao_Paulo; at most one lifecycle e-mail per person per day | Less noise. |
 | Opt-out | Signed link, confirm page, RFC 8058 one-click, and a profile toggle | Required by the Gmail and Yahoo sender rules and by good practice under the LGPD. |
-| Policy changes | `material` changes block the app for acceptance; `update` changes show a notice once | The legal bases are contract and legitimate interest, not consent, so an update needs notice, not acceptance. To confirm with the lawyer. |
+| Policy changes | `material` changes block the app for acceptance; `update` changes show a notice once. The new rule is written into the change clauses of the terms and the policy. | The legal bases are contract and legitimate interest, not consent, so an update needs notice, not acceptance. To confirm with the lawyer. |
+| First release | One last `material` version: the new change clauses and the reminders section. Announced by e-mail and in the app on the day of the deploy; reminders start 15 days later (`LIFECYCLE_START_AT`) and only for users who accepted it | The current terms (clause 14) and policy (section 10) promise acceptance and 15 days of notice for a change to the processing of data. The PostHog recordings and Sentry changes skipped the 15 days; this release does not. |
 
 ---
 
@@ -75,12 +76,13 @@ A new invoice changes the `reactivation` anchor, so a later long pause starts a 
 
 `LifecycleService.runDue(now)` runs every 15 minutes through `startScheduler` in `main.ts`. Each run:
 
-1. Returns at once outside business hours (Monday to Friday, 09:00 to 17:00 America/Sao_Paulo).
+1. Returns at once before `LIFECYCLE_START_AT` (config, an ISO date; unset means never) or outside business hours (Monday to Friday, 09:00 to 17:00 America/Sao_Paulo).
 2. Reads the candidates through `LifecycleRepository`. This repository has platform scope, like `MetricsRepository`: it reads across accounts and returns only ids, the step, and the anchor.
 3. For each candidate owner, picks the step that is due: the highest step whose day has passed and that has no row in `lifecycle_emails` for the same user, account, phase, and anchor.
 4. Skips the owner when:
    - the account is suspended or deleted, or the user is deleted;
    - the user opted out (`users.lifecycle_opt_out_at` is set);
+   - the user has not accepted the `LEGAL_VERSION` of this release or a later one;
    - the user got a lifecycle e-mail since 00:00 America/Sao_Paulo today;
    - the anchor is more than 120 days old.
 5. In one transaction, inserts the `lifecycle_emails` row and the `mail_outbox` row (kind `lifecycle`). The unique index on `lifecycle_emails` stops a second run from sending again.
@@ -117,6 +119,7 @@ The welcome e-mail stays a service e-mail: no opt-out link, sent to every new us
 - The link carries the user id and an HMAC-SHA256 of it, with a key derived from `BETTER_AUTH_SECRET` and the label `lifecycle-unsubscribe`. No login is needed, and nobody can opt out another person.
 - `GET /api/public/lifecycle/unsubscribe` answers a small HTML page with a "Confirmar" button. A mail scanner that opens links does not opt anybody out.
 - `POST` on the same path, with the same parameters, sets `users.lifecycle_opt_out_at`. Gmail and Yahoo call it for one-click unsubscribe.
+- An opt-out also cancels that user's lifecycle e-mails still waiting in the outbox: their status becomes `cancelled` (rows are never deleted). The outbox never sends a `cancelled` row. The objection takes effect at once (LGPD, art. 18, § 2).
 - The profile page has a toggle "Receber lembretes e dicas por e-mail". It clears or sets the same column through `PUT /api/me/preferences`.
 
 ### Policy notices
@@ -125,11 +128,30 @@ The welcome e-mail stays a service e-mail: no opt-out link, sent to every new us
 - `GET /api/me` adds `policyNotice: { id, date, text, href } | null`. It is null when the user already saw that notice or accepted a later version.
 - The app shows a thin banner on every screen of the app, once, with the link and an "Entendi" button. `POST /api/me/policy-notice` records the view in `policy_notice_views` and in the audit log.
 - `LegalGate` and the acceptance flow stay as they are, for material changes only.
-- This RFC's own policy change (the lifecycle e-mails and the opt-out) ships as the first `update`.
+- This RFC's own policy change ships as the last `material` change (see "First release"). The first `update` is the next policy change after it.
 
-### Privacy policy
+### Terms and privacy policy
 
-The policy gets a section "E-mails sobre o uso do NotaFlow": reminders during onboarding, before the first invoice, and after a long pause; the legal basis (legitimate interest); the opt-out link and the profile toggle; and the retention of `lifecycle_emails` (5 years, like the audit trail). It ships as a notice, not as a new acceptance.
+The release changes three texts and gets a new `LEGAL_VERSION`:
+
+- **Terms, clause 14, and policy, section 10 (changes):** a material change reduces rights, changes the price, or adds a purpose not compatible with the service. It is announced by e-mail and in the app at least 15 days before it applies, and it needs acceptance. Any other change (a clarification, a new provider for the same purpose, a communication about the use of the service with opt-out) is an update: it applies when published and is shown in the app.
+- **Policy, new section "E-mails sobre o uso do NotaFlow":** reminders during onboarding, before the first invoice, and after a long pause; the legal basis (legitimate interest, art. 7, IX); only to account owners; the opt-out link and the profile toggle; replies to contato@vapulab.com, which can hold personal data; the retention of `lifecycle_emails` for 5 years after the account ends, as proof that each objection was respected.
+- **Policy, Resend:** it sends "os e-mails de código, de recuperação de senha, de convite, de boas-vindas e de lembretes".
+
+On the day of the deploy, a one-off command sends every user a `notice` e-mail with what changes and the date the reminders start.
+
+### Legitimate interest assessment
+
+A short record, following the ANPD guide on legitimate interest (2024):
+
+| Step | Assessment |
+| --- | --- |
+| Purpose | Help the owner finish onboarding, issue the first invoice, and come back to a service they chose. Legitimate and concrete. |
+| Necessity | Only the owner's e-mail, name, onboarding step, and the date of the last invoice. No invoice content, no customer data, no tracking pixel. |
+| Expectation | The owner signed up for this service; e-mails about its use are expected. Invited members get none. |
+| Impact | At most 2 e-mails per phase, at most 1 per day, business hours only. |
+| Safeguards | Opt-out in every e-mail and in the profile, effective at once; RFC 8058 headers; the policy section; 120-day cut-off; the record of every send. |
+| Conclusion | The legitimate interest holds, with the safeguards above. |
 
 ### Metrics and diagrams
 
@@ -169,7 +191,7 @@ CREATE UNIQUE INDEX policy_notice_views_once ON policy_notice_views (user_id, no
 
 - Both new tables are append-only and get the `no_delete` trigger, like `legal_acceptances`.
 - The backfill sets `onboarding_done_at` of every `done` account to the `created_at` of its oldest emitter.
-- `mail_outbox.kind` and `MailKind` get the value `lifecycle`.
+- `mail_outbox.kind` and `MailKind` get the value `lifecycle`; `mail_outbox.status` gets the value `cancelled`.
 - `MailMessage` gets optional `replyTo` and `headers`, which the Resend mailer passes through.
 
 ---
@@ -188,7 +210,10 @@ CREATE UNIQUE INDEX policy_notice_views_once ON policy_notice_views (user_id, no
 | `apps/server/drizzle/0016_lifecycle.sql` | The migration and the backfill |
 | `apps/web/src/components/PolicyNotice.tsx` | The banner |
 | `apps/web/src/pages/ProfilePage.tsx` | The reminders toggle |
-| `apps/web/privacidade.html` | The new section |
+| `apps/web/privacidade.html` | The reminders section, the change section, and the Resend entry |
+| `apps/web/termos.html` | Clause 14, the new change rule |
+| `apps/server/src/config.ts` | `LIFECYCLE_START_AT` |
+| `apps/server/src/policyNotice.ts` (script `pnpm notice:legal`) | The one-off `notice` e-mail to every user on the day of the release |
 | `docs/ENGINEERING/ARCHITECTURE/diagrams/c4-3-server-components.*` | The new component |
 
 ---
@@ -201,7 +226,8 @@ Tests come first, with a fixed clock:
 - **Once:** two runs in a row send once. A new invoice starts a new `reactivation` cycle.
 - **First deploy:** an old account gets only its latest due step, and nothing after 120 days.
 - **Hours:** nothing leaves outside business days from 09:00 to 17:00 America/Sao_Paulo; at most one lifecycle e-mail per person per day.
-- **Opt-out:** a valid token opts out; a changed token or another user's token is refused; the GET page changes nothing; the one-click POST works; the profile toggle reverts it.
+- **Opt-out:** a valid token opts out; a changed token or another user's token is refused; the GET page changes nothing; the one-click POST works; the profile toggle reverts it; a queued lifecycle e-mail becomes `cancelled` and is never sent.
+- **Start and acceptance:** nothing leaves before `LIFECYCLE_START_AT`, and nothing goes to a user who has not accepted the release's `LEGAL_VERSION`.
 - **Notice:** it shows once, "Entendi" records it, and it never blocks the app.
 - **Copy:** every link goes to a page that exists; every lifecycle e-mail has the opt-out link and the headers; no placeholder is left.
 
@@ -209,5 +235,5 @@ Tests come first, with a fixed clock:
 
 ## Open Questions
 
-- [ ] Lawyer: is the lifecycle e-mails' policy change an `update` (notice) and not a `material` change (acceptance)? Until an answer, it ships as an update.
+- [ ] Lawyer: is the new change clause (material change with acceptance and 15 days, update with notice) valid for a free B2B service whose bases are contract and legitimate interest? Do usage reminders by e-mail, with opt-out, fit the legitimate interest of art. 7, IX, for the account owner?
 - [ ] Lincoln approves the final text of every e-mail before the merge.
