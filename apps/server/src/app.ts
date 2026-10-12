@@ -30,6 +30,7 @@ import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
+import { POLICY_NOTICE, type PolicyNotice } from './legal';
 import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { adminMailRoutes } from './routes/adminMail';
@@ -40,7 +41,12 @@ import { syncRoutes } from './routes/sync';
 import { SyncService } from './sync/SyncService';
 import { VaultCertificateStore } from './vault/VaultCertificateStore';
 import { Metrics, moduleOf } from './metrics/metrics';
-import { type ErrorReporter, noErrorReporter, sentryReporter, statusOf } from './observability/errors';
+import {
+  type ErrorReporter,
+  noErrorReporter,
+  sentryReporter,
+  statusOf,
+} from './observability/errors';
 import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
 import { isApiPath, registerWeb } from './web';
@@ -56,6 +62,8 @@ declare module 'fastify' {
 }
 
 export interface AppDeps {
+  // Tests inject a notice; production uses POLICY_NOTICE.
+  policyNotice?: PolicyNotice | null;
   config: Config;
   db: Database;
   logStream?: { write(line: string): void };
@@ -195,7 +203,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
   publicConfigRoutes(app, config);
-  meRoutes(app, db);
+  meRoutes(app, db, deps.policyNotice === undefined ? POLICY_NOTICE : deps.policyNotice);
   adminRoutes(app, db);
   memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });
   adminMailRoutes(app, { db, outbox });

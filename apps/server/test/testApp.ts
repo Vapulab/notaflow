@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app';
 import { type AuthDeps, createAuth } from '../src/auth/betterAuth';
 import type { MailMessage } from '../src/mail/mailer';
+import type { PolicyNotice } from '../src/legal';
 import { users } from '../src/db/schema';
 import { nacionalIssuerFactory } from '../src/providers/providerFactory';
 import { loadConfig } from '../src/config';
@@ -37,6 +38,7 @@ export async function createTestApp(
     googleUserInfo?: AuthDeps['googleUserInfo'];
     // The app's e-mails fail, as when Resend is down; Better Auth's codes still arrive.
     failMail?: boolean;
+    policyNotice?: PolicyNotice | null;
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -73,6 +75,7 @@ export async function createTestApp(
       : mailer,
     auth,
     ...(options.logStream ? { logStream: options.logStream } : {}),
+    ...(options.policyNotice !== undefined ? { policyNotice: options.policyNotice } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),
     ...(options.cepDispatcher ? { cepDispatcher: options.cepDispatcher } : {}),
     ...(options.cnpjDispatcher ? { cnpjDispatcher: options.cnpjDispatcher } : {}),
