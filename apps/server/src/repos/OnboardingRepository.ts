@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { AccountContext } from '@notaflow/core';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { accounts, memberships } from '../db/schema';
 import { created, notDeleted, touched } from '../db/stamps';
@@ -82,7 +82,12 @@ export class OnboardingRepository {
   markDone(ctx: AccountContext): void {
     this.db
       .update(accounts)
-      .set({ onboardingStep: 'done', ...touched(ctx) })
+      .set({
+        onboardingStep: 'done',
+        // The first time only: a second markDone keeps the original moment.
+        onboardingDoneAt: sql`coalesce(${accounts.onboardingDoneAt}, ${Date.now()})`,
+        ...touched(ctx),
+      })
       .where(and(eq(accounts.id, ctx.accountId), notDeleted(accounts)))
       .run();
   }
@@ -92,7 +97,11 @@ export class OnboardingRepository {
     return (
       this.db
         .update(accounts)
-        .set({ onboardingStep: to, ...touched(ctx) })
+        .set({
+          onboardingStep: to,
+          ...(to === 'done' ? { onboardingDoneAt: new Date() } : {}),
+          ...touched(ctx),
+        })
         .where(
           and(
             eq(accounts.id, ctx.accountId),

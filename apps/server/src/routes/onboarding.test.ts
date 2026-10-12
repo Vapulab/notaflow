@@ -620,3 +620,36 @@ describe('limits and edges', () => {
     ).toEqual({ d: null });
   });
 });
+
+test('the moment onboarding ends is recorded once, by the step flow and by markDone', () => {
+  const doneAt = (id: string) =>
+    t.db.$client.prepare('SELECT onboarding_done_at AS d FROM accounts WHERE id = ?').get(id) as {
+      d: number | null;
+    };
+  const repo = new OnboardingRepository(t.db);
+  const a = seedTenant(t.db, { accountName: 'A', email: 'a@example.com' });
+  const ctxA = {
+    accountId: a.accountId,
+    userId: 'u',
+    role: 'owner' as const,
+    accountStatus: 'active' as const,
+  };
+  t.db.$client
+    .prepare("UPDATE accounts SET onboarding_step = 'sync' WHERE id = ?")
+    .run(a.accountId);
+  expect(doneAt(a.accountId).d).toBeNull();
+  const before = Date.now();
+  expect(repo.advance(ctxA, 'sync', 'done')).toBe(true);
+  expect(doneAt(a.accountId).d).toBeGreaterThanOrEqual(before);
+
+  const b = seedTenant(t.db, { accountName: 'B', email: 'b@example.com' });
+  const ctxB = { ...ctxA, accountId: b.accountId };
+  t.db.$client
+    .prepare("UPDATE accounts SET onboarding_step = 'card', onboarding_done_at = NULL WHERE id = ?")
+    .run(b.accountId);
+  repo.markDone(ctxB);
+  const first = doneAt(b.accountId).d;
+  expect(first).toBeGreaterThanOrEqual(before);
+  repo.markDone(ctxB);
+  expect(doneAt(b.accountId).d).toBe(first);
+});
