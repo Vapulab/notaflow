@@ -28,6 +28,7 @@ services:
       - ./alertmanager:/etc/alertmanager:ro
       # The webhook URL, written by hand on the VPS; never in git.
       - ./secrets/alert_webhook_url:/run/secrets/alert_webhook_url:ro
+      - ./secrets/healthchecks_url:/run/secrets/healthchecks_url:ro
       - alertmanager:/alertmanager
     networks: [monitoring]
 

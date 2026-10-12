@@ -57,3 +57,9 @@ test('without a DSN nothing loads', async () => {
   await startErrorTracking(null);
   expect(sentry.init).not.toHaveBeenCalled();
 });
+
+test('an e-mail is replaced without the punctuation after it', () => {
+  expect(scrubEvent({ message: 'para pessoa@example.com, CNPJ e fulano@ex.com.br.' }).message).toBe(
+    'para [e-mail], CNPJ e [e-mail].',
+  );
+});

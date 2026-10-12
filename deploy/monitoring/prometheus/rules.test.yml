@@ -107,3 +107,12 @@ tests:
         exp_alerts:
           - exp_labels: { severity: warning, service: notaflow, module: onboarding, emitter: e1 }
             exp_annotations: { summary: 'NotaFlow: the certificate of emitter e1 expires in 29d 0h 0m 0s' }
+
+  - interval: 1m
+    alert_rule_test:
+      # Always firing: Alertmanager sends it to Healthchecks.io every minute, and silence there means the VPS is down.
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels: { severity: none, service: monitoring }
+            exp_annotations: { summary: 'The monitoring pipeline is alive' }

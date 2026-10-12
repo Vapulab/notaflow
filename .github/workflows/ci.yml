@@ -36,6 +36,14 @@ jobs:
         run: |
           docker run --rm -v "$PWD/deploy/monitoring/alertmanager:/etc/alertmanager:ro" \
             --entrypoint amtool prom/alertmanager:v0.28.1 check-config /etc/alertmanager/alertmanager.yml
+          # The Watchdog goes only to Healthchecks.io; every other alert goes to the channel.
+          for case in "Watchdog healthchecks" "SiteDown channel"; do
+            set -- $case
+            got=$(docker run --rm -v "$PWD/deploy/monitoring/alertmanager:/etc/alertmanager:ro" \
+              --entrypoint amtool prom/alertmanager:v0.28.1 config routes test \
+              --config.file=/etc/alertmanager/alertmanager.yml alertname=$1)
+            test "$got" = "$2" || { echo "$1 routes to $got, not $2"; exit 1; }
+          done
       - name: Loki, Alloy, and blackbox config
         run: |
           docker run --rm -v "$PWD/deploy/monitoring/loki:/etc/loki:ro" grafana/loki:3.5.3 \
