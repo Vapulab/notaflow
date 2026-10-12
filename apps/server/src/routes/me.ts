@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
-import { LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from '../legal';
+import { LEGAL_VERSION, LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from '../legal';
+import { LifecycleRepository } from '../repos/LifecycleRepository';
 import { AuditLog } from '../repos/AuditLog';
 import { IdentityRepository } from '../repos/IdentityRepository';
 import { LegalAcceptanceRepository } from '../repos/LegalAcceptanceRepository';
@@ -17,6 +18,7 @@ export function meRoutes(
   const legal = new LegalAcceptanceRepository(db);
   const audit = new AuditLog(db);
   const notices = new PolicyNoticeRepository(db);
+  const lifecycle = new LifecycleRepository(db, LIFECYCLE_LEGAL_VERSION);
   app.get('/api/me', async (request) => {
     const identity = identityOf(request);
     return {
@@ -31,6 +33,7 @@ export function meRoutes(
       legalAccepted: legal.hasAccepted(identity.userId, LEGAL_VERSION),
       // An update of the policy: a banner shown once, never a new acceptance.
       policyNotice: notice && !notices.hasSeen(identity.userId, notice.id) ? notice : null,
+      lifecycleEmails: !lifecycle.isOptedOut(identity.userId),
       accounts: identity.memberships.map((m) => ({
         id: m.accountId,
         name: m.accountName,
@@ -97,6 +100,34 @@ export function meRoutes(
           result: 'ok',
         });
       }
+      return reply.status(204).send();
+    },
+  );
+
+  app.put<{ Body: { lifecycleEmails: boolean } }>(
+    '/api/me/preferences',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['lifecycleEmails'],
+          properties: { lifecycleEmails: { type: 'boolean' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const identity = identityOf(request);
+      const on = request.body.lifecycleEmails;
+      lifecycle.setOptOut(identity.userId, on ? null : new Date());
+      if (!on) request.server.mailOutbox.cancelPendingLifecycle(identity.email);
+      audit.record({
+        userEmail: identity.email,
+        accountId: null,
+        action: on ? 'lifecycle.opt_in' : 'lifecycle.opt_out',
+        entity: identity.userId,
+        result: 'ok',
+      });
       return reply.status(204).send();
     },
   );

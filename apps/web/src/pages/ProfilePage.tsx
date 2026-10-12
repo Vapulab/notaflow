@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { api } from '../api';
 import {
   addPasskey,
   deletePasskey,
@@ -81,7 +82,47 @@ export function ProfilePage() {
       <Section title="Sessões ativas">
         <SessionList items={sessions.data ?? []} />
       </Section>
+      <Section title="E-mails">
+        <RemindersToggle initial={me.lifecycleEmails !== false} />
+      </Section>
     </Layout>
+  );
+}
+
+// The reminders of RFC_LIFECYCLE_EMAILS; service e-mails, such as login codes, always go.
+function RemindersToggle(props: { initial: boolean }) {
+  const [on, setOn] = useState(props.initial);
+  const action = useAction();
+  const change = (next: boolean) =>
+    action.run(async () => {
+      setOn(next);
+      try {
+        await api.put('/api/me/preferences', { lifecycleEmails: next });
+      } catch (failure) {
+        setOn(!next);
+        throw failure;
+      }
+    });
+  return (
+    <>
+      <label className="flex items-start gap-2 text-sm text-fg">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={on}
+          disabled={action.busy}
+          onChange={(event) => void change(event.target.checked)}
+        />
+        <span>
+          Receber lembretes e dicas por e-mail
+          <span className="block text-muted">
+            Ajuda para terminar o cadastro, emitir a primeira nota e voltar a usar o NotaFlow. Os
+            e-mails de código de acesso continuam.
+          </span>
+        </span>
+      </label>
+      <ErrorAlert error={action.error} />
+    </>
   );
 }
 

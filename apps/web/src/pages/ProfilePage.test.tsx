@@ -149,3 +149,23 @@ test('sessions show browser, IP, and the current one; ending all goes to the log
   expect(authApi.revokeSessions).toHaveBeenCalled();
   await waitFor(() => expect(window.location.pathname).toBe('/entrar'));
 });
+
+test('the reminders by e-mail can be turned off and on again', async () => {
+  account();
+  const calls = stubApi({ '/api/me/preferences': {} });
+  const user = userEvent.setup();
+  renderWithMe(<ProfilePage />, { ...meFor('user'), lifecycleEmails: true });
+  const toggle = await screen.findByRole('checkbox', {
+    name: /Receber lembretes e dicas por e-mail/,
+  });
+  expect((toggle as HTMLInputElement).checked).toBe(true);
+  await user.click(toggle);
+  expect((toggle as HTMLInputElement).checked).toBe(false);
+  await user.click(toggle);
+  const sent = calls.filter((c) => c.url === '/api/me/preferences');
+  expect(sent.map((c) => JSON.parse(String(c.init?.body)))).toEqual([
+    { lifecycleEmails: false },
+    { lifecycleEmails: true },
+  ]);
+  expect(sent[0]?.init?.method).toBe('PUT');
+});

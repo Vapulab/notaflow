@@ -1,6 +1,6 @@
-import { and, eq, gte } from 'drizzle-orm';
+import { and, eq, gte, isNull } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { lifecycleEmails } from '../db/schema';
+import { lifecycleEmails, users } from '../db/schema';
 import type { Candidate, Phase, Variant } from '../lifecycle/schedule';
 import type { MailMessage } from '../mail/mailer';
 import type { MailOutbox } from '../mail/outbox';
@@ -57,6 +57,29 @@ export class LifecycleRepository {
       onboardingDoneAt: r.doneAt === null ? null : new Date(r.doneAt),
       lastProductionIssueAt: r.lastIssue === null ? null : new Date(r.lastIssue),
     }));
+  }
+
+  // The e-mail of a user who was not removed, or null.
+  activeEmail(userId: string): string | null {
+    const row = this.db
+      .select({ email: users.email })
+      .from(users)
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .get();
+    return row?.email ?? null;
+  }
+
+  isOptedOut(userId: string): boolean {
+    const row = this.db
+      .select({ at: users.lifecycleOptOutAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
+    return Boolean(row?.at);
+  }
+
+  setOptOut(userId: string, at: Date | null): void {
+    this.db.update(users).set({ lifecycleOptOutAt: at }).where(eq(users.id, userId)).run();
   }
 
   sentSince(userId: string, since: Date): boolean {

@@ -60,6 +60,7 @@ export interface Me {
   legalVersion?: string;
   legalAccepted?: boolean;
   policyNotice?: { id: string; date: string; text: string; href: string } | null;
+  lifecycleEmails?: boolean;
   accounts: {
     id: string;
     name: string;
