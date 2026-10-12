@@ -8,8 +8,8 @@ route:
     - matchers: [alertname="Watchdog"]
       receiver: healthchecks
       group_wait: 0s
-      group_interval: 1m
-      repeat_interval: 1m
+      group_interval: 30s
+      repeat_interval: 30s
 
 receivers:
   - name: channel
