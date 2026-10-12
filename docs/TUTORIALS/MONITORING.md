@@ -35,6 +35,10 @@ The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them wit
 | ContainerRestarting | Read the logs of the container in panel 4. |
 | MonitoringTargetDown | Run `docker compose ps` in `/opt/monitoring`. |
 
+### The outside check
+
+The alert `Watchdog` is always firing on purpose, and the panels hide it. Alertmanager sends it every minute to the Healthchecks.io check `vps-watchdog`, at the ping URL in `/opt/monitoring/secrets/healthchecks_url`. When the pings stop for 5 minutes, Healthchecks.io posts to the Discord channel. Then the VPS, Prometheus, Alertmanager, or their network is down: start with `ssh vapulab`.
+
 ### Silence an alert
 
 To stop the messages of a known problem while you fix it:
@@ -65,7 +69,7 @@ The deploy workflow does not touch `/opt/monitoring`. A change to `deploy/monito
 The first install also needs the following:
 
 1. `/opt/monitoring/.env` (mode 600) with `GF_SECURITY_ADMIN_USER` and a random `GF_SECURITY_ADMIN_PASSWORD`.
-2. The empty file `/opt/monitoring/secrets/alert_webhook_url`, owned by `65534` with mode 400, in a folder with mode 700.
+2. The files `/opt/monitoring/secrets/alert_webhook_url` (the Discord webhook) and `/opt/monitoring/secrets/healthchecks_url` (the Healthchecks.io ping URL), each owned by `65534` with mode 400, in a folder with mode 700.
 3. The folder `/var/lib/node_exporter/textfile` with mode 755, where the off-site backup writes its last success. node-exporter runs as `nobody` and must read it.
 4. The stack must be running before the NotaFlow app starts, because the app joins its `monitoring` network.
 5. The tunnel rule `grafana.vapulab.com -> http://grafana:3000` in `/opt/northub/cloudflared/config.yml`, the proxied CNAME to the tunnel, and the Cloudflare Access application **Grafana (monitoring)**.

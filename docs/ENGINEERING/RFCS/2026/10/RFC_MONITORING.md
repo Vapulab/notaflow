@@ -10,14 +10,14 @@
 - [Deploy on the VM](../../../../TUTORIALS/DEPLOY_ON_VM.md) (the VPS, backups, hardening)
 - Prometheus, Alertmanager, Loki, Grafana Alloy, Grafana: <https://grafana.com/docs/>
 - Sentry for Node and React: <https://docs.sentry.io/platforms/javascript/>
-- UptimeRobot: <https://uptimerobot.com/api/>
+- Healthchecks.io: <https://healthchecks.io/docs/>
 
 ## Overview
 
 NotaFlow has no metrics, no alerts, and no error tracking today. A Resend outage or a failing sync is found by a user, not by us. This RFC adds the following:
 
 - a monitoring stack on the VPS: metrics, logs, alerts, and Grafana panels;
-- an outside uptime check, which still alerts when the whole VPS is down;
+- an outside dead-man's switch, which still alerts when the whole VPS is down;
 - Sentry for application errors.
 
 Every NotaFlow metric and error carries the module it belongs to. The panels show each module of NotaFlow and each service of the VPS on its own.
@@ -41,8 +41,8 @@ Non-goals:
 | Topic | Decision | Why |
 | --- | --- | --- |
 | Where it runs | Self-hosted on the VPS, in its own Compose project `/opt/monitoring` | The VPS has 4 CPUs, 16 GB of RAM (1 GB used), and 177 GB free. The data stays with us, and there are no plan limits. |
-| Outside check | UptimeRobot, free plan, every 5 minutes | An inside check cannot report its own host being down. |
-| Alerts | Alertmanager and UptimeRobot post to one Discord or Slack webhook (`ALERT_WEBHOOK_URL`) | Lincoln's choice: a channel, not e-mail. |
+| Outside check | Healthchecks.io, free plan: Alertmanager pings it every minute with an always-firing Watchdog alert, and it posts to Discord after 5 minutes of silence | An inside check cannot report its own host being down. UptimeRobot was the first choice, but its free plan alerts by e-mail only. |
+| Alerts | Alertmanager and Healthchecks.io post to one Discord channel | Lincoln's choice: a channel, not e-mail. |
 | Errors | Sentry cloud, free plan, projects `notaflow-server` and `notaflow-web` | Errors are grouped and show the stack trace, the release, and the number of users affected. |
 | Grafana access | `grafana.vapulab.com` through the existing northub tunnel, behind Cloudflare Access, with Grafana's own login | Nothing new opens on the VPS. |
 
@@ -125,7 +125,7 @@ The panels and data sources are provisioned from files in the repository, so a n
 | Container restarting | More than 2 restarts in 15 minutes | warning |
 | Monitoring down | Prometheus scrape of a target fails for 5 minutes | warning |
 
-UptimeRobot covers what the VPS cannot report itself: the 3 sites unreachable from outside.
+The Watchdog covers what the VPS cannot report itself: the VPS, Prometheus, Alertmanager, or their network is down. The probes go to the public URLs through Cloudflare, so a tunnel or edge failure is a SiteDown alert.
 
 ## Privacy and Legal
 
@@ -144,7 +144,7 @@ UptimeRobot covers what the VPS cannot report itself: the 3 sites unreachable fr
 1. NotaFlow: the metrics endpoint, the module label, the business metrics, and the tests.
 2. NotaFlow: Sentry on the server and the web, with the scrubbing tests, the CSP, and the privacy policy.
 3. VPS: the monitoring Compose project, provisioning, alert rules, Grafana behind the tunnel and Access.
-4. Outside: the UptimeRobot monitors, on the same webhook.
+4. Outside: the Watchdog alert and the Healthchecks.io check, on the same Discord channel.
 5. Docs: the C4 diagrams, the tutorial (how to read the panels and silence an alert), and an alert test end to end.
 
 ## Testing and Acceptance
@@ -156,4 +156,4 @@ UptimeRobot covers what the VPS cannot report itself: the 3 sites unreachable fr
 ## Open Questions
 
 - [ ] Discord or Slack: Lincoln creates the channel and the webhook.
-- [ ] Sentry and UptimeRobot accounts: Lincoln creates them and puts the DSNs in `.env`.
+- [x] Sentry and Healthchecks.io accounts: Lincoln created them on 2026-10-12.

@@ -25,7 +25,7 @@
    - `deploy/monitoring/` holds the Compose file and the config of Prometheus, Alertmanager, Loki, Alloy, Grafana, node-exporter, cAdvisor, and blackbox.
    - It also holds the alert rules, the provisioned dashboards, and a CI check of the rules (`promtool` and `amtool` in Docker).
    - The stack is installed on the VPS, and `grafana.vapulab.com` goes through the tunnel and Cloudflare Access.
-4. **Outside check:** UptimeRobot monitors, set up with Lincoln.
+4. **Outside check (`feat/watchdog`):** an always-firing Watchdog alert that Alertmanager sends to Healthchecks.io every minute. Healthchecks.io posts to Discord when the pings stop.
 5. **Docs and acceptance**
    - The C4 diagrams and the tutorial (how to read a panel and how to silence an alert).
    - An end-to-end alert test.

@@ -1,5 +1,14 @@
 # The alerts of RFC_MONITORING. Each one names its service and, for NotaFlow, its module.
 groups:
+  - name: watchdog
+    rules:
+      # Always firing on purpose: Healthchecks.io alerts in Discord when its pings stop (VPS or stack down).
+      - alert: Watchdog
+        expr: vector(1)
+        labels: { severity: none, service: monitoring }
+        annotations:
+          summary: The monitoring pipeline is alive
+
   - name: sites
     rules:
       - alert: SiteDown

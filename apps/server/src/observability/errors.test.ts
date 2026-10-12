@@ -56,3 +56,9 @@ test('a server error is reported with its module; a client error is not', async 
   expect(reported[0]).toMatchObject({ module: 'web' });
   expect(String(reported[0]?.error)).toContain('broken');
 });
+
+test('an e-mail is replaced without the punctuation after it', () => {
+  expect(scrubEvent({ message: 'para pessoa@example.com, CNPJ e fulano@ex.com.br.' }).message).toBe(
+    'para [e-mail], CNPJ e [e-mail].',
+  );
+});

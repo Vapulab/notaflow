@@ -25,7 +25,7 @@ flowchart LR
   end
 
   channel["<b>Alert channel</b><br/><i>[Discord or Slack webhook]</i>"]
-  uptime["<b>UptimeRobot</b><br/><i>[Outside check]</i>"]
+  hc["<b>Healthchecks.io</b><br/><i>[Outside check]</i><br/>Alerts when the Watchdog pings stop"]
   r2[("<b>Cloudflare R2</b><br/><i>[Bucket notaflow-backups]</i><br/>Encrypted copies, deleted after 30 days")]
 
   subgraph gh["GitHub"]
@@ -51,13 +51,13 @@ flowchart LR
   access -- "Tunnel" --> cloudflared
   cloudflared --> grafana
   prom -- "Alerts" --> channel
-  uptime -- "HTTPS every 5 min" --> edge
-  uptime -- "Alerts" --> channel
+  prom -- "Watchdog ping every minute" --> hc
+  hc -- "Alerts after 5 min of silence" --> channel
 
   classDef node fill:#438dd5,stroke:#2e6295,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class app,vol,cloudflared,timer,offsite,prom,logs,exporters,grafana node
-  class browser,edge,access,actions,ghcr,r2,channel,uptime external
+  class browser,edge,access,actions,ghcr,r2,channel,hc external
   style vps fill:#f5f8fc,stroke:#1168bd,color:#0b4884
   style compose fill:#eaf2fb,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884
   style cf fill:#f7f7f7,stroke:#8a8a8a,color:#333
