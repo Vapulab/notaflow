@@ -6,6 +6,10 @@ const sources = {
   outboxCounts: () => [],
   certificateExpiries: () => [],
   latestLocalBackup: () => null,
+  accountCounts: () => [],
+  userCount: () => 0,
+  emitterCounts: () => [],
+  invoiceCounts: () => [],
 };
 let stop: (() => Promise<void>) | undefined;
 afterEach(async () => {

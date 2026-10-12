@@ -19,6 +19,10 @@ export interface MetricSources {
   outboxCounts(): { status: string; count: number }[];
   certificateExpiries(): { emitterId: string; validTo: Date }[];
   latestLocalBackup(): Date | null;
+  accountCounts(): { status: string; count: number }[];
+  userCount(): number;
+  emitterCounts(): { environment: string; count: number }[];
+  invoiceCounts(): { origin: string; status: string; environment: string; count: number }[];
 }
 
 export class Metrics {
@@ -90,6 +94,54 @@ export class Metrics {
         this.reset();
         for (const row of sources.certificateExpiries()) {
           this.set({ emitter: row.emitterId }, Math.floor(row.validTo.getTime() / 1000));
+        }
+      },
+    });
+    // The business totals, read from the database at scrape time: counts only, never a name or document.
+    new Gauge({
+      name: 'notaflow_accounts',
+      help: 'Accounts by status',
+      labelNames: ['status'],
+      registers,
+      collect() {
+        this.reset();
+        for (const status of ['active', 'suspended']) this.set({ status }, 0);
+        for (const row of sources.accountCounts()) this.set({ status: row.status }, row.count);
+      },
+    });
+    new Gauge({
+      name: 'notaflow_users',
+      help: 'Users with a login, invited members included',
+      registers,
+      collect() {
+        this.set(sources.userCount());
+      },
+    });
+    new Gauge({
+      name: 'notaflow_emitters',
+      help: 'Emitters (companies with a certificate) by environment',
+      labelNames: ['environment'],
+      registers,
+      collect() {
+        this.reset();
+        for (const environment of ['producao', 'producao_restrita']) this.set({ environment }, 0);
+        for (const row of sources.emitterCounts()) {
+          this.set({ environment: row.environment }, row.count);
+        }
+      },
+    });
+    new Gauge({
+      name: 'notaflow_invoices',
+      help: 'Invoices by origin (app: issued by NotaFlow; synced: imported), status, and environment',
+      labelNames: ['origin', 'status', 'environment'],
+      registers,
+      collect() {
+        this.reset();
+        for (const row of sources.invoiceCounts()) {
+          this.set(
+            { origin: row.origin, status: row.status, environment: row.environment },
+            row.count,
+          );
         }
       },
     });

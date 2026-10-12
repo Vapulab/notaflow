@@ -17,10 +17,10 @@ flowchart LR
     timer["<b>notaflow-backup.timer</b><br/><i>[systemd]</i><br/>Daily at 06:00 UTC, docker exec of the backup command"]
     offsite["<b>notaflow-offsite-backup.timer</b><br/><i>[systemd]</i><br/>Daily at 06:30 UTC: gzip, age, upload over IPv4"]
     subgraph mon["Monitoring (/opt/monitoring)"]
-      prom["<b>Prometheus + Alertmanager</b><br/><i>[Containers]</i><br/>Scrapes the app, host, containers, and probes; 15 days"]
+      prom["<b>Prometheus + Alertmanager</b><br/><i>[Containers]</i><br/>Scrapes the app, host, containers, and probes; 13 months"]
       logs["<b>Loki + Alloy</b><br/><i>[Containers]</i><br/>Every container's logs, by module; 14 days"]
       exporters["<b>node-exporter, cAdvisor, blackbox</b><br/><i>[Containers]</i>"]
-      grafana["<b>Grafana</b><br/><i>[Container]</i><br/>4 provisioned panels"]
+      grafana["<b>Grafana</b><br/><i>[Container]</i><br/>5 provisioned panels"]
     end
   end
 

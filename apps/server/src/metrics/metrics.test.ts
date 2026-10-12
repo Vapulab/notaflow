@@ -99,6 +99,45 @@ test('every log line of a request, the completion line too, carries its module',
   const logged = await createTestApp({ logStream: { write: (line: string) => lines.push(line) } });
   await logged.app.inject({ method: 'GET', url: '/api/health' });
   await logged.close();
-  const completed = lines.map((line) => JSON.parse(line)).find((l) => l.msg === 'request completed');
+  const completed = lines
+    .map((line) => JSON.parse(line))
+    .find((l) => l.msg === 'request completed');
   expect(completed).toMatchObject({ module: 'app' });
+});
+
+test('the business totals count accounts, users, emitters, and invoices by origin, status, and environment', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const issued = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+  });
+  const invoiceId = issued.json<{ id: string }>().id;
+  await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 5000,
+  });
+  const cancel = await s.call('POST', `/invoices/${invoiceId}/cancel`, {
+    reason: '1',
+    justification: 'Valor informado errado na nota',
+  });
+  expect(cancel.statusCode).toBe(200);
+
+  const text = await t.app.metrics.render();
+  expect(text).toMatch(/notaflow_accounts\{status="active"\} 1/);
+  expect(text).toMatch(/notaflow_accounts\{status="suspended"\} 0/);
+  expect(text).toMatch(/notaflow_users 1/);
+  expect(text).toMatch(/notaflow_emitters\{environment="producao"\} 1/);
+  expect(text).toMatch(/notaflow_emitters\{environment="producao_restrita"\} 0/);
+  expect(text).toMatch(
+    /notaflow_invoices\{origin="app",status="issued",environment="producao"\} 1/,
+  );
+  expect(text).toMatch(
+    /notaflow_invoices\{origin="app",status="cancelled",environment="producao"\} 1/,
+  );
 });
