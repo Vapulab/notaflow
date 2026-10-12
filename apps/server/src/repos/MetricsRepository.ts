@@ -40,7 +40,9 @@ export class MetricsRepository implements MetricSources {
   }
 
   userCount(): number {
-    return this.db.select({ count: count() }).from(users).where(notDeleted(users)).get()?.count ?? 0;
+    return (
+      this.db.select({ count: count() }).from(users).where(notDeleted(users)).get()?.count ?? 0
+    );
   }
 
   emitterCounts() {

@@ -138,7 +138,10 @@ export class Metrics {
       collect() {
         this.reset();
         for (const row of sources.invoiceCounts()) {
-          this.set({ origin: row.origin, status: row.status, environment: row.environment }, row.count);
+          this.set(
+            { origin: row.origin, status: row.status, environment: row.environment },
+            row.count,
+          );
         }
       },
     });
