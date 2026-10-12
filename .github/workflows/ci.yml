@@ -54,3 +54,8 @@ jobs:
             --config.file=/etc/blackbox/blackbox.yml --config.check
       - name: Dashboards are valid JSON
         run: for f in deploy/monitoring/grafana/dashboards/*.json; do jq empty "$f"; done
+      - name: Every Prometheus query of the dashboards parses
+        run: |
+          python3 deploy/monitoring/dashboard-queries.py > deploy/monitoring/prometheus/dashboard-queries.yml
+          docker run --rm -v "$PWD/deploy/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
+            --entrypoint promtool prom/prometheus:v3.5.0 check rules --lint=none dashboard-queries.yml
