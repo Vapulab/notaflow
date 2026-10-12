@@ -22,6 +22,8 @@ export interface Config {
   trustCloudflareIp: boolean;
   // The Prometheus listener, inside the container only; null turns it off.
   metricsPort: number | null;
+  // The first day the lifecycle reminders may go out; null keeps them off.
+  lifecycleStartAt: Date | null;
   // The release is the tag of the running image, so an error points at its commit.
   sentry: { serverDsn: string | null; webDsn: string | null; release: string | null };
   nacionalUrls?: { sefin: string; adn: string };
@@ -111,6 +113,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('METRICS_PORT must be a port number, or 0 to turn it off');
   }
 
+  const lifecycleStart = env.LIFECYCLE_START_AT || '';
+  if (lifecycleStart && !/^\d{4}-\d{2}-\d{2}$/.test(lifecycleStart)) {
+    problems.push('LIFECYCLE_START_AT must be a date as YYYY-MM-DD');
+  }
+
   const trustCloudflareIp = env.TRUST_CLOUDFLARE_IP ?? 'false';
   if (trustCloudflareIp !== 'true' && trustCloudflareIp !== 'false') {
     problems.push('TRUST_CLOUDFLARE_IP must be true or false');
@@ -143,6 +150,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
     trustCloudflareIp: trustCloudflareIp === 'true',
     metricsPort: metricsPort === 0 ? null : metricsPort,
+    lifecycleStartAt: lifecycleStart ? new Date(`${lifecycleStart}T00:00:00-03:00`) : null,
     sentry: {
       serverDsn: env.SENTRY_DSN_SERVER || null,
       webDsn: env.SENTRY_DSN_WEB || null,

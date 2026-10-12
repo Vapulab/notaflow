@@ -10,6 +10,7 @@ import { runAllOnce, startScheduler } from './sync/scheduler';
 
 const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
+const LIFECYCLE_INTERVAL_MS = 15 * 60_000;
 
 try {
   const config = loadConfig(process.env);
@@ -39,6 +40,14 @@ try {
     () => app.mailOutbox.deliverDue(),
     MAIL_INTERVAL_MS,
     (error) => app.log.error({ err: error }, 'mail outbox run failed'),
+  );
+  startScheduler(
+    async () => {
+      const queued = await app.lifecycle.runDue(new Date());
+      if (queued > 0) app.log.info({ module: 'mail', queued }, 'lifecycle e-mails queued');
+    },
+    LIFECYCLE_INTERVAL_MS,
+    (error) => app.log.error({ err: error }, 'lifecycle run failed'),
   );
 } catch (error) {
   if (error instanceof ConfigError) {

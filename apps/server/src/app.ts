@@ -30,7 +30,10 @@ import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { issueRoutes } from './routes/issue';
-import { POLICY_NOTICE, type PolicyNotice } from './legal';
+import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
+import { LifecycleService } from './lifecycle/LifecycleService';
+import { lifecycleEmail } from './mail/templates';
+import { LifecycleRepository } from './repos/LifecycleRepository';
 import { meRoutes } from './routes/me';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { adminMailRoutes } from './routes/adminMail';
@@ -56,6 +59,7 @@ declare module 'fastify' {
     routeList: { method: string; url: string }[];
     syncService: SyncService;
     metrics: Metrics;
+    lifecycle: LifecycleService;
     mailOutbox: MailOutbox;
     auth: Auth;
   }
@@ -158,6 +162,16 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
   const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
   app.decorate('mailOutbox', outbox);
+  app.decorate(
+    'lifecycle',
+    new LifecycleService({
+      repo: new LifecycleRepository(db, LIFECYCLE_LEGAL_VERSION),
+      outbox,
+      startAt: config.lifecycleStartAt,
+      render: lifecycleEmail,
+      unsubscribeUrl: (userId) => `${config.appOrigin}/lembretes/descadastrar?u=${userId}`,
+    }),
+  );
   const mailer = outbox.mailer();
   const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
   app.decorate('auth', auth);

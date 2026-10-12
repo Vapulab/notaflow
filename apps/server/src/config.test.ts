@@ -234,3 +234,13 @@ test('Sentry is on only with a DSN; the release is the tag of the running image'
   });
   expect(() => loadConfig({ ...base, SENTRY_DSN_WEB: 'not a url' })).toThrow(/SENTRY_DSN_WEB/);
 });
+
+test('LIFECYCLE_START_AT is the day the reminders start, at midnight in Sao Paulo; unset means never', () => {
+  expect(loadConfig(base).lifecycleStartAt).toBeNull();
+  expect(loadConfig({ ...base, LIFECYCLE_START_AT: '2026-10-28' }).lifecycleStartAt).toEqual(
+    new Date('2026-10-28T03:00:00Z'),
+  );
+  expect(() => loadConfig({ ...base, LIFECYCLE_START_AT: '28/10/2026' })).toThrow(
+    /LIFECYCLE_START_AT/,
+  );
+});

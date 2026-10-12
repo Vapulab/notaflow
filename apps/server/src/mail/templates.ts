@@ -131,3 +131,20 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// Provisional: Task 9 of PLAN_LIFECYCLE_EMAILS writes the real copy.
+export function lifecycleEmail(input: {
+  phase: string;
+  step: 1 | 2;
+  variant: string;
+  name: string;
+  accountId: string;
+  unsubscribeUrl: string;
+}): RenderedMail {
+  const text = `${input.phase} ${input.step} ${input.variant}\n\n${input.unsubscribeUrl}\n`;
+  return {
+    subject: `NotaFlow: ${input.phase} ${input.step}`,
+    text,
+    html: layout(escapeHtml(text)),
+  };
+}
