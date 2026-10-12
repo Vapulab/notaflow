@@ -32,6 +32,144 @@
       })();
     </script>
     <script type="module" src="/src/site/site.ts"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://notaflow.vapulab.com/#vapulab",
+          "name": "Vapulab",
+          "legalName": "TALITA PIRES DALCORTIVO CONSULTORIA EM TECNOLOGIA DA INFORMACAO LTDA",
+          "url": "https://vapulab.com",
+          "email": "contato@vapulab.com"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://notaflow.vapulab.com/#site",
+          "url": "https://notaflow.vapulab.com/",
+          "name": "NotaFlow",
+          "inLanguage": "pt-BR",
+          "publisher": {
+            "@id": "https://notaflow.vapulab.com/#vapulab"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://notaflow.vapulab.com/#app",
+          "name": "NotaFlow",
+          "url": "https://notaflow.vapulab.com/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "pt-BR",
+          "description": "Grátis: emita, copie e cancele NFS-e pelo sistema nacional. Para empresas do Simples Nacional, com a alíquota calculada pela lei, exportação com PTAX automática e suas notas importadas.",
+          "featureList": [
+            "Emissão de NFS-e pelo sistema nacional",
+            "Emitir nota parecida com uma anterior",
+            "Cancelamento de NFS-e com registro",
+            "Alíquota do Simples Nacional calculada pela receita dos últimos 12 meses",
+            "Exportação de serviço com PTAX automática",
+            "Importação das notas já emitidas",
+            "Equipe e várias empresas na mesma conta"
+          ],
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "BRL"
+          },
+          "publisher": {
+            "@id": "https://notaflow.vapulab.com/#vapulab"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://notaflow.vapulab.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Quanto custa?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nada. O NotaFlow é grátis, sem cartão de crédito e sem limite de notas. Se um dia houver cobrança, você recebe o aviso antes, e nada muda sem a sua escolha."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Para quem é o NotaFlow?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Para empresas do Simples Nacional (ME e EPP) que prestam serviços dos anexos III e V, como tecnologia, consultoria e design. A sua cidade precisa emitir a NFS-e pelo sistema nacional. O MEI ainda não é atendido."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Que certificado eu preciso?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Um e-CNPJ do tipo A1, o arquivo .pfx ou .p12 com a senha. O certificado A3, em cartão ou token, não funciona em um serviço on-line."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "O NotaFlow substitui o meu contador?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Não. O NotaFlow emite as notas e calcula as alíquotas pelas tabelas da lei, mas a apuração do Simples, as guias e a orientação tributária continuam com a sua contabilidade."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "E as notas que já emiti no portal?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Depois do cadastro, o NotaFlow busca no sistema nacional as notas da sua empresa e cadastra os clientes delas. Você continua podendo usar o portal quando quiser."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como emito uma NFS-e pelo emissor nacional?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Crie a conta, envie o cartão CNPJ e o certificado A1, informe a receita dos últimos 12 meses e escolha o cliente e o serviço. O NotaFlow monta a nota, assina com o seu certificado e envia ao sistema nacional, que devolve a chave de acesso."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "O NotaFlow é do governo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Não. O NotaFlow é um serviço da Vapulab que usa o sistema nacional da NFS-e, o mesmo do portal do governo. A nota emitida aqui é a nota oficial, com chave de acesso, e aparece também no portal da NFS-e."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Posso emitir nota para cliente no exterior?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim. Informe o valor em dólar ou euro. O valor em reais vem da PTAX de venda do Banco Central, no boletim de fechamento da data de competência ou do último dia útil antes dela."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como cancelo uma nota?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Abra a nota emitida, escolha Cancelar, o motivo e uma justificativa. O NotaFlow registra o evento de cancelamento no sistema nacional e guarda quem cancelou e quando."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como sei se a minha cidade usa o sistema nacional?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Consulte a lista de municípios conveniados no portal da NFS-e, em gov.br/nfse. Se a sua cidade ainda usa um sistema próprio, o NotaFlow ainda não emite para ela."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="min-h-screen bg-surface font-sans text-fg antialiased">
     <a
@@ -164,7 +302,7 @@
                 </p>
               </div>
               <span
-                class="nf-stamp shrink-0 rounded-full bg-success px-3 py-1 text-xs font-semibold text-success-fg"
+                class="nf-stamp nf-on-success shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
                 >Emitida</span
               >
             </footer>
@@ -242,7 +380,7 @@
           <h2 class="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
             O que você faz no NotaFlow
           </h2>
-          <p class="mt-3 max-w-2xl text-muted">
+          <p class="mt-3 max-w-2xl text-fg/80">
             As telas abaixo são do produto, com dados fictícios.
           </p>
           <div class="mt-12 grid gap-4 md:grid-cols-6">
@@ -354,7 +492,7 @@
               </p>
               <div aria-hidden="true" class="mt-5 flex items-center">
                 <span class="flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand text-xs font-semibold text-surface">AL</span>
-                <span class="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand/70 text-xs font-semibold text-surface">BC</span>
+                <span class="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand text-xs font-semibold text-surface">BC</span>
                 <span class="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface bg-brand/40 text-xs font-semibold text-fg">MD</span>
                 <span class="ml-3 text-xs text-muted">dono · membro · membro</span>
               </div>
@@ -369,7 +507,7 @@
                 </p>
               </div>
               <div aria-hidden="true" class="flex items-center gap-3 text-sm">
-                <span class="rounded-full bg-danger/10 px-3 py-1 font-semibold text-danger">Cancelada</span>
+                <span class="nf-text-danger rounded-full bg-danger/10 px-3 py-1 font-semibold">Cancelada</span>
                 <span class="text-muted">Evento 101101 · erro no valor</span>
               </div>
             </article>
@@ -526,6 +664,69 @@
               <p class="mt-3 text-sm leading-relaxed text-muted">
                 Depois do cadastro, o NotaFlow busca no sistema nacional as notas da sua empresa e
                 cadastra os clientes delas. Você continua podendo usar o portal quando quiser.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Como emito uma NFS-e pelo emissor nacional?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Crie a conta, envie o cartão CNPJ e o certificado A1, informe a receita dos últimos 12
+                meses e escolha o cliente e o serviço. O NotaFlow monta a nota, assina com o seu
+                certificado e envia ao sistema nacional, que devolve a chave de acesso.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                O NotaFlow é do governo?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Não. O NotaFlow é um serviço da Vapulab que usa o sistema nacional da NFS-e, o mesmo do
+                portal do governo. A nota emitida aqui é a nota oficial, com chave de acesso, e aparece
+                também no portal da NFS-e.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Posso emitir nota para cliente no exterior?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Sim. Informe o valor em dólar ou euro. O valor em reais vem da PTAX de venda do Banco
+                Central, no boletim de fechamento da data de competência ou do último dia útil antes
+                dela.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Como cancelo uma nota?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Abra a nota emitida, escolha Cancelar, o motivo e uma justificativa. O NotaFlow registra o
+                evento de cancelamento no sistema nacional e guarda quem cancelou e quando.
+              </p>
+            </details>
+            <details class="group py-5">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Como sei se a minha cidade usa o sistema nacional?
+                <span aria-hidden="true" class="text-muted transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-muted">
+                Consulte a lista de municípios conveniados no portal da NFS-e, em gov.br/nfse. Se a sua
+                cidade ainda usa um sistema próprio, o NotaFlow ainda não emite para ela.
               </p>
             </details>
           </div>

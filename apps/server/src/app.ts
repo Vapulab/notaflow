@@ -237,7 +237,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     sentryDsn: config.sentry.webDsn,
     webRoot: deps.webRoot,
   });
-  if (deps.webRoot) registerWeb(app, deps.webRoot);
+  if (deps.webRoot) registerWeb(app, deps.webRoot, config.appOrigin);
   return app;
 }
 

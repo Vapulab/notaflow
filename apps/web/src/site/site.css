@@ -41,3 +41,20 @@
     }
   }
 }
+
+/* The theme's success and danger are too light for small text; these keep the hue at 4.5:1 or more. */
+.nf-on-success {
+  background-color: color-mix(in srgb, rgb(var(--color-success)) 72%, black);
+  color: rgb(var(--color-success-fg));
+}
+.nf-text-danger {
+  color: color-mix(in srgb, rgb(var(--color-danger)) 80%, black);
+}
+:is([data-theme='dark'] *).nf-text-danger {
+  color: color-mix(in srgb, rgb(var(--color-danger)) 55%, white);
+}
+@media (prefers-color-scheme: dark) {
+  :not([data-theme='light'] *).nf-text-danger {
+    color: color-mix(in srgb, rgb(var(--color-danger)) 55%, white);
+  }
+}

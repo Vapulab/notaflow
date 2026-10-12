@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
 
@@ -10,15 +10,68 @@ const STATIC_PAGES: [string, string][] = [
   ['/privacidade', 'privacidade.html'],
 ];
 
-export function registerWeb(app: FastifyInstance, webRoot: string): void {
-  app.register(fastifyStatic, { root: webRoot, wildcard: false, index: false });
+// The React app's screens (apps/web/src/router.ts); any other page path is a 404.
+const APP_PATHS = ['/app', '/admin', '/entrar', '/cadastro', '/recuperar-senha'];
+
+const IMMUTABLE = 'public, max-age=31536000, immutable';
+
+const FALLBACK_404 =
+  '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Página não encontrada | NotaFlow</title>' +
+  '<p>Página não encontrada. <a href="/">Ir para o NotaFlow</a></p></html>';
+
+export function registerWeb(app: FastifyInstance, webRoot: string, appOrigin: string): void {
+  const assets = join(webRoot, 'assets') + sep;
+  app.register(fastifyStatic, {
+    root: webRoot,
+    wildcard: false,
+    index: false,
+    cacheControl: false,
+    // Vite puts a content hash in every name under assets/, so a new build never reuses a cached file.
+    setHeaders: (reply, path) => {
+      reply.header('cache-control', path.startsWith(assets) ? IMMUTABLE : 'no-cache');
+    },
+  });
   for (const [path, file] of STATIC_PAGES) {
     if (existsSync(join(webRoot, file))) app.get(path, (_request, reply) => reply.sendFile(file));
   }
+
+  app.get('/robots.txt', (_request, reply) =>
+    reply.type('text/plain; charset=utf-8').send(robotsTxt(appOrigin)),
+  );
+  app.get('/sitemap.xml', (_request, reply) =>
+    reply.type('application/xml; charset=utf-8').send(sitemapXml(appOrigin)),
+  );
+
+  const notFoundPage = existsSync(join(webRoot, '404.html'));
+  // Without a built landing (development), the root opens the app.
+  const appAtRoot = !existsSync(join(webRoot, 'landing.html'));
   app.setNotFoundHandler((request, reply) => {
-    if (request.method === 'GET' && !isApiPath(request.url)) return reply.sendFile('index.html');
-    return reply.status(404).send({ error: 'not_found' });
+    if ((request.method !== 'GET' && request.method !== 'HEAD') || isApiPath(request.url)) {
+      return reply.status(404).send({ error: 'not_found' });
+    }
+    reply.header('x-robots-tag', 'noindex');
+    if (isAppPath(request.url, appAtRoot)) return reply.sendFile('index.html');
+    reply.status(404).header('cache-control', 'no-cache');
+    return notFoundPage
+      ? reply.sendFile('404.html')
+      : reply.type('text/html; charset=utf-8').send(FALLBACK_404);
   });
+}
+
+function isAppPath(url: string, appAtRoot: boolean): boolean {
+  const path = new URL(url, 'http://localhost').pathname;
+  if (appAtRoot && path === '/') return true;
+  return APP_PATHS.some((root) => path === root || path.startsWith(`${root}/`));
+}
+
+function robotsTxt(origin: string): string {
+  const disallow = [...APP_PATHS, '/api/'].map((path) => `Disallow: ${path}\n`).join('');
+  return `User-agent: *\nAllow: /\n${disallow}\nSitemap: ${origin}/sitemap.xml\n`;
+}
+
+function sitemapXml(origin: string): string {
+  const urls = STATIC_PAGES.map(([path]) => `  <url><loc>${origin}${path}</loc></url>\n`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}</urlset>\n`;
 }
 
 export function isApiPath(url: string): boolean {

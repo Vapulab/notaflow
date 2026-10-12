@@ -1,0 +1,39 @@
+# NotaFlow
+
+> NotaFlow é um emissor de nota fiscal de serviço (NFS-e) pelo sistema nacional da NFS-e, grátis, para empresas do Simples Nacional (ME e EPP). Ele emite, copia e cancela notas, calcula a alíquota do Simples pela receita dos últimos 12 meses e converte notas de exportação pela PTAX do Banco Central. É um produto da Vapulab, de Londrina/PR.
+
+## O que o NotaFlow faz
+
+- Emite NFS-e pelo sistema nacional (Sefin Nacional), assinada com o certificado e-CNPJ A1 da empresa, e devolve a chave de acesso.
+- Emite uma nota parecida com uma anterior, com os dados do cliente e do serviço já preenchidos.
+- Cancela notas com motivo e justificativa, e guarda quem cancelou e quando.
+- Calcula a alíquota do Simples Nacional (anexos III e V) e o ISS pela receita bruta dos últimos 12 meses (RBT12).
+- Converte o valor de notas para clientes no exterior pela PTAX de venda do Banco Central (boletim de fechamento) da data de competência.
+- Importa as notas que a empresa já emitiu no sistema nacional e cadastra os clientes delas.
+- Sugere os serviços pelas atividades (CNAE) da empresa.
+- Permite equipe e várias empresas na mesma conta.
+
+## Para quem é
+
+- Empresas do Simples Nacional (ME e EPP) que prestam serviços dos anexos III e V, como tecnologia, consultoria e design.
+- A cidade da empresa precisa emitir a NFS-e pelo sistema nacional. A lista de municípios conveniados está no portal da NFS-e (gov.br/nfse).
+- O MEI ainda não é atendido.
+- É preciso um certificado e-CNPJ A1 (arquivo .pfx ou .p12). O certificado A3, em cartão ou token, não funciona.
+
+## Preço
+
+Grátis, sem cartão de crédito e sem limite de notas. Se um dia houver cobrança, o usuário recebe o aviso antes.
+
+## Segurança e privacidade
+
+- O certificado fica cifrado com uma chave própria; a chave é destruída quando o certificado é trocado.
+- Nenhuma linha de nota ou cadastro é apagada sem registro, e cada ação tem trilha de auditoria.
+- Os dados ficam em servidor no Brasil.
+
+## Links
+
+- [Página inicial](https://notaflow.vapulab.com/): o produto, como funciona e perguntas frequentes.
+- [Criar conta](https://notaflow.vapulab.com/cadastro)
+- [Termos de uso](https://notaflow.vapulab.com/termos)
+- [Política de privacidade](https://notaflow.vapulab.com/privacidade)
+- Contato: contato@vapulab.com
