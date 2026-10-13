@@ -123,6 +123,22 @@ export function SignupPage() {
             <Button type="submit" variant="primary" disabled={busy}>
               Confirmar e-mail
             </Button>
+            <p className="text-xs text-muted">
+              Não chegou em alguns minutos? Olhe o spam e confira se o e-mail está certo.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                // A Turnstile token is good for one request; the form shows a new widget.
+                setToken(null);
+                setCode('');
+                setError(null);
+                setStep('form');
+              }}
+            >
+              Corrigir e-mail
+            </Button>
           </>
         )}
       </form>

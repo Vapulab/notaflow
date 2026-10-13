@@ -93,7 +93,7 @@ The "highest due step" rule means an old account gets only its latest reminder a
 
 | E-mail | Subject | Content |
 | --- | --- | --- |
-| Welcome (kind `welcome`, at signup) | Boas-vindas ao NotaFlow: sua primeira nota em 4 passos | What NotaFlow is and that it is free; the 4 steps; what to have at hand (CNPJ card, A1 certificate, revenue of the last 12 months); a "Continuar o cadastro" button |
+| Welcome (kind `welcome`, once the address is confirmed) | Boas-vindas ao NotaFlow: sua primeira nota em 4 passos | What NotaFlow is and that it is free; the 4 steps; what to have at hand (CNPJ card, A1 certificate, revenue of the last 12 months); a "Continuar o cadastro" button |
 | Activation, card, 1 | Falta só o cartão CNPJ | Where to download the card at the Receita site; NotaFlow reads the data |
 | Activation, card, 2 | Precisa de ajuda com o cadastro? | Short help; "responda este e-mail com a sua dúvida" |
 | Activation, certificate, 1 | Falta o certificado digital A1 | What an e-CNPJ A1 is, where to buy it (a certification authority), that an A3 token does not work, that the file stays encrypted |
@@ -112,7 +112,7 @@ Rules for all lifecycle e-mails:
 - The same layout and inline styles as the current templates, and a plain-text part.
 - Lincoln approves the final text of every e-mail before the merge.
 
-The welcome e-mail stays a service e-mail: no opt-out link, sent to every new user at signup as today.
+The welcome e-mail stays a service e-mail: no opt-out link, sent once to every new user when the address is confirmed (by the code, a code login, or Google). An unconfirmed address can be a typo, and a bounce hurts the sender reputation.
 
 ### Opt-out
 

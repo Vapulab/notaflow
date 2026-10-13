@@ -107,6 +107,21 @@ test('signup with a password sends a code, and only the code opens the session',
   expect(login.statusCode).toBe(200);
 });
 
+test('a password signup gets the welcome e-mail only after the code confirms the address, and once', async () => {
+  const welcome = () =>
+    t.mail.filter((m) => m.subject.startsWith('Boas-vindas ao NotaFlow')).length;
+  await post('/api/auth/sign-up/email', { email: 'nova@example.com', password: GOOD, name: 'Nova' });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(welcome()).toBe(0);
+
+  await post('/api/auth/email-otp/verify-email', { email: 'nova@example.com', otp: lastCode() });
+  await expect.poll(welcome).toBe(1);
+
+  await post('/api/auth/sign-in/email', { email: 'nova@example.com', password: GOOD });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(welcome()).toBe(1);
+});
+
 test('a user who never had a password creates one by reset code, and old sessions end', async () => {
   seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
   const old = await t.as('pessoa@example.com');

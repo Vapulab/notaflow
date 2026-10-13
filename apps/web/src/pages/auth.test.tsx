@@ -190,6 +190,35 @@ test('signup with a password, then the code from the e-mail', async () => {
   expect(JSON.parse(String(accepted?.init?.body))).toEqual({ version: '2026-10-11' });
 });
 
+test('the code step asks to check the e-mail, and "Corrigir e-mail" goes back to the form with it', async () => {
+  stubApi(config());
+  vi.mocked(authApi.signUpWithPassword).mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(<SignupPage />);
+  await user.type(await screen.findByLabelText('Nome'), 'Pessoa');
+  await user.type(screen.getByLabelText('E-mail'), 'pessoa@exampel.com');
+  await user.type(screen.getByLabelText('Senha'), 'uma-senha-boa');
+  await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+  await user.click(screen.getByRole('button', { name: 'Criar conta' }));
+  expect(
+    await screen.findByText(
+      'Não chegou em alguns minutos? Olhe o spam e confira se o e-mail está certo.',
+    ),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Corrigir e-mail' }));
+  const email = screen.getByLabelText('E-mail');
+  expect((email as HTMLInputElement).value).toBe('pessoa@exampel.com');
+  await user.clear(email);
+  await user.type(email, 'pessoa@example.com');
+  await user.click(screen.getByRole('button', { name: 'Criar conta' }));
+  expect(authApi.signUpWithPassword).toHaveBeenLastCalledWith(
+    'Pessoa',
+    'pessoa@example.com',
+    'uma-senha-boa',
+    null,
+  );
+});
+
 test('reset: e-mail, then code and new password, then a link to log in', async () => {
   stubApi(config());
   vi.mocked(authApi.requestReset).mockResolvedValue(undefined);

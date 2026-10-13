@@ -14,6 +14,7 @@ import {
   authPasskeys,
   authSessions,
   authVerifications,
+  mailOutbox,
   users,
 } from '../db/schema';
 import type { Mailer } from '../mail/mailer';
@@ -77,6 +78,23 @@ export function createAuth(deps: AuthDeps) {
     }
     inFlight.push(Date.now());
   };
+
+  // Only a confirmed address gets it: a typo would bounce, and bounces hurt the sender's reputation.
+  const welcomed = (email: string) =>
+    db
+      .select({ id: mailOutbox.id })
+      .from(mailOutbox)
+      .where(and(eq(mailOutbox.to, email), eq(mailOutbox.kind, 'welcome')))
+      .get() !== undefined;
+  const sendWelcome = (user: { email: string; name: string }) => {
+    if (welcomed(user.email)) return;
+    // Not awaited: a slow or failed welcome e-mail must not fail the signup.
+    mailer({ to: user.email, kind: 'welcome', ...welcomeEmail(user.name) }).catch(
+      (error: unknown) => deps.log?.(`welcome e-mail failed: ${String(error)}`),
+    );
+  };
+  // Requests that set email_verified; the update's after hook does not see what changed.
+  const verifying = new WeakSet<object>();
 
   // Better Auth finds users by e-mail without deleted_at, so a removed user is stopped here.
   const beforeSessionCreate = async (session: { userId: string }) => {
@@ -176,10 +194,7 @@ export function createAuth(deps: AuthDeps) {
           after: async (user) => {
             const ip = requestContext.getStore()?.ip;
             if (ip) reservationsOf(ip).shift();
-            // Not awaited: a slow or failed welcome e-mail must not fail the signup.
-            mailer({ to: user.email, kind: 'welcome', ...welcomeEmail(user.name) }).catch(
-              (error: unknown) => deps.log?.(`welcome e-mail failed: ${String(error)}`),
-            );
+            if (user.emailVerified) sendWelcome(user);
             audit.record({
               userEmail: user.email,
               accountId: null,
@@ -187,6 +202,16 @@ export function createAuth(deps: AuthDeps) {
               entity: user.id,
               result: 'ok',
             });
+          },
+        },
+        update: {
+          before: async (data) => {
+            const store = requestContext.getStore();
+            if (store && data.emailVerified === true) verifying.add(store);
+          },
+          after: async (user) => {
+            const store = requestContext.getStore();
+            if (store && verifying.has(store) && user.emailVerified) sendWelcome(user);
           },
         },
       },
