@@ -4,6 +4,7 @@ import { CodeField } from '../auth/CodeField';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
 import { track } from '../analytics/analytics';
+import { campaignOf, campaignProperties, withCampaign } from '../analytics/source';
 import { api, type Me } from '../api';
 import { LegalCheckbox } from '../components/LegalGate';
 import { errorText } from '../components/Layout';
@@ -32,6 +33,7 @@ export function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [legal, setLegal] = useState(false);
   const onToken = useCallback((value: string | null) => setToken(value), []);
+  const campaign = campaignOf(window.location.search);
 
   if (!config.data) return <PublicLoading />;
   const { signupOpen, turnstileSiteKey } = config.data;
@@ -53,12 +55,12 @@ export function SignupPage() {
     setError(null);
     try {
       if (step === 'form') {
-        await signUpWithPassword(name, email, password, token);
+        await signUpWithPassword(name, email, password, token, campaign);
         setStep('code');
       } else {
         await verifyEmail(email, code);
         await recordAcceptance();
-        track('signup_completed');
+        track('signup_completed', { method: 'password', ...campaignProperties(campaign) });
         navigate('/app', { replace: true });
       }
     } catch (failure) {
@@ -143,7 +145,8 @@ export function SignupPage() {
         )}
       </form>
       <p className="text-sm">
-        Prefere entrar sem senha, só com um código por e-mail? <Link href="/entrar">Entrar</Link>
+        Prefere entrar sem senha, só com um código por e-mail?{' '}
+        <Link href={withCampaign('/entrar', campaign)}>Entrar</Link>
       </p>
     </PublicLayout>
   );

@@ -27,27 +27,42 @@ export const POSTHOG_OPTIONS: Partial<PostHogConfig> = {
 };
 
 let client: PostHog | null = null;
+// Calls made before PostHog loads, replayed in order once it does; dropped when it never will.
+let waiting: ((posthog: PostHog) => void)[] | null = [];
 
 // Loaded on demand, so the app does not wait for it and runs the same without it.
 export async function startAnalytics(config: AnalyticsConfig | null): Promise<void> {
-  if (!config || client) return;
+  if (client) return;
+  if (!config) {
+    waiting = null;
+    return;
+  }
   try {
     const { default: posthog } = await import('posthog-js');
     posthog.init(config.token, { ...POSTHOG_OPTIONS, api_host: config.host });
     client = posthog;
+    for (const call of waiting ?? []) call(posthog);
   } catch {
     // A blocked or failed analytics script never breaks the app.
   }
+  waiting = null;
+}
+
+function withClient(call: (posthog: PostHog) => void): void {
+  if (client) call(client);
+  else waiting?.push(call);
 }
 
 // The internal id only, set as the id: identify() would merge a new anonymous id on every page load.
 export function identifyUser(userId: string): void {
-  if (!client || client.get_distinct_id() === userId) return;
-  client.reset({ bootstrap: { distinctID: userId, isIdentifiedID: true } });
+  withClient((posthog) => {
+    if (posthog.get_distinct_id() === userId) return;
+    posthog.reset({ bootstrap: { distinctID: userId, isIdentifiedID: true } });
+  });
 }
 
 export function track(event: AnalyticsEvent, properties?: Record<string, string | boolean>): void {
-  client?.capture(event, properties);
+  withClient((posthog) => posthog.capture(event, properties));
 }
 
 export function resetAnalytics(): void {
@@ -59,4 +74,5 @@ export type AnalyticsEvent = 'signup_completed' | 'onboarding_step' | 'invoice_i
 // For tests: forget the client between them.
 export function stopAnalytics(): void {
   client = null;
+  waiting = [];
 }

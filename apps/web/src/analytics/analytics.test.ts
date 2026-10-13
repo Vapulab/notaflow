@@ -44,6 +44,20 @@ test('without a token nothing loads, and events go nowhere', async () => {
   expect(posthog.capture).not.toHaveBeenCalled();
 });
 
+test('a user and events from before PostHog loads go out, in order, once it loads', async () => {
+  identifyUser('u1');
+  track('signup_completed', { method: 'google' });
+  expect(posthog.capture).not.toHaveBeenCalled();
+  await startAnalytics({ token: 'phc_x', host: 'https://us.i.posthog.com' });
+  expect(posthog.reset).toHaveBeenCalledWith({
+    bootstrap: { distinctID: 'u1', isIdentifiedID: true },
+  });
+  expect(posthog.capture).toHaveBeenCalledWith('signup_completed', { method: 'google' });
+  expect(posthog.reset.mock.invocationCallOrder[0]).toBeLessThan(
+    posthog.capture.mock.invocationCallOrder[0] ?? 0,
+  );
+});
+
 test('a user is known by the internal id alone, set as the id, so page loads do not pile up merged ids', async () => {
   await startAnalytics({ token: 'phc_x', host: 'https://us.i.posthog.com' });
   posthog.get_distinct_id = vi.fn(() => 'anon-1');

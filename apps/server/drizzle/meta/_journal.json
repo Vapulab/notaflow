@@ -120,6 +120,13 @@
       "when": 1791830897616,
       "tag": "0016_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1791897576033,
+      "tag": "0017_signup_source",
+      "breakpoints": true
     }
   ]
 }

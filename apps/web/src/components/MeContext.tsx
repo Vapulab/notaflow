@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError, type Environment, type Me } from '../api';
-import { identifyUser } from '../analytics/analytics';
+import { identifyUser, track } from '../analytics/analytics';
+import { takeGoogleSignup } from '../analytics/source';
 import { navigate } from '../router';
 import { useAsync } from './useAsync';
 
@@ -19,7 +20,11 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const signedOut = me.error instanceof ApiError && me.error.status === 401;
   const userId = me.data?.userId;
   useEffect(() => {
-    if (userId) identifyUser(userId);
+    if (!userId) return;
+    identifyUser(userId);
+    // After identify, so the signup counts for the user and not for an anonymous visitor.
+    const googleSignup = takeGoogleSignup();
+    if (googleSignup) track('signup_completed', googleSignup);
   }, [userId]);
   // No session: log in, then come back to this page.
   useEffect(() => {

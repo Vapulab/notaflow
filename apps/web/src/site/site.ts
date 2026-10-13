@@ -1,7 +1,10 @@
 import '../index.css';
 import './site.css';
 import { startAnalytics } from '../analytics/analytics';
+import { carryCampaign } from '../analytics/source';
 import { type ErrorTrackingConfig, startErrorTracking } from '../observability/errors';
+
+carryCampaign(document, window.location.search);
 
 // The public pages share the app's theme choice (the Malphas storage key) and its toggle.
 const THEME_KEY = 'malphas-theme';

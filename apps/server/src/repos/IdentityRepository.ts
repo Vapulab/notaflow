@@ -2,6 +2,7 @@ import type { AccountRole } from '@notaflow/core';
 import { and, eq, isNull, lt, or, type SQL, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { notDeleted } from '../db/stamps';
+import type { SignupSource } from '../auth/signupSource';
 import type { OnboardingStep } from '../onboarding/types';
 import { accounts, emitters, memberships, users } from '../db/schema';
 
@@ -72,6 +73,19 @@ export class IdentityRepository {
       .update(users)
       .set({ tourSeenAt: now, updatedAt: now, updatedBy: userId })
       .where(eq(users.id, userId))
+      .run();
+  }
+
+  // Only the first source counts: a later login with another link never changes it.
+  recordSignupSource(userId: string, origin: SignupSource): void {
+    this.db
+      .update(users)
+      .set({
+        signupSource: origin.source,
+        signupMedium: origin.medium,
+        signupCampaign: origin.campaign,
+      })
+      .where(and(eq(users.id, userId), isNull(users.signupSource)))
       .run();
   }
 

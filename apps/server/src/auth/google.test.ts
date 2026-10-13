@@ -53,11 +53,11 @@ const cookiesOf = (response: { headers: Record<string, unknown> }) =>
     .map((c) => String(c).split(';')[0]);
 
 // Starts the Google login, then comes back from Google with a code, as the browser would.
-async function googleLogin() {
+async function googleLogin(extra: object = {}) {
   const start = await t.app.inject({
     method: 'POST',
     url: '/api/auth/sign-in/social',
-    payload: { provider: 'google', callbackURL: '/app' },
+    payload: { provider: 'google', callbackURL: '/app', ...extra },
     remoteAddress: ip,
     headers: { origin: ORIGIN, 'content-type': 'application/json' },
   });
@@ -94,6 +94,19 @@ test('a verified Google e-mail of an existing user logs in that user and links G
     { action: 'auth.google_linked', detail: null, entity: a.userId },
     { action: 'auth.login', detail: 'google', entity: a.userId },
   ]);
+});
+
+test('a Google signup records the source that rode the OAuth state', async () => {
+  await start();
+  const back = await googleLogin({
+    additionalData: { signupSource: 'utm_source=instagram&utm_campaign=lancamento' },
+  });
+  expect(back.statusCode).toBe(302);
+  expect(
+    t.db.$client
+      .prepare('SELECT signup_source AS source, signup_campaign AS campaign FROM users WHERE email = ?')
+      .get('pessoa@example.com'),
+  ).toEqual({ source: 'instagram', campaign: 'lancamento' });
 });
 
 test('an unverified Google e-mail never takes over an existing user', async () => {
