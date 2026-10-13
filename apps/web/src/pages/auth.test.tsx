@@ -217,6 +217,7 @@ test('the code step asks to check the e-mail, and "Corrigir e-mail" goes back to
     'pessoa@example.com',
     'uma-senha-boa',
     null,
+    null,
   );
 });
 
