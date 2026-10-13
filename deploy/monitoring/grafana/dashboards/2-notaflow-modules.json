@@ -201,7 +201,8 @@
     {
       "id": 5,
       "type": "logs",
-      "title": "Warnings and errors",
+      "title": "Warnings and errors (empty means none)",
+      "description": "The warn, error, and fatal log lines of this module. 'No data' means the module logged none in the period: that is the healthy state.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -218,7 +219,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{project=\"notaflow\", module=\"$module\", level=~\"warn|error|fatal\"}",
+          "expr": "{project=\"notaflow\", module=~\"$module\", level=~\"warn|error|fatal\"}",
           "refId": "A",
           "legendFormat": ""
         }

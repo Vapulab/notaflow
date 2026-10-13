@@ -130,6 +130,7 @@
       "id": 2,
       "type": "logs",
       "title": "Logs",
+      "description": "",
       "datasource": {
         "type": "loki",
         "uid": "loki"
