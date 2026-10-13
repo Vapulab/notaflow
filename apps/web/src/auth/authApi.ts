@@ -1,3 +1,4 @@
+import { googleSignupReturn } from '../analytics/source';
 import { ApiError } from '../api';
 import { authClient } from './authClient';
 
@@ -24,8 +25,16 @@ export async function sendCode(
   await unwrap(authClient.emailOtp.sendVerificationOtp({ email, type, ...captcha(token) }));
 }
 
-export async function signInWithCode(email: string, otp: string): Promise<void> {
-  await unwrap(authClient.signIn.emailOtp({ email, otp }));
+// The server reads it only when the request creates the user (signupSource.ts).
+const source = (campaign: string | null) =>
+  campaign ? { fetchOptions: { headers: { 'x-notaflow-source': campaign } } } : {};
+
+export async function signInWithCode(
+  email: string,
+  otp: string,
+  campaign: string | null,
+): Promise<void> {
+  await unwrap(authClient.signIn.emailOtp({ email, otp, ...source(campaign) }));
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<void> {
@@ -37,8 +46,13 @@ export async function signUpWithPassword(
   email: string,
   password: string,
   token: string | null,
+  campaign: string | null,
 ): Promise<void> {
-  await unwrap(authClient.signUp.email({ name, email, password, ...captcha(token) }));
+  const headers = {
+    ...(token ? { 'x-captcha-response': token } : {}),
+    ...(campaign ? { 'x-notaflow-source': campaign } : {}),
+  };
+  await unwrap(authClient.signUp.email({ name, email, password, fetchOptions: { headers } }));
 }
 
 export async function verifyEmail(email: string, otp: string): Promise<void> {
@@ -57,8 +71,17 @@ export async function resetPassword(email: string, otp: string, password: string
 export async function signInWithGoogle(
   callbackURL: string,
   errorCallbackURL: string,
+  campaign: string | null,
 ): Promise<void> {
-  await unwrap(authClient.signIn.social({ provider: 'google', callbackURL, errorCallbackURL }));
+  await unwrap(
+    authClient.signIn.social({
+      provider: 'google',
+      callbackURL,
+      errorCallbackURL,
+      newUserCallbackURL: googleSignupReturn(campaign),
+      ...(campaign ? { additionalData: { signupSource: campaign } } : {}),
+    }),
+  );
 }
 
 export async function signInWithPasskey(): Promise<void> {

@@ -10,7 +10,12 @@ export interface PolicyNotice {
 }
 
 // An update that applies when published and is shown once in the app; null when there is none.
-export const POLICY_NOTICE: PolicyNotice | null = null;
+export const POLICY_NOTICE: PolicyNotice | null = {
+  id: '2026-10-13-signup-source',
+  date: '2026-10-13',
+  text: 'A política de privacidade agora diz que guardamos o link de campanha por onde a pessoa chegou ao cadastro.',
+  href: '/privacidade',
+};
 
 // The version that announced the lifecycle reminders: only users who accepted it, or a later one, get them.
 export const LIFECYCLE_LEGAL_VERSION = '2026-10-12.2';

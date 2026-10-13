@@ -6,6 +6,7 @@ import {
   signInWithPasskey,
   signInWithPassword,
 } from '../auth/authApi';
+import { campaignOf, withCampaign } from '../analytics/source';
 import { CodeField } from '../auth/CodeField';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
@@ -35,6 +36,8 @@ export function LoginPage() {
   const query = new URLSearchParams(window.location.search);
   const destination = safeDestination(query.get('volta'));
   const googleError = query.get('error');
+  // A code or Google login can create the user, so it carries the landing page's campaign too.
+  const campaign = campaignOf(window.location.search);
   const [mode, setMode] = useState<'code' | 'password'>('code');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -72,7 +75,7 @@ export function LoginPage() {
         () => setStep('code'),
       );
     }
-    return run(() => signInWithCode(email, code), done);
+    return run(() => signInWithCode(email, code, campaign), done);
   };
 
   return (
@@ -132,7 +135,7 @@ export function LoginPage() {
             <Button
               variant="secondary"
               disabled={busy}
-              onClick={() => run(() => signInWithGoogle(destination, '/entrar'))}
+              onClick={() => run(() => signInWithGoogle(destination, '/entrar', campaign))}
             >
               Entrar com Google
             </Button>
@@ -159,7 +162,7 @@ export function LoginPage() {
         </div>
       )}
       <p className="flex flex-wrap justify-between gap-2 text-sm">
-        <Link href="/cadastro">Criar conta</Link>
+        <Link href={withCampaign('/cadastro', campaign)}>Criar conta</Link>
         <Link href="/recuperar-senha" variant="muted">
           Esqueci minha senha
         </Link>

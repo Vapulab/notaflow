@@ -125,6 +125,13 @@ test('the privacy policy explains the reminder e-mails, their basis, and how to 
   expect(reminders).not.toContain('dia útil');
 });
 
+test('the privacy policy says it keeps the campaign link of the signup, why, and on what basis', () => {
+  const data = section(read('privacidade.html'), 'Que dados tratamos, para quê e com que base legal');
+  expect(data).toMatch(/link de campanha[^<]*cadastro/);
+  expect(data).toContain('canais de divulgação');
+  expect(read('privacidade.html')).toContain('Atualizada em 13 de outubro de 2026');
+});
+
 test('the terms and the policy separate a material change (acceptance, 15 days) from an update (notice)', () => {
   const terms = section(read('termos.html'), 'Mudanças nestes termos');
   const policy = section(read('privacidade.html'), 'Mudanças nesta política');

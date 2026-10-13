@@ -64,3 +64,19 @@ A finished account adds more emitters from Emitentes, through `POST /api/account
 ## Reminders
 
 An owner whose onboarding stops gets up to two reminder e-mails, on day 1 and day 4 after the account was created. The copy follows the step where the account stopped: the CNPJ card, the certificate, or the revenue. After onboarding ends (`accounts.onboarding_done_at`), an account with no production invoice issued by NotaFlow gets two more, on day 3 and day 7. The `LifecycleService` sends them, together with the reactivation e-mails; see the [Lifecycle E-mails RFC](../RFCS/2026/10/RFC_LIFECYCLE_EMAILS.md).
+
+## Signup source
+
+The `utm_*` of the link that brought a person stay on the user as `signup_source`, `signup_medium`, and `signup_campaign`. Only the first source counts.
+
+- **Landing page:** `carryCampaign` (`apps/web/src/analytics/source.ts`) copies the `utm_*` of the address to the `/cadastro` and `/entrar` links. The pages pass them on to each other.
+- **Password signup and code login:** the web app sends them in the `x-notaflow-source` header.
+- **Google:** they ride the OAuth state as `additionalData.signupSource`. `newUserCallbackURL` brings a new user back to `/app?cadastro=google`, so the app knows the login created the user.
+- **Server:** the `user.create` hook in `betterAuth.ts` reads the header or the OAuth state. `parseSignupSource` keeps only lowercase slugs of up to 100 characters; anything else is dropped.
+- **PostHog:** `signup_completed` carries `method` (`password` or `google`) and the `utm_*`. A code login that creates a user sends no event; the database still has its source.
+
+Signups by source, on the VPS:
+
+```sh
+docker exec -w /repo/apps/server notaflow-app-1 node -e "const D=require('better-sqlite3');const db=new D(process.env.DATABASE_PATH,{readonly:true});console.table(db.prepare('select signup_source, signup_medium, signup_campaign, count(*) n, sum(email_verified) verified from users group by 1,2,3 order by n desc').all())"
+```

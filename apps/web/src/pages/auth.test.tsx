@@ -78,7 +78,7 @@ test('a code login asks for the 6 digits and goes back where the user was', asyn
   expect(code.getAttribute('inputmode')).toBe('numeric');
   await user.type(code, '123456');
   await user.click(screen.getByRole('button', { name: 'Entrar' }));
-  expect(authApi.signInWithCode).toHaveBeenCalledWith('pessoa@example.com', '123456');
+  expect(authApi.signInWithCode).toHaveBeenCalledWith('pessoa@example.com', '123456', null);
   await waitFor(() => expect(window.location.pathname).toBe('/app/acc/notas'));
 });
 
@@ -175,6 +175,7 @@ test('signup with a password, then the code from the e-mail', async () => {
     'pessoa@example.com',
     'uma-senha-boa',
     'token-for-site',
+    null,
   );
   await user.type(await screen.findByLabelText('Código de 6 dígitos'), '654321');
   expect(
@@ -215,6 +216,7 @@ test('the code step asks to check the e-mail, and "Corrigir e-mail" goes back to
     'Pessoa',
     'pessoa@example.com',
     'uma-senha-boa',
+    null,
     null,
   );
 });
@@ -325,5 +327,48 @@ test('Google comes back to the login page on an error', async () => {
   const user = userEvent.setup();
   render(<LoginPage />);
   await user.click(await screen.findByRole('button', { name: 'Entrar com Google' }));
-  expect(authApi.signInWithGoogle).toHaveBeenCalledWith('/app', '/entrar');
+  expect(authApi.signInWithGoogle).toHaveBeenCalledWith('/app', '/entrar', null);
+});
+
+test('the utm_* of the address go with every way to sign up', async () => {
+  stubApi(config({ googleEnabled: true }));
+  vi.mocked(authApi.sendCode).mockResolvedValue(undefined);
+  vi.mocked(authApi.signInWithCode).mockResolvedValue(undefined);
+  vi.mocked(authApi.signInWithGoogle).mockResolvedValue(undefined);
+  window.history.replaceState(null, '', '/entrar?utm_source=instagram&utm_medium=bio&fbclid=x');
+  const user = userEvent.setup();
+  render(<LoginPage />);
+  await user.click(await screen.findByRole('button', { name: 'Entrar com Google' }));
+  expect(authApi.signInWithGoogle).toHaveBeenCalledWith(
+    '/app',
+    '/entrar',
+    'utm_source=instagram&utm_medium=bio',
+  );
+  await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com');
+  await user.click(screen.getByRole('button', { name: 'Enviar código' }));
+  await user.type(await screen.findByLabelText('Código de 6 dígitos'), '123456');
+  await user.click(screen.getByRole('button', { name: 'Entrar' }));
+  expect(authApi.signInWithCode).toHaveBeenCalledWith(
+    'pessoa@example.com',
+    '123456',
+    'utm_source=instagram&utm_medium=bio',
+  );
+  cleanup();
+
+  stubApi(config());
+  vi.mocked(authApi.signUpWithPassword).mockResolvedValue(undefined);
+  window.history.replaceState(null, '', '/cadastro?utm_source=whatsapp');
+  render(<SignupPage />);
+  await user.type(await screen.findByLabelText('Nome'), 'Pessoa');
+  await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com');
+  await user.type(screen.getByLabelText('Senha'), 'uma-senha-boa');
+  await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+  await user.click(screen.getByRole('button', { name: 'Criar conta' }));
+  expect(authApi.signUpWithPassword).toHaveBeenCalledWith(
+    'Pessoa',
+    'pessoa@example.com',
+    'uma-senha-boa',
+    null,
+    'utm_source=whatsapp',
+  );
 });

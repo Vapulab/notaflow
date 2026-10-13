@@ -3,7 +3,7 @@ import { passkey } from '@better-auth/passkey';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { GoogleOptions } from 'better-auth/social-providers';
-import { APIError } from 'better-auth/api';
+import { APIError, getOAuthState } from 'better-auth/api';
 import { captcha, emailOTP, haveIBeenPwned, testUtils } from 'better-auth/plugins';
 import { and, count, eq, gte, isNotNull } from 'drizzle-orm';
 import type { Config } from '../config';
@@ -20,7 +20,9 @@ import {
 import type { Mailer } from '../mail/mailer';
 import { codeEmail, existingAccountEmail, welcomeEmail } from '../mail/templates';
 import { AuditLog } from '../repos/AuditLog';
+import { IdentityRepository } from '../repos/IdentityRepository';
 import { authAuditHooks, recordGoogleLinked } from './authAudit';
+import { parseSignupSource, SIGNUP_SOURCE_HEADER, SIGNUP_SOURCE_STATE_KEY } from './signupSource';
 import { requestContext } from '../requestContext';
 
 // The server sets it from the request context on every call; a client's own value is dropped.
@@ -46,6 +48,16 @@ function refuse(status: 'FORBIDDEN' | 'TOO_MANY_REQUESTS', code: string): APIErr
 export function createAuth(deps: AuthDeps) {
   const { config, db, mailer } = deps;
   const audit = new AuditLog(db);
+  const identities = new IdentityRepository(db);
+
+  // Outside a Google login there is no OAuth state, and that is not an error.
+  const oauthStateValue = async (): Promise<unknown> => {
+    try {
+      return (await getOAuthState())?.[SIGNUP_SOURCE_STATE_KEY];
+    } catch {
+      return null;
+    }
+  };
 
   // Signups in flight per IP: the audit row is written after the user, so parallel requests reserve first.
   const reserved = new Map<string, number[]>();
@@ -191,9 +203,13 @@ export function createAuth(deps: AuthDeps) {
           before: async () => {
             await beforeUserCreate();
           },
-          after: async (user) => {
+          after: async (user, context) => {
             const ip = requestContext.getStore()?.ip;
             if (ip) reservationsOf(ip).shift();
+            const origin = parseSignupSource(
+              context?.headers?.get(SIGNUP_SOURCE_HEADER) ?? (await oauthStateValue()),
+            );
+            if (origin) identities.recordSignupSource(user.id, origin);
             if (user.emailVerified) sendWelcome(user);
             audit.record({
               userEmail: user.email,
