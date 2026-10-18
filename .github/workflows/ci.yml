@@ -20,8 +20,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pytest services/signer-py
-      - uses: gitleaks/gitleaks-action@v3
-        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+      # The gitleaks CLI, not gitleaks-action: the action needs a paid license in an org repo.
+      - name: Gitleaks
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git --redact --no-banner /repo
   monitoring:
     runs-on: ubuntu-latest
     steps:
