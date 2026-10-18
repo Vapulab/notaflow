@@ -1,6 +1,6 @@
 # Web UI
 
-The NotaFlow web app is React and Vite, styled with Malphas, the Vapulab design system. Malphas lives in the private repo `Vapulab/vapulab` (folder `malphas/`, MIT license) as Go templ components with a Tailwind 3 preset. NotaFlow is public and React, so it copies the Malphas theme and repeats the Malphas class strings in its own React components.
+The NotaFlow web app is React and Vite, styled with Malphas, the Vapulab design system. Malphas lives in the public repo `Vapulab/malphas` (MIT license) as Go templ components with a Tailwind 3 preset. NotaFlow is public and React, so it copies the Malphas theme and repeats the Malphas class strings in its own React components.
 
 ## Where things are
 
@@ -16,7 +16,7 @@ The NotaFlow web app is React and Vite, styled with Malphas, the Vapulab design 
 
 1. Pages use the components in `src/ui`. A page never invents a color: colors come only from the Malphas tokens (`bg-primary`, `text-fg`, `border-border`, `bg-danger/10`, ...). The test `src/ui/noRawColors.test.ts` fails on a Tailwind palette color or a hex value outside `src/malphas/`.
 2. A class string in `src/ui/classes.ts` matches the `.templ` component it comes from. Change Malphas first, then copy the change here.
-3. Do not edit the files in `src/malphas/`. Change them in `Vapulab/vapulab`, copy them again with the commands in `SOURCE.md`, and run `pnpm malphas:check`, which compares the copies with the repo (it needs `gh` logged in to an account that can read `Vapulab/vapulab`).
+3. Do not edit the files in `src/malphas/`. Change them in `Vapulab/malphas`, copy them again with the commands in `SOURCE.md`, and run `pnpm malphas:check`, which compares the copies with the repo (it needs `gh` logged in).
 4. No Alpine and no `malphas.js`: React owns behavior. The Malphas Modal becomes a native `<dialog>`, which brings the focus trap, Escape, and the inert background.
 
 ## Dark mode

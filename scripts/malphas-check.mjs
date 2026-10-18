@@ -3,12 +3,9 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const FILES = [
-  ['apps/web/src/malphas/tokens.css', 'malphas/theme/tokens.css'],
-  ['apps/web/src/malphas/preset.cjs', 'malphas/theme/preset.js'],
-  [
-    'apps/web/public/malphas-assets/fonts/SpaceGrotesk.woff2',
-    'malphas/assets/fonts/SpaceGrotesk.woff2',
-  ],
+  ['apps/web/src/malphas/tokens.css', 'theme/tokens.css'],
+  ['apps/web/src/malphas/preset.cjs', 'theme/preset.js'],
+  ['apps/web/public/malphas-assets/fonts/SpaceGrotesk.woff2', 'assets/fonts/SpaceGrotesk.woff2'],
 ];
 
 export function compareCopies(pairs) {
@@ -21,7 +18,7 @@ function remote(path) {
   delete env.GH_TOKEN;
   const base64 = execFileSync(
     'gh',
-    ['api', `repos/Vapulab/vapulab/contents/${path}`, '-q', '.content'],
+    ['api', `repos/Vapulab/malphas/contents/${path}`, '-q', '.content'],
     {
       env,
       encoding: 'utf8',
@@ -38,7 +35,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       remote: remote(path),
     })),
   );
-  if (differing.length === 0) console.log('Malphas copies match Vapulab/vapulab.');
+  if (differing.length === 0) console.log('Malphas copies match Vapulab/malphas.');
   else {
     console.log(`Malphas copies differ: ${differing.join(', ')}. Copy them again (see SOURCE.md).`);
     process.exitCode = 1;
