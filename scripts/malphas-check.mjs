@@ -21,7 +21,7 @@ function remote(path) {
   delete env.GH_TOKEN;
   const base64 = execFileSync(
     'gh',
-    ['api', `repos/darkanum/vapulab/contents/${path}`, '-q', '.content'],
+    ['api', `repos/Vapulab/vapulab/contents/${path}`, '-q', '.content'],
     {
       env,
       encoding: 'utf8',
@@ -38,7 +38,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       remote: remote(path),
     })),
   );
-  if (differing.length === 0) console.log('Malphas copies match darkanum/vapulab.');
+  if (differing.length === 0) console.log('Malphas copies match Vapulab/vapulab.');
   else {
     console.log(`Malphas copies differ: ${differing.join(', ')}. Copy them again (see SOURCE.md).`);
     process.exitCode = 1;
