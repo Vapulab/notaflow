@@ -1,5 +1,3 @@
-@import './malphas/tokens.css';
-
 /* The logo's navy, here and not in malphas/ (a copy); light blue in dark, where navy disappears. */
 :root {
   --color-brand: 18 23 116;
