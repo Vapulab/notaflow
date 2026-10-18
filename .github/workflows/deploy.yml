@@ -12,9 +12,6 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-env:
-  IMAGE: ghcr.io/${{ github.repository }}
-
 jobs:
   build:
     # A manual run deploys only production; an automatic one only a push that passed CI.
@@ -25,12 +22,16 @@ jobs:
       packages: write
     outputs:
       sha: ${{ steps.sha.outputs.sha }}
+      image: ${{ steps.image.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      # The owner is "Vapulab", but an image name must be lowercase.
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
@@ -42,8 +43,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ steps.sha.outputs.sha }}
-            ${{ env.IMAGE }}:latest
+            ${{ steps.image.outputs.image }}:${{ steps.sha.outputs.sha }}
+            ${{ steps.image.outputs.image }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -57,6 +58,7 @@ jobs:
       contents: read
       packages: read
     env:
+      IMAGE: ${{ needs.build.outputs.image }}
       TAG: ${{ needs.build.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

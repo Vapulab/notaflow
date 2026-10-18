@@ -1,6 +1,6 @@
 # Malphas theme (copied)
 
-These files are copies from the Malphas design system in `darkanum/vapulab` (MIT license), folder `malphas/`:
+These files are copies from the Malphas design system in `Vapulab/vapulab` (MIT license), folder `malphas/`:
 
 | Here                                                      | There                                     |
 | --------------------------------------------------------- | ----------------------------------------- |

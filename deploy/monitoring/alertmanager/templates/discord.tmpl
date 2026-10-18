@@ -8,5 +8,5 @@
 {{ if eq .Status "firing" }}🔴{{ else }}🟢{{ end }} {{ .Annotations.summary }}{{ if .Labels.module }} (module {{ .Labels.module }}){{ end }}
 {{ end -}}
 Panel: https://grafana.vapulab.com/d/overview
-What to do: https://github.com/darkanum/notaflow/blob/production/docs/TUTORIALS/MONITORING.md#alerts
+What to do: https://github.com/Vapulab/notaflow/blob/production/docs/TUTORIALS/MONITORING.md#alerts
 {{- end }}

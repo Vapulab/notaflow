@@ -52,10 +52,10 @@ docker compose exec app node --import tsx apps/server/src/seed.ts <email> "<name
 
 A red health check in the `Deploy` run means production is down: compose already replaced the container, and `.env` holds the new `IMAGE`. Roll back right away, as below, with the tag of the last good run.
 
-Every image is tagged with its commit. Put the older tag in `.env` and start it:
+Every image is tagged with its commit. Images built before the repo moved to the Vapulab org are in `ghcr.io/darkanum/notaflow`. Put the older tag in `.env` and start it:
 
 ```bash
-sed -i '/^IMAGE=/d' .env && echo IMAGE=ghcr.io/darkanum/notaflow:<older sha> >> .env
+sed -i '/^IMAGE=/d' .env && echo IMAGE=ghcr.io/vapulab/notaflow:<older sha> >> .env
 docker compose up -d
 ```
 
