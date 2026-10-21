@@ -134,6 +134,13 @@
       "when": 1792599161600,
       "tag": "0018_bug_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1792607461401,
+      "tag": "0019_bug_report_images",
+      "breakpoints": true
     }
   ]
 }

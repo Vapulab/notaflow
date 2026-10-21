@@ -4,7 +4,7 @@ NotaFlow is one app container behind a Cloudflare tunnel. A Fastify server holds
 
 A monitoring stack on the same VPS collects the app's metrics by module, the logs of every container, and alerts to Discord. Sentry receives the errors of the server and the browser, scrubbed of personal data. See the [Monitoring RFC](../RFCS/2026/10/RFC_MONITORING.md) and the [Monitoring tutorial](../../TUTORIALS/MONITORING.md).
 
-A bug that a customer reports in the app goes to a masked GitHub issue, a Discord message, and a Notion card. The GitHub issues webhook resolves the report when the issue closes. See the [Bug Reports RFC](../RFCS/2026/10/RFC_BUG_REPORTS.md).
+A bug that a customer reports in the app goes to a masked GitHub issue, a Discord message, and a Notion card. The GitHub issues webhook resolves the report when the issue closes. Its screenshots go to a private Cloudflare R2 bucket, never to those three systems, and the server deletes them 30 days after the fix. See the [Bug Reports RFC](../RFCS/2026/10/RFC_BUG_REPORTS.md).
 
 The C4 diagrams below go from the outside in. Their sources and how to change them are in [diagrams/](diagrams/README.md).
 
@@ -12,17 +12,17 @@ The C4 diagrams below go from the outside in. Their sources and how to change th
 
 Who uses NotaFlow, and which external systems it talks to.
 
-![C4 system context: the company user and the platform admin use NotaFlow; NotaFlow talks to the national NFS-e system, Resend, Google, Cloudflare, PostHog, Sentry, GitHub, Discord, Notion, and the public lookups](diagrams/c4-1-context.png)
+![C4 system context: the company user and the platform admin use NotaFlow; NotaFlow talks to the national NFS-e system, Resend, Google, Cloudflare, Cloudflare R2, PostHog, Sentry, GitHub, Discord, Notion, and the public lookups](diagrams/c4-1-context.png)
 
 ## Containers
 
 The parts that run: the web app and the public pages in the browser, the tunnel, the API server, the SQLite database, the CNPJ card parser, the backup timer, and the monitoring stack.
 
-![C4 containers: the browser reaches the API server through cloudflared; the server uses SQLite, a card parser child process, the national system, Resend, the lookups, and GitHub, Discord, and Notion for bug reports; the monitoring stack scrapes the server; errors go to Sentry](diagrams/c4-2-containers.png)
+![C4 containers: the browser reaches the API server through cloudflared; the server uses SQLite, a card parser child process, the national system, Resend, the lookups, GitHub, Discord, and Notion for bug reports, and R2 for the backups and the bug screenshots; the monitoring stack scrapes the server; errors go to Sentry](diagrams/c4-2-containers.png)
 
 ## Server Components
 
-Inside the API server: every request passes the auth hook, which gives the routes an account context; the services use the vault, the national provider, and the repositories. Each request is counted by module in the metrics, and each 5xx goes to the error reporter. The lifecycle service sends the onboarding, first-invoice, and reactivation reminders through the mail outbox. The bug reports component sends each report to GitHub, Notion, and Discord with retries.
+Inside the API server: every request passes the auth hook, which gives the routes an account context; the services use the vault, the national provider, and the repositories. Each request is counted by module in the metrics, and each 5xx goes to the error reporter. The lifecycle service sends the onboarding, first-invoice, and reactivation reminders through the mail outbox. The bug reports component sends each report to GitHub, Notion, and Discord with retries, and keeps its screenshots in R2.
 
 ![C4 components of the API server: auth hook, Better Auth, routes, onboarding, issue service, sync service, certificate vault, national provider, repositories, mail outbox, audit log, metrics, error reporter, lifecycle service, bug reports](diagrams/c4-3-server-components.png)
 

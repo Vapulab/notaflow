@@ -379,6 +379,64 @@
         },
         "textMode": "value_and_name"
       }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Imagens dos relatos",
+      "description": "Capturas de tela no R2 (guardadas) e apagadas 30 dias depois da correção (apagadas).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(notaflow_bug_report_images{state=\"stored\"})",
+          "refId": "A",
+          "legendFormat": "Guardadas"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(notaflow_bug_report_images{state=\"purged\"})",
+          "refId": "B",
+          "legendFormat": "Apagadas"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     }
   ],
   "annotations": {

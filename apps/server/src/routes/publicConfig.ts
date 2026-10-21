@@ -7,6 +7,8 @@ export function publicConfigRoutes(app: FastifyInstance, config: Config): void {
     googleEnabled: config.google !== null,
     turnstileSiteKey: config.turnstile?.siteKey ?? null,
     signupOpen: config.signup.open,
+    // The bug dialog offers screenshots only when the bucket is configured.
+    bugScreenshots: config.bugs.r2 !== null,
     posthog: config.posthog,
     sentry: config.sentry.webDsn
       ? { dsn: config.sentry.webDsn, release: config.sentry.release, environment: config.nodeEnv }

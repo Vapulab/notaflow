@@ -37,6 +37,15 @@ export interface BugChannels {
   githubWebhookSecret: string | null;
   discordWebhookUrl: string | null;
   notion: { token: string; databaseId: string } | null;
+  // The private bucket of the screenshots; null refuses images and keeps text-only reports.
+  r2: R2Settings | null;
+}
+
+export interface R2Settings {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
 }
 
 export class ConfigError extends Error {
@@ -157,6 +166,28 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     problems.push('DISCORD_BUG_WEBHOOK_URL must be an https URL');
   }
 
+  const r2Values = [
+    'R2_ACCOUNT_ID',
+    'R2_BUG_REPORTS_ACCESS_KEY_ID',
+    'R2_BUG_REPORTS_SECRET_ACCESS_KEY',
+    'R2_BUG_REPORTS_BUCKET',
+  ].map((name) => env[name] || '');
+  const [r2AccountId = '', r2KeyId = '', r2Secret = '', r2Bucket = ''] = r2Values;
+  const r2Set = r2Values.filter(Boolean).length;
+  if (r2Set > 0 && r2Set < 4) {
+    problems.push(
+      'R2_ACCOUNT_ID, R2_BUG_REPORTS_ACCESS_KEY_ID, R2_BUG_REPORTS_SECRET_ACCESS_KEY, and R2_BUG_REPORTS_BUCKET go together',
+    );
+  }
+  if (r2AccountId && !/^[0-9a-f]{32}$/.test(r2AccountId)) {
+    problems.push('R2_ACCOUNT_ID must be the 32-character Cloudflare account id');
+  }
+  if (r2Bucket && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(r2Bucket)) {
+    problems.push(
+      'R2_BUG_REPORTS_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
+    );
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
   return {
     nodeEnv: nodeEnv as Config['nodeEnv'],
@@ -193,6 +224,15 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       githubWebhookSecret: env.GITHUB_WEBHOOK_SECRET || null,
       discordWebhookUrl: discord,
       notion: Array.isArray(notion) ? { token: notion[0], databaseId: notion[1] } : null,
+      r2:
+        r2Set === 4
+          ? {
+              accountId: r2AccountId,
+              accessKeyId: r2KeyId,
+              secretAccessKey: r2Secret,
+              bucket: r2Bucket,
+            }
+          : null,
     },
     ...(fake ? { nacionalUrls: { sefin: `${fake}/SefinNacional`, adn: `${fake}/adn` } } : {}),
   };

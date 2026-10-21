@@ -1,5 +1,6 @@
 import { LegalGate } from './components/LegalGate';
 import { MeProvider } from './components/MeContext';
+import { AdminBugPage } from './pages/AdminBugPage';
 import { AdminPage } from './pages/AdminPage';
 import { CustomerPage } from './pages/CustomerPage';
 import { CustomersPage } from './pages/CustomersPage';
@@ -66,6 +67,8 @@ function Screen({ route }: { route: Route }) {
       return <MembersPage accountId={route.accountId} />;
     case 'admin':
       return <AdminPage />;
+    case 'adminBug':
+      return <AdminBugPage reportId={route.reportId} />;
     case 'profile':
       return <ProfilePage />;
     case 'onboarding':

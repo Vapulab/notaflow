@@ -259,6 +259,7 @@ test('every bug report channel is off until its variables are set', () => {
     githubWebhookSecret: null,
     discordWebhookUrl: null,
     notion: null,
+    r2: null,
   });
   expect(
     loadConfig({
@@ -275,7 +276,33 @@ test('every bug report channel is off until its variables are set', () => {
     githubWebhookSecret: 'hook-secret',
     discordWebhookUrl: 'https://discord.com/api/webhooks/1/abc',
     notion: { token: 'notion-token', databaseId: 'db-id' },
+    r2: null,
   });
+});
+
+const R2 = {
+  R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+  R2_BUG_REPORTS_ACCESS_KEY_ID: 'r2-key-id',
+  R2_BUG_REPORTS_SECRET_ACCESS_KEY: 'r2-secret',
+  R2_BUG_REPORTS_BUCKET: 'notaflow-bug-screenshots',
+};
+
+test('the screenshot bucket is on only with its four variables', () => {
+  expect(loadConfig({ ...base, ...R2 }).bugs.r2).toEqual({
+    accountId: R2.R2_ACCOUNT_ID,
+    accessKeyId: 'r2-key-id',
+    secretAccessKey: 'r2-secret',
+    bucket: 'notaflow-bug-screenshots',
+  });
+  expect(problemsOf({ ...base, ...R2, R2_BUG_REPORTS_SECRET_ACCESS_KEY: '' })).toContain(
+    'R2_ACCOUNT_ID, R2_BUG_REPORTS_ACCESS_KEY_ID, R2_BUG_REPORTS_SECRET_ACCESS_KEY, and R2_BUG_REPORTS_BUCKET go together',
+  );
+  expect(problemsOf({ ...base, ...R2, R2_ACCOUNT_ID: 'acc' })).toContain(
+    'R2_ACCOUNT_ID must be the 32-character Cloudflare account id',
+  );
+  expect(problemsOf({ ...base, ...R2, R2_BUG_REPORTS_BUCKET: 'Bugs_Bucket' })).toContain(
+    'R2_BUG_REPORTS_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
+  );
 });
 
 test('a bug channel with half of its pair, a bad repo, or a plain-http webhook is refused', () => {

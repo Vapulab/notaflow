@@ -14,6 +14,9 @@ export interface NotionCard {
   issueUrl: string | null;
   reportedAt: Date;
   reportId: string;
+  // The admin page of the report, where the team sees the screenshots.
+  adminUrl: string;
+  imageCount: number;
 }
 
 export interface DiscordEmbed {
@@ -90,11 +93,23 @@ const paragraph = (text: string) => ({
   type: 'paragraph',
   paragraph: { rich_text: text ? richText(text) : [] },
 });
+const link = (lead: string, text: string, url: string) => ({
+  object: 'block',
+  type: 'paragraph',
+  paragraph: {
+    rich_text: [
+      ...(lead ? [{ text: { content: lead } }] : []),
+      { text: { content: text, link: { url } } },
+    ],
+  },
+});
 const todo = (text: string) => ({
   object: 'block',
   type: 'to_do',
   to_do: { rich_text: richText(text), checked: false },
 });
+
+export const imagesText = (count: number) => `${count} ${count === 1 ? 'imagem' : 'imagens'}`;
 
 // The line of the issue body that names the report, so a retry can find an issue it already opened.
 export const reportLine = (reportId: string) => `NotaFlow report: \`${reportId}\``;
@@ -116,6 +131,11 @@ export function notionPageBody(databaseId: string, card: NotionCard) {
     children: [
       heading('O que aconteceu'),
       paragraph(card.description),
+      link(
+        card.imageCount > 0 ? `${imagesText(card.imageCount)}. ` : '',
+        'Abrir no painel do NotaFlow',
+        card.adminUrl,
+      ),
       heading('Passos para reproduzir'),
       paragraph(''),
       heading('Diagnóstico'),

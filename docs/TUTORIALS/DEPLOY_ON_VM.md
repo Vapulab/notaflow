@@ -32,6 +32,7 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `GITHUB_WEBHOOK_SECRET` | `/opt/notaflow/.env` | The secret of the `Issues` webhook of `Vapulab/notaflow` to `https://notaflow.vapulab.com/webhooks/github` (content type `application/json`). Without it, the route answers 404 |
 | `DISCORD_BUG_WEBHOOK_URL` | `/opt/notaflow/.env` | The webhook of the private Discord bugs channel. The URL is the credential: anyone with it can post |
 | `NOTION_TOKEN`, `NOTION_BUGS_DATABASE_ID` | `/opt/notaflow/.env` | The Notion integration token and the id of the bugs database. Share the database with the integration |
+| `R2_ACCOUNT_ID`, `R2_BUG_REPORTS_ACCESS_KEY_ID`, `R2_BUG_REPORTS_SECRET_ACCESS_KEY`, `R2_BUG_REPORTS_BUCKET` | `/opt/notaflow/.env` | The private bucket of the bug report screenshots and a token with Object Read and Write on it only. All four or none. Without them, the dialog hides the image picker. See [Bug report screenshots](#bug-report-screenshots) |
 | `VM_SSH_KEY`, `VM_KNOWN_HOSTS`, `VM_HOST` | Secrets of the GitHub environment `production`, which only the `production` branch can use | The deploy key (`notaflow-deploy` in `/root/.ssh/authorized_keys`, with `restrict`: no forwarding, no terminal) |
 
 To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_KEY /opt/notaflow/.env"` in your own terminal.
@@ -102,6 +103,32 @@ python3 -c "import sqlite3; print(sqlite3.connect('notaflow.db').execute('pragma
 ```
 
 Then copy `notaflow.db` into the volume as in "Restore" above. The first copy was restored this way on 2026-10-11: the integrity check printed `ok`, with 20 tables and 16 migrations.
+
+## Bug report screenshots
+
+The images that a customer attaches to a bug report go to a private Cloudflare R2 bucket. The app deletes them 30 days after the GitHub issue closes. Set it up once:
+
+1. In the Cloudflare dashboard, open **R2 Object Storage** and create the bucket `notaflow-bug-screenshots`. Keep the default location.
+2. In the bucket settings, keep **Public access** off: no `r2.dev` URL and no custom domain. Only the app reads the images, with its token.
+3. In **R2 Object Storage**, open **Manage API tokens** and create an account API token:
+   - Permissions: **Object Read & Write**.
+   - Specify bucket: `notaflow-bug-screenshots` only.
+   - TTL: forever.
+   - Client IP filtering: none. The app container can go out over IPv4 or IPv6, and a filter for one address family refuses the other.
+4. Copy the **Access Key ID** and the **Secret Access Key**. Cloudflare shows the secret one time only.
+5. Add the four variables to `/opt/notaflow/.env`:
+
+   ```bash
+   R2_ACCOUNT_ID=<the account id in the R2 overview, 32 characters>
+   R2_BUG_REPORTS_ACCESS_KEY_ID=<access key id>
+   R2_BUG_REPORTS_SECRET_ACCESS_KEY=<secret access key>
+   R2_BUG_REPORTS_BUCKET=notaflow-bug-screenshots
+   ```
+
+6. In the bucket settings, open **Object lifecycle rules** and add a rule: prefix `bug-reports/`, delete objects 400 days after upload. This rule is only a backstop. It removes an object that no row points to, for example after a crash between the upload and the database commit, and the images of a report that never closes.
+7. Run `docker compose up -d app`. Open the "Reportar bug" dialog: it now shows "Imagens (opcional)".
+
+Do not reuse the token of the off-site backups: each token reaches one bucket only. Do not set the lifecycle rule shorter than about a year: an open report keeps its images. The app deletes them itself every hour, for reports closed more than 30 days ago. The metric `notaflow_bug_report_images{state="stored|purged"}` counts them.
 
 ## Server hardening
 

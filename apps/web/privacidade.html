@@ -56,8 +56,8 @@
         Política de privacidade
       </h1>
       <p class="text-sm text-muted">
-        Versão 2026-10-12.2, de 12 de outubro de 2026. Atualizada em 13 de outubro de 2026: o link
-        de campanha do cadastro.
+        Versão 2026-10-12.2, de 12 de outubro de 2026. Atualizada em 21 de outubro de 2026: as
+        imagens anexadas a um relato de bug.
       </p>
 
       <p>
@@ -157,6 +157,11 @@
             <td>Exercício regular de direitos (VI)</td>
           </tr>
           <tr>
+            <td>Imagens que você anexa a um relato de bug (até 3 capturas de tela), que podem mostrar dados dos clientes da sua empresa</td>
+            <td>Reproduzir e corrigir o bug. Só a equipe do NotaFlow vê as imagens, na área de administração. Elas nunca vão para a issue pública no GitHub</td>
+            <td>Legítimo interesse (IX) em corrigir o serviço; para os dados dos clientes da sua empresa, como operadora, conforme as instruções dela</td>
+          </tr>
+          <tr>
             <td>Uso do serviço: páginas vistas, ações no app e gravações da navegação (cliques, rolagem e o desenho das telas) com todo texto e todo campo mascarados, de modo que nenhum nome, documento, valor ou senha aparece; tudo ligado a um identificador interno, sem o seu e-mail, nome ou IP</td>
             <td>Entender o uso, encontrar telas que confundem ou falham, e melhorar o produto</td>
             <td>Legítimo interesse (IX). Você pode se opor pelo privacidade@vapulab.com, e paramos de medir o seu uso.</td>
@@ -175,7 +180,7 @@
       <ul>
         <li><strong>Sistema nacional da NFS-e</strong> (governo federal): recebe as notas e os cancelamentos, e devolve as notas do emitente.</li>
         <li><strong>Hostinger, no Brasil</strong> (servidor virtual): guarda o banco de dados e as cópias de segurança, e executa o serviço.</li>
-        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile) e guarda uma cópia de segurança diária do banco de dados, cifrada antes de sair do nosso servidor, que ela não consegue ler.</li>
+        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile) e guarda uma cópia de segurança diária do banco de dados, cifrada antes de sair do nosso servidor, que ela não consegue ler. As imagens anexadas a um relato de bug ficam em um armazenamento privado dela (Cloudflare R2), sem acesso público.</li>
         <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha, de convite, de boas-vindas e de lembretes.</li>
         <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
         <li><strong>PostHog</strong> (EUA): medição de uso do produto e gravações da navegação com todo o texto mascarado, sem cookies, sem o seu e-mail e sem o seu IP.</li>
@@ -204,6 +209,7 @@
         <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 30 dias.</li>
         <li><strong>Gravações da navegação:</strong> até 30 dias no PostHog, sem nenhum texto legível.</li>
         <li><strong>Relatórios de erro:</strong> até 30 dias no Sentry.</li>
+        <li><strong>Imagens de um relato de bug:</strong> enquanto o bug está aberto e até 30 dias depois que ele é corrigido. Então as apagamos da Cloudflare. Se o bug voltar a ser aberto antes desse prazo, as imagens ficam até a nova correção.</li>
         <li><strong>Cópias de segurança:</strong> 14 dias no nosso servidor e 30 dias, cifradas, na Cloudflare. Um dado anonimizado sai das cópias quando elas vencem.</li>
       </ul>
       <p>

@@ -12,6 +12,8 @@ const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
 const BUG_INTERVAL_MS = 30_000;
 const LIFECYCLE_INTERVAL_MS = 15 * 60_000;
+// A daily job, checked every hour: a deploy restarts the process, so a 24-hour timer could never fire.
+const BUG_IMAGE_PURGE_INTERVAL_MS = 60 * 60_000;
 
 try {
   const config = loadConfig(process.env);
@@ -46,6 +48,14 @@ try {
     () => app.bugReports.deliverDue(),
     BUG_INTERVAL_MS,
     (error) => app.log.error({ err: error }, 'bug report delivery run failed'),
+  );
+  startScheduler(
+    async () => {
+      const purged = await app.bugReports.purgeImages();
+      if (purged > 0) app.log.info({ module: 'app', purged }, 'bug report images purged');
+    },
+    BUG_IMAGE_PURGE_INTERVAL_MS,
+    (error) => app.log.error({ err: error }, 'bug report image purge failed'),
   );
   startScheduler(
     async () => {

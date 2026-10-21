@@ -48,10 +48,14 @@ test('a notice that changed since the page loaded is refused', async () => {
   expect(stale.json()).toMatchObject({ error: 'policy_notice_changed' });
 });
 
-test('a notice never asks for acceptance, and this release has the Simples annexes one', async () => {
+test('a notice never asks for acceptance, and this release has the bug screenshots one', async () => {
   const s = await appWith(NOTICE);
   expect((await s.me()).legalAccepted).toBe(false);
-  expect(POLICY_NOTICE?.id).toBe('2026-10-21-simples-annexes');
+  expect(POLICY_NOTICE?.id).toBe('2026-10-21-bug-screenshots');
+  // One notice for both updates: the Simples annexes of the terms and the screenshots of the policy.
+  expect(POLICY_NOTICE?.text).toContain('Simples Nacional');
+  expect(POLICY_NOTICE?.text).toContain('relato de bug');
+  expect(POLICY_NOTICE?.href).toBe('/privacidade');
   const none = await appWith(null);
   expect((await none.me()).policyNotice).toBeNull();
 });

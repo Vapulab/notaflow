@@ -9,8 +9,9 @@ A secret never enters git. The repository is public, so a committed secret is a 
 | A tenant `.pfx` certificate and its password | In production: the encrypted vault in the database. Locally: a path outside the repo, named in `.env.local`. |
 | `NFSE_MASTER_KEY` | The VM `.env` file (mode `600`), and a copy in Lincoln's password manager. Never next to a backup. |
 | `TUNNEL_TOKEN` | The VM `.env` file. |
-| `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, `GITHUB_BUG_TOKEN`, `GITHUB_WEBHOOK_SECRET`, `DISCORD_BUG_WEBHOOK_URL`, `NOTION_TOKEN` | The VM `.env` file. Locally, `apps/server/.env.local`. |
+| `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, `GITHUB_BUG_TOKEN`, `GITHUB_WEBHOOK_SECRET`, `DISCORD_BUG_WEBHOOK_URL`, `NOTION_TOKEN`, `R2_BUG_REPORTS_ACCESS_KEY_ID`, `R2_BUG_REPORTS_SECRET_ACCESS_KEY` | The VM `.env` file. Locally, `apps/server/.env.local`. |
 | A real invoice XML, or any real CNPJ, customer name, or amount | Nowhere in the repo. It is tenant data. |
+| A bug report screenshot | Only in the private R2 bucket `R2_BUG_REPORTS_BUCKET`. Never in the repo, the database, GitHub, Notion, or Discord. It can show tenant data. |
 
 ## The guards
 
