@@ -89,6 +89,19 @@ const variants: Record<string, () => DpsInput> = {
       simplesTotalPercent,
     },
   }),
+  // IN RFB 2110/2022 puts the 11% retention on Anexo IV only: does the Sefin accept vRetCP from any Simples ME/EPP?
+  'domestic-inss': () => ({
+    ...base(1000),
+    customer: domesticCustomer,
+    service: service('Teste NotaFlow: nota nacional com INSS retido'),
+    tax: {
+      issqnTaxation: '1',
+      issRetention: '1',
+      pisCofins: { cst: '00', retention: '0' },
+      cpRetainedCents: 110,
+      simplesTotalPercent,
+    },
+  }),
   'export-built': () => {
     const country = env('NOTAFLOW_CUSTOMER_COUNTRY');
     return {
@@ -152,7 +165,7 @@ for (const [name, build] of Object.entries(variants)) {
   console.log(
     name,
     result.kind,
-    result.kind === 'rejected' ? JSON.stringify(result.errors.map((e) => `${e.codigo}: ${e.descricao}`)) : '',
+    result.kind === 'rejected' ? JSON.stringify(result.errors) : '',
   );
 }
 

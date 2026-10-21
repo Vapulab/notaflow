@@ -91,7 +91,7 @@ function roundTrip(template: DpsTemplate): DpsTemplate {
 }
 
 function expectValidAndInverse(template: DpsTemplate) {
-  expect(validateAgainstXsd(dpsXml(template), 'DPS_v1.01.xsd').errors).toEqual([]);
+  expect(validateAgainstXsd(dpsXml(template), 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
   expect(roundTrip(template)).toEqual(template);
 }
 

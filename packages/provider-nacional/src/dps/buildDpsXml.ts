@@ -1,12 +1,13 @@
 import { escapeXml } from '../xml/escapeXml';
 import { centsToDecimal, formatBrasiliaDateTime } from '../xml/formatters';
 import { buildDpsId } from './buildDpsId';
+import { type DpsLayout, dpsLayout } from './layout';
 import type { Address, DpsInput, ForeignAddress, ForeignTrade } from './types';
 
 export const NFSE_NAMESPACE = 'http://www.sped.fazenda.gov.br/nfse';
 export const SCHEMA_VERSION = '1.01';
 
-// Element order follows tiposComplexos_v1.01.xsd; the XSD test fails on any reorder.
+// Element order follows tiposComplexos_v1.01.xsd of each layout; the XSD tests fail on any reorder.
 export function buildDpsXml(input: DpsInput): { id: string; xml: string } {
   const id = buildDpsId({
     municipality: input.emitterMunicipality,
@@ -14,6 +15,7 @@ export function buildDpsXml(input: DpsInput): { id: string; xml: string } {
     series: input.series,
     number: input.number,
   });
+  const layout = dpsLayout(input.environment, input.issuedAt);
 
   const xml =
     `<DPS xmlns="${NFSE_NAMESPACE}" versao="${SCHEMA_VERSION}">` +
@@ -25,12 +27,14 @@ export function buildDpsXml(input: DpsInput): { id: string; xml: string } {
     tag('nDPS', String(input.number)) +
     tag('dCompet', input.competence) +
     tag('tpEmit', '1') +
+    // NT 009 moves finNFSe out of IBSCBS and makes it required; 0 is a regular NFS-e.
+    (layout === 'nt009' ? tag('finNFSe', input.ibsCbs?.purpose ?? '0') : '') +
     tag('cLocEmi', input.emitterMunicipality) +
     provider(input) +
     customer(input) +
-    service(input) +
+    service(input, layout) +
     amounts(input) +
-    ibsCbs(input) +
+    ibsCbs(input, layout) +
     `</infDPS></DPS>`;
 
   return { id, xml };
@@ -90,15 +94,17 @@ function address(a: Address | ForeignAddress): string {
   );
 }
 
-function service({ service: s }: DpsInput): string {
+function service({ service: s }: DpsInput, layout: DpsLayout): string {
+  const description = tag('xDescServ', s.description);
   return (
     '<serv><locPrest>' +
     tag('cLocPrestacao', s.municipality) +
     '</locPrest><cServ>' +
     tag('cTribNac', s.nationalTaxCode) +
     tag('cTribMun', s.municipalTaxCode) +
-    tag('xDescServ', s.description) +
+    (layout === 'nt004' ? description : '') +
     tag('cNBS', s.nbsCode) +
+    (layout === 'nt009' ? description : '') +
     '</cServ>' +
     (s.foreignTrade ? foreignTrade(s.foreignTrade) : '') +
     '</serv>'
@@ -152,17 +158,19 @@ function amounts({ amounts: a, tax: t }: DpsInput): string {
   );
 }
 
-function ibsCbs({ ibsCbs: g }: DpsInput): string {
+function ibsCbs({ ibsCbs: g }: DpsInput, layout: DpsLayout): string {
   if (!g) return '';
+  const classification = tag('CST', g.cst) + tag('cClassTrib', g.classCode);
   return (
     '<IBSCBS>' +
-    tag('finNFSe', g.purpose) +
+    (layout === 'nt004' ? tag('finNFSe', g.purpose) : '') +
     tag('indFinal', g.finalConsumer) +
     tag('cIndOp', g.operationCode) +
     tag('indDest', g.destination) +
-    '<valores><trib><gIBSCBS>' +
-    tag('CST', g.cst) +
-    tag('cClassTrib', g.classCode) +
-    '</gIBSCBS></trib></valores></IBSCBS>'
+    // NT 009 moves CST and cClassTrib up to trib; gIBSCBS is optional and has nothing for us.
+    (layout === 'nt004'
+      ? `<valores><trib><gIBSCBS>${classification}</gIBSCBS></trib></valores>`
+      : `<valores><trib>${classification}</trib></valores>`) +
+    '</IBSCBS>'
   );
 }

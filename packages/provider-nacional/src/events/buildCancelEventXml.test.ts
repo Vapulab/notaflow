@@ -16,7 +16,7 @@ const base: CancelEventInput = {
 
 test('builds a pedRegEvento that validates against the XSD', () => {
   expect(
-    validateAgainstXsd(buildCancelEventXml(base).xml, 'pedRegEvento_v1.01.xsd').errors,
+    validateAgainstXsd(buildCancelEventXml(base).xml, 'pedRegEvento_v1.01.xsd', 'nt004').errors,
   ).toEqual([]);
 });
 
@@ -33,6 +33,7 @@ test('accepts an access key with an alphanumeric CNPJ', () => {
     validateAgainstXsd(
       buildCancelEventXml({ ...base, accessKey: key }).xml,
       'pedRegEvento_v1.01.xsd',
+      'nt004',
     ).errors,
   ).toEqual([]);
 });

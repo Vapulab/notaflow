@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { validateAgainstXsd } from '../../test/xsd';
 import { buildDpsId } from './buildDpsId';
 import { buildDpsXml } from './buildDpsXml';
+import { dpsLayout } from './layout';
 import type { DpsInput } from './types';
 
 const base: DpsInput = {
@@ -69,7 +70,7 @@ describe('buildDpsId', () => {
 
 describe('buildDpsXml', () => {
   test('produces a DPS that validates against DPS_v1.01.xsd', () => {
-    const result = validateAgainstXsd(buildDpsXml(base).xml, 'DPS_v1.01.xsd');
+    const result = validateAgainstXsd(buildDpsXml(base).xml, 'DPS_v1.01.xsd', 'nt004');
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
   });
@@ -80,7 +81,7 @@ describe('buildDpsXml', () => {
       ...noCustomer,
       service: { municipality: '3550308', nationalTaxCode: '010101', description: 'Serviço' },
     };
-    expect(validateAgainstXsd(buildDpsXml(input).xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+    expect(validateAgainstXsd(buildDpsXml(input).xml, 'DPS_v1.01.xsd', 'nt004').errors).toEqual([]);
   });
 
   test('writes the fields the Sefin reads first', () => {
@@ -101,13 +102,13 @@ describe('buildDpsXml', () => {
       tax: { ...base.tax, pisCofins: { cst: '00', retention: '0' }, cpRetainedCents: 16500 },
     });
     expect(xml).toContain('<tpRetPisCofins>0</tpRetPisCofins></piscofins><vRetCP>165.00</vRetCP>');
-    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt004').errors).toEqual([]);
   });
 
   test('writes tribFed for a retained INSS without PIS and COFINS', () => {
     const { xml } = buildDpsXml({ ...base, tax: { ...base.tax, cpRetainedCents: 100 } });
     expect(xml).toContain('<tribFed><vRetCP>1.00</vRetCP></tribFed>');
-    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt004').errors).toEqual([]);
   });
 
   test('uses tpAmb 1 in production', () => {
@@ -123,7 +124,7 @@ describe('buildDpsXml', () => {
       certificate,
       profile: 'rsa-sha1-c14n',
     });
-    expect(validateAgainstXsd(signed, 'DPS_v1.01.xsd').errors).toEqual([]);
+    expect(validateAgainstXsd(signed, 'DPS_v1.01.xsd', 'nt004').errors).toEqual([]);
   });
 });
 
@@ -185,7 +186,9 @@ describe('buildDpsXml for a service exported to a foreign customer', () => {
   };
 
   test('validates against DPS_v1.01.xsd', () => {
-    expect(validateAgainstXsd(buildDpsXml(exportInput).xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+    expect(
+      validateAgainstXsd(buildDpsXml(exportInput).xml, 'DPS_v1.01.xsd', 'nt004').errors,
+    ).toEqual([]);
   });
 
   test('writes the foreign customer, the export group, and the IBS/CBS group', () => {
@@ -205,12 +208,50 @@ describe('buildDpsXml for a service exported to a foreign customer', () => {
       '<IBSCBS><finNFSe>0</finNFSe><indFinal>0</indFinal><cIndOp>100302</cIndOp><indDest>0</indDest><valores><trib><gIBSCBS><CST>410</CST><cClassTrib>410027</cClassTrib></gIBSCBS></trib></valores></IBSCBS>',
     );
   });
+
+  // Production keeps the NT 004 layout until 2026-11-30; produção restrita has NT 009 release 1.
+  describe('in each layout', () => {
+    const production = {
+      environment: 'producao' as const,
+      issuedAt: new Date('2026-11-30T12:00:00Z'),
+    };
+    const restrictedNow = { issuedAt: new Date('2026-10-21T12:00:00Z') };
+
+    test.each([
+      ['a domestic DPS', base],
+      ['an export DPS', exportInput],
+    ])('%s validates against the schema of its layout, in both layouts', (_name, input) => {
+      for (const variant of [
+        { ...input, ...restrictedNow },
+        { ...input, ...production },
+      ]) {
+        const layout = dpsLayout(variant.environment, variant.issuedAt);
+        const { errors } = validateAgainstXsd(buildDpsXml(variant).xml, 'DPS_v1.01.xsd', layout);
+        expect(errors, layout).toEqual([]);
+      }
+    });
+
+    test('NT 009 writes finNFSe after tpEmit, and xDescServ after cNBS', () => {
+      const { xml } = buildDpsXml({ ...base, ...restrictedNow });
+      expect(xml).toContain('<tpEmit>1</tpEmit><finNFSe>0</finNFSe><cLocEmi>');
+      expect(xml).toMatch(/<cNBS>115022000<\/cNBS><xDescServ>/);
+    });
+
+    test('NT 004 keeps finNFSe and the classification inside IBSCBS, and xDescServ before cNBS', () => {
+      const { xml } = buildDpsXml({ ...exportInput, ...production });
+      expect(xml).toContain('<tpEmit>1</tpEmit><cLocEmi>');
+      expect(xml).toMatch(/<\/xDescServ><cNBS>/);
+      expect(xml).toContain(
+        '<IBSCBS><finNFSe>0</finNFSe><indFinal>0</indFinal><cIndOp>100302</cIndOp><indDest>0</indDest><valores><trib><gIBSCBS><CST>410</CST><cClassTrib>410027</cClassTrib></gIBSCBS></trib></valores></IBSCBS>',
+      );
+    });
+  });
 });
 
 test('the XSD check rejects a DPS with elements out of order', () => {
   const { xml } = buildDpsXml(base);
   const swapped = xml.replace(/(<tpAmb>.*?<\/tpAmb>)(<dhEmi>.*?<\/dhEmi>)/, '$2$1');
-  const result = validateAgainstXsd(swapped, 'DPS_v1.01.xsd');
+  const result = validateAgainstXsd(swapped, 'DPS_v1.01.xsd', 'nt004');
   expect(result.valid).toBe(false);
   expect(result.errors.join(' ')).toContain('dhEmi');
 });
