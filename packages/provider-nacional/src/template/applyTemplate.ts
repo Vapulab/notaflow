@@ -7,13 +7,24 @@ export function applyTemplate(
   template: DpsTemplate,
   request: IssueRequest & { environment: Environment; appVersion: string },
 ): DpsInput {
-  const { serviceCents: _templateAmount, ...copy } = template;
+  const { serviceCents: templateAmount, ...copy } = template;
   // The Sefin accepts a zero amount (Stage 0 Results), so the app refuses it.
   if (request.serviceCents <= 0) throw new RangeError('The service amount must be above zero.');
   const foreignTrade = copy.service.foreignTrade;
   if (foreignTrade && !request.foreignAmountCents) {
     throw new RangeError('An export invoice needs the amount in the foreign currency.');
   }
+  const cp = copy.tax.cpRetainedCents;
+  // A new amount keeps the share of the retained INSS, so a copy still retains 11% of the base.
+  const tax = {
+    ...copy.tax,
+    ...(cp !== undefined
+      ? { cpRetainedCents: Math.round((cp * request.serviceCents) / templateAmount) }
+      : {}),
+    ...(request.simplesPercent !== undefined
+      ? { simplesTotalPercent: percentText(request.simplesPercent) }
+      : {}),
+  };
   return {
     ...copy,
     environment: request.environment,
@@ -31,9 +42,7 @@ export function applyTemplate(
         : {}),
     },
     amounts: { serviceCents: request.serviceCents },
-    ...(request.simplesPercent !== undefined
-      ? { tax: { ...copy.tax, simplesTotalPercent: percentText(request.simplesPercent) } }
-      : {}),
+    tax,
   };
 }
 

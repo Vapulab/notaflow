@@ -160,6 +160,27 @@ describe('buildTemplate', () => {
     });
   });
 
+  test('a retained INSS writes vRetCP and survives a copy', () => {
+    const template = buildTemplate({ ...domestic, inssRetainedCents: 16500 });
+    expect(template.tax.cpRetainedCents).toBe(16500);
+    expectValidAndInverse(template);
+  });
+
+  test('a retained INSS is refused for a customer that is not a CNPJ', () => {
+    const cpf = { ...domestic.customer, document: { type: 'CPF' as const, value: '11144477735' } };
+    expect(() => buildTemplate({ ...domestic, customer: cpf, inssRetainedCents: 100 })).toThrow(
+      RangeError,
+    );
+    expect(() => buildTemplate({ ...abroad, inssRetainedCents: 100 })).toThrow(RangeError);
+  });
+
+  test('a retained INSS must be above zero and below the service amount', () => {
+    expect(() => buildTemplate({ ...domestic, inssRetainedCents: 0 })).toThrow(RangeError);
+    expect(() =>
+      buildTemplate({ ...domestic, inssRetainedCents: domestic.serviceCents }),
+    ).toThrow(RangeError);
+  });
+
   test('a retained ISS without a rate is refused', () => {
     const { issRate: _rate, ...noRate } = domestic;
     expect(() => buildTemplate({ ...noRate, issRetained: true })).toThrow(RangeError);

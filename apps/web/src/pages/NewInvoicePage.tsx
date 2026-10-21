@@ -266,7 +266,12 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   const more = form.more;
   const complete =
     more && service
-      ? completeBody(more, service, { canRetain, abroad, bandIss: config.rates.iss })
+      ? completeBody(more, service, {
+          canRetain,
+          abroad,
+          bandIss: config.rates.iss,
+          serviceCents: brlCents,
+        })
       : { body: {}, changes: [] as string[] };
   const setMore = (patch: Partial<Complete>) =>
     setForm((f) => (f.more ? { ...f, more: { ...f.more, ...patch } } : f));
@@ -601,6 +606,25 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 ISS retido pelo cliente
               </label>
             )}
+            {canRetain && (
+              <label className="flex items-center gap-2 text-sm text-fg">
+                <input
+                  type="checkbox"
+                  checked={more.inssRetained}
+                  onChange={(e) =>
+                    setMore({
+                      inssRetained: e.target.checked,
+                      // Lei 8.212, art. 31: 11% of the service, less what the contract allows.
+                      inssAmount:
+                        e.target.checked && brlCents !== null
+                          ? centsInput(Math.round(brlCents * 0.11))
+                          : '',
+                    })
+                  }
+                />
+                INSS retido pelo cliente
+              </label>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {canRetain && more.issRetained && (
                 <Field
@@ -615,6 +639,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                     unit="%"
                     value={more.issRate}
                     onValueChange={(text) => setMore({ issRate: text })}
+                  />
+                </Field>
+              )}
+              {canRetain && more.inssRetained && (
+                <Field
+                  label="INSS retido (R$)"
+                  hint="11% do valor do serviço. Ajuste se o contrato desconta materiais ou equipamentos."
+                >
+                  <AmountInput
+                    unit="R$"
+                    value={more.inssAmount}
+                    onValueChange={(text) => setMore({ inssAmount: text })}
                   />
                 </Field>
               )}

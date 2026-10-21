@@ -88,7 +88,8 @@ export const ERROR_TEXT: Record<string, string> = {
   invalid_description: 'Informe uma descrição do serviço.',
   foreign_amount_not_allowed: 'Cliente no Brasil: a nota é só em reais.',
   emitter_not_simples: 'Este emitente não é ME/EPP do Simples Nacional.',
-  retention_not_allowed: 'Só um cliente pessoa jurídica no Brasil pode reter o ISS.',
+  retention_not_allowed: 'Só um cliente pessoa jurídica no Brasil pode reter o ISS ou o INSS.',
+  invalid_inss_retention: 'O INSS retido precisa ser menor que o valor do serviço.',
   invalid_iss_rate: 'Alíquota de ISS inválida para este serviço.',
   invalid_text:
     'Há caracteres que a nota fiscal não aceita. Use só letras, números e pontuação comuns.',

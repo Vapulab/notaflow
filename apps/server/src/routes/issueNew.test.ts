@@ -257,6 +257,47 @@ test('retention is refused for a customer abroad or a CPF, and needs a rate abov
   expect(new InvoiceRepository(t.db).list(ctx, { limit: 10, offset: 0 }).total).toBe(0);
 });
 
+test('a retained INSS goes to vRetCP for a CNPJ customer', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const response = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 150000,
+    inssRetainedCents: 16500,
+  });
+  expect(response.statusCode).toBe(201);
+  expect(xmlOf(t, s.a, response.json<{ id: string }>().id)).toContain('<vRetCP>165.00</vRetCP>');
+});
+
+test('a retained INSS is refused for a customer abroad and above the service amount', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const cases = [
+    [
+      {
+        customerId: s.abroadId,
+        foreignCurrency: '220',
+        foreignAmountCents: 100,
+        inssRetainedCents: 100,
+      },
+      'retention_not_allowed',
+    ],
+    [{ customerId: s.brazilId, inssRetainedCents: 123400 }, 'invalid_inss_retention'],
+  ] as const;
+  for (const [extra, error] of cases) {
+    const response = await s.call('POST', '/invoices/new', {
+      emitterId: s.emitterId,
+      serviceId: s.serviceId,
+      competence: COMPETENCE,
+      serviceCents: 123400,
+      ...extra,
+    });
+    expect(response.statusCode, error).toBe(400);
+    expect(response.json()).toMatchObject({ error });
+  }
+});
+
 test('reconcile refuses an unreadable stored template before it audits or sends anything', async () => {
   const s = await withNewInvoiceSetup(t);
   t.fake.next('issue', { kind: 'reply', status: 503, body: 'down' });

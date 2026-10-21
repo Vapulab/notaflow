@@ -1,5 +1,5 @@
 import type { FiscalConfig, Service, ServiceCode, ServiceExport } from '../api';
-import { formatServiceCode, parsePercent, percentInput } from '../format';
+import { centsInput, formatServiceCode, parseCents, parsePercent, percentInput } from '../format';
 
 export type ExportField = keyof ServiceExport;
 export const EXPORT_FIELDS: ExportField[] = [
@@ -15,6 +15,8 @@ export const EXPORT_FIELDS: ExportField[] = [
 export interface Complete {
   issRetained: boolean;
   issRate: string;
+  inssRetained: boolean;
+  inssAmount: string;
   simplesOther: string;
   code: ServiceCode | null;
   municipalTaxCode: string;
@@ -31,6 +33,8 @@ export function completeFrom(service: Service | null, config: FiscalConfig): Com
   return {
     issRetained: false,
     issRate: retainedRate === null ? '' : percentInput(retainedRate),
+    inssRetained: false,
+    inssAmount: '',
     simplesOther: '',
     ...serviceFields(service),
   };
@@ -56,6 +60,7 @@ export function serviceFields(service: Service | null) {
 export interface CompleteBody {
   issRetained?: true;
   issRate?: number;
+  inssRetainedCents?: number;
   simplesPercent?: number;
   overrides?: Record<string, unknown>;
 }
@@ -66,7 +71,12 @@ export function completeBody(
   more: Complete,
   service: Service,
   // bandIss: the ISS share of the band, which the server applies when no rate is sent.
-  options: { canRetain: boolean; abroad: boolean; bandIss: number | null },
+  options: {
+    canRetain: boolean;
+    abroad: boolean;
+    bandIss: number | null;
+    serviceCents: number | null;
+  },
 ): { body: CompleteBody; changes: string[] } | null {
   const body: CompleteBody = {};
   const changes: string[] = [];
@@ -77,6 +87,13 @@ export function completeBody(
     body.issRetained = true;
     if (rate !== options.bandIss) body.issRate = rate;
     changes.push(`ISS retido pelo cliente: ${percentInput(rate)}%`);
+  }
+  if (options.canRetain && more.inssRetained) {
+    const cents = parseCents(more.inssAmount);
+    if (cents === null || cents <= 0 || options.serviceCents === null) return null;
+    if (cents >= options.serviceCents) return null;
+    body.inssRetainedCents = cents;
+    changes.push(`INSS retido pelo cliente: R$ ${centsInput(cents)}`);
   }
   if (more.simplesOther.trim()) {
     const percent = parsePercent(more.simplesOther);

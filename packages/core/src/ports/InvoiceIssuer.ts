@@ -51,6 +51,7 @@ export interface NewInvoiceInput {
   simplesPercent: number; // hundredths
   issRate?: number; // hundredths; only written when the ISS is retained
   issRetained?: boolean;
+  inssRetainedCents?: number; // the INSS a CNPJ customer retains (vRetCP)
 }
 
 export type IssueOutcome =

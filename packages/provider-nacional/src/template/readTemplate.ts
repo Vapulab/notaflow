@@ -32,7 +32,7 @@ const SUPPORTED = new Set(
   serv/comExt/mecAFComexP serv/comExt/mecAFComexT serv/comExt/movTempBens serv/comExt/mdic
   valores/vServPrest/vServ
   valores/trib/tribMun/tribISSQN valores/trib/tribMun/cPaisResult valores/trib/tribMun/tpRetISSQN valores/trib/tribMun/pAliq
-  valores/trib/tribFed/piscofins/CST valores/trib/tribFed/piscofins/tpRetPisCofins
+  valores/trib/tribFed/piscofins/CST valores/trib/tribFed/piscofins/tpRetPisCofins valores/trib/tribFed/vRetCP
   valores/trib/totTrib/pTotTribSN valores/trib/totTrib/indTotTrib
   IBSCBS/finNFSe IBSCBS/indFinal IBSCBS/cIndOp IBSCBS/indDest
   IBSCBS/valores/trib/gIBSCBS/CST IBSCBS/valores/trib/gIBSCBS/cClassTrib`.split(/\s+/),
@@ -149,8 +149,10 @@ function foreignTradeOf(comExt: Element): ForeignTrade {
 function taxOf(trib: Element): Tax {
   const resultCountry = text(trib, 'tribMun', 'cPaisResult');
   const issRatePercent = text(trib, 'tribMun', 'pAliq');
-  const pisCofins = child(trib, 'tribFed');
+  const tribFed = child(trib, 'tribFed');
+  const pisCofins = tribFed && child(tribFed, 'piscofins') ? tribFed : undefined;
   const retention = pisCofins ? text(pisCofins, 'piscofins', 'tpRetPisCofins') : undefined;
+  const cpRetained = text(trib, 'tribFed', 'vRetCP');
   const simplesTotalPercent = text(trib, 'totTrib', 'pTotTribSN');
   return {
     issqnTaxation: requiredText(trib, 'tribMun', 'tribISSQN') as Tax['issqnTaxation'],
@@ -165,6 +167,7 @@ function taxOf(trib: Element): Tax {
           },
         }
       : {}),
+    ...(cpRetained ? { cpRetainedCents: decimalToCents(cpRetained) } : {}),
     ...(simplesTotalPercent ? { simplesTotalPercent } : {}),
   };
 }

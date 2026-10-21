@@ -42,6 +42,13 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
   ) {
     throw new RangeError('The ISS rate is below the legal minimum for this service.');
   }
+  const inss = input.inssRetainedCents;
+  if (inss !== undefined && customer.document?.type !== 'CNPJ') {
+    throw new RangeError('Only a CNPJ customer retains the INSS.');
+  }
+  if (inss !== undefined && (inss <= 0 || inss >= input.serviceCents)) {
+    throw new RangeError('The retained INSS must be above zero and below the service amount.');
+  }
   // The Sefin refuses pAliq from a Simples ME/EPP unless the ISS is retained (E0625).
   const issRatePercent =
     retained && rules.usesIssRate && input.issRate !== undefined
@@ -78,6 +85,7 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ...(issRatePercent ? { issRatePercent } : {}),
       // PIS and COFINS do not apply to an export of services (08), whatever the service says.
       pisCofins: { cst: abroad ? '08' : (service.pisCofinsCst ?? '00'), retention: '0' },
+      ...(inss !== undefined ? { cpRetainedCents: inss } : {}),
       simplesTotalPercent: percentText(input.simplesPercent),
     },
     // 2026: the group is optional for the Simples; a service's codes describe its export.
