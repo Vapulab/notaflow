@@ -13,8 +13,7 @@ const FATOR_R = [
   '8591100',
   '8592901',
   '9313100',
-  // §5º-B XVIII architecture; §5º-I VI to XII engineering, tests, research, design, advertising, translation,
-  // agronomy, and other intellectual services: divisions 71 to 73, group 741, class 7490 (not diving).
+  // §5º-B XVIII and §5º-I VI to XII: architecture, engineering, and other intellectual services.
   '71',
   '72',
   '73',

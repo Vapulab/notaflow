@@ -10,6 +10,7 @@ import {
   RBT12_LABEL,
   ratesLine,
   revenueIsStale,
+  simplesBand,
   useSimplesRates,
 } from '../components/simplesRates';
 import { centsInput, formatDate, parseCents, parsePercent, percentInput } from '../format';
@@ -51,7 +52,8 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
     unchanged && config.rates && config.simplesBand
       ? { band: config.simplesBand, ...config.rates }
       : preview.rates;
-  const asksBand6 = asksBand6Iss(annex, rates?.band ?? null);
+  // The local band: the preview waits 300 ms, and a save before it must still ask.
+  const asksBand6 = asksBand6Iss(annex, simplesBand(rbt12Cents));
   const band6Unanswered =
     asksBand6Iss(config.simplesAnnex, config.simplesBand) && !config.simplesBand6Iss;
 

@@ -117,8 +117,7 @@ describe('simplesIssRate', () => {
   });
 });
 
-// CGSN 140, art. 21 III b and art. 24 I: in band 6 the ISS stays in the DAS until the impediment of
-// LC 123, art. 20 §1º and §1º-A, takes effect.
+// CGSN 140, art. 21 III b and art. 24 I: the ISS stays in the DAS until the impediment takes effect.
 describe('band 6 with the ISS still in the DAS', () => {
   test('PGDAS-D manual, Exemplo 8: the part under the sublimit pays 18.60% + 6.09968%', () => {
     // Anexo III, RBT12 4,500,000: band 6 (1,485,000 - 648,000) / 4,500,000 = 18.60%;

@@ -23,6 +23,15 @@ export function isSimplesAnnex(value: string): value is SimplesAnnex {
   return ANNEX_OPTIONS.some(([annex]) => annex === value);
 }
 
+// The Simples Nacional bands, by gross revenue of the last 12 months (LC 123/2006), in cents.
+const BAND_LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
+
+export function simplesBand(revenueCents: number | null): number | null {
+  if (revenueCents === null) return null;
+  const index = BAND_LIMITS.findIndex((limit) => revenueCents <= limit);
+  return index === -1 ? null : index + 1;
+}
+
 export function isBand6Iss(value: string): value is Band6Iss {
   return value === 'under_sublimit' || value === 'over_sublimit' || value === 'outside';
 }

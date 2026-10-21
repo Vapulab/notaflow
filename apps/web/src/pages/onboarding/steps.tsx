@@ -18,6 +18,7 @@ import {
   asksBand6Iss,
   isSimplesAnnex,
   issOutsideDas,
+  simplesBand,
 } from '../../components/simplesRates';
 import { useAsync } from '../../components/useAsync';
 import { fileToBase64, formatCnpj, parseCents, parsePercent } from '../../format';
@@ -322,14 +323,6 @@ export function CertificateStep(props: {
   );
 }
 
-// The Simples Nacional bands, by gross revenue of the last 12 months (LC 123/2006), in cents.
-const BAND_LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
-
-function bandOf(revenueCents: number): number | null {
-  const index = BAND_LIMITS.findIndex((limit) => revenueCents <= limit);
-  return index === -1 ? null : index + 1;
-}
-
 function formatCnae(cnae: string): string {
   return /^\d{7}$/.test(cnae) ? `${cnae.slice(0, 4)}-${cnae.slice(4, 5)}/${cnae.slice(5)}` : cnae;
 }
@@ -358,7 +351,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const { busy, error, run } = useStepAction();
 
   const revenueCents = parseCents(revenue);
-  const band = revenueCents === null ? null : bandOf(revenueCents);
+  const band = simplesBand(revenueCents);
   const overLimit = revenueCents !== null && band === null;
   // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
   const annex =

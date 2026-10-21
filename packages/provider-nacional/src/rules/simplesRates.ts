@@ -73,22 +73,22 @@ const TABLES: Record<SimplesAnnex, Band[]> = {
 };
 
 // Band 5 of Anexos III and IV: the ISS is at most 5%; above the threshold the rest is split like this.
-// Anexo V prints no cap; its shares are the band 5 federal ones (14.10 / 76.50, 3.05 / 76.50), and
-// its threshold is above the band 5 maximum (21.275%), so only band 6 with the ISS in the DAS uses it.
+// Anexo V prints no cap: its band 5 maximum (21.275%) stays under the threshold, so only band 6 uses it.
 const BAND5_CAP: Partial<Record<SimplesAnnex, { threshold: number; cofins: number; pis: number }>> =
   {
     III: { threshold: 14.92537, cofins: 0.1928, pis: 0.0418 },
     IV: { threshold: 12.5, cofins: 0.3013, pis: 0.0654 },
-    V: { threshold: 5 / 0.235, cofins: 0.1843, pis: 0.0399 },
+    V: { threshold: 5 / 0.235, cofins: 14.1 / 76.5, pis: 3.05 / 76.5 },
   };
 const ISS_CAP = 5;
 const SUBLIMIT = 360_000_000;
 
-// Where the ISS of a band 6 revenue goes (CGSN 140, art. 21 III b and art. 24 I; LC 123, art. 20 §1º).
-// under_sublimit: this year's revenue is not above R$ 3.6 million, so the ISS stays in the DAS.
-// over_sublimit: it is above, but the impediment does not take effect yet; the ISS stays in the DAS.
-// outside: the impediment is in effect; the ISS goes to the municipality.
-export const BAND6_ISS = ['under_sublimit', 'over_sublimit', 'outside'] as const;
+// Where a band 6 ISS goes (CGSN 140, art. 21 III b and art. 24 I; LC 123, art. 20 §1º and §1º-A).
+export const BAND6_ISS = [
+  'under_sublimit', // neither this year's nor last year's revenue passed R$ 3.6 million: in the DAS
+  'over_sublimit', // this year's passed it; the ISS leaves the DAS next month or in January
+  'outside', // last year's passed it, or the ISS already left this year: to the municipality
+] as const;
 export type Band6Iss = (typeof BAND6_ISS)[number];
 
 export interface SimplesOptions {
@@ -120,8 +120,7 @@ function effectivePercent(row: Band, rbt12Cents: number): number {
 const exportShare = ({ cofins, pis, iss = 0, icms = 0, ipi = 0 }: Share) =>
   (cofins + pis + iss + icms + ipi) / 10_000;
 
-// The Simples percent of a revenue: the total, the ISS in the DAS (null without one), and the total
-// on an export, which leaves out the Cofins, the PIS, the ISS, the ICMS, and the IPI.
+// The Simples percent (an export leaves out Cofins, PIS, ISS, ICMS, IPI) and the ISS in the DAS, or null.
 export function simplesBreakdown(
   annex: SimplesAnnex,
   rbt12Cents: number,

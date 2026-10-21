@@ -332,6 +332,20 @@ test('in band 6 under the sublimit the ISS stays in the DAS and comes from band 
   });
 });
 
+test('a save in band 6 before the rates preview answers still asks where the ISS goes', async () => {
+  // The preview never answers, so only the local band can show the question.
+  const calls = stubApi(routes({ [`${base}/simples-rates`]: () => new Promise(() => {}) }));
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  const revenue = await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
+  await user.clear(revenue);
+  await user.type(revenue, '450000000');
+  expect(screen.getByLabelText('ISS na faixa 6')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  expect(await screen.findByText('Informe se o ISS ainda é pago no DAS.')).toBeTruthy();
+  expect(calls.some((c) => c.init?.method === 'PUT')).toBe(false);
+});
+
 test('a band 6 configuration saved before the question asks for the answer', async () => {
   stubApi(
     routes({
