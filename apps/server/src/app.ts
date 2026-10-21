@@ -42,6 +42,7 @@ import { AuditLog } from './repos/AuditLog';
 import { lifecycleEmail } from './mail/templates';
 import { LifecycleRepository } from './repos/LifecycleRepository';
 import { meRoutes } from './routes/me';
+import { guideRoutes } from './routes/guide';
 import { publicConfigRoutes } from './routes/publicConfig';
 import { adminMailRoutes } from './routes/adminMail';
 import { memberRoutes } from './routes/members';
@@ -255,6 +256,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
   publicConfigRoutes(app, config);
+  guideRoutes(app, {
+    db,
+    config,
+    ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
+  });
   meRoutes(app, db, deps.policyNotice === undefined ? POLICY_NOTICE : deps.policyNotice);
   adminRoutes(app, db);
   memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });

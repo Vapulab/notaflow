@@ -18,6 +18,8 @@ export function registerAuth(
     // The matched route, not the raw URL: the router decodes %61pi to api before matching.
     const route = request.routeOptions.url;
     if (route === '/api/health' || route === '/api/public/config') return;
+    // The guide's public routes check their own origin, content type, and rate.
+    if (route === '/api/public/cnpj-regime/:cnpj' || route === '/api/public/waitlist') return;
     // Better Auth checks the origin of its own routes and needs no session to log in.
     if (route?.startsWith('/api/auth/')) return;
     if (route !== undefined ? !route.startsWith('/api/') : !isApiPath(request.url)) return;

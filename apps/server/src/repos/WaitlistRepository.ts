@@ -5,14 +5,14 @@ import type { Database } from '../db/openDatabase';
 import { waitlistSignups } from '../db/schema';
 import { created, notDeleted, softDelete, touched } from '../db/stamps';
 
-export type WaitlistInterest = 'mei' | 'lucro_presumido' | 'certificate';
+export const WAITLIST_INTERESTS = ['mei', 'lucro_presumido', 'certificate'] as const;
 
-const INTERESTS: WaitlistInterest[] = ['mei', 'lucro_presumido', 'certificate'];
+export type WaitlistInterest = (typeof WAITLIST_INTERESTS)[number];
 
 function parseInterests(json: string): WaitlistInterest[] {
   const parsed: unknown = JSON.parse(json);
   return Array.isArray(parsed)
-    ? parsed.filter((i): i is WaitlistInterest => INTERESTS.includes(i))
+    ? parsed.filter((i): i is WaitlistInterest => WAITLIST_INTERESTS.includes(i))
     : [];
 }
 
