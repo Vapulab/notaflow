@@ -12,6 +12,9 @@ flowchart TB
   lookups["<b>Public lookups</b><br/><i>[External systems]</i><br/>BrasilAPI and CNPJá (CNPJ), ViaCEP (CEP), Banco Central (PTAX), Have I Been Pwned (k-anonymity)."]
   posthog["<b>PostHog</b><br/><i>[External system]</i><br/>Product analytics, no cookies, internal user id only."]
   sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Error reports from the server and the browser, scrubbed of personal data."]
+  github["<b>GitHub</b><br/><i>[External system]</i><br/>Public repository Vapulab/notaflow: one masked issue of type Bug per bug report. Its webhook tells when an issue closes."]
+  discord["<b>Discord</b><br/><i>[External system]</i><br/>Private channel for new and resolved bugs."]
+  notion["<b>Notion</b><br/><i>[External system]</i><br/>Bugs database: one card per bug report, with the full text."]
 
   owner -- "Uses, in the browser [HTTPS]" --> notaflow
   admin -- "Administers [HTTPS]" --> notaflow
@@ -24,10 +27,14 @@ flowchart TB
   owner -. "Page views and product events [HTTPS]" .-> posthog
   notaflow -. "Error reports [HTTPS]" .-> sentry
   resend -. "Delivers e-mail" .-> owner
+  notaflow -- "Opens bug issues [HTTPS API]" --> github
+  github -- "Issue closed or reopened [HTTPS webhook]" --> notaflow
+  notaflow -- "Bug messages [HTTPS webhook]" --> discord
+  notaflow -- "Bug cards and status [HTTPS API]" --> notion
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
   classDef system fill:#1168bd,stroke:#0b4884,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class owner,admin person
   class notaflow system
-  class nacional,resend,google,cloudflare,lookups,posthog,sentry external
+  class nacional,resend,google,cloudflare,lookups,posthog,sentry,github,discord,notion external

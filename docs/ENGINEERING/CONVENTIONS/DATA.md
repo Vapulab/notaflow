@@ -4,7 +4,7 @@ NotaFlow never deletes a business row, and every row says who created, changed, 
 
 ## Business tables
 
-`accounts`, `users`, `memberships`, `emitters`, `certificates`, `customers`, `services`, `invoices`, `invoice_events`, `sync_state`, and `account_documents` (the CNPJ cards of onboarding, gzipped). The list lives in `apps/server/src/db/businessTables.ts`. A new table goes there, or it is `audit_log`; a test fails otherwise.
+`accounts`, `users`, `memberships`, `emitters`, `certificates`, `customers`, `services`, `invoices`, `invoice_events`, `sync_state`, `account_documents` (the CNPJ cards of onboarding, gzipped), and `bug_reports`. The list lives in `apps/server/src/db/businessTables.ts`. A new table goes there, or it is `audit_log`; a test fails otherwise.
 
 ## Control columns
 

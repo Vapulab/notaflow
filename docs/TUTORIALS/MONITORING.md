@@ -16,6 +16,7 @@ The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [dep
 | 3. VPS and containers | See the CPU, memory, disk, and network of the host and of each container. |
 | 4. Logs | Search the logs. Filter by container and by NotaFlow module, and type a text in **Search**. |
 | 5. Negócio | See the accounts, users, companies in production, invoices issued by NotaFlow, cancellations, and imported invoices, and each of them per day. Test data (produção restrita) is in a closed row at the bottom. |
+| 6. Bugs | See the bugs reported in the app: all, active (issue open), and resolved (issue closed), and the deliveries to GitHub, Discord, and Notion that wait or failed. |
 
 The panels come from the files in `deploy/monitoring/grafana/dashboards`. A change made in the Grafana UI is not saved. To change a panel, edit its JSON file and install it again (see below).
 
@@ -30,6 +31,7 @@ The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them wit
 | InvoicesFailing | Look at the invoice in the app. An `uncertain` result needs a reconcile. |
 | SyncStale | Look at the sync errors of the emitter in panel 4 (module `sync`). |
 | DeadLetters | Retry the e-mails in `/admin`. |
+| BugDeliveriesFailed | Read `last_error` in `bug_report_deliveries` (see the [Bug Reports RFC](../ENGINEERING/RFCS/2026/10/RFC_BUG_REPORTS.md)). Fix the token or the URL, then set the row back to `pending` with `attempts` 0. |
 | CertificateExpiring | Ask the company for a new A1 certificate. |
 | BackupStale, BackupMissing | Run `systemctl status notaflow-backup.service notaflow-offsite-backup.service` on the VPS. |
 | DiskFilling | Run `docker system df` and remove old images with `docker image prune`. |
