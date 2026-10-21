@@ -8,7 +8,8 @@ export function createRateLimiter(options: {
     const recent = (hits.get(key) ?? []).filter((at) => at > now - options.windowMs);
     const allowed = recent.length < options.max;
     if (allowed) recent.push(now);
-    hits.set(key, recent);
+    if (recent.length > 0) hits.set(key, recent);
+    else hits.delete(key);
     return allowed;
   };
 }

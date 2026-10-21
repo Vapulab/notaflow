@@ -6,6 +6,7 @@ import type { Database } from '../db/openDatabase';
 import { isValidCnpj } from '../domain/documents';
 import { HttpError } from '../httpError';
 import { LookupError, lookupCnpj } from '../onboarding/cnpjLookup';
+import { requestContext } from '../requestContext';
 import { createRateLimiter } from '../rateLimit';
 import {
   WAITLIST_INTERESTS,
@@ -14,6 +15,9 @@ import {
 } from '../repos/WaitlistRepository';
 
 const HOUR = 60 * 60 * 1000;
+
+// Behind the tunnel request.ip is cloudflared's; the visitor's address is in the request context.
+const visitorIp = (request: { ip: string }) => requestContext.getStore()?.ip ?? request.ip;
 
 const REGIME = { '1': 'other', '2': 'mei', '3': 'simples' } as const;
 
@@ -27,7 +31,7 @@ export function guideRoutes(
   const waitlistLimit = createRateLimiter({ windowMs: HOUR, max: 10 });
 
   app.get<{ Params: { cnpj: string } }>('/api/public/cnpj-regime/:cnpj', async (request) => {
-    if (!cnpjLimit(request.ip)) throw new HttpError(429, 'too_many_requests');
+    if (!cnpjLimit(visitorIp(request))) throw new HttpError(429, 'too_many_requests');
     const cnpj = request.params.cnpj.replace(/[.\-/\s]/g, '').toUpperCase();
     if (!isValidCnpj(cnpj)) throw new HttpError(400, 'invalid_cnpj');
     try {
@@ -84,11 +88,11 @@ export function guideRoutes(
       },
     },
     async (request, reply) => {
-      if (!waitlistLimit(request.ip)) throw new HttpError(429, 'too_many_requests');
+      if (!waitlistLimit(visitorIp(request))) throw new HttpError(429, 'too_many_requests');
       const { turnstile } = deps.config;
       if (turnstile) {
         const token = request.body.turnstileToken;
-        if (!token || !(await verifyTurnstile(turnstile.secretKey, token, request.ip))) {
+        if (!token || !(await verifyTurnstile(turnstile.secretKey, token, visitorIp(request)))) {
           throw new HttpError(403, 'captcha_failed');
         }
       }

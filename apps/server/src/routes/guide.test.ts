@@ -121,6 +121,24 @@ describe('regime by CNPJ', () => {
   });
 });
 
+describe('behind the tunnel', () => {
+  beforeEach(() => boot({ TRUST_CLOUDFLARE_IP: 'true' }));
+
+  test('each visitor has their own limit, by cf-connecting-ip', async () => {
+    brasil(200, brasilBody());
+    const from = (visitor: string) =>
+      t.app.inject({
+        method: 'GET',
+        url: `/api/public/cnpj-regime/${CNPJ}`,
+        remoteAddress: '172.18.0.5',
+        headers: { 'cf-connecting-ip': visitor },
+      });
+    for (let i = 0; i < 30; i += 1) expect((await from('203.0.113.1')).statusCode).toBe(200);
+    expect((await from('203.0.113.1')).statusCode).toBe(429);
+    expect((await from('203.0.113.2')).statusCode).toBe(200);
+  });
+});
+
 describe('notify-me list', () => {
   const post = (body: object, headers: Record<string, string> = {}, remoteAddress = ip) =>
     t.app.inject({
