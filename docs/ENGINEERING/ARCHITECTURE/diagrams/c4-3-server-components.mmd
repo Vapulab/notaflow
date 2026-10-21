@@ -17,6 +17,7 @@ flowchart TB
     metrics["<b>Metrics</b><br/><i>[Component: metrics/*, prom-client]</i><br/>Requests, errors, and latency by module; invoices, syncs, mail queue, certificates, backups. Port 9464, never public."]
     lifecycle["<b>Lifecycle service</b><br/><i>[Component: lifecycle/*]</i><br/>Every 15 minutes in business hours: onboarding, first-invoice, and reactivation reminders to owners; signed opt-out."]
     errors["<b>Error reporter</b><br/><i>[Component: observability/errors, @sentry/node]</i><br/>Reports each 5xx with its module; removes e-mails, documents, cookies, headers, and queries first."]
+    bugs["<b>Bug reports</b><br/><i>[Component: bugs/*]</i><br/>Stores each report, masks personal data for the public issue, retries GitHub, Notion, and Discord after 1, 5, 30, 120 minutes; the issues webhook resolves a report."]
     audit["<b>Audit log</b><br/><i>[Component: repos/AuditLog]</i><br/>Append-only: who, what, when, IP, browser, request id."]
   end
 
@@ -25,6 +26,7 @@ flowchart TB
   resend["<b>Resend</b><br/><i>[External system]</i>"]
   lookups["<b>Public lookups</b><br/><i>[External systems]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i>"]
+  bugtools["<b>GitHub, Discord, Notion</b><br/><i>[External systems]</i>"]
 
   web -- "JSON [HTTPS]" --> authhook
   authhook -- "Session from" --> betterauth
@@ -59,12 +61,16 @@ flowchart TB
   lifecycle -- "Queues reminders" --> outbox
   routes -- "Unhandled errors" --> errors
   errors -- "Scrubbed events [HTTPS]" --> sentry
+  routes -- "Bug reports" --> bugs
+  bugs --> repos
+  bugs -- "Issue, message, card [HTTPS]" --> bugtools
+  bugtools -- "Issues webhook [HTTPS]" --> bugs
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
   classDef container fill:#438dd5,stroke:#2e6295,color:#fff
   classDef component fill:#85bbf0,stroke:#5d82a8,color:#0b2540
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class web,db container
-  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors,lifecycle component
-  class nacional,resend,lookups,sentry external
+  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors,lifecycle,bugs component
+  class nacional,resend,lookups,sentry,bugtools external
   style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

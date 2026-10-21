@@ -28,6 +28,10 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `TRUST_CLOUDFLARE_IP` | `/opt/notaflow/.env` | `true` in production: the client IP is Cloudflare's `cf-connecting-ip`, so the per-IP limits see each visitor. Elsewhere `false`, so no one can pick an IP |
 | `POSTHOG_TOKEN`, `POSTHOG_HOST` | `/opt/notaflow/.env` | The PostHog project key (public by design) and host; the host defaults to `https://us.i.posthog.com`. Without the key, the app sends no analytics |
 | `SENTRY_DSN_SERVER`, `SENTRY_DSN_WEB` | `/opt/notaflow/.env` | The DSNs of the Sentry projects `notaflow-server` and `notaflow-web`. The release is the image tag. Without a DSN, that side reports no errors. In each project, turn on "Prevent Storing of IP Addresses" |
+| `GITHUB_BUG_TOKEN`, `GITHUB_BUG_REPO` | `/opt/notaflow/.env` | A fine-grained token with Issues read and write on `Vapulab/notaflow` only. It opens one issue of type Bug per report. Without it, reports skip GitHub |
+| `GITHUB_WEBHOOK_SECRET` | `/opt/notaflow/.env` | The secret of the `Issues` webhook of `Vapulab/notaflow` to `https://notaflow.vapulab.com/webhooks/github` (content type `application/json`). Without it, the route answers 404 |
+| `DISCORD_BUG_WEBHOOK_URL` | `/opt/notaflow/.env` | The webhook of the private Discord bugs channel. The URL is the credential: anyone with it can post |
+| `NOTION_TOKEN`, `NOTION_BUGS_DATABASE_ID` | `/opt/notaflow/.env` | The Notion integration token and the id of the bugs database. Share the database with the integration |
 | `VM_SSH_KEY`, `VM_KNOWN_HOSTS`, `VM_HOST` | Secrets of the GitHub environment `production`, which only the `production` branch can use | The deploy key (`notaflow-deploy` in `/root/.ssh/authorized_keys`, with `restrict`: no forwarding, no terminal) |
 
 To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_KEY /opt/notaflow/.env"` in your own terminal.

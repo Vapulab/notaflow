@@ -7,8 +7,8 @@ flowchart TB
     web["<b>Web app</b><br/><i>[Container: React, Vite]</i><br/>The app under /app and the platform admin under /admin. Runs in the browser."]
     pages["<b>Public pages</b><br/><i>[Container: static HTML, Tailwind]</i><br/>Landing at /, /termos, /privacidade."]
     tunnel["<b>cloudflared</b><br/><i>[Container: Docker]</i><br/>Cloudflare Tunnel; no port of the VPS is open to the internet."]
-    server["<b>API server</b><br/><i>[Container: Node 22, Fastify, Better Auth]</i><br/>REST API under /api, login, issue and cancel, sync, onboarding, certificate vault, mail outbox. Serves the web build."]
-    db[("<b>Database</b><br/><i>[Container: SQLite on a Docker volume]</i><br/>Accounts, emitters, sealed certificates, invoices, audit log, mail outbox. Rows are never deleted.")]
+    server["<b>API server</b><br/><i>[Container: Node 22, Fastify, Better Auth]</i><br/>REST API under /api, login, issue and cancel, sync, onboarding, certificate vault, mail outbox, bug reports. Serves the web build."]
+    db[("<b>Database</b><br/><i>[Container: SQLite on a Docker volume]</i><br/>Accounts, emitters, sealed certificates, invoices, audit log, mail outbox, bug reports. Rows are never deleted.")]
     backup["<b>Backup timer</b><br/><i>[Container: systemd timer]</i><br/>Online SQLite backup every day, 14 kept; an encrypted copy goes to R2."]
     cardworker["<b>CNPJ card parser</b><br/><i>[Container: Node child process]</i><br/>Reads the uploaded PDF text, 128 MB of memory, at most 2 at a time."]
     monitoring["<b>Monitoring stack</b><br/><i>[Containers: Prometheus, Alertmanager, Loki, Alloy, Grafana]</i><br/>Metrics by module, logs, alerts, and panels at grafana.vapulab.com."]
@@ -20,6 +20,9 @@ flowchart TB
   posthog["<b>PostHog</b><br/><i>[External system]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Scrubbed error reports."]
   r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days."]
+  github["<b>GitHub</b><br/><i>[External system]</i><br/>Masked bug issues in the public repository; issues webhook."]
+  discord["<b>Discord</b><br/><i>[External system]</i><br/>Private bugs channel."]
+  notion["<b>Notion</b><br/><i>[External system]</i><br/>Bugs database."]
   ci["<b>GitHub Actions + GHCR</b><br/><i>[External system]</i><br/>Builds the image on a merge to production and deploys it over SSH."]
 
   user -- "Visits [HTTPS]" --> pages
@@ -40,6 +43,10 @@ flowchart TB
   web -. "Uncaught errors [HTTPS]" .-> sentry
   pages -. "Uncaught errors [HTTPS]" .-> sentry
   monitoring -- "Scrapes /metrics, reads logs" --> server
+  server -- "Bug issues [HTTPS API]" --> github
+  github -- "Issues webhook [HTTPS through the tunnel]" --> tunnel
+  server -- "Bug messages [HTTPS webhook]" --> discord
+  server -- "Bug cards [HTTPS API]" --> notion
   ci -- "Pulls the new image, docker compose up [SSH]" --> server
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
@@ -49,5 +56,5 @@ flowchart TB
   class user person
   class web,pages,tunnel,server,backup,cardworker,monitoring container
   class db db
-  class nacional,resend,others,posthog,sentry,ci,r2 external
+  class nacional,resend,others,posthog,sentry,ci,r2,github,discord,notion external
   style boundary fill:#f5f8fc,stroke:#1168bd,stroke-dasharray:6 4,color:#0b4884

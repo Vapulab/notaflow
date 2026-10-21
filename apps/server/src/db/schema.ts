@@ -437,6 +437,61 @@ export const accountDocuments = sqliteTable('account_documents', {
   ...removal(),
 });
 
+// A bug a customer reported in the app; the GitHub issue webhook closes and reopens it.
+export const bugReports = sqliteTable(
+  'bug_reports',
+  {
+    id: id(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    // The route path only, never a query string.
+    pagePath: text('page_path').notNull(),
+    userAgent: text('user_agent'),
+    status: text('status', { enum: ['open', 'closed'] })
+      .notNull()
+      .default('open'),
+    closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+    githubIssueNumber: integer('github_issue_number'),
+    githubIssueUrl: text('github_issue_url'),
+    notionPageId: text('notion_page_id'),
+    notionPageUrl: text('notion_page_url'),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [
+    index('bug_reports_github_issue').on(t.githubIssueNumber),
+    index('bug_reports_author_time').on(t.createdBy, t.createdAt),
+  ],
+);
+
+// One row per message to GitHub, Discord, or Notion: retried with backoff like the mail outbox, and kept as failed.
+export const bugReportDeliveries = sqliteTable(
+  'bug_report_deliveries',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    bugReportId: text('bug_report_id')
+      .notNull()
+      .references(() => bugReports.id),
+    kind: text('kind', {
+      enum: ['github_issue', 'notion_page', 'discord_report', 'notion_status', 'discord_status'],
+    }).notNull(),
+    // The report status a status delivery announces, as it was when the webhook arrived.
+    reportStatus: text('report_status', { enum: ['open', 'closed'] }),
+    status: text('status', { enum: ['pending', 'sending', 'sent', 'failed'] }).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
+    lastError: text('last_error'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('bug_report_deliveries_due').on(t.status, t.nextAttemptAt)],
+);
+
 // Better Auth credentials: it deletes these rows on expiry, sign-out, unlink, or removal, and the audit log keeps the event.
 const authTime = (name: string) => integer(name, { mode: 'timestamp_ms' });
 const authUser = () =>

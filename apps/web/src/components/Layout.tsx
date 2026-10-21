@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { ApiError } from '../api';
 import { formatCents, formatDate } from '../format';
 import { resetAnalytics } from '../analytics/analytics';
 import { signOut } from '../auth/authApi';
 import { navigate, routeHref, useRoute } from '../router';
+import { BugReportDialog } from './BugReportDialog';
 import { PolicyNotice } from './PolicyNotice';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, Logo, ThemeToggle } from '../ui';
@@ -116,6 +117,8 @@ export const ERROR_TEXT: Record<string, string> = {
   invalid_address: 'Endereço incompleto.',
   invalid_idempotency_key: 'Erro interno do formulário. Recarregue a página.',
   danfse_unavailable: 'O ADN não está gerando o PDF agora. Tente de novo em alguns minutos.',
+  too_many_bug_reports: 'Você já enviou 5 relatos na última hora. Tente de novo mais tarde.',
+  invalid_bug_report: 'Preencha o título e o que aconteceu.',
 };
 
 export function errorText(error: unknown): string {
@@ -150,6 +153,7 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
   const route = useRoute();
   const me = useMe();
   const { accountId } = props;
+  const [reporting, setReporting] = useState(false);
   // Membros is an owner tool; the server refuses it to anyone else anyway.
   const sections = SECTIONS.filter(
     (section) => section.name !== 'members' || (accountId && roleIn(me, accountId) === 'owner'),
@@ -189,6 +193,15 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
                 <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />
               </a>
             )}
+            {accountId && (
+              <button
+                type="button"
+                onClick={() => setReporting(true)}
+                className={`text-sm ${linkClasses({ variant: 'muted' })}`}
+              >
+                Reportar bug
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -202,6 +215,13 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
           </div>
         </nav>
       </header>
+      {accountId && (
+        <BugReportDialog
+          open={reporting}
+          accountId={accountId}
+          onClose={() => setReporting(false)}
+        />
+      )}
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="mb-6 empty:hidden">
           <PolicyNotice />

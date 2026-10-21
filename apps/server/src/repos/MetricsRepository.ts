@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import {
   accounts,
+  bugReportDeliveries,
+  bugReports,
   certificates,
   emitters,
   invoices,
@@ -82,6 +84,46 @@ export class MetricsRepository implements MetricSources {
       .from(lifecycleEmails)
       .groupBy(lifecycleEmails.phase, lifecycleEmails.step)
       .all();
+  }
+
+  bugReportCounts() {
+    return this.db
+      .select({ status: bugReports.status, count: count() })
+      .from(bugReports)
+      .where(notDeleted(bugReports))
+      .groupBy(bugReports.status)
+      .all();
+  }
+
+  // A delivery being sent right now still counts as pending; the channel is the first word of the kind.
+  // A failed delivery counts for 7 days: there is no retry action, so the alert clears by itself.
+  bugDeliveryCounts(now = new Date()) {
+    const since = new Date(now.getTime() - 7 * 86400_000);
+    const rows = this.db
+      .select({
+        kind: bugReportDeliveries.kind,
+        status: bugReportDeliveries.status,
+        count: count(),
+      })
+      .from(bugReportDeliveries)
+      .where(
+        or(
+          inArray(bugReportDeliveries.status, ['pending', 'sending']),
+          and(eq(bugReportDeliveries.status, 'failed'), gt(bugReportDeliveries.createdAt, since)),
+        ),
+      )
+      .groupBy(bugReportDeliveries.kind, bugReportDeliveries.status)
+      .all();
+    const totals = new Map<string, { channel: string; state: string; count: number }>();
+    for (const row of rows) {
+      const channel = row.kind.split('_')[0] ?? row.kind;
+      const state = row.status === 'failed' ? 'failed' : 'pending';
+      const key = `${channel}/${state}`;
+      const total = totals.get(key) ?? { channel, state, count: 0 };
+      total.count += row.count;
+      totals.set(key, total);
+    }
+    return [...totals.values()];
   }
 
   // backup.ts writes notaflow-*.db next to the database, in backups/.

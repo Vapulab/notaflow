@@ -86,6 +86,12 @@ function migratedFromPre3a(): BetterSqlite3.Database {
        VALUES ('d1', 'a1', 'cnpj_card', '12345678000195', 'cartao.pdf', x'00', 'h', 1, ${T0})`,
     )
     .run();
+  client
+    .prepare(
+      `INSERT INTO bug_reports (id, account_id, title, description, page_path, updated_at)
+       VALUES ('b1', 'a1', 'Erro', 'Descrição', '/app', ${T0})`,
+    )
+    .run();
   return client;
 }
 

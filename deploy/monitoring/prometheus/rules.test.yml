@@ -63,6 +63,22 @@ tests:
           - exp_labels: { severity: warning, service: notaflow, module: mail, status: failed }
             exp_annotations: { summary: 'NotaFlow: 2 e-mails failed for good; retry them in /admin' }
 
+  - interval: 1m
+    input_series:
+      - series: 'notaflow_bug_report_deliveries{channel="github", state="failed"}'
+        values: '0 0 1'
+      - series: 'notaflow_bug_report_deliveries{channel="discord", state="pending"}'
+        values: '2 2 2'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BugDeliveriesFailed
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: BugDeliveriesFailed
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: bugs, channel: github, state: failed }
+            exp_annotations: { summary: 'NotaFlow: 1 bug report deliveries to github failed for good in the last 7 days; the last error is in bug_report_deliveries' }
+
   - interval: 1h
     input_series:
       # Unix 0 is the start of the test clock; the local backup ran at 0, the off-site one keeps running.
