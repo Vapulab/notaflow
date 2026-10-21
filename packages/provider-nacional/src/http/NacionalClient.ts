@@ -193,7 +193,8 @@ export class NacionalClient {
     const bytes = Buffer.from(await response.body.arrayBuffer());
     if (response.statusCode === 404) return null;
     // A proxy page with status 200 must never reach the user as a PDF.
-    if (response.statusCode === 200 && bytes.subarray(0, 5).toString('latin1') === '%PDF-') return bytes;
+    if (response.statusCode === 200 && bytes.subarray(0, 5).toString('latin1') === '%PDF-')
+      return bytes;
     throw httpError(response.statusCode, decodeBody(bytes).slice(0, 500));
   }
 
@@ -207,7 +208,11 @@ export class NacionalClient {
     if (status === 201) return { kind: 'registered', eventXml: tryGunzip(data.eventoXmlGZipB64) };
     if (status === 400 || status === 401) {
       // The real Sefin sends erro as an array (Stage 1b acceptance); erros and a single object also occur in docs.
-      const list = Array.isArray(data.erro) ? data.erro : Array.isArray(data.erros) ? data.erros : null;
+      const list = Array.isArray(data.erro)
+        ? data.erro
+        : Array.isArray(data.erros)
+          ? data.erros
+          : null;
       const raw = list ? list[0] : data.erro;
       return { kind: 'rejected', error: sefinError(raw) };
     }

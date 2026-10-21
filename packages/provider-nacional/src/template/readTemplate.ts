@@ -1,7 +1,14 @@
 import type { Element } from '@xmldom/xmldom';
 import type { Address, DpsInput, ForeignAddress, ForeignTrade } from '../dps/types';
 import { decimalToCents } from '../xml/formatters';
-import { child, childElements, parseXmlRoot, requiredChild, requiredText, text } from '../xml/readXml';
+import {
+  child,
+  childElements,
+  parseXmlRoot,
+  requiredChild,
+  requiredText,
+  text,
+} from '../xml/readXml';
 
 export type DpsTemplate = Omit<
   DpsInput,
@@ -41,7 +48,9 @@ const SUPPORTED = new Set(
 function leafPaths(element: Element, prefix: string): string[] {
   const children = childElements(element);
   if (children.length === 0) return [prefix];
-  return children.flatMap((c) => leafPaths(c, prefix ? `${prefix}/${c.localName}` : String(c.localName)));
+  return children.flatMap((c) =>
+    leafPaths(c, prefix ? `${prefix}/${c.localName}` : String(c.localName)),
+  );
 }
 
 export function readTemplate(nfseXml: string): DpsTemplate {
