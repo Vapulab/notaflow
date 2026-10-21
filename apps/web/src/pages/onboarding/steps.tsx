@@ -6,10 +6,12 @@ import {
   type Emitter,
   type FiscalConfig,
   type InvoicePage,
+  type SimplesAnnex,
   type OnboardingState,
 } from '../../api';
 import { AmountInput } from '../../components/AmountInput';
 import { errorText } from '../../components/Layout';
+import { ANNEX_OPTIONS, isSimplesAnnex, issOutsideDas } from '../../components/simplesRates';
 import { useAsync } from '../../components/useAsync';
 import { fileToBase64, formatCnpj, parseCents, parsePercent } from '../../format';
 import { maskCnpj } from '../../masks';
@@ -341,7 +343,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const asksPayroll = fiscal.data?.fatorR !== false;
   const [revenue, setRevenue] = useState('');
   const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
-  const [annexChoice, setAnnexChoice] = useState<'III' | 'V' | null>(null);
+  const [annexChoice, setAnnexChoice] = useState<SimplesAnnex | null>(null);
   const [iss, setIss] = useState('');
   const [regime, setRegime] = useState<'inside_das' | 'regular'>('inside_das');
   const { busy, error, run } = useStepAction();
@@ -354,8 +356,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
     annexChoice ??
     (!asksPayroll ? 'III' : payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
   const issRate = parsePercent(iss);
-  // Only band 6 has no ISS share in the DAS; elsewhere the server takes the ISS from the band.
-  const typedIss = band === 6;
+  const typedIss = issOutsideDas(annex, band);
   const ready =
     !!emitter &&
     band !== null &&
@@ -407,7 +408,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
         {typedIss && (
           <Field
             label="Alíquota de ISS (%)"
-            hint="Na faixa 6 o ISS sai do DAS: a alíquota do município, usada quando o cliente retém o ISS."
+            hint="Na faixa 6 e nos Anexos I e II o ISS fica fora do DAS: a alíquota do município, usada quando o cliente retém o ISS."
           >
             <AmountInput unit="%" value={iss} onValueChange={setIss} />
           </Field>
@@ -460,13 +461,16 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
             <Field label="Anexo do Simples">
               <Select
                 value={annex ?? ''}
-                onChange={(e) => setAnnexChoice(e.target.value === 'V' ? 'V' : 'III')}
+                onChange={(e) => isSimplesAnnex(e.target.value) && setAnnexChoice(e.target.value)}
               >
                 <option value="" disabled>
                   Responda a pergunta da folha
                 </option>
-                <option value="III">Anexo III</option>
-                <option value="V">Anexo V</option>
+                {ANNEX_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </Select>
             </Field>
             <Field label="Regime do IBS/CBS">

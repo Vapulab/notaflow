@@ -1,4 +1,11 @@
-import { percentText, simplesBand, simplesIssRate, simplesRate } from '@notaflow/provider-nacional';
+import {
+  percentText,
+  SIMPLES_ANNEXES,
+  type SimplesAnnex,
+  simplesBand,
+  simplesIssRate,
+  simplesRate,
+} from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
 import { fatorRApplies } from '../data/fatorR';
@@ -8,7 +15,7 @@ import { AuditLog } from '../repos/AuditLog';
 import { EmitterRepository } from '../repos/EmitterRepository';
 
 interface FiscalBody {
-  simplesAnnex: 'III' | 'V';
+  simplesAnnex: SimplesAnnex;
   simplesRbt12Cents: number;
   issRate?: number; // only in band 6, where the ISS goes outside the DAS
   ibscbsRegime: 'inside_das' | 'regular';
@@ -24,7 +31,7 @@ const fiscalSchema = {
     additionalProperties: false,
     required: ['simplesAnnex', 'simplesRbt12Cents', 'ibscbsRegime'],
     properties: {
-      simplesAnnex: { enum: ['III', 'V'] },
+      simplesAnnex: { enum: SIMPLES_ANNEXES },
       simplesRbt12Cents: { type: 'integer', minimum: 0, maximum: RBT12_LIMIT },
       // LC 116/2003 caps the ISS at 5%.
       issRate: { type: 'integer', minimum: 0, maximum: 500 },
@@ -37,7 +44,7 @@ const fiscalSchema = {
 type Params = { accountId: string; emitterId: string };
 
 // The rates of a revenue: pTotTribSN (the effective rate, and the one of an export) and the retained ISS.
-export function simplesRates(annex: 'III' | 'V', rbt12Cents: number) {
+export function simplesRates(annex: SimplesAnnex, rbt12Cents: number) {
   return {
     domestic: simplesRate(annex, rbt12Cents, { export: false }),
     export: simplesRate(annex, rbt12Cents, { export: true }),
@@ -66,7 +73,7 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
 
   app.get<{
     Params: { accountId: string };
-    Querystring: { annex: 'III' | 'V'; rbt12Cents: number };
+    Querystring: { annex: SimplesAnnex; rbt12Cents: number };
   }>(
     '/api/accounts/:accountId/simples-rates',
     {
@@ -75,7 +82,7 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
           type: 'object',
           required: ['annex', 'rbt12Cents'],
           properties: {
-            annex: { enum: ['III', 'V'] },
+            annex: { enum: SIMPLES_ANNEXES },
             rbt12Cents: { type: 'integer', minimum: 0 },
           },
         },

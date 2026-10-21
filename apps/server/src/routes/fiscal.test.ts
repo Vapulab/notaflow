@@ -177,3 +177,34 @@ test('the fiscal config says whether the main CNAE depends on the fator R', asyn
     fatorR: true,
   });
 });
+
+test('every annex of the Simples is accepted; Anexo IV band 1 is 4.50%', async () => {
+  const { url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  for (const simplesAnnex of ['I', 'II', 'III', 'IV', 'V']) {
+    const saved = await t.app.inject({
+      method: 'PUT',
+      url,
+      headers,
+      payload: { ...body, simplesAnnex, simplesRbt12Cents: 14_205_029 },
+    });
+    expect(saved.statusCode, simplesAnnex).toBe(200);
+  }
+  await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, simplesAnnex: 'IV', simplesRbt12Cents: 14_205_029 },
+  });
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    simplesAnnex: 'IV',
+    rates: { domestic: 450, export: 153, iss: 200 },
+  });
+  const refused = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, simplesAnnex: 'VI' },
+  });
+  expect(refused.statusCode).toBe(400);
+});

@@ -373,6 +373,36 @@ test('an activity outside the fator R skips the payroll question and saves Anexo
   expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'III' });
 });
 
+test('Anexo I in the advanced options asks the municipal ISS rate', async () => {
+  const calls = stubApi(fiscalRoutes(false));
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '100.000,00',
+  );
+  await user.click(screen.getByText('Opções avançadas'));
+  const annex = screen.getByLabelText('Anexo do Simples');
+  expect(Array.from((annex as HTMLSelectElement).options).map((o) => o.value)).toEqual([
+    '',
+    'I',
+    'II',
+    'III',
+    'IV',
+    'V',
+  ]);
+  await user.selectOptions(annex, 'I');
+  await user.type(screen.getByLabelText('Alíquota de ISS (%)'), '2,00');
+  await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'I', issRate: 200 });
+});
+
 test('a revenue above the Simples limit is explained, and nothing is saved', async () => {
   const calls = stubApi(fiscalRoutes());
   const user = userEvent.setup();

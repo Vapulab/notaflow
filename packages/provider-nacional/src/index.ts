@@ -31,7 +31,13 @@ export type {
   SefinError,
 } from './http/NacionalClient';
 export { buildTemplate } from './template/buildTemplate';
-export { percentText, SIMPLES_BANDS } from './rules/simplesBands';
-export { type SimplesAnnex, simplesBand, simplesIssRate, simplesRate } from './rules/simplesRates';
+export { percentText } from './rules/simplesBands';
+export {
+  SIMPLES_ANNEXES,
+  type SimplesAnnex,
+  simplesBand,
+  simplesIssRate,
+  simplesRate,
+} from './rules/simplesRates';
 export { minimumIssRate, taxRules } from './rules/taxRules';
 export type { CustomerRules, RuleSet } from './rules/taxRules';

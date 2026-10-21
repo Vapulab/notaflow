@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { percentText, SIMPLES_BANDS } from './simplesBands';
-
-describe('SIMPLES_BANDS', () => {
-  test('lists the effective starting rate of each band, in hundredths', () => {
-    expect(SIMPLES_BANDS.III).toEqual([600, 1120, 1350, 1600, 2100, 3300]);
-    expect(SIMPLES_BANDS.V).toEqual([1550, 1800, 1950, 2050, 2300, 3050]);
-  });
-});
+import { percentText } from './simplesBands';
 
 describe('percentText', () => {
   test('writes hundredths as a percentage with two decimals', () => {

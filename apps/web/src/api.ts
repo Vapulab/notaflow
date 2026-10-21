@@ -263,8 +263,10 @@ export interface CepAnswer {
   municipality: Municipality;
 }
 
+export type SimplesAnnex = 'I' | 'II' | 'III' | 'IV' | 'V';
+
 export interface FiscalConfig {
-  simplesAnnex: 'III' | 'V' | null;
+  simplesAnnex: SimplesAnnex | null;
   simplesBand: number | null;
   simplesPercent: number | null; // hundredths; the domestic rate
   simplesRbt12Cents: number | null;

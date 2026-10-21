@@ -20,7 +20,7 @@ describe('simplesBand', () => {
   });
 });
 
-describe('simplesRate (LC 123/2006, annexes III and V)', () => {
+describe('simplesRate (LC 123/2006, annexes I to V)', () => {
   test("Lincoln's export: Anexo III, RBT12 just above R$ 180 thousand, gives 3.12%", () => {
     // Effective 6.13%; an export leaves out ISS (32%), Cofins (14.05%), and PIS (3.05%).
     expect(simplesRate('III', reais(184_700), { export: true })).toBe(312);
@@ -58,6 +58,28 @@ describe('simplesRate (LC 123/2006, annexes III and V)', () => {
     expect(simplesRate('III', reais(4_000_000), { export: true })).toBe(1352);
   });
 
+  test('Anexo IV band 1 is 4.50%; an export leaves out ISS, Cofins, and PIS', () => {
+    expect(simplesRate('IV', reais(142_050.29), { export: false })).toBe(450);
+    // 4.5% x (1 - 44.5% - 17.67% - 3.83%) = 1.53%
+    expect(simplesRate('IV', reais(142_050.29), { export: true })).toBe(153);
+  });
+
+  test('Anexo IV band 5 above 12.5% caps the ISS at 5% before the export leaves it out', () => {
+    // RBT12 3,000,000: effective (660,000 - 183,780) / 3,000,000 = 15.874%.
+    // Export: 15.874 - 5 (ISS) - (15.874 - 5) x (30.13% + 6.54%) = 6.8865%.
+    expect(simplesRate('IV', reais(3_000_000), { export: true })).toBe(689);
+  });
+
+  test('Anexos I and II on an export leave out ICMS and IPI too', () => {
+    expect(simplesRate('I', reais(100_000), { export: false })).toBe(400);
+    // 4% x (1 - 12.74% - 2.76% - 34%) = 2.02%
+    expect(simplesRate('I', reais(100_000), { export: true })).toBe(202);
+    // 4.5% x (1 - 11.51% - 2.49% - 7.5% - 32%) = 2.0925%
+    expect(simplesRate('II', reais(100_000), { export: true })).toBe(209);
+    // Band 6: (760,000 - 378,000) / 4,000,000 = 9.55%, ICMS outside: x (1 - 28.27% - 6.13%)
+    expect(simplesRate('I', reais(4_000_000), { export: true })).toBe(626);
+  });
+
   test('outside the Simples there is no rate', () => {
     expect(() => simplesRate('III', reais(5_000_000), { export: false })).toThrow(RangeError);
   });
@@ -71,12 +93,22 @@ describe('simplesIssRate', () => {
     ['III', 180_000.01, 192],
     ['V', 100_000, 217],
     ['III', 2_000_000, 493],
+    ['IV', 142_050.29, 200],
   ] as const)('Anexo %s, RBT12 %s: ISS %s hundredths', (annex, rbt12, iss) => {
     expect(simplesIssRate(annex, reais(rbt12))).toBe(iss);
   });
 
   test('Anexo III band 5 above the threshold: the ISS is capped at 5%', () => {
     expect(simplesIssRate('III', reais(3_500_000))).toBe(500);
+  });
+
+  test('Anexo IV band 5 above the threshold: the ISS is capped at 5%', () => {
+    expect(simplesIssRate('IV', reais(3_000_000))).toBe(500);
+  });
+
+  test('Anexos I and II have no ISS share in the DAS', () => {
+    expect(simplesIssRate('I', reais(100_000))).toBeNull();
+    expect(simplesIssRate('II', reais(100_000))).toBeNull();
   });
 
   test('band 6 has no ISS share: the ISS goes outside the DAS, with the municipal rate', () => {

@@ -1,3 +1,4 @@
+import { SIMPLES_ANNEXES } from '@notaflow/provider-nacional';
 import { sql } from 'drizzle-orm';
 import {
   blob,
@@ -129,7 +130,7 @@ export const emitters = sqliteTable(
     dpsSeries: text('dps_series').notNull(),
     nextDpsNumber: integer('next_dps_number').notNull().default(1),
     // Percents are integers in hundredths (6.00% = 600), like amounts in cents.
-    simplesAnnex: text('simples_annex', { enum: ['III', 'V'] }),
+    simplesAnnex: text('simples_annex', { enum: SIMPLES_ANNEXES }),
     simplesBand: integer('simples_band'),
     simplesPercent: integer('simples_percent'),
     // Gross revenue of the last 12 months (RBT12): the band and the rate of each invoice come from it.

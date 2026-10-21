@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountContext, Environment } from '@notaflow/core';
+import type { SimplesAnnex } from '@notaflow/provider-nacional';
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, touched } from '../db/stamps';
@@ -12,7 +13,7 @@ export type NewEmitter = Omit<
 > & { environment?: Environment };
 
 export interface FiscalConfig {
-  simplesAnnex: 'III' | 'V' | null;
+  simplesAnnex: SimplesAnnex | null;
   simplesBand: number | null;
   simplesPercent: number | null; // hundredths; the domestic rate
   simplesRbt12Cents: number | null;
