@@ -51,6 +51,7 @@ export interface NewInvoiceRequest {
   simplesPercent?: number; // hundredths; the emitter's band when absent
   issRate?: number; // hundredths; the emitter's rate when absent
   issRetained?: boolean;
+  inssRetainedCents?: number;
   description?: string;
   // Complete mode: replaces these fields of the saved service for this invoice only.
   overrides?: Partial<
@@ -303,6 +304,13 @@ export class IssueService {
         });
       }
     }
+    if (input.inssRetainedCents !== undefined) {
+      // Only a company withholds the INSS (Lei 8.212, art. 31).
+      if (customer.document.type !== 'CNPJ') throw new HttpError(400, 'retention_not_allowed');
+      if (input.inssRetainedCents >= input.serviceCents) {
+        throw new HttpError(400, 'invalid_inss_retention');
+      }
+    }
     // Last of the checks: it is a network call.
     const ptax = foreign
       ? await this.checkPtax(
@@ -344,6 +352,9 @@ export class IssueService {
       simplesPercent,
       ...(issRate !== undefined ? { issRate } : {}),
       ...(input.issRetained ? { issRetained: true } : {}),
+      ...(input.inssRetainedCents !== undefined
+        ? { inssRetainedCents: input.inssRetainedCents }
+        : {}),
     };
     let template: string;
     try {

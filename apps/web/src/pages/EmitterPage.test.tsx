@@ -32,6 +32,7 @@ const fiscal = {
   issRate: 201,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
+  fatorR: true,
 };
 const service = {
   id: 's1',
@@ -88,6 +89,14 @@ test('the owner sets the annex and the revenue; the band, both rates and the ISS
     ibscbsRegimeFrom: '2027-01-01',
   });
   expect(await screen.findByText('Configuração salva.')).toBeTruthy();
+});
+
+test('Anexo V for an activity outside the fator R shows a warning', async () => {
+  stubApi(
+    routes({ [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesAnnex: 'V', fatorR: false } }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  expect(await screen.findByText(/não depende do fator R/)).toBeTruthy();
 });
 
 test('a member reads the configuration and the services but changes nothing', async () => {

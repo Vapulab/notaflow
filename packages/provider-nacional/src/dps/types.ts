@@ -74,6 +74,7 @@ export interface DpsInput {
     issRetention: '1' | '2' | '3';
     issRatePercent?: string; // e.g. "2.00"
     pisCofins?: { cst: string; retention?: string };
+    cpRetainedCents?: number; // vRetCP, the INSS the customer retains
     // pTotTribSN; without it the DPS says indTotTrib 0.
     simplesTotalPercent?: string;
   };

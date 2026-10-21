@@ -95,6 +95,21 @@ describe('buildDpsXml', () => {
     expect(xml).toContain('Consultoria em análise &amp; ção &lt;teste&gt;');
   });
 
+  test('writes the retained INSS after PIS and COFINS, valid against the XSD', () => {
+    const { xml } = buildDpsXml({
+      ...base,
+      tax: { ...base.tax, pisCofins: { cst: '00', retention: '0' }, cpRetainedCents: 16500 },
+    });
+    expect(xml).toContain('<tpRetPisCofins>0</tpRetPisCofins></piscofins><vRetCP>165.00</vRetCP>');
+    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+  });
+
+  test('writes tribFed for a retained INSS without PIS and COFINS', () => {
+    const { xml } = buildDpsXml({ ...base, tax: { ...base.tax, cpRetainedCents: 100 } });
+    expect(xml).toContain('<tribFed><vRetCP>1.00</vRetCP></tribFed>');
+    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd').errors).toEqual([]);
+  });
+
   test('uses tpAmb 1 in production', () => {
     expect(buildDpsXml({ ...base, environment: 'producao' }).xml).toContain('<tpAmb>1</tpAmb>');
   });

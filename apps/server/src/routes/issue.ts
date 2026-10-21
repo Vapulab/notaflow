@@ -45,6 +45,7 @@ const newInvoiceSchema = {
       // LC 116/2003 caps the ISS at 5%.
       issRate: { type: 'integer', minimum: 0, maximum: 500 },
       issRetained: { type: 'boolean' },
+      inssRetainedCents: { type: 'integer', minimum: 1, maximum: MAX_CENTS },
       description: { type: 'string', minLength: 1, maxLength: 2000 },
       overrides: {
         type: 'object',

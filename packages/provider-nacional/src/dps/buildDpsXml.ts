@@ -130,11 +130,19 @@ function amounts({ amounts: a, tax: t }: DpsInput): string {
     tag('tpRetISSQN', t.issRetention) +
     tag('pAliq', t.issRatePercent) +
     '</tribMun>' +
-    (t.pisCofins
-      ? '<tribFed><piscofins>' +
-        tag('CST', t.pisCofins.cst) +
-        tag('tpRetPisCofins', t.pisCofins.retention) +
-        '</piscofins></tribFed>'
+    (t.pisCofins || t.cpRetainedCents !== undefined
+      ? '<tribFed>' +
+        (t.pisCofins
+          ? '<piscofins>' +
+            tag('CST', t.pisCofins.cst) +
+            tag('tpRetPisCofins', t.pisCofins.retention) +
+            '</piscofins>'
+          : '') +
+        tag(
+          'vRetCP',
+          t.cpRetainedCents === undefined ? undefined : centsToDecimal(t.cpRetainedCents),
+        ) +
+        '</tribFed>'
       : '') +
     '<totTrib>' +
     (t.simplesTotalPercent === undefined

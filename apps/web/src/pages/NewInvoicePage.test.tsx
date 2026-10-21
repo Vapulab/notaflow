@@ -330,6 +330,39 @@ test('Mais opções: a CNPJ customer may retain the ISS, at the ISS share of the
   expect(body).not.toHaveProperty('issRate');
 });
 
+test('Mais opções: a CNPJ customer may retain the INSS, 11% of the service by default', async () => {
+  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('INSS retido pelo cliente'));
+  expect((screen.getByLabelText('INSS retido (R$)') as HTMLInputElement).value).toBe('135,74');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  expect(
+    within(screen.getByRole('table')).getByText('INSS retido pelo cliente: R$ 135,74'),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.inssRetainedCents).toBe(13574);
+});
+
+test('Mais opções: a retained INSS at or above the service amount blocks the review', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.click(screen.getByLabelText('INSS retido pelo cliente'));
+  const amount = screen.getByLabelText('INSS retido (R$)');
+  await user.clear(amount);
+  await user.type(amount, '1.234,00');
+  expect((screen.getByRole('button', { name: 'Revisar' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+});
+
 test('Mais opções: the works subitems accept a rate below 2%', async () => {
   stubApi(
     routes({

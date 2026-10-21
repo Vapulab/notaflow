@@ -158,3 +158,22 @@ test('the ISS rate comes from the band; only band 6, outside the DAS, takes a ty
   });
   expect(typed.json()).toMatchObject({ issRate: 300, rates: { iss: null } });
 });
+
+test('the fiscal config says whether the main CNAE depends on the fator R', async () => {
+  const { a, url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  const emitterId = url.split('/').at(-2) ?? '';
+  const repo = new EmitterRepository(t.db);
+  const ctx = { ...a, role: 'owner' as const, accountStatus: 'active' as const };
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    fatorR: null,
+  });
+  repo.setCnaes(ctx, emitterId, ['4330404']);
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    fatorR: false,
+  });
+  repo.setCnaes(ctx, emitterId, ['7112000']);
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    fatorR: true,
+  });
+});
