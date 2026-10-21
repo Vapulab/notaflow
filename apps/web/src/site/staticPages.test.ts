@@ -28,7 +28,16 @@ test.each([...PAGES, ...PARTIALS])('every link of %s goes somewhere that exists'
     if (href.startsWith('#') && page.startsWith('partials/')) continue;
     if (href.startsWith('#')) expect(html, href).toContain(`id="${href.slice(1)}"`);
     else if (href.startsWith('mailto:')) expect(MAILBOXES.has(href.slice(7)), href).toBe(true);
-    else if (href.startsWith('https://notaflow.vapulab.com')) {
+    // The guide cites its sources: only official government sites.
+    else if (href.startsWith('https://') && !href.startsWith('https://notaflow.vapulab.com')) {
+      const host = new URL(href).hostname;
+      expect(host === 'gov.br' || host.endsWith('.gov.br'), href).toBe(true);
+    } else if (href.startsWith('/guia') && href.includes('#')) {
+      const [path = '', id = ''] = href.split('#');
+      const target = GUIDE_PAGES.find((guide) => guide.path === path);
+      expect(target, href).toBeDefined();
+      expect(read(target?.file ?? ''), href).toContain(`id="${id}"`);
+    } else if (href.startsWith('https://notaflow.vapulab.com')) {
       expect(ROUTES.has(new URL(href).pathname), href).toBe(true);
     } else if (href.startsWith('/') && !href.startsWith('/favicon')) {
       expect(ROUTES.has(href), href).toBe(true);
