@@ -57,7 +57,7 @@
   @apply mt-4;
 }
 .guide-text figure img {
-  @apply w-full rounded-lg border border-border;
+  @apply h-auto w-full rounded-lg border border-border;
 }
 .guide-text figcaption {
   @apply mt-2 text-sm text-muted;
