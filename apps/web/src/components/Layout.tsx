@@ -15,6 +15,8 @@ export const ERROR_TEXT: Record<string, string> = {
   signup_limit: 'Muitos cadastros a partir desta rede hoje. Tente amanhã.',
   account_removed: 'Esta conta foi removida. Fale com o suporte.',
   rate_limited: 'Muitas tentativas. Espere um minuto e tente de novo.',
+  band6_iss_required: 'Na faixa 6, informe se o ISS ainda é pago no DAS.',
+  iss_rate_required: 'Informe a alíquota de ISS do município, até 5,00%.',
   INVALID_OTP: 'Código incorreto. Confira e tente de novo.',
   OTP_EXPIRED: 'Este código expirou. Peça um novo.',
   TOO_MANY_ATTEMPTS: 'Tentativas demais com este código. Peça um novo.',

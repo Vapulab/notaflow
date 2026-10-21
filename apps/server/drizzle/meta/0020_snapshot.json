@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3f61cc77-9afe-4cf5-8914-aee6b1a34692",
+  "id": "96f1b982-4769-495b-9450-61f8c8860105",
   "prevId": "97819d66-261b-47ed-bb7f-6918b2f52c3c",
   "tables": {
     "account_documents": {
@@ -1607,6 +1607,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "simples_band6_iss": {
+          "name": "simples_band6_iss",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "cnaes": {
           "name": "cnaes",
           "type": "text",
@@ -3107,103 +3114,6 @@
       "indexes": {
         "users_email_active": {
           "name": "users_email_active",
-          "columns": [
-            "email"
-          ],
-          "isUnique": true,
-          "where": "deleted_at IS NULL"
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "waitlist_signups": {
-      "name": "waitlist_signups",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "interests": {
-          "name": "interests",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "source_page": {
-          "name": "source_page",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "campaign": {
-          "name": "campaign",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch() * 1000)"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "deleted_by": {
-          "name": "deleted_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "waitlist_signups_email": {
-          "name": "waitlist_signups_email",
           "columns": [
             "email"
           ],

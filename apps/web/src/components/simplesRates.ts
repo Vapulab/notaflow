@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { api, type SimplesAnnex } from '../api';
+import { api, type Band6Iss, type SimplesAnnex } from '../api';
 import { percentInput } from '../format';
 
 export interface SimplesRates {
   band: number;
   domestic: number; // hundredths
   export: number; // hundredths
-  iss: number | null; // hundredths; null in band 6, where the ISS goes outside the DAS
+  iss: number | null; // hundredths; null where the ISS goes outside the DAS
 }
 
 export const RBT12_LABEL = 'Receita bruta dos últimos 12 meses (R$)';
@@ -23,9 +23,31 @@ export function isSimplesAnnex(value: string): value is SimplesAnnex {
   return ANNEX_OPTIONS.some(([annex]) => annex === value);
 }
 
+// The Simples Nacional bands, by gross revenue of the last 12 months (LC 123/2006), in cents.
+const BAND_LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
+
+export function simplesBand(revenueCents: number | null): number | null {
+  if (revenueCents === null) return null;
+  const index = BAND_LIMITS.findIndex((limit) => revenueCents <= limit);
+  return index === -1 ? null : index + 1;
+}
+
+export function isBand6Iss(value: string): value is Band6Iss {
+  return value === 'under_sublimit' || value === 'over_sublimit' || value === 'outside';
+}
+
+// Anexos I and II have no ISS in the DAS, so only Anexos III, IV, and V ask in band 6.
+export function asksBand6Iss(annex: SimplesAnnex | null, band: number | null): boolean {
+  return band === 6 && annex !== null && annex !== 'I' && annex !== 'II';
+}
+
 // The DAS of Anexos I and II has no ISS share, so the ISS of a service uses the municipal rate.
-export function issOutsideDas(annex: SimplesAnnex | null, band: number | null): boolean {
-  return band === 6 || annex === 'I' || annex === 'II';
+export function issOutsideDas(
+  annex: SimplesAnnex | null,
+  band: number | null,
+  band6Iss: Band6Iss | null,
+): boolean {
+  return annex === 'I' || annex === 'II' || (band === 6 && band6Iss === 'outside');
 }
 
 export function ratesLine(rates: SimplesRates): string {
@@ -45,6 +67,7 @@ export function useSimplesRates(
   url: string,
   annex: SimplesAnnex,
   rbt12Cents: number | null,
+  band6Iss: Band6Iss | null = null,
 ): { rates: SimplesRates | null; error: unknown } {
   const [state, setState] = useState<{ rates: SimplesRates | null; error: unknown }>({
     rates: null,
@@ -57,7 +80,8 @@ export function useSimplesRates(
     }
     let live = true;
     const timer = window.setTimeout(() => {
-      api.get<SimplesRates>(`${url}?annex=${annex}&rbt12Cents=${rbt12Cents}`).then(
+      const band6 = band6Iss ? `&band6Iss=${band6Iss}` : '';
+      api.get<SimplesRates>(`${url}?annex=${annex}&rbt12Cents=${rbt12Cents}${band6}`).then(
         (rates) => live && setState({ rates, error: null }),
         (error: unknown) => live && setState({ rates: null, error }),
       );
@@ -66,6 +90,6 @@ export function useSimplesRates(
       live = false;
       window.clearTimeout(timer);
     };
-  }, [url, annex, rbt12Cents]);
+  }, [url, annex, rbt12Cents, band6Iss]);
   return state;
 }

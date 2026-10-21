@@ -23,6 +23,18 @@ Investor pitch deck, 14 slides at 1920×1080, made on 2026-10-21. The copy is in
 |---|---|
 | `deck.json` | Slide order, sections and fonts (Space Grotesk, Inter) |
 | `slides/<id>.html` | One slide per file, with the speaker notes in `<aside>` |
+| `notaflow-pitch.pptx` | The same deck as an editable PowerPoint file, with the speaker notes in the slide notes |
+| `pptx/build.cjs` | Script that writes `notaflow-pitch.pptx`. The slide copy is in the script, so a change to `slides/` needs the same change there |
+
+To build the PowerPoint file again:
+
+```
+cd marketing/pitch/pptx
+npm install --no-package-lock
+node build.cjs
+```
+
+The PowerPoint file uses Arial for titles and Calibri for text, because every PowerPoint has them. To use the brand fonts, install Space Grotesk and Inter and change the theme fonts in PowerPoint (Design > Variants > Fonts).
 
 Text in brackets, like `[R$ __]`, is a placeholder for a figure to fill before the pitch: active companies (`tracao`), paid plans (`modelo`), team (`time`), and the round size, use of funds and goals (`pedido`).
 

@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   api,
   ApiError,
+  type Band6Iss,
   type CnpjDraft,
   type Emitter,
   type FiscalConfig,
@@ -11,7 +12,14 @@ import {
 } from '../../api';
 import { AmountInput } from '../../components/AmountInput';
 import { errorText } from '../../components/Layout';
-import { ANNEX_OPTIONS, isSimplesAnnex, issOutsideDas } from '../../components/simplesRates';
+import { Band6IssField } from '../../components/Band6IssField';
+import {
+  ANNEX_OPTIONS,
+  asksBand6Iss,
+  isSimplesAnnex,
+  issOutsideDas,
+  simplesBand,
+} from '../../components/simplesRates';
 import { useAsync } from '../../components/useAsync';
 import { fileToBase64, formatCnpj, parseCents, parsePercent } from '../../format';
 import { maskCnpj } from '../../masks';
@@ -315,14 +323,6 @@ export function CertificateStep(props: {
   );
 }
 
-// The Simples Nacional bands, by gross revenue of the last 12 months (LC 123/2006), in cents.
-const BAND_LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
-
-function bandOf(revenueCents: number): number | null {
-  const index = BAND_LIMITS.findIndex((limit) => revenueCents <= limit);
-  return index === -1 ? null : index + 1;
-}
-
 function formatCnae(cnae: string): string {
   return /^\d{7}$/.test(cnae) ? `${cnae.slice(0, 4)}-${cnae.slice(4, 5)}/${cnae.slice(5)}` : cnae;
 }
@@ -346,11 +346,12 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
   const [annexChoice, setAnnexChoice] = useState<SimplesAnnex | null>(null);
   const [iss, setIss] = useState('');
+  const [band6Iss, setBand6Iss] = useState<Band6Iss | null>(null);
   const [regime, setRegime] = useState<'inside_das' | 'regular'>('inside_das');
   const { busy, error, run } = useStepAction();
 
   const revenueCents = parseCents(revenue);
-  const band = revenueCents === null ? null : bandOf(revenueCents);
+  const band = simplesBand(revenueCents);
   const overLimit = revenueCents !== null && band === null;
   // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
   const annex =
@@ -363,11 +364,13 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
           ? 'V'
           : null);
   const issRate = parsePercent(iss);
-  const typedIss = issOutsideDas(annex, band);
+  const asksBand6 = asksBand6Iss(annex, band);
+  const typedIss = issOutsideDas(annex, band, band6Iss);
   const ready =
     !!emitter &&
     band !== null &&
     annex !== null &&
+    (!asksBand6 || band6Iss !== null) &&
     (!typedIss || (issRate !== null && issRate <= 500));
 
   const finish = async () => {
@@ -382,6 +385,7 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
         simplesAnnex: annex,
         // The server derives the band and the rates of each invoice from the revenue.
         simplesRbt12Cents: revenueCents,
+        ...(asksBand6 && band6Iss ? { simplesBand6Iss: band6Iss } : {}),
         ...(typedIss && issRate !== null ? { issRate } : {}),
         ibscbsRegime: regime,
       });
@@ -412,10 +416,11 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
           <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
         </Field>
         {band !== null && <p className="text-sm text-fg">Faixa {band} do Simples Nacional</p>}
+        {asksBand6 && <Band6IssField value={band6Iss} onChange={setBand6Iss} />}
         {typedIss && (
           <Field
             label="Alíquota de ISS (%)"
-            hint="Na faixa 6 e nos Anexos I e II o ISS fica fora do DAS: a alíquota do município, usada quando o cliente retém o ISS."
+            hint="Com o ISS fora do DAS (Anexos I e II, ou na faixa 6 depois do sublimite): a alíquota do município, usada quando o cliente retém o ISS."
           >
             <AmountInput unit="%" value={iss} onValueChange={setIss} />
           </Field>

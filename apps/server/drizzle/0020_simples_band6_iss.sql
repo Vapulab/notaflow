@@ -1,0 +1,1 @@
+ALTER TABLE `emitters` ADD `simples_band6_iss` text;

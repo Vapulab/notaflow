@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountContext, Environment } from '@notaflow/core';
-import type { SimplesAnnex } from '@notaflow/provider-nacional';
+import type { Band6Iss, SimplesAnnex } from '@notaflow/provider-nacional';
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, touched } from '../db/stamps';
@@ -18,6 +18,7 @@ export interface FiscalConfig {
   simplesPercent: number | null; // hundredths; the domestic rate
   simplesRbt12Cents: number | null;
   simplesRbt12At: Date | null;
+  simplesBand6Iss: Band6Iss | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null; // YYYY-MM-DD
@@ -174,6 +175,7 @@ export class EmitterRepository {
           simplesPercent: emitters.simplesPercent,
           simplesRbt12Cents: emitters.simplesRbt12Cents,
           simplesRbt12At: emitters.simplesRbt12At,
+          simplesBand6Iss: emitters.simplesBand6Iss,
           issRate: emitters.issRate,
           ibscbsRegime: emitters.ibscbsRegime,
           ibscbsRegimeFrom: emitters.ibscbsRegimeFrom,
