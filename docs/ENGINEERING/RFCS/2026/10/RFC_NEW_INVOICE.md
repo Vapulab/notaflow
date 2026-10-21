@@ -99,7 +99,7 @@ The decisions that depend on the law live in one module, `taxRules(competence)`,
 
 | Customer | ISS (`tribMun`) | Federal | IBS/CBS group | Foreign trade |
 | --- | --- | --- | --- | --- |
-| Brazil | `tribISSQN` 1 (taxable). Not retained (`tpRetISSQN` 1, the default): **no `pAliq`**, the ISS is paid in the DAS. Retained by the customer (`tpRetISSQN` 2, complete mode): `pAliq` from the invoice, prefilled with the emitter's ISS rate | PIS/COFINS CST from the service | Informative, CST and `cClassTrib` from the service, no values | none |
+| Brazil | `tribISSQN` 1 (taxable). Not retained (`tpRetISSQN` 1, the default): **no `pAliq`**, the ISS is paid in the DAS. Retained by the customer (`tpRetISSQN` 2, complete mode): `pAliq` from the invoice, prefilled with the emitter's ISS rate | PIS/COFINS CST from the service. INSS retained by a CNPJ customer (complete mode): `vRetCP`, prefilled with 11% of the service (Lei 8.212, art. 31) | Informative, CST and `cClassTrib` from the service, no values | none |
 | Abroad | `tribISSQN` 3 (export, immune), `cPaisResult` the customer's country, no `pAliq` | PIS/COFINS CST from the service | Informative, export CST and class from the service | `comExt` from the service defaults and the foreign amount |
 
 `pTotTribSN` is the band percent chosen on the invoice (prefilled from the emitter). The ISS rate rule above comes from the [produção restrita check](#produção-restrita-check-stage-2a): the emitter's ISS rate is the default **for retained invoices**, and the screen shows it only when retention is chosen.
@@ -178,6 +178,8 @@ Checked before a DPS number is reserved, each with its own error code and a Port
 | Customer text the XSD refuses (outside Latin-1, a line break) | `invalid_text` with the field |
 | Emitter that is not an ME/EPP Simples optant (`opSimpNac` 3) | `emitter_not_simples` |
 | ISS retained for a customer abroad or a CPF | `retention_not_allowed` |
+| INSS retained for a customer that is not a CNPJ | `retention_not_allowed` |
+| INSS retained at or above the service amount | `invalid_inss_retention` |
 | ISS retained below the legal minimum of the service: 2.00%, or above zero for subitems 7.02, 7.05, and 16.01 (LC 116, art. 8-A) | `invalid_iss_rate` with the minimum |
 | Municipality outside the IBGE table, country outside the ISO table (Anexo A) | `unknown_municipality`, `unknown_country` |
 | Export amount in reais that is not the foreign amount at the PTAX sell rate of the competence date | `amount_ptax_mismatch` with the expected amount |
@@ -227,3 +229,4 @@ Each invoice was found by the DPS id the server stores, and a resend of the same
 - [x] The source and update path of the national service code table (`cTribNac` list) to embed. Source: Anexo B v1.01 of 2026-01-22 (sheet `LISTA.SERV.NAC.`, 338 codes) from the NFS-e [Documentação Atual](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual). It is `apps/server/src/data/serviceCodes.json`. A new Anexo B version is converted again and committed.
 - [ ] The default PIS/COFINS CST and IBS/CBS class for a domestic service of a Simples optant in 2026, confirmed with the accountant or the Sefin check.
 - [ ] NT 009 rollout schedule, for the 2027 stage.
+- [ ] Does the Sefin accept `vRetCP` from an ME/EPP Simples optant? IN RFB 2110/2022, arts. 166 and 167, puts the 11% retention only on Anexo IV, which NotaFlow does not support yet. Check it in produção restrita.
