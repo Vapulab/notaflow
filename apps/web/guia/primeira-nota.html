@@ -75,11 +75,238 @@
 
     <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
       <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Sua primeira nota no NotaFlow</h1>
-      <p>A primeira nota de serviço no NotaFlow, campo por campo.</p>
+      <p>
+        Esta página acompanha a tela de nova nota do NotaFlow, na ordem dos campos. Para cada campo, ela
+        diz o que ele significa, de onde vem o valor e o que conferir. Com ela aberta ao lado, você emite a
+        sua primeira nota com calma.
+      </p>
+      <p>
+        Antes da primeira nota, a empresa precisa estar cadastrada no NotaFlow como emitente, com o
+        <a href="/guia/certificado-digital">certificado digital A1</a>. Depois, faltam a configuração fiscal
+        e os serviços, que você preenche uma vez e atualiza quando precisar.
+      </p>
+
+      <h2 id="configuracao-fiscal">A configuração fiscal</h2>
+      <p>
+        Ela fica na página do emitente. Sem ela, o NotaFlow não emite uma nota sem modelo, porque a
+        alíquota do Simples sai daqui.
+      </p>
+      <dl>
+        <dt id="campo-anexo">Anexo do Simples</dt>
+        <dd>
+          O <a href="/guia/glossario#anexo">Anexo</a> da atividade da empresa. As opções são o Anexo I
+          (comércio), o II (indústria), o III (serviços), o IV (obras, limpeza, vigilância, advocacia) e o V
+          (serviços com fator R). O <a href="/guia/simples-nacional#anexo">caminho do Simples</a> explica
+          como achar o seu. Se a escolha não combina com a atividade principal da empresa, o NotaFlow mostra
+          um aviso: confira o Anexo com seu contador. Se a atividade usa o
+          <a href="/guia/glossario#fator-r">Fator R</a>, a escolha entre III e V pode mudar de um mês para
+          outro.
+        </dd>
+        <dt id="campo-rbt12">Receita bruta dos últimos 12 meses (R$)</dt>
+        <dd>
+          O <a href="/guia/glossario#rbt12">RBT12</a>: a soma das receitas dos 12 meses antes do mês da nota.
+          O mês da nota não entra. O valor vem das suas notas e do seu controle de receita, e é o mesmo que
+          vai para o PGDAS-D. Atualize todo mês, antes da primeira nota do mês. Quando o valor fica velho, o
+          NotaFlow avisa.
+        </dd>
+        <dt id="campo-aliquota-iss">Alíquota de ISS (%)</dt>
+        <dd>
+          Só aparece quando o ISS da empresa fica fora do DAS, o que pode acontecer na faixa 6 (o
+          <a href="/guia/simples-nacional#iss">caminho do Simples</a> explica quando). É a alíquota do seu
+          município, usada quando o cliente retém o ISS. Ela vai de 2% a 5%, conforme a lei do município.
+        </dd>
+        <dt id="campo-regime-ibs-cbs">Regime do IBS/CBS e Desde</dt>
+        <dd>
+          Como a empresa vai pagar o IBS e a CBS: "Dentro do DAS" ou "Regular (fora do DAS)", e a data de
+          início. Em 2026, as alíquotas de teste do IBS e da CBS não se aplicam à empresa do Simples. A
+          opção pelo regime regular só existe a partir de 2027. Antes de mudar este campo, leia o
+          <a href="/guia/reforma-tributaria">guia da reforma tributária</a> e confira com seu contador.
+        </dd>
+      </dl>
+      <p>
+        Com o Anexo e a receita preenchidos, o NotaFlow mostra uma linha com a faixa, a alíquota efetiva,
+        a alíquota de exportação e a alíquota do ISS retido. Confira essa linha com a
+        <a href="/guia/calculadora-simples">calculadora do Simples</a> ou com o seu DAS.
+      </p>
+
+      <h2 id="servicos">Os serviços</h2>
+      <p>
+        Também na página do emitente, em "Novo serviço", você cadastra cada serviço que a empresa presta.
+        O serviço guarda o <a href="/guia/glossario#codigo-de-tributacao-nacional">código nacional</a>, um
+        nome, a descrição e os códigos que vão em toda nota dele. Na nova nota, você só escolhe o serviço.
+      </p>
+
+      <h2 id="nova-nota">A nova nota, campo por campo</h2>
+      <p>Na página inicial, abra "Nova nota" (ou use o botão "Nova nota" na página de notas). A tela se chama "Nova nota sem modelo".</p>
+      <dl>
+        <dt id="campo-emitente">Emitente</dt>
+        <dd>
+          A empresa que emite a nota, o <a href="/guia/glossario#prestador">prestador</a>. O campo só aparece
+          quando a conta tem mais de uma empresa. Confira se é a empresa certa.
+        </dd>
+        <dt id="campo-cliente">Cliente</dt>
+        <dd>
+          Quem recebe o serviço, o <a href="/guia/glossario#tomador">tomador</a>. Busque pelo nome ou pelo
+          documento. Se o cliente ainda não existe, use "+ Novo cliente": escolha "Cliente no Brasil" (com
+          CNPJ ou CPF) ou "Cliente no exterior" (com o NIF, se ele tiver), e
+          preencha o nome ou a razão social e o endereço. Confira o documento: um cliente sem documento
+          ainda não pode receber nota.
+        </dd>
+        <dt id="campo-servico">Serviço</dt>
+        <dd>
+          Um dos serviços cadastrados. Para o dono da conta, a lista também traz, em "Sugeridos pelas
+          atividades (CNAE) da empresa", os códigos que ainda não viraram serviço. Escolher um deles abre o
+          cadastro do serviço. Confira se o código combina com o que você fez.
+        </dd>
+        <dt id="campo-competencia">Competência</dt>
+        <dd>
+          A data em que o serviço foi prestado (a <a href="/guia/glossario#competencia">competência</a>). Ela
+          não pode ser depois da data de emissão. O NotaFlow sugere o último dia do mês anterior; troque pela
+          data certa do serviço. Confira com atenção: em uma nota de ME ou EPP, a competência não muda depois,
+          nem quando a nota é substituída.
+        </dd>
+        <dt id="campo-descricao">Descrição</dt>
+        <dd>
+          O texto que o cliente lê na nota. Ele vem da descrição do serviço, e você pode completar, por
+          exemplo, com o mês, o projeto ou o número do contrato.
+        </dd>
+        <dt id="campo-moeda">Moeda e Valor em USD ou EUR</dt>
+        <dd>
+          Só para um cliente no exterior. Escolha dólar ou euro e informe o valor na moeda do contrato. O
+          NotaFlow busca a cotação PTAX de venda do Banco Central e mostra a data dela. O valor em reais vem
+          dessa conta.
+        </dd>
+        <dt id="campo-valor">Valor em reais</dt>
+        <dd>
+          O valor do serviço, em reais. Para um cliente no exterior, o campo vem preenchido com a conversão e
+          não muda. Confira se é o valor bruto, antes de qualquer retenção.
+        </dd>
+        <dt id="campo-aliquota-simples">Alíquota do Simples</dt>
+        <dd>
+          A <a href="/guia/glossario#aliquota-efetiva">alíquota efetiva</a> do mês, com a faixa, por exemplo
+          "8,08% (faixa 2)". O NotaFlow calcula a partir do Anexo e do RBT12 da configuração fiscal. Para um
+          cliente no exterior, ela já vem sem o ISS, o PIS e a Cofins, que não entram na exportação. Se o
+          NotaFlow avisar que a receita está desatualizada, atualize o RBT12 antes de emitir.
+        </dd>
+        <dt id="campo-iss">ISS</dt>
+        <dd>
+          Mostra onde fica o ISS desta nota: "ISS no DAS (não retido)", "Retido pelo cliente" ou "Exportação:
+          sem ISS". Para mudar, use "Mais opções".
+        </dd>
+      </dl>
+
+      <h3 id="mais-opcoes">Mais opções</h3>
+      <p>
+        A maior parte das notas não precisa destes campos. Eles servem para os casos em que esta nota é
+        diferente do padrão do serviço.
+      </p>
+      <dl>
+        <dt id="campo-iss-retido">ISS retido pelo cliente</dt>
+        <dd>
+          Marque quando o cliente vai reter o ISS desta nota (o <a href="/guia/glossario#iss-retido">ISS
+          retido</a>). Só aparece para um cliente com CNPJ. Confirme com o cliente se a lei do município dele
+          manda reter.
+        </dd>
+        <dt id="campo-inss-retido">INSS retido pelo cliente</dt>
+        <dd>
+          Marque quando o cliente vai reter o <a href="/guia/glossario#inss-retido">INSS</a>. Só aparece para
+          um cliente com CNPJ. Na empresa do Simples, a retenção de 11% só acontece nas atividades do Anexo
+          IV, na cessão de mão de obra. Para desenvolvimento de software e consultoria de TI, deixe
+          desmarcado.
+        </dd>
+        <dt id="campo-aliquota-iss-retido">Alíquota de ISS (%)</dt>
+        <dd>
+          Aparece quando o ISS é retido. O NotaFlow preenche a parte do ISS na faixa da configuração fiscal. Pela regra,
+          a nota mostra a parte do ISS na alíquota efetiva da faixa do mês anterior ao do serviço, então
+          confira se a faixa daquele mês é a mesma. No primeiro mês de atividade, ela é de 2%. Se a nota não mostra a alíquota, o cliente
+          retém 5%. O campo aceita até 5,00%, e o mínimo é de 2,00%, exceto nos serviços dos subitens 7.02,
+          7.05 e 16.01, em que basta ser acima de zero.
+        </dd>
+        <dt id="campo-inss-valor">INSS retido (R$)</dt>
+        <dd>
+          Aparece quando o INSS é retido. O NotaFlow preenche 11% do valor do serviço. Ajuste se o contrato
+          desconta materiais ou equipamentos, e confira o valor com seu contador.
+        </dd>
+        <dt id="campo-outro-percentual">Outro percentual do Simples (%)</dt>
+        <dd>
+          Em branco, vale a alíquota da faixa. Preencha só quando você e seu contador chegaram a outro
+          percentual para esta nota.
+        </dd>
+        <dt id="campo-codigo-nacional">Código nacional</dt>
+        <dd>
+          O <a href="/guia/glossario#codigo-de-tributacao-nacional">código de tributação nacional</a> do
+          serviço. Vem do serviço escolhido. Busque pelo nome ou pelo código; antes da busca, a lista mostra
+          os códigos sugeridos pelo CNAE da empresa. Mude só se esta nota descreve outro serviço.
+        </dd>
+        <dt id="campo-codigo-municipal">Código municipal</dt>
+        <dd>O código do serviço no seu município, quando ele existe. Vem do serviço escolhido.</dd>
+        <dt id="campo-nbs">NBS</dt>
+        <dd>
+          Mais um código que classifica o serviço (a <a href="/guia/glossario#nbs">NBS</a>). Vem do serviço
+          escolhido.
+        </dd>
+        <dt id="campo-cst-pis-cofins">CST do PIS/COFINS</dt>
+        <dd>
+          O código da situação do PIS e da Cofins na nota. Vem do serviço escolhido. Se não sabe qual
+          usar, mantenha o do serviço e pergunte ao seu contador.
+        </dd>
+        <dt id="campo-ibs-cbs">Indicador de operação, CST e Classificação tributária (IBS/CBS)</dt>
+        <dd>
+          Só aparecem para um cliente no exterior. Vêm do serviço escolhido. Preencha os três ou nenhum. O
+          <a href="/guia/reforma-tributaria">guia da reforma tributária</a> explica o IBS e a CBS.
+        </dd>
+        <dt id="campo-exportacao">Dados de exportação</dt>
+        <dd>
+          Só aparecem para um cliente no exterior: Modo de prestação, Vínculo com o tomador, Mecanismo de
+          apoio do prestador, Mecanismo de apoio do tomador, Movimentação temporária de bens e Compartilhar
+          com o MDIC. Cada um começa em "Padrão do serviço". Preencha todos ou nenhum.
+        </dd>
+      </dl>
+
+      <h2 id="revisar">Revisar e emitir</h2>
+      <p>
+        Com tudo preenchido, clique em "Revisar". O NotaFlow mostra um resumo: emitente, cliente, serviço,
+        competência, descrição, valor, alíquota do Simples e ISS. O que você mudou em "Mais opções" aparece
+        em destaque, na linha "Alterado nesta nota".
+      </p>
+      <p>
+        Leia o resumo com calma. Se algo estiver errado, use "Voltar e editar". Se estiver certo, clique em
+        "Emitir nota". O NotaFlow assina a nota com o seu certificado e envia ao sistema nacional. Depois, na
+        página da nota, você baixa o XML e o PDF (DANFS-e) para mandar ao cliente.
+      </p>
+      <p>
+        Pronto: essa é a sua primeira nota. A <a href="/guia/rotina-do-mes">rotina do mês</a> mostra o que
+        vem depois.
+      </p>
 
       <section id="fontes">
         <h2>Fontes</h2>
-        <ul></ul>
+        <ul>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/anexo_i-sefin_adn-dps_nfse-snnfse-v1-01-20260209.xlsx">Anexo I da NFS-e nacional, v1.01, assinatura, campo dCompet e regras E0015 e E0061</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, arts. 18 §1º e §14, e 21 §4º</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 25 §3º e 27</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm">LC 116/2003, arts. 6º, 8º e 8º-A</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l8212cons.htm">Lei nº 8.212/1991, art. 31</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=126687">IN RFB nº 2.110/2022, arts. 166 e 167</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm">LC 214/2025, arts. 348 e 517</a>
+          </li>
+          <li>
+            <a href="https://www8.receita.fazenda.gov.br/SimplesNacional">Portal do Simples Nacional, perguntas e respostas, itens 8.1 e 8.2</a>
+          </li>
+        </ul>
       </section>
       <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
     </main>

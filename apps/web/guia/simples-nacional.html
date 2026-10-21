@@ -75,11 +75,332 @@
 
     <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
       <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Simples Nacional</h1>
-      <p>O caminho de uma empresa do Simples Nacional, da primeira nota à rotina do mês.</p>
+      <p>
+        O Simples Nacional junta vários tributos em uma guia só, o <a href="/guia/glossario#das">DAS</a>.
+        A alíquota não é fixa: ela depende da sua atividade e da sua receita. Esta página mostra como a
+        conta funciona, para você entender a sua alíquota e conferir que paga só o imposto devido.
+      </p>
+      <p>
+        Pode parecer muita regra, mas a conta tem poucos passos, e você consegue entender e conferir cada
+        um deles.
+      </p>
+
+      <h2 id="como-funciona">Como o Simples funciona</h2>
+      <p>
+        No Simples, a microempresa (ME) tem receita bruta de até R$ 360.000,00 por ano, e a empresa de
+        pequeno porte (EPP) tem receita acima de R$ 360.000,00 e até R$ 4.800.000,00.
+      </p>
+      <p>
+        Todo mês, a empresa declara a receita no <a href="/guia/glossario#pgdas-d">PGDAS-D</a> e paga um
+        DAS. Dentro do DAS estão o IRPJ, a CSLL, a Cofins, o PIS/Pasep e o ISS e, na maior parte das
+        atividades, a contribuição previdenciária patronal (CPP). A alíquota do mês sai de duas coisas:
+      </p>
+      <ul>
+        <li>
+          o <a href="/guia/glossario#anexo">Anexo</a>, que é a tabela da sua atividade. Os serviços usam os
+          Anexos III, IV e V;
+        </li>
+        <li>
+          a <a href="/guia/glossario#faixa">faixa</a>, que depende da receita dos últimos 12 meses, o
+          <a href="/guia/glossario#rbt12">RBT12</a>.
+        </li>
+      </ul>
+
+      <h2 id="anexo">Como achar o seu Anexo</h2>
+      <p>
+        Não existe uma tabela oficial que ligue cada <a href="/guia/glossario#cnae">CNAE</a> a um Anexo. A
+        LC 123/2006 descreve as atividades em palavras, no art. 18. Em resumo:
+      </p>
+      <ul>
+        <li>
+          <strong>Anexo III, sempre:</strong> por exemplo, escolas e cursos, agências de viagem, instalação,
+          reparos e manutenção em geral, escritórios de contabilidade, produções audiovisuais e corretagem
+          de seguros (art. 18 §5º-B).
+        </li>
+        <li>
+          <strong>Anexo IV:</strong> construção de imóveis e obras de engenharia, vigilância, limpeza ou
+          conservação, e serviços advocatícios (art. 18 §5º-C). Nesse Anexo, a contribuição previdenciária
+          patronal fica fora do DAS e é paga pelas regras gerais.
+        </li>
+        <li>
+          <strong>Anexo III ou V, conforme o Fator R:</strong> entre outros, o desenvolvimento e o
+          licenciamento de programas de computador, a criação de sites, a fisioterapia, a medicina, a
+          odontologia, a psicologia e a arquitetura (art. 18 §5º-B e §5º-D), e também a engenharia, a
+          consultoria, a auditoria, a publicidade e o design (art. 18 §5º-I).
+        </li>
+        <li>
+          <strong>Atividade intelectual não citada em outro lugar:</strong> a atividade intelectual, técnica,
+          científica, desportiva, artística ou cultural que nenhum outro parágrafo cita também segue o Fator
+          R (art. 18 §5º-I XII).
+        </li>
+      </ul>
+      <p>
+        No NotaFlow, você escolhe o Anexo na configuração fiscal do emitente. Quando a escolha parece não
+        combinar com a atividade principal da empresa, o NotaFlow mostra um aviso. Trate esse aviso como
+        uma sugestão e confirme o Anexo com seu contador.
+      </p>
+
+      <h2 id="fator-r">O Fator R</h2>
+      <p>
+        O <a href="/guia/glossario#fator-r">Fator R</a> decide entre o Anexo III e o Anexo V. Ele é a folha
+        de salários dos últimos 12 meses dividida pela receita bruta dos mesmos 12 meses. Com o Fator R
+        igual ou acima de 28%, a atividade usa o Anexo III. Abaixo de 28%, usa o Anexo V. Nas faixas 1 a 5, a alíquota nominal do Anexo V é
+        maior que a do Anexo III, e o exemplo abaixo mostra quanto isso pesa no mês.
+      </p>
+      <p>A folha de salários do Fator R soma o que foi pago nos 12 meses antes do mês da apuração:</p>
+      <ul>
+        <li>os salários e as outras remunerações pagas a pessoas físicas pelo trabalho;</li>
+        <li>o pró-labore dos sócios;</li>
+        <li>a contribuição previdenciária patronal efetivamente recolhida;</li>
+        <li>o FGTS efetivamente recolhido.</li>
+      </ul>
+      <p>
+        Aluguéis e distribuição de lucros não entram. Só contam as remunerações informadas ao governo (na
+        GFIP ou no eSocial). O PGDAS-D usa duas casas decimais sem arredondar: um Fator R de 0,2774 vale
+        0,27, e fica abaixo de 0,28.
+      </p>
+      <h3 id="fator-r-exemplo">Um exemplo do manual do PGDAS-D</h3>
+      <p>
+        Duas empresas de serviço com Fator R têm a mesma receita dos últimos 12 meses, R$ 500.000,00, e a
+        mesma receita no mês, R$ 10.000,00. As duas estão na faixa 3. A diferença é a folha:
+      </p>
+      <div class="guide-table">
+        <table>
+          <caption>Fonte: manual do PGDAS-D, item 12, Exemplos 4 e 5.</caption>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Empresa A</th>
+              <th scope="col">Empresa B</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Folha dos últimos 12 meses</th>
+              <td>R$ 250.000,00</td>
+              <td>R$ 100.000,00</td>
+            </tr>
+            <tr>
+              <th scope="row">Fator R</th>
+              <td>0,50 (igual ou acima de 0,28)</td>
+              <td>0,20 (abaixo de 0,28)</td>
+            </tr>
+            <tr>
+              <th scope="row">Anexo</th>
+              <td>III</td>
+              <td>V</td>
+            </tr>
+            <tr>
+              <th scope="row">Alíquota efetiva</th>
+              <td>9,972%</td>
+              <td>17,52%</td>
+            </tr>
+            <tr>
+              <th scope="row">DAS do mês</th>
+              <td>R$ 997,20</td>
+              <td>R$ 1.752,00</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Com a mesma receita, a empresa A paga R$ 754,80 a menos no mês. Por isso vale calcular o Fator R
+        todo mês: a folha e a receita mudam, e o Anexo pode mudar junto.
+      </p>
+      <p>
+        A empresa com menos de 13 meses de atividade calcula a folha pela mesma regra proporcional da
+        receita (veja abaixo). Sem folha nenhuma, o Fator R vale 0,01, e a atividade fica no Anexo V.
+      </p>
+
+      <h2 id="aliquota">Como calcular a alíquota efetiva</h2>
+      <p>
+        Cada Anexo tem seis faixas. Cada faixa tem uma <a href="/guia/glossario#aliquota-nominal">alíquota
+        nominal</a> e uma <a href="/guia/glossario#parcela-a-deduzir">parcela a deduzir</a>. A alíquota que
+        você paga, a <a href="/guia/glossario#aliquota-efetiva">alíquota efetiva</a>, sai desta conta:
+      </p>
+      <p><strong>(RBT12 × alíquota nominal − parcela a deduzir) ÷ RBT12</strong></p>
+      <div class="guide-table">
+        <table>
+          <caption>
+            Alíquota nominal e parcela a deduzir (R$) dos Anexos de serviço, conferidas em 21 de outubro de
+            2026. A Resolução CGSN nº 190/2026 muda as tabelas a partir de 1º de janeiro de 2027.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Faixa: RBT12 (R$)</th>
+              <th scope="col">Anexo III</th>
+              <th scope="col">Anexo IV</th>
+              <th scope="col">Anexo V</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">1ª: até 180.000,00</th>
+              <td>6,00%; sem dedução</td>
+              <td>4,50%; sem dedução</td>
+              <td>15,50%; sem dedução</td>
+            </tr>
+            <tr>
+              <th scope="row">2ª: 180.000,01 a 360.000,00</th>
+              <td>11,20%; 9.360,00</td>
+              <td>9,00%; 8.100,00</td>
+              <td>18,00%; 4.500,00</td>
+            </tr>
+            <tr>
+              <th scope="row">3ª: 360.000,01 a 720.000,00</th>
+              <td>13,50%; 17.640,00</td>
+              <td>10,20%; 12.420,00</td>
+              <td>19,50%; 9.900,00</td>
+            </tr>
+            <tr>
+              <th scope="row">4ª: 720.000,01 a 1.800.000,00</th>
+              <td>16,00%; 35.640,00</td>
+              <td>14,00%; 39.780,00</td>
+              <td>20,50%; 17.100,00</td>
+            </tr>
+            <tr>
+              <th scope="row">5ª: 1.800.000,01 a 3.600.000,00</th>
+              <td>21,00%; 125.640,00</td>
+              <td>22,00%; 183.780,00</td>
+              <td>23,00%; 62.100,00</td>
+            </tr>
+            <tr>
+              <th scope="row">6ª: 3.600.000,01 a 4.800.000,00</th>
+              <td>33,00%; 648.000,00</td>
+              <td>33,00%; 828.000,00</td>
+              <td>30,50%; 540.000,00</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Exemplo do manual do PGDAS-D:</strong> uma empresa do Anexo III tem RBT12 de R$ 300.000,00,
+        na faixa 2. A conta é (300.000,00 × 11,20% − 9.360,00) ÷ 300.000,00 = 8,08%. Com receita de
+        R$ 100.000,00 no mês, o DAS é de R$ 8.080,00.
+      </p>
+      <p>Alguns cuidados com o RBT12:</p>
+      <ul>
+        <li>
+          Ele soma a receita dos 12 meses <strong>antes</strong> do mês da apuração. O próprio mês não
+          entra.
+        </li>
+        <li>
+          No primeiro mês de atividade, o RBT12 é a receita do mês × 12. Nos 11 meses seguintes, é a média
+          dos meses anteriores × 12, e um mês sem receita também entra na média.
+        </li>
+        <li>Com RBT12 igual a zero, vale a alíquota nominal da faixa 1.</li>
+        <li>A receita de exportação tem o seu próprio RBT12 para a alíquota.</li>
+      </ul>
+      <p>
+        A <a href="/guia/calculadora-simples">calculadora do Simples</a> faz essa conta com os seus números,
+        passo a passo.
+      </p>
+
+      <h2 id="iss">O ISS: dentro do DAS ou retido pelo cliente</h2>
+      <p>
+        Na empresa do Simples, o <a href="/guia/glossario#iss">ISS</a> é uma parte do DAS. Cada faixa tem a
+        sua parte de ISS, e essa parte nunca passa de 5% da receita.
+      </p>
+      <p>
+        Quando a lei manda (a do município ou, em alguns casos, a LC 116/2003), o cliente retém o ISS: ele
+        desconta o imposto da nota e paga direto ao município. Então a parte do ISS sai do DAS daquela receita, e os tributos federais continuam no
+        DAS. Para isso dar certo, a nota precisa mostrar a alíquota do <a href="/guia/glossario#iss-retido">ISS
+        retido</a>:
+      </p>
+      <ul>
+        <li>
+          é a parte do ISS na alíquota efetiva da faixa do mês anterior ao do serviço, calculada com a
+          receita dos 12 meses antes desse mês anterior;
+        </li>
+        <li>no primeiro mês de atividade, a alíquota é de 2%;</li>
+        <li>se a nota não mostra a alíquota, o cliente retém 5%.</li>
+      </ul>
+      <p>
+        <strong>Na faixa 6.</strong> Uma empresa com RBT12 acima de R$ 3,6 milhões fica na faixa 6. Mesmo
+        assim, o ISS continua dentro do DAS enquanto a receita do ano corrente não passa de R$ 3,6 milhões,
+        o sublimite. Nesse caso, a parte do ISS é calculada com a conta da faixa 5. Se a receita do ano
+        passa do sublimite, o ISS ainda fica no DAS até o impedimento começar: no mês seguinte, se o excesso
+        passa de 20%, ou no ano seguinte, se não passa. Depois disso, a empresa paga o ISS fora do DAS.
+        Esse caso tem detalhes, então confira com seu contador.
+      </p>
+
+      <h2 id="inss-retido">INSS retido (11%)</h2>
+      <p>
+        Na cessão de mão de obra, o cliente retém 11% do valor bruto da nota e recolhe ao INSS até o dia 20
+        do mês seguinte. Na empresa do Simples, essa retenção só acontece nas atividades do Anexo IV: obras
+        e engenharia, vigilância, limpeza ou conservação, e serviços advocatícios.
+      </p>
+      <p>
+        O desenvolvimento de software e a consultoria de TI não estão nas listas da retenção. Para essas
+        empresas, a nota sai sem <a href="/guia/glossario#inss-retido">INSS retido</a>.
+      </p>
+
+      <h2 id="exportacao">Exportação de serviço</h2>
+      <p>
+        Exportar serviço é prestar serviço para uma pessoa ou empresa no exterior, com pagamento que entra
+        no Brasil como divisa. Não conta como exportação o serviço feito no Brasil cujo resultado também
+        acontece aqui.
+      </p>
+      <p>
+        Na receita de exportação, o DAS não tem a parte do ISS, do PIS/Pasep e da Cofins. O IRPJ, a CSLL e
+        a CPP continuam. A exportação também tem o seu próprio limite, do mesmo tamanho do limite do
+        mercado interno.
+      </p>
+
+      <h2 id="conferir">Pontos para conferir com seu contador</h2>
+      <p>
+        Nenhum destes pontos é um erro de alguém. São detalhes que mudam o valor do DAS e que valem uma
+        conversa tranquila com seu contador:
+      </p>
+      <ul>
+        <li>O Anexo de cada atividade da empresa, e o motivo da escolha.</li>
+        <li>Se a atividade usa o Fator R, e se ele é calculado todo mês, com a folha paga.</li>
+        <li>Qual RBT12 entrou na conta do mês, e se ele é dos 12 meses certos.</li>
+        <li>Se as notas com ISS retido aparecem separadas na declaração do PGDAS-D.</li>
+        <li>Se a receita de exportação aparece separada, sem o ISS, o PIS e a Cofins.</li>
+        <li>Se a nota com ISS retido mostra a alíquota certa.</li>
+        <li>Se a empresa cede mão de obra ao cliente: fora do Anexo IV, a cessão de mão de obra leva à exclusão do Simples.</li>
+        <li>Se a receita do ano se aproxima do sublimite de R$ 3,6 milhões ou do limite de R$ 4,8 milhões.</li>
+      </ul>
+      <p>
+        O guia <a href="/guia/preciso-de-contador">Preciso de contador?</a> traz mais perguntas para essa
+        conversa.
+      </p>
+
+      <h2 id="proximos-passos">Próximos passos</h2>
+      <ul>
+        <li><a href="/guia/primeira-nota">A sua primeira nota no NotaFlow, campo por campo</a>.</li>
+        <li><a href="/guia/rotina-do-mes">A rotina do mês</a>: emitir, conferir, declarar e pagar.</li>
+        <li><a href="/guia/calculadora-simples">A calculadora do Simples</a>, para conferir a sua alíquota.</li>
+        <li><a href="/guia/reforma-tributaria">O que muda com o IBS e a CBS</a>.</li>
+      </ul>
+      <p><a href="/cadastro"><strong>Crie sua conta e emita sua primeira nota</strong></a>.</p>
 
       <section id="fontes">
         <h2>Fontes</h2>
-        <ul></ul>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, arts. 3º, 13-A, 18 (§§ 1º a 5º-M, 14, 24 a 26), 20 e 21 §4º, e Anexos III, IV e V</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 21 a 27</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/cgsn-atualiza-regras-do-simples-nacional-para-adequacao-a-reforma-tributaria-do-consumo">Receita Federal, Resolução CGSN nº 190/2026 (mudanças a partir de 2027)</a>
+          </li>
+          <li>
+            <a href="https://www8.receita.fazenda.gov.br/SimplesNacional">Portal do Simples Nacional, manual do PGDAS-D, itens 8.2.1, 8.3 e 12 (Exemplos 2, 4, 5 e 8)</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm">LC 116/2003, art. 6º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l8212cons.htm">Lei nº 8.212/1991, art. 31</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=126687">IN RFB nº 2.110/2022, arts. 111 a 113, 166 e 167</a>
+          </li>
+        </ul>
       </section>
       <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
     </main>

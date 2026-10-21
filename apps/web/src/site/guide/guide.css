@@ -43,3 +43,22 @@
 .guide-note {
   @apply mt-10 rounded-lg border border-border p-5;
 }
+/* The hub choices: 2x2 on a wide screen, one column on a phone. */
+.guide-cards {
+  @apply mt-6 grid gap-4 sm:grid-cols-2;
+}
+.guide-text .guide-card {
+  @apply block rounded-lg border border-border p-5 text-fg no-underline transition-colors hover:border-primary;
+}
+.guide-card p {
+  @apply text-sm text-muted;
+}
+.guide-text figure {
+  @apply mt-4;
+}
+.guide-text figure img {
+  @apply w-full rounded-lg border border-border;
+}
+.guide-text figcaption {
+  @apply mt-2 text-sm text-muted;
+}

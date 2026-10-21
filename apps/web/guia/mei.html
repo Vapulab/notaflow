@@ -75,11 +75,168 @@
 
     <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
       <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">MEI</h1>
-      <p>Como o MEI emite nota fiscal de serviço e o que muda para quem usa o NotaFlow.</p>
+      <p>
+        O MEI, o microempreendedor individual, é a forma mais simples de ter uma empresa. Ele paga um valor
+        fixo por mês e emite a nota de serviço pelo emissor nacional, sem certificado digital. Esta página
+        explica as regras do MEI, para você saber se a sua empresa cabe nelas e o que fazer quando a
+        receita cresce.
+      </p>
+
+      <h2 id="limite">O limite de receita</h2>
+      <p>
+        Em 2026, o limite do MEI é de <strong>R$ 81.000,00 por ano</strong>. No ano em que a empresa abre,
+        o limite é de R$ 6.750,00 por mês de atividade, e uma fração de mês conta como um mês inteiro.
+      </p>
+      <p>
+        A LC 238/2026, publicada em 21 de outubro de 2026, aumenta esse limite. Pela lei, ele passa a
+        R$ 110.000,00 no ano de 2027 (R$ 9.166,67 por mês no ano de abertura) e a R$ 140.000,00 a partir de
+        2028 (R$ 11.666,67 por mês no ano de abertura). A própria lei condiciona o aumento às leis
+        orçamentárias de 2027 a 2029. Então, por enquanto, conte com o limite de R$ 81 mil e confira a
+        data da última revisão no fim desta página.
+      </p>
+      <div class="guide-table">
+        <table>
+          <caption>Valores conferidos em 21 de outubro de 2026.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Período</th>
+              <th scope="col">Limite por ano</th>
+              <th scope="col">No ano de abertura, por mês</th>
+              <th scope="col">Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">2026</th>
+              <td>R$ 81.000,00</td>
+              <td>R$ 6.750,00</td>
+              <td>Em vigor.</td>
+            </tr>
+            <tr>
+              <th scope="row">2027</th>
+              <td>R$ 110.000,00</td>
+              <td>R$ 9.166,67</td>
+              <td>Previsto na LC 238/2026, sob a condição orçamentária da lei.</td>
+            </tr>
+            <tr>
+              <th scope="row">A partir de 2028</th>
+              <td>R$ 140.000,00</td>
+              <td>R$ 11.666,67</td>
+              <td>Previsto na LC 238/2026, sob a condição orçamentária da lei.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="quem-pode">Quem pode ser MEI</h2>
+      <p>
+        O MEI só pode exercer as ocupações da lista do Anexo XI da Resolução CGSN nº 140/2018. Vale
+        procurar a sua atividade nessa lista antes de tudo. O desenvolvimento de software e a consultoria
+        não estão nela: quem trabalha com isso não pode ser MEI.
+      </p>
+      <p>Também não pode ser MEI quem:</p>
+      <ul>
+        <li>exerce uma atividade tributada nos Anexos V ou VI do Simples Nacional;</li>
+        <li>tem mais de um estabelecimento;</li>
+        <li>é sócio ou administrador de outra empresa;</li>
+        <li>é uma startup.</li>
+      </ul>
+      <p>
+        Hoje o MEI pode ter um empregado, que recebe o salário mínimo ou o piso da categoria. Nesse caso,
+        o MEI paga 3% de contribuição previdenciária patronal (CPP). Pela LC 238/2026, a partir
+        de 1º de janeiro de 2027 o MEI pode ter até dois empregados.
+      </p>
+
+      <h2 id="das-mei">O imposto do mês: o DAS-MEI</h2>
+      <p>
+        O MEI não calcula alíquota. Ele paga um valor fixo por mês, o DAS-MEI, que não muda com o valor das
+        notas. Em 2026, o DAS-MEI tem estas partes:
+      </p>
+      <ul>
+        <li>R$ 81,05 de INSS, que é 5% do salário mínimo de R$ 1.621,00;</li>
+        <li>mais R$ 5,00 de ISS, se o MEI presta serviço;</li>
+        <li>mais R$ 1,00 de ICMS, se o MEI vende mercadoria.</li>
+      </ul>
+      <p>
+        Para um MEI que só presta serviço, a soma é de R$ 86,05 por mês em 2026. O DAS-MEI vence no dia 20
+        do mês seguinte. Um cliente não retém ISS de um MEI.
+      </p>
+      <p>
+        Uma vez por ano, o MEI entrega a declaração anual, a DASN-SIMEI. Se a empresa fica 12 meses
+        seguidos sem pagar o DAS-MEI e sem entregar as declarações, o registro do MEI pode ser cancelado
+        de forma automática.
+      </p>
+
+      <h2 id="nota">Como o MEI emite a nota de serviço</h2>
+      <p>
+        Desde 1º de setembro de 2023, o MEI que presta serviço fora do campo do ICMS emite a
+        <a href="/guia/glossario#nfs-e">NFS-e</a> pelo sistema nacional. Há três caminhos: o emissor web, o
+        aplicativo para celular e a API. O MEI não precisa de certificado digital para emitir.
+      </p>
+      <ul>
+        <li>Para um cliente com CNPJ, a nota é obrigatória.</li>
+        <li>Para uma pessoa física, a nota é opcional.</li>
+      </ul>
+      <p>
+        No emissor web, o MEI também pode entrar com a conta gov.br nível prata ou ouro. O
+        <a href="/guia/certificado-digital">guia do certificado</a> explica a diferença entre o emissor do
+        governo e o NotaFlow.
+      </p>
+
+      <h2 id="limite-passou">Quando a receita passa do limite</h2>
+      <p>
+        Quando a receita do ano passa do limite, a empresa sai do MEI. O nome técnico é desenquadramento.
+        A regra depende do tamanho do excesso:
+      </p>
+      <ul>
+        <li>
+          <strong>Até 20% acima do limite:</strong> a empresa sai do MEI em 1º de janeiro do ano seguinte.
+          A diferença de imposto é paga junto com o DAS de janeiro, sem acréscimos.
+        </li>
+        <li>
+          <strong>Mais de 20% acima do limite:</strong> a saída volta a 1º de janeiro do próprio ano (ou ao
+          início da atividade, no ano de abertura). O imposto desse período passa a seguir a regra geral do
+          Simples Nacional.
+        </li>
+      </ul>
+      <p>
+        Nos dois casos, a empresa comunica o excesso até o último dia útil do mês seguinte ao excesso.
+        Esse é um bom momento para conversar com um contador: a mudança envolve o Anexo, a alíquota e
+        novas obrigações. O <a href="/guia/simples-nacional">caminho do Simples Nacional</a> mostra como
+        fica a empresa depois.
+      </p>
+
+      <section class="guide-note" aria-labelledby="em-breve">
+        <h2 id="em-breve" class="!mt-0">O NotaFlow ainda não emite para MEI</h2>
+        <p>
+          O NotaFlow ainda não emite para MEI. Estamos trabalhando nisso. Deixe seu e-mail e avisamos
+          quando estiver pronto.
+        </p>
+        <form data-waitlist data-interest="mei"></form>
+      </section>
 
       <section id="fontes">
         <h2>Fontes</h2>
-        <ul></ul>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, arts. 18-A, 18-C, 21 §4º, 25-B e 26 §6º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp238.htm">LC 238/2026, arts. 1º, 2º, 3º e 10</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 40, 100, 105, 106 e 106-A e Anexo XI</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm">Decreto nº 12.797/2025, art. 1º (salário mínimo de 2026)</a>
+          </li>
+          <li>
+            <a href="https://www8.receita.fazenda.gov.br/simplesnacional/noticias/NoticiaCompleta.aspx?id=c3b2044c-ff97-432a-b33c-ecf2a3df6dc3">Portal do Simples Nacional, valores do DAS-MEI em 2026</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/guia-emissorpubliconacionalweb_snnfse-ern-v12.pdf">Guia do Emissor Público Nacional Web, item 10.6.3</a>
+          </li>
+        </ul>
       </section>
       <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
     </main>
