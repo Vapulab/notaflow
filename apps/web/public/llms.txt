@@ -7,7 +7,7 @@
 - Emite NFS-e pelo sistema nacional (Sefin Nacional), assinada com o certificado e-CNPJ A1 da empresa, e devolve a chave de acesso.
 - Emite uma nota parecida com uma anterior, com os dados do cliente e do serviço já preenchidos.
 - Cancela notas com motivo e justificativa, e guarda quem cancelou e quando.
-- Calcula a alíquota do Simples Nacional (anexos III e V) e o ISS pela receita bruta dos últimos 12 meses (RBT12).
+- Calcula a alíquota do Simples Nacional (anexos I a V) e o ISS pela receita bruta dos últimos 12 meses (RBT12).
 - Converte o valor de notas para clientes no exterior pela PTAX de venda do Banco Central (boletim de fechamento) da data de competência.
 - Importa as notas que a empresa já emitiu no sistema nacional e cadastra os clientes delas.
 - Sugere os serviços pelas atividades (CNAE) da empresa.
@@ -15,7 +15,7 @@
 
 ## Para quem é
 
-- Empresas do Simples Nacional (ME e EPP) que prestam serviços dos anexos III e V, como tecnologia, consultoria e design.
+- Empresas do Simples Nacional (ME e EPP) que prestam serviços, de qualquer anexo (I a V), como tecnologia, consultoria, design, obras e limpeza.
 - A cidade da empresa precisa emitir a NFS-e pelo sistema nacional. A lista de municípios conveniados está no portal da NFS-e (gov.br/nfse).
 - O MEI ainda não é atendido.
 - É preciso um certificado e-CNPJ A1 (arquivo .pfx ou .p12). O certificado A3, em cartão ou token, não funciona.
