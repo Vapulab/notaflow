@@ -75,7 +75,7 @@ Every page cites the official source of each rule. Every page tells the reader t
 
 ## Solution
 
-Ten static HTML pages in the same pattern as the landing, a client-side calculator, and one public endpoint for a notify-me list.
+Eleven static HTML pages in the same pattern as the landing, a client-side calculator, and one public endpoint for a notify-me list.
 
 ```
 /guia                               Hub: "Qual é o tipo da sua empresa?"
@@ -138,7 +138,7 @@ The calculator follows the steps of the PGDAS-D, so that its result matches the 
 - An optional CNAE field preselects the answers with `annexRule`. The page labels it "sugestão: confirme com seu contador".
 - When the answers do not decide the Anexo, the page says so and does not guess.
 
-**Step 2: the Fator R, with the parts of the payroll.** Asked only when the activity uses the Fator R. The page asks for each part of the payroll of the last 12 months (salaries, pró-labore, FGTS, the employer contribution, and the other items that LC 123 art. 18 §24 and Res. CGSN 140 count), each one with a short explanation. The payroll counts what was paid in the 12 months before the month of the calculation, with the FGTS and the employer contribution actually paid. Rents and profit distribution do not count (art. 18 §24 and §26). The Fator R is the payroll divided by the RBT12 of both markets, truncated to two decimals as the PGDAS-D does: 0,2774 becomes 0,27 (PGDAS-D manual 8.2.1). At 0,28 or more the activity uses Anexo III, and below 0,28 it uses Anexo V. The page shows the Fator R, the 28% limit, and the Anexo that follows. Under 13 months of activity, the payroll follows the same rule as the RBT12 (Res. CGSN 140 art. 26 §4).
+**Step 2: the Fator R, with the parts of the payroll.** Asked only when the activity uses the Fator R. The page asks for each part of the payroll of the last 12 months (salaries, pró-labore, FGTS, the employer contribution, and the other items that LC 123 art. 18 §24 and Res. CGSN 140 count), each one with a short explanation. The payroll counts what was paid in the 12 months before the month of the calculation, with the FGTS and the employer contribution actually paid. Rents and profit distribution do not count (art. 18 §24 and §26). The Fator R is the payroll divided by the RBT12 of both markets, truncated to two decimals as the PGDAS-D does: 0,2774 becomes 0,27 (PGDAS-D manual 8.2.1). At 0,28 or more the activity uses Anexo III, and below 0,28 it uses Anexo V. The page shows the Fator R, the 28% limit, and the Anexo that follows. Under 13 months of activity, the payroll follows the same rule as the RBT12 (Res. CGSN 140 art. 26 §4). Zero cases (art. 26 §6 and §7): with a payroll above zero and no revenue, r is 0,28; with no payroll, r is 0,01.
 
 **Step 3: the RBT12, from the correct window.** The RBT12 is the sum of the 12 months before the month of the calculation, not including it. The reader types the revenue month by month, or pastes a list. A company under 13 months old uses the proportional rule (LC 123 art. 18 §1 and §2, Res. CGSN 140 art. 22 §2 and §3): the first month uses the revenue of the month × 12, and the next 11 months use the average of the previous months × 12. A month with no revenue counts in the average. An RBT12 of zero counts as R$ 1,00, which gives the nominal rate of band 1 (art. 21, sole paragraph). The domestic and the export revenue have each their own RBT12 for the rate (art. 23). The page shows which rule it used.
 
@@ -146,9 +146,9 @@ The calculator follows the steps of the PGDAS-D, so that its result matches the 
 
 **Step 5: more than one activity (optional).** Behind a closed option, "Tenho mais de uma atividade". The reader adds one revenue line for each activity, and each line uses its own Anexo and the same RBT12, as in the segregation of the PGDAS-D. Most readers have one activity and never open it.
 
-**The band 6 ISS.** The R$ 3,6 mi sublimit (LC 123 art. 13-A) is tested on the revenue of the current calendar year, not on the RBT12. With an RBT12 above R$ 3,6 mi and a year revenue under the sublimit, the DAS still holds the ISS. The calculator applies the band 5 formula to the RBT12, caps the ISS at 5%, and spreads the excess to the federal taxes of the same band (Res. CGSN 140 art. 21 III b; PGDAS-D manual, Exemplo 8). Above the sublimit, the ISS stays in the DAS until the impediment starts: the next month if the excess is above 20%, and the next year if not (art. 20 §1 and §1-A; Res. CGSN 140 art. 24). The page treats this case as a warning and tells the reader to confirm with the accountant.
+**The band 6 ISS.** The R$ 3,6 mi sublimit (LC 123 art. 13-A) is tested on the revenue of the current calendar year, not on the RBT12. With an RBT12 above R$ 3,6 mi and a year revenue under the sublimit, the calculator calculates the ISS: it applies the band 5 formula to the RBT12, caps the ISS at 5%, and spreads the excess to the federal taxes of the same band (Res. CGSN 140 art. 21 III b; PGDAS-D manual, Exemplo 8). The ISS stays in the DAS. When the year revenue passes the sublimit, the ISS stays in the DAS until the impediment starts: the next month if the excess is above 20%, and the next year if not (art. 20 §1 and §1-A; Res. CGSN 140 art. 24). The page calculates the case of an excess up to 20% as it does for the year, and warns when the excess is above 20%, because the rules of the two parts of the revenue differ. In both warnings it tells the reader to confirm with the accountant.
 
-**Warnings, not calculations:** the band 6 case above, the 5% cap of the ISS share in band 5 (it acts only in Anexos III and IV: in Anexo V the ISS share never passes 5%), and the fixed ISS. The fixed ISS in LC 123 belongs to accounting offices (art. 18 §22-A) and to a small ME when the municipality allows it (art. 18 §18). The ISS of other professional societies is not fixed in the Simples (Res. CGSN 140 art. 25 §12). The page explains each case and tells the reader to confirm with the accountant. Above R$ 4,8 mi, the page says that the company leaves the Simples, and does not calculate.
+**Warnings, not calculations:** a year revenue more than 20% above the sublimit (see above), the 5% cap of the ISS share in band 5 (it acts only in Anexos III and IV: in Anexo V the ISS share never passes 5%), and the fixed ISS. The fixed ISS in LC 123 belongs to accounting offices (art. 18 §22-A) and to a small ME when the municipality allows it (art. 18 §18). The ISS of other professional societies is not fixed in the Simples (Res. CGSN 140 art. 25 §12). The page explains each case and tells the reader to confirm with the accountant. Above R$ 4,8 mi, the page says that the company leaves the Simples, and does not calculate.
 
 **Output:** for each line, the Anexo with its reason, the band, the formula with the reader's numbers, the effective rate, and the value of each tax inside the DAS. Then the total DAS of the month.
 
@@ -157,7 +157,7 @@ The calculator follows the steps of the PGDAS-D, so that its result matches the 
 **The research decides the details.** The exact items of the Fator R payroll, the proportional rule, the share removal for each line, and the warning cases must come from the current text of LC 123 and Res. CGSN 140 (and the PGDAS-D manual). If a source disagrees with this section, the source wins and the RFC changes.
 
 **Other rules:**
-- **One source of truth:** the tables come from `packages/provider-nacional/src/rules/simplesRates.ts`, and the CNAE hint comes from `annexRule`. The calculator does not copy the numbers. `apps/web` does not depend on these modules today, so the implementer moves or exposes them.
+- **One source of truth:** the tables come from `packages/provider-nacional/src/rules/simplesRates.ts`, and the CNAE hint comes from `annexRule`. The calculator does not copy the numbers. `apps/web` does not depend on these modules today, so the implementer moves or exposes them. The calculator also depends on the fix PR (branch `fix/simples-band6-annex`, band 6 ISS and the `annexRule` gaps) and on adding the IRPJ, CSLL and CPP shares to the tables.
 - The tables and the 2027 change: the tables in `simplesRates.ts` match LC 123 today. From 2027-01-01, Res. CGSN 190/2026 changes the tables for the CBS and the IBS. The new shares are not confirmed, so the page shows the date of its tables.
 - The page explains the formula: `(RBT12 × alíquota nominal − parcela a deduzir) ÷ RBT12`.
 
@@ -186,10 +186,10 @@ All the guide text is Brazilian Portuguese, in the voice of the landing: short s
 **Certificado digital (`/guia/certificado-digital`)**
 
 - What it is: the electronic identity of the company. NotaFlow signs each invoice with it.
-- A1 vs. A3: A1 is a file (.pfx) with a password and a validity of 1 year. A3 is a card, a token or a cloud key (HSM) with a validity of 1 to 5 years. NotaFlow uses only the A1, because a server can load a file. The page says this in one line.
+- A1 vs. A3: A1 is a file with a password and a validity of 1 year (ITI). NotaFlow accepts the file as .pfx or .p12. A3 is a card, a token or a cloud key (HSM) with a validity of 1 to 5 years. NotaFlow uses only the A1, because a server can load a file. The page says this in one line.
 - Why the reader needs it: the national NFS-e web emissor needs no certificate (user and password work for any company). NotaFlow sends each invoice through the API, and the API requires an XML signature with the certificate of the issuer. So the certificate is a need of NotaFlow, not of the national system. The page explains this difference.
 - The future of the A1: Res. CG ICP-Brasil 211/2024 creates the "Selo Eletrônico" to replace the certificate of a legal entity (A1 or A3). The A1 stops working on 2029-03-03. Until 2029-03-02 the A1 works. The page does not promise that an A1 stays valid after that date. Whether the national API will accept the Selo Eletrônico is not confirmed.
-- Who can buy it: a company with a valid CNPJ. The person named in the certificate is the one responsible for the CNPJ before the Receita. The Receita does not issue a certificate to a CNPJ that is inapta, suspensa or cancelada.
+- Who can buy it: the certificate is issued to the company, which needs a valid CNPJ, with a responsible person who is named in it. The exact rule that this person must be the legal representative is not confirmed, so the page says only that the certificate goes to the company and its responsible person. The Receita does not issue a certificate to a CNPJ that is inapta, suspensa or cancelada.
 - How to buy it: choose an ICP-Brasil certificate authority from the official ITI list, pay, do the identity check (in person or by video call, as IN ITI 36/2026 allows), and download the file. It also covers what to do when the file and the password arrive.
 - Care: keep the file and the password safe, never send them by e-mail, and renew before the certificate expires. The ITI says that nobody can sign with an expired certificate and that the renewal request must come within the validity. The ITI has no recovery procedure for a lost password: the reader asks the certificate authority.
 - Price: no number. The ITI does not regulate the price, and the text says that it changes from one authority to another.
@@ -219,7 +219,7 @@ NFS-e, DPS, chave de acesso, DAS, PGDAS-D, RBT12, Anexo, faixa, alíquota nomina
 **MEI (`/guia/mei`)**
 
 - What the MEI is, the revenue limit, and the activities it allows. The limit in force is R$ 81 mil per year (LC 123 art. 18-A §1), with R$ 6.750 per month in the first year. LC 238/2026 (DOU 2026-10-21) raises it to R$ 110 mil for 2027 and R$ 140 mil from 2028, with up to 2 employees from 2027. The raise depends on the budget law (LC 238 art. 3), so the page shows the dates and does not promise it. The allowed activities are the list of Anexo XI of Res. CGSN 140. A software developer or a consultant is not on it, so that reader cannot be a MEI.
-- The fixed DAS: there is no rate on the invoice. In 2026 it is R$ 81,05 of INSS plus R$ 5,00 of ISS and R$ 1,00 of ICMS, due on day 20.
+- The fixed DAS: there is no rate on the invoice. In 2026 it is R$ 81,05 of INSS, plus R$ 5,00 of ISS if the MEI provides services, plus R$ 1,00 of ICMS if it sells goods. The total of R$ 86,05 for a service MEI is derived from these parts. The DAS is due on day 20.
 - How a MEI issues an NFS-e today: through the national issuer (web, app or API), with no certificate (Res. CGSN 140 art. 106-A). The invoice is mandatory for a customer with a CNPJ, and optional for a person.
 - What happens when the company goes over the limit (desenquadramento): up to 20% over, it leaves on 1 January of the next year; above 20%, it leaves retroactively (LC 123 art. 18-A §7).
 - "O NotaFlow ainda não emite para MEI. Estamos trabalhando nisso." with the notify-me form.
@@ -230,9 +230,9 @@ NFS-e, DPS, chave de acesso, DAS, PGDAS-D, RBT12, Anexo, faixa, alíquota nomina
 - How to find your Anexo from the CNAE.
 - The Fator R with a worked example, and why it can make the rate much lower.
 - How to calculate the effective rate from the RBT12, with a link to the calculator.
-- ISS: inside the DAS, retained by the customer, or outside the DAS above the band limit.
+- ISS: inside the DAS, or retained by the customer. In band 6 the ISS stays in the DAS while the revenue of the year is under the R$ 3,6 mi sublimit, and until the impediment starts above it (Res. CGSN 140 art. 21 III b and art. 24 I). After that, the company pays the ISS outside the DAS.
 - INSS retained (11%) on a service with labor assignment. A company in the Simples suffers it only for the Anexo IV activities (IN RFB 2.110/2022 arts. 166 and 167, with Lei 8.212/1991 art. 31). Software and consulting are in Anexo III or V and have no retention.
-- Service export: no ISS, PIS or COFINS.
+- Service export: no ISS, PIS or COFINS inside the DAS. IRPJ, CSLL and CPP stay (LC 123 art. 18 §14).
 - "Pontos para conferir com seu contador": the common errors, in a soft tone.
 - Next step: `/guia/primeira-nota`.
 
@@ -319,7 +319,7 @@ The guide does not wait for `feat/certificate-help`. That branch has no partner 
 ## Testing
 
 - **Pages:** `src/site/staticPages.test.ts` covers each new page: title, canonical, JSON-LD, the "Fontes", "Atualizado em" and "Aviso" parts, and an entry in the sitemap.
-- **Calculator:** unit tests for the bands of each Anexo, the band limits, the Fator R at exactly 28% and the truncation to two decimals (0,2774 is 0,27), the band 6 ISS under the sublimit, the R$ 3,6 mi and R$ 4,8 mi limits, the RBT12 window, the proportional RBT12 in months 1, 2 and 11, the share removal for retained ISS and for export, the retained ISS rate from the RBT12 of the month before the service, and two activities in different Anexos. The expected values are the ones in `simplesRates.ts`, checked by hand against the LC 123 tables. At least three cases are worked examples from an official source (the PGDAS-D manual or a Receita answer), if the research finds them.
+- **Calculator:** unit tests for the bands of each Anexo, the band limits, the Fator R at exactly 28%, the truncation to two decimals (0,2774 is 0,27), and the zero cases (payroll above zero with no revenue is 0,28; no payroll is 0,01), the band 6 ISS under the sublimit, the R$ 3,6 mi and R$ 4,8 mi limits, the RBT12 window, the proportional RBT12 in months 1, 2 and 11, the share removal for retained ISS and for export, the retained ISS rate from the RBT12 of the month before the service, and two activities in different Anexos. The expected values are the ones in `simplesRates.ts`, checked by hand against the LC 123 tables. At least three cases are worked examples from an official source (the PGDAS-D manual or a Receita answer), if the research finds them.
 - **CNPJ regime:** a bad CNPJ, the three regimes, a lookup error, the rate limit, and a check that the response holds only the regime.
 - **Waitlist:** Turnstile, the rate limit, the merge of a repeated e-mail, `softDelete`, and the admin-only list.
 - **Text:** the anti-goals are part of the review. Each fact has a source. No text says that the reader does not need an accountant. No text blames the accountant.
