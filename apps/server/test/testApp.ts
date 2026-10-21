@@ -33,6 +33,7 @@ export async function createTestApp(
     ptaxDispatcher?: Dispatcher;
     exchangeRate?: ExchangeRateSource;
     cepDispatcher?: Dispatcher;
+    bugDispatcher?: Dispatcher;
     cnpjDispatcher?: Dispatcher;
     env?: Record<string, string>;
     googleUserInfo?: AuthDeps['googleUserInfo'];
@@ -78,6 +79,7 @@ export async function createTestApp(
     ...(options.policyNotice !== undefined ? { policyNotice: options.policyNotice } : {}),
     ...(options.ptaxDispatcher ? { ptaxDispatcher: options.ptaxDispatcher } : {}),
     ...(options.cepDispatcher ? { cepDispatcher: options.cepDispatcher } : {}),
+    ...(options.bugDispatcher ? { bugDispatcher: options.bugDispatcher } : {}),
     ...(options.cnpjDispatcher ? { cnpjDispatcher: options.cnpjDispatcher } : {}),
     // A fixed PTAX of 5.0000 unless a test brings its own; the real one is a network call.
     exchangeRate:

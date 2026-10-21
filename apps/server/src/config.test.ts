@@ -252,3 +252,45 @@ test('an impossible LIFECYCLE_START_AT is refused, so a typo never starts the re
     );
   }
 });
+
+test('every bug report channel is off until its variables are set', () => {
+  expect(loadConfig(base).bugs).toEqual({
+    github: null,
+    githubWebhookSecret: null,
+    discordWebhookUrl: null,
+    notion: null,
+  });
+  expect(
+    loadConfig({
+      ...base,
+      GITHUB_BUG_TOKEN: 'gh-token',
+      GITHUB_BUG_REPO: 'Vapulab/notaflow',
+      GITHUB_WEBHOOK_SECRET: 'hook-secret',
+      DISCORD_BUG_WEBHOOK_URL: 'https://discord.com/api/webhooks/1/abc',
+      NOTION_TOKEN: 'notion-token',
+      NOTION_BUGS_DATABASE_ID: 'db-id',
+    }).bugs,
+  ).toEqual({
+    github: { token: 'gh-token', repo: 'Vapulab/notaflow' },
+    githubWebhookSecret: 'hook-secret',
+    discordWebhookUrl: 'https://discord.com/api/webhooks/1/abc',
+    notion: { token: 'notion-token', databaseId: 'db-id' },
+  });
+});
+
+test('a bug channel with half of its pair, a bad repo, or a plain-http webhook is refused', () => {
+  expect(problemsOf({ ...base, GITHUB_BUG_TOKEN: 'x' })).toContain(
+    'GITHUB_BUG_TOKEN and GITHUB_BUG_REPO go together',
+  );
+  expect(problemsOf({ ...base, GITHUB_BUG_TOKEN: 'x', GITHUB_BUG_REPO: 'notaflow' })).toContain(
+    'GITHUB_BUG_REPO must be owner/name',
+  );
+  expect(problemsOf({ ...base, NOTION_BUGS_DATABASE_ID: 'x' })).toContain(
+    'NOTION_TOKEN and NOTION_BUGS_DATABASE_ID go together',
+  );
+  for (const url of ['http://discord.com/api/webhooks/1/abc', 'not a url']) {
+    expect(problemsOf({ ...base, DISCORD_BUG_WEBHOOK_URL: url }), url).toContain(
+      'DISCORD_BUG_WEBHOOK_URL must be an https URL',
+    );
+  }
+});

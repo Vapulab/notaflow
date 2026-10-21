@@ -10,6 +10,7 @@ import { runAllOnce, startScheduler } from './sync/scheduler';
 
 const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
+const BUG_INTERVAL_MS = 30_000;
 const LIFECYCLE_INTERVAL_MS = 15 * 60_000;
 
 try {
@@ -40,6 +41,11 @@ try {
     () => app.mailOutbox.deliverDue(),
     MAIL_INTERVAL_MS,
     (error) => app.log.error({ err: error }, 'mail outbox run failed'),
+  );
+  startScheduler(
+    () => app.bugReports.deliverDue(),
+    BUG_INTERVAL_MS,
+    (error) => app.log.error({ err: error }, 'bug report delivery run failed'),
   );
   startScheduler(
     async () => {

@@ -11,6 +11,7 @@ export const BUSINESS_TABLES = [
   'invoice_events',
   'sync_state',
   'account_documents',
+  'bug_reports',
 ] as const;
 
 // Append-only, or credentials that Better Auth deletes on expiry, sign-out, unlink, or removal.
@@ -20,6 +21,7 @@ export const OTHER_TABLES = [
   'lifecycle_emails',
   'policy_notice_views',
   'mail_outbox',
+  'bug_report_deliveries',
   'auth_sessions',
   'auth_accounts',
   'auth_verifications',

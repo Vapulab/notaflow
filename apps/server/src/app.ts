@@ -4,6 +4,9 @@ import type { Dispatcher } from 'undici';
 import { type ExchangeRateSource, ptaxSource } from './exchange/ptax';
 import { registerAuth } from './auth/authHook';
 import { registerAuthRoutes } from './auth/authRoutes';
+import { BugReports } from './bugs/BugReports';
+import { bugChannelClients } from './bugs/channels';
+import { registerGithubWebhook } from './bugs/githubWebhook';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { MailOutbox } from './mail/outbox';
@@ -21,6 +24,7 @@ import { CertificateRepository } from './repos/CertificateRepository';
 import { IdentityRepository } from './repos/IdentityRepository';
 import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
+import { bugReportRoutes } from './routes/bugReports';
 import { customerRoutes } from './routes/customers';
 import { clientIp, requestContext } from './requestContext';
 import { cepRoutes } from './routes/cep';
@@ -63,6 +67,7 @@ declare module 'fastify' {
     metrics: Metrics;
     lifecycle: LifecycleService;
     mailOutbox: MailOutbox;
+    bugReports: BugReports;
     auth: Auth;
   }
 }
@@ -77,6 +82,8 @@ export interface AppDeps {
   issuerFactory?: IssuerFactory;
   exchangeRate?: ExchangeRateSource;
   cepDispatcher?: Dispatcher;
+  // GitHub, Discord, and Notion for bug reports; tests pass a MockAgent.
+  bugDispatcher?: Dispatcher;
   cnpjDispatcher?: Dispatcher;
   ptaxDispatcher?: Dispatcher;
   syncService?: SyncService;
@@ -181,6 +188,26 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     audit: new AuditLog(db),
     secret: config.authSecret,
   });
+  const bugs = new BugReports({
+    db,
+    clients: bugChannelClients(config.bugs, deps.bugDispatcher),
+    on: {
+      github: config.bugs.github !== null,
+      discord: config.bugs.discordWebhookUrl !== null,
+      notion: config.bugs.notion !== null,
+    },
+    appOrigin: config.appOrigin,
+    logError: (line) => app.log.error(line),
+  });
+  app.decorate('bugReports', bugs);
+  // A delivery started by a request must not outlive the database.
+  app.addHook('onClose', () => bugs.idle());
+  registerGithubWebhook(app, {
+    secret: config.bugs.githubWebhookSecret,
+    repo: config.bugs.github?.repo ?? null,
+    bugs,
+    audit: new AuditLog(db),
+  });
   const mailer = outbox.mailer();
   const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
   app.decorate('auth', auth);
@@ -262,6 +289,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     ...(deps.cnpjDispatcher ? { cnpjDispatcher: deps.cnpjDispatcher } : {}),
   });
   auditRoutes(app, db);
+  bugReportRoutes(app, { db, bugs });
   registerSecurityHeaders(app, {
     appOrigin: config.appOrigin,
     posthogHost: config.posthog?.host ?? null,

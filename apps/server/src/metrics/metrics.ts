@@ -24,6 +24,8 @@ export interface MetricSources {
   emitterCounts(): { environment: string; count: number }[];
   invoiceCounts(): { origin: string; status: string; environment: string; count: number }[];
   lifecycleCounts(): { phase: string; step: number; count: number }[];
+  bugReportCounts(): { status: string; count: number }[];
+  bugDeliveryCounts(): { channel: string; state: string; count: number }[];
 }
 
 export class Metrics {
@@ -155,6 +157,32 @@ export class Metrics {
         this.reset();
         for (const row of sources.lifecycleCounts()) {
           this.set({ phase: row.phase, step: String(row.step) }, row.count);
+        }
+      },
+    });
+    new Gauge({
+      name: 'notaflow_bug_reports',
+      help: 'Bug reports by status: open (active), closed (resolved)',
+      labelNames: ['status'],
+      registers,
+      collect() {
+        this.reset();
+        for (const status of ['open', 'closed']) this.set({ status }, 0);
+        for (const row of sources.bugReportCounts()) this.set({ status: row.status }, row.count);
+      },
+    });
+    new Gauge({
+      name: 'notaflow_bug_report_deliveries',
+      help: 'Bug report deliveries not sent, by channel (github, discord, notion) and state (pending, failed)',
+      labelNames: ['channel', 'state'],
+      registers,
+      collect() {
+        this.reset();
+        for (const channel of ['github', 'discord', 'notion']) {
+          for (const state of ['pending', 'failed']) this.set({ channel, state }, 0);
+        }
+        for (const row of sources.bugDeliveryCounts()) {
+          this.set({ channel: row.channel, state: row.state }, row.count);
         }
       },
     });

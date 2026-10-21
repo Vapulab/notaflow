@@ -27,6 +27,16 @@ export interface Config {
   // The release is the tag of the running image, so an error points at its commit.
   sentry: { serverDsn: string | null; webDsn: string | null; release: string | null };
   nacionalUrls?: { sefin: string; adn: string };
+  // Where a bug report goes; each channel is off while its variables are unset.
+  bugs: BugChannels;
+}
+
+export interface BugChannels {
+  github: { token: string; repo: string } | null;
+  // The webhook route answers 404 while it is null.
+  githubWebhookSecret: string | null;
+  discordWebhookUrl: string | null;
+  notion: { token: string; databaseId: string } | null;
 }
 
 export class ConfigError extends Error {
@@ -135,6 +145,18 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (dsn && !URL.canParse(dsn)) problems.push(`${name} must be a Sentry DSN URL`);
   }
 
+  const github = pair(env.GITHUB_BUG_TOKEN, env.GITHUB_BUG_REPO);
+  if (github === 'half') problems.push('GITHUB_BUG_TOKEN and GITHUB_BUG_REPO go together');
+  if (Array.isArray(github) && !/^[\w.-]+\/[\w.-]+$/.test(github[1])) {
+    problems.push('GITHUB_BUG_REPO must be owner/name');
+  }
+  const notion = pair(env.NOTION_TOKEN, env.NOTION_BUGS_DATABASE_ID);
+  if (notion === 'half') problems.push('NOTION_TOKEN and NOTION_BUGS_DATABASE_ID go together');
+  const discord = env.DISCORD_BUG_WEBHOOK_URL || null;
+  if (discord && (!URL.canParse(discord) || new URL(discord).protocol !== 'https:')) {
+    problems.push('DISCORD_BUG_WEBHOOK_URL must be an https URL');
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
   return {
     nodeEnv: nodeEnv as Config['nodeEnv'],
@@ -166,6 +188,12 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     posthog: env.POSTHOG_TOKEN
       ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }
       : null,
+    bugs: {
+      github: Array.isArray(github) ? { token: github[0], repo: github[1] } : null,
+      githubWebhookSecret: env.GITHUB_WEBHOOK_SECRET || null,
+      discordWebhookUrl: discord,
+      notion: Array.isArray(notion) ? { token: notion[0], databaseId: notion[1] } : null,
+    },
     ...(fake ? { nacionalUrls: { sefin: `${fake}/SefinNacional`, adn: `${fake}/adn` } } : {}),
   };
 }

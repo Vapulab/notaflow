@@ -11,6 +11,8 @@ const sources = {
   emitterCounts: () => [],
   invoiceCounts: () => [],
   lifecycleCounts: () => [],
+  bugReportCounts: () => [],
+  bugDeliveryCounts: () => [],
 };
 let stop: (() => Promise<void>) | undefined;
 afterEach(async () => {
