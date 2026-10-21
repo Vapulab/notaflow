@@ -125,9 +125,10 @@ The images that a customer attaches to a bug report go to a private Cloudflare R
    R2_BUG_REPORTS_BUCKET=notaflow-bug-screenshots
    ```
 
-6. Run `docker compose up -d app`. Open the "Reportar bug" dialog: it now shows "Imagens (opcional)".
+6. In the bucket settings, open **Object lifecycle rules** and add a rule: prefix `bug-reports/`, delete objects 400 days after upload. This rule is only a backstop. It removes an object that no row points to, for example after a crash between the upload and the database commit, and the images of a report that never closes.
+7. Run `docker compose up -d app`. Open the "Reportar bug" dialog: it now shows "Imagens (opcional)".
 
-Do not reuse the token of the off-site backups: each token reaches one bucket only. Do not add a lifecycle rule to this bucket. An open report keeps its images, and the app deletes them on its own schedule (every hour, for reports closed more than 30 days ago). The metric `notaflow_bug_report_images{state="stored|purged"}` counts them.
+Do not reuse the token of the off-site backups: each token reaches one bucket only. Do not set the lifecycle rule shorter than about a year: an open report keeps its images. The app deletes them itself every hour, for reports closed more than 30 days ago. The metric `notaflow_bug_report_images{state="stored|purged"}` counts them.
 
 ## Server hardening
 

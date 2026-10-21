@@ -145,7 +145,8 @@ A customer attaches up to 3 images to a report. The team sees them on the admin 
 4. The route checks the count (at most 3), the type (`image/webp`, `image/png`, `image/jpeg`), the base64 alphabet, the size (1 MB after decoding), and the first bytes of the file against the type (`invalid_bug_image`).
 5. Without R2, a report with images gets 400 `bug_images_unavailable`. A text-only report still works. `/api/public/config` gives `bugScreenshots: false`, and the dialog hides the picker.
 6. The limit of 5 reports per hour also counts the reports of the same user that are still uploading. The service holds the slot before the first upload, so parallel requests cannot all pass the check.
-7. The service sends each image to R2 as `bug-reports/<reportId>/<n>.<ext>` before any row exists. Then one transaction inserts the report, one `bug_report_images` row per image, and the deliveries. If an upload fails, the request gets 502 `bug_images_failed`, the server deletes the images already sent, and no report is stored.
+7. The service sends each image to R2 as `bug-reports/<reportId>/<n>.<ext>` before any row exists. Then one transaction inserts the report, one `bug_report_images` row per image, and the deliveries.
+8. If an upload fails, the request gets 502 `bug_images_failed`. If the transaction fails, the request gets 500. In both cases the service deletes every key of the report and stores no report. This includes a key whose `PUT` failed, because R2 may keep a `PUT` whose answer was lost. A 404 counts as deleted.
 
 ### What the channels get
 
@@ -171,8 +172,11 @@ Both routes need a platform admin (`adminContext`): any other user gets 403 `adm
 - An open report keeps its images.
 - `BugReports.purgeImages()` deletes from R2 the images of each report that is `closed` with `closed_at` more than 30 days ago, then sets `purged_at`.
 - A reopen sets the report to `open` and clears `closed_at`, so the purge skips it. A new close starts the 30 days again.
+- Before each delete, the purge reads the report again: a webhook that reopens it during a run stops the deletes that are left.
 - R2 answers 404 or 204 for a missing object: both count as deleted, so a run can repeat. A failed delete is logged and waits for the next run.
 - The audit log records `bug.images_purge` per report as the user `system`.
+- The purge depends on the GitHub webhook: only a closed issue closes a report. With GitHub off, or without `GITHUB_WEBHOOK_SECRET`, no report closes, and its images stay until someone closes it.
+- A crash between the uploads and the database commit can leave objects that no row points to. The purge finds images only through rows, so it never removes them. A bucket lifecycle rule on the prefix `bug-reports/` (delete after 400 days) is the backstop. See [Deploy on the VM](../../../../TUTORIALS/DEPLOY_ON_VM.md#bug-report-screenshots).
 - The scheduler in `main.ts` runs the purge every hour. The rule is daily, but a deploy restarts the process, so a 24-hour timer could never fire.
 
 ### The R2 client
@@ -271,7 +275,7 @@ A failed delivery has no retry button yet. To send it again, set its `status` to
 - `bugReports.test.ts`: the three channels through an undici `MockAgent` (the masked issue, the Notion properties, the Discord links); no channel configured; a suspended account; a GitHub failure and the retry; a retry that finds the issue of a lost answer; a path with markdown stored as `/`; 5 failures to `failed`; the rate limit; the validation; the webhook signature, events, repository, idempotency, close and reopen; the gauges.
 - `BugReportDialog.test.tsx`: the button only inside an account, the request body, the thanks text, and the error text.
 - `images.test.ts`, `r2.test.ts`: the type, size, and first-byte checks; the SigV4 example of the AWS documentation; `PUT`, `GET`, and `DELETE` through a `MockAgent`.
-- `bugImages.test.ts`: the upload before the answer, the refusal without R2, the validation, a failed upload, the channel texts, the purge (only closed over 30 days, a reopen, a 404, a failed delete, a second run), the gauge, and the admin routes.
+- `bugImages.test.ts`: the upload before the answer, the refusal without R2, the validation, parallel reports and the limit, a failed upload and a failed commit (every key deleted), a reopen during a purge run, the channel texts, the purge (only closed over 30 days, a reopen, a 404, a failed delete, a second run), the gauge, and the admin routes.
 - `channels.test.ts`: the Notion link and image count, and the issue line.
 - `BugReportScreenshots.test.tsx`: pick, paste, remove, the 3-image limit, the 1 MB message, and the picker off. The resize module is mocked, because jsdom has no canvas.
 - `AdminBugPage.test.tsx`: the report, the images, and the purge date.
