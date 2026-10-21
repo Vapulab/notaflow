@@ -86,14 +86,13 @@ export class BugReportRepository {
   }
 
   // The issue number is unique in the one repository the reports go to.
-  byIssueNumber(
-    issueNumber: number,
-  ): { id: string; accountId: string; status: BugReportStatus } | null {
+  // The URL names the repository too: an issue number alone repeats across repositories.
+  byIssueUrl(issueUrl: string): { id: string; accountId: string; status: BugReportStatus } | null {
     return (
       this.db
         .select({ id: bugReports.id, accountId: bugReports.accountId, status: bugReports.status })
         .from(bugReports)
-        .where(and(eq(bugReports.githubIssueNumber, issueNumber), notDeleted(bugReports)))
+        .where(and(eq(bugReports.githubIssueUrl, issueUrl), notDeleted(bugReports)))
         .get() ?? null
     );
   }

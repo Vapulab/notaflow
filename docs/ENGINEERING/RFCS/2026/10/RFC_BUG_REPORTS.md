@@ -81,8 +81,9 @@ Each delivery row has a kind:
 - A delivery waits for the GitHub link for at most 10 minutes after it was queued. After that it goes without the link.
 - The retry rules are the rules of the mail outbox: a new attempt after 1, 5, 30, and 120 minutes. The 5th failure is final (`failed`). The last error is kept, cut to 500 characters.
 - A row in `sending` for more than 5 minutes is from a process that stopped. The next run sets it back to `pending`.
-- A run claims a row with a conditional `UPDATE` first, so two runs never send the same row.
-- A `github_issue` or `notion_page` retry checks the stored number or page id first. A lost answer never opens a second issue.
+- A run claims a row with a conditional `UPDATE` first, so two runs never send the same row. The claim stores the real claim time, which the reset of stuck rows (5 minutes) reads.
+- A `github_issue` or `notion_page` retry checks the stored number or page id first. Then it looks for the report id: in the 100 newest `bug` issues of the repository (the issue body names the report), or in the `ID NotaFlow` property of the Notion database. A create whose answer was lost is found, not repeated.
+- A `notion_status` sends the current status of the report, so a late retry cannot undo a later change. A report with no Notion page skips it.
 - The Discord message sets `allowed_mentions: { parse: [] }`, so a text that contains `@everyone` pings nobody.
 - Each HTTP call has a timeout of 15 seconds.
 
@@ -92,11 +93,11 @@ Each delivery row has a kind:
 
 1. Without `GITHUB_WEBHOOK_SECRET`, the route answers 404.
 2. It computes the HMAC SHA-256 of the raw body with the secret and compares it with `x-hub-signature-256` with `timingSafeEqual`. A mismatch is 401.
-3. A `ping`, any event that is not `issues`, any action that is not `closed` or `reopened`, an event from another repository, or an unknown issue number answers 204 and changes nothing.
+3. A `ping`, any event that is not `issues`, any action that is not `closed` or `reopened`, an event from another repository, or an unknown issue answers 204 and changes nothing.
 4. `closed` sets the report to `closed` with `closed_at`. `reopened` sets it to `open` and clears `closed_at`. Each queues `notion_status` (`Resolvido` or `Em análise`) and `discord_status`. The audit log records `bug.resolve` or `bug.reopen` as the user `github`.
 5. GitHub sends an event again after a timeout. The same status twice changes nothing and queues nothing.
 
-The lookup by issue number reads across accounts. This is system scope, like the metrics and the delivery worker: GitHub acts for no account. Issue numbers are unique in the one repository that receives the reports, and the route refuses events from any other repository.
+The lookup by issue URL reads across accounts. This is system scope, like the metrics and the delivery worker: GitHub acts for no account. The URL names the repository, so an issue with the same number in another repository (after `GITHUB_BUG_REPO` changes) never touches a report.
 
 ---
 
@@ -121,7 +122,7 @@ It never gets the account name, the user name, or the e-mail.
 | Phone, with or without +55 and the area code | `(43) 99999-8888`, `43 3322-1100` | `[telefone]` |
 | Any other run of 8 or more digits (a CPF without punctuation, an access key) | `12345678909` | `[número]` |
 
-`maskPath` drops the query string and the fragment, and replaces each segment that is a UUID, 4 or more digits, a CNPJ, or a token of 20 or more characters with `:id`. The issue body also puts a zero-width space after each `@`, so the customer's text cannot mention a GitHub user.
+The server stores the path without the query string and the fragment, and stores `/` when the path has a character outside a plain URL path (a backtick, a space, an `@`). `maskPath` keeps only the literal route words of the app (`app`, `notas`, `clientes`, and the others in `apps/web/src/router.ts`) and replaces every other segment with `:id`, so a name or an e-mail in a URL cannot reach the issue. The dialog tells the user that the title and the description become a public issue. The issue body also puts a zero-width space after each `@`, so the customer's text cannot mention a GitHub user.
 
 The Discord channel and the Notion database are private. Discord gets the account name and a masked excerpt of at most 300 characters. Notion gets the full text, the account name, the user e-mail, and the full screen URL, because the triage needs them.
 
@@ -168,7 +169,7 @@ The Notion database must have these properties with these exact names: `Título`
 | `notaflow_bug_reports` | `status`: `open` (active), `closed` (resolved) |
 | `notaflow_bug_report_deliveries` | `channel`: `github`, `discord`, `notion`; `state`: `pending` (also `sending`), `failed` |
 
-Both gauges read the database at scrape time. The alert `BugDeliveriesFailed` fires while any delivery is `failed`. The Grafana dashboard `6. Bugs` (uid `bugs`) shows the reported, active, and resolved totals, the open and closed lines, and the deliveries by channel.
+Both gauges read the database at scrape time. A `failed` delivery counts for 7 days, so the alert `BugDeliveriesFailed` clears by itself. The Grafana dashboard `6. Bugs` (uid `bugs`) shows the reported, active, and resolved totals, the open and closed lines, and the deliveries by channel.
 
 A failed delivery has no retry button yet. To send it again, set its `status` to `pending` and `attempts` to 0 in the database.
 
@@ -192,6 +193,6 @@ A failed delivery has no retry button yet. To send it again, set its `status` to
 ## Testing
 
 - `mask.test.ts`: each masked format, texts that must not change, and the paths.
-- `bugReports.test.ts`: the three channels through an undici `MockAgent` (the masked issue, the Notion properties, the Discord links); no channel configured; a suspended account; a GitHub failure and the retry; 5 failures to `failed`; the rate limit; the validation; the webhook signature, events, repository, idempotency, close and reopen; the gauges.
+- `bugReports.test.ts`: the three channels through an undici `MockAgent` (the masked issue, the Notion properties, the Discord links); no channel configured; a suspended account; a GitHub failure and the retry; a retry that finds the issue of a lost answer; a path with markdown stored as `/`; 5 failures to `failed`; the rate limit; the validation; the webhook signature, events, repository, idempotency, close and reopen; the gauges.
 - `BugReportDialog.test.tsx`: the button only inside an account, the request body, the thanks text, and the error text.
 - `rules.test.yml`: `BugDeliveriesFailed` fires on a failed delivery only.

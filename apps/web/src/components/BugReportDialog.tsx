@@ -67,6 +67,10 @@ export function BugReportDialog(props: { open: boolean; accountId: string; onClo
               onChange={(e) => setDescription(e.target.value)}
             />
           </Field>
+          <p className="text-xs text-muted">
+            O título e a descrição viram uma issue pública no GitHub, com CPF, CNPJ, e-mail e
+            telefone ocultos. Não escreva nomes ou outros dados dos seus clientes.
+          </p>
           {error && <Alert variant="error">{error}</Alert>}
           <div className="flex flex-wrap gap-3">
             <Button

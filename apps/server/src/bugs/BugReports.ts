@@ -9,7 +9,7 @@ import {
   type BugReportInput,
   type BugReportStatus,
 } from '../repos/BugReportRepository';
-import type { BugChannelClients, DiscordEmbed } from './channels';
+import { type BugChannelClients, type DiscordEmbed, reportLine } from './channels';
 import { maskPath, maskPersonalData } from './mask';
 
 type Kind = (typeof bugReportDeliveries.$inferSelect)['kind'];
@@ -78,11 +78,11 @@ export class BugReports {
 
   // The GitHub webhook: a closed issue resolves its report, a reopened one opens it again.
   issueChanged(
-    issueNumber: number,
+    issueUrl: string,
     status: BugReportStatus,
     now = new Date(),
   ): { id: string; accountId: string } | null {
-    const report = this.repo.byIssueNumber(issueNumber);
+    const report = this.repo.byIssueUrl(issueUrl);
     // GitHub sends again on a timeout: the same status twice changes nothing.
     if (!report || report.status === status) return null;
     const { on } = this.deps;
@@ -120,10 +120,10 @@ export class BugReports {
       .all();
     for (const row of due) {
       if (this.waiting(row, now)) continue;
-      // Claim it first, so a second worker run skips it.
+      // Claim it first, so a second worker run skips it; the claim time is what the stuck reset reads.
       const claimed = this.deps.db
         .update(t)
-        .set({ status: 'sending', nextAttemptAt: now })
+        .set({ status: 'sending', nextAttemptAt: new Date() })
         .where(and(eq(t.id, row.id), eq(t.status, 'pending')))
         .run();
       if (claimed.changes > 0) await this.attempt(row, now);
@@ -223,8 +223,9 @@ export class BugReports {
     const { clients } = this.deps;
     switch (row.kind) {
       case 'github_issue': {
-        // A retry after a lost answer would open a second issue; the stored number says it exists.
         if (report.githubIssueNumber !== null) return;
+        const found = row.attempts > 0 ? await clients.findIssue(report.id) : null;
+        if (found) return this.repo.setIssue(report.id, found);
         const issue = await clients.createIssue({
           title: maskPersonalData(report.title),
           body: issueBody(report),
@@ -234,6 +235,8 @@ export class BugReports {
       }
       case 'notion_page': {
         if (report.notionPageId !== null) return;
+        const found = row.attempts > 0 ? await clients.findNotionPage(report.id) : null;
+        if (found) return this.repo.setNotionPage(report.id, found);
         const page = await clients.createNotionPage({
           title: report.title,
           description: report.description,
@@ -253,10 +256,11 @@ export class BugReports {
           embed: reportEmbed(report),
         });
       case 'notion_status':
-        if (report.notionPageId === null) throw new Error('the bug report has no Notion page');
+        // No card to move (Notion came later, or its page failed); the current status wins a late retry.
+        if (report.notionPageId === null) return;
         return clients.setNotionStatus(
           report.notionPageId,
-          row.reportStatus === 'closed' ? 'Resolvido' : 'Em análise',
+          report.status === 'closed' ? 'Resolvido' : 'Em análise',
         );
       case 'discord_status': {
         const title = maskPersonalData(report.title);
@@ -286,7 +290,7 @@ export function issueBody(report: Pick<BugReportForDelivery, 'id' | 'description
       .map((line) => `> ${line}`)
       .join('\n'),
     '',
-    `NotaFlow report: \`${report.id}\``,
+    reportLine(report.id),
   ].join('\n');
 }
 

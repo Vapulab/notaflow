@@ -12,15 +12,22 @@ export function validSignature(body: Buffer, header: unknown, secret: string): b
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-function issueOf(payload: unknown): { action: string; number: number; repo: string } | null {
+function issueOf(
+  payload: unknown,
+): { action: string; number: number; url: string; repo: string } | null {
   if (typeof payload !== 'object' || payload === null) return null;
   const { action, issue, repository } = payload as Record<string, unknown>;
-  const number = (issue as { number?: unknown } | null)?.number;
+  const { number, html_url: url } = (issue ?? {}) as { number?: unknown; html_url?: unknown };
   const repo = (repository as { full_name?: unknown } | null)?.full_name;
-  if (typeof action !== 'string' || typeof number !== 'number' || typeof repo !== 'string') {
+  if (
+    typeof action !== 'string' ||
+    typeof number !== 'number' ||
+    typeof url !== 'string' ||
+    typeof repo !== 'string'
+  ) {
     return null;
   }
-  return { action, number, repo };
+  return { action, number, url, repo };
 }
 
 // Outside /api: GitHub has no session, so the HMAC signature of the raw body is the only check.
@@ -55,7 +62,7 @@ export function registerGithubWebhook(
       if (!event || !status || event.repo.toLowerCase() !== deps.repo?.toLowerCase()) {
         return reply.status(204).send();
       }
-      const report = deps.bugs.issueChanged(event.number, status);
+      const report = deps.bugs.issueChanged(event.url, status);
       if (report) {
         deps.audit.record({
           userEmail: 'github',

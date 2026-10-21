@@ -77,7 +77,7 @@ tests:
         alertname: BugDeliveriesFailed
         exp_alerts:
           - exp_labels: { severity: warning, service: notaflow, module: bugs, channel: github, state: failed }
-            exp_annotations: { summary: 'NotaFlow: 1 bug report deliveries to github failed for good; the last error is in bug_report_deliveries' }
+            exp_annotations: { summary: 'NotaFlow: 1 bug report deliveries to github failed for good in the last 7 days; the last error is in bug_report_deliveries' }
 
   - interval: 1h
     input_series:

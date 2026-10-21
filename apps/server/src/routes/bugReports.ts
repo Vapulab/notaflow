@@ -24,8 +24,7 @@ export function bugReportRoutes(app: FastifyInstance, deps: { db: Database; bugs
           properties: {
             title: { type: 'string', maxLength: 120 },
             description: { type: 'string', maxLength: 4000 },
-            // A URL path only: no backtick, space, or @ can reach the issue markdown.
-            pagePath: { type: 'string', maxLength: 300, pattern: '^/[A-Za-z0-9/_.~%:?#=&-]*$' },
+            pagePath: { type: 'string', maxLength: 300, pattern: '^/' },
           },
         },
       },
@@ -41,7 +40,7 @@ export function bugReportRoutes(app: FastifyInstance, deps: { db: Database; bugs
       const id = deps.bugs.report(ctx, {
         title,
         description,
-        pagePath: request.body.pagePath.split(/[?#]/)[0] ?? '/',
+        pagePath: safePath(request.body.pagePath),
         userAgent: userAgent ? userAgent.slice(0, 300) : null,
       });
       audit.record({
@@ -54,4 +53,10 @@ export function bugReportRoutes(app: FastifyInstance, deps: { db: Database; bugs
       return reply.status(201).send({ id });
     },
   );
+}
+
+// A path with a backtick, a space, or an @ is stored as /, so the report still goes.
+function safePath(path: string): string {
+  const route = path.split(/[?#]/)[0] ?? '/';
+  return /^\/[A-Za-z0-9/_.~%:-]*$/.test(route) ? route : '/';
 }

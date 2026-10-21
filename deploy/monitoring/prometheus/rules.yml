@@ -67,7 +67,7 @@ groups:
         expr: notaflow_bug_report_deliveries{state="failed"} > 0
         labels: { severity: warning, service: notaflow, module: bugs }
         annotations:
-          summary: 'NotaFlow: {{ $value }} bug report deliveries to {{ $labels.channel }} failed for good; the last error is in bug_report_deliveries'
+          summary: 'NotaFlow: {{ $value }} bug report deliveries to {{ $labels.channel }} failed for good in the last 7 days; the last error is in bug_report_deliveries'
 
       - alert: CertificateExpiring
         expr: certificate_expiry_timestamp_seconds - time() < 30 * 86400

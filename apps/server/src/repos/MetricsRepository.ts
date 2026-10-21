@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import {
   accounts,
@@ -96,7 +96,9 @@ export class MetricsRepository implements MetricSources {
   }
 
   // A delivery being sent right now still counts as pending; the channel is the first word of the kind.
-  bugDeliveryCounts() {
+  // A failed delivery counts for 7 days: there is no retry action, so the alert clears by itself.
+  bugDeliveryCounts(now = new Date()) {
+    const since = new Date(now.getTime() - 7 * 86400_000);
     const rows = this.db
       .select({
         kind: bugReportDeliveries.kind,
@@ -104,7 +106,12 @@ export class MetricsRepository implements MetricSources {
         count: count(),
       })
       .from(bugReportDeliveries)
-      .where(inArray(bugReportDeliveries.status, ['pending', 'sending', 'failed']))
+      .where(
+        or(
+          inArray(bugReportDeliveries.status, ['pending', 'sending']),
+          and(eq(bugReportDeliveries.status, 'failed'), gt(bugReportDeliveries.createdAt, since)),
+        ),
+      )
       .groupBy(bugReportDeliveries.kind, bugReportDeliveries.status)
       .all();
     const totals = new Map<string, { channel: string; state: string; count: number }>();

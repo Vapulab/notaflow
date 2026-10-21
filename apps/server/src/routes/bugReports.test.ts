@@ -5,6 +5,7 @@ import { afterEach, expect, test } from 'vitest';
 import { seedTenant } from '../../test/fixtures';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { bugReportDeliveries, bugReports } from '../db/schema';
+import { reportLine } from '../bugs/channels';
 
 const CHANNELS = {
   GITHUB_BUG_TOKEN: 'test-github-token',
@@ -60,6 +61,15 @@ async function setup(
           sent.github.push(json(request.body));
           return { statusCode: status, data: { number: 42, html_url: ISSUE_URL } };
         }),
+    // The list a retry reads before it opens an issue.
+    githubList: (issues: { number: number; html_url: string; body: string }[] = []) =>
+      agent
+        .get('https://api.github.com')
+        .intercept({
+          path: (path: string) => path.startsWith('/repos/Vapulab/notaflow/issues?'),
+          method: 'GET',
+        })
+        .reply(200, issues),
     notion: () =>
       agent
         .get('https://api.notion.com')
@@ -212,9 +222,32 @@ test('a GitHub failure never fails the request; Discord waits for the link, then
   ]);
   expect(s.deliveries()[0]?.lastError).toContain('GitHub answered 502');
 
+  s.answers.githubList();
   s.answers.github();
   s.answers.discord();
   await s.app.app.bugReports.deliverDue(new Date(Date.now() + 2 * 60_000));
+  expect(s.deliveries().every((d) => d.status === 'sent')).toBe(true);
+  expect(JSON.stringify(s.sent.discord[0])).toContain(ISSUE_URL);
+});
+
+test('a retry after a lost GitHub answer finds the issue it opened instead of opening another', async () => {
+  const s = await setup();
+  s.answers.github(502);
+  s.answers.notion();
+  const { id } = (await s.report(BUG)).json<{ id: string }>();
+  await s.app.app.bugReports.idle();
+  s.answers.githubList([
+    {
+      number: 42,
+      html_url: ISSUE_URL,
+      body: `x
+${reportLine(id)}`,
+    },
+  ]);
+  s.answers.discord();
+  await s.app.app.bugReports.deliverDue(new Date(Date.now() + 2 * 60_000));
+  // Only the first create, whose answer was lost; the retry found it and opened nothing.
+  expect(s.sent.github).toHaveLength(1);
   expect(s.deliveries().every((d) => d.status === 'sent')).toBe(true);
   expect(JSON.stringify(s.sent.discord[0])).toContain(ISSUE_URL);
 });
@@ -258,7 +291,6 @@ test.each([
   [{ ...BUG, title: 'x'.repeat(121) }, 'bad_request'],
   [{ ...BUG, description: 'x'.repeat(4001) }, 'bad_request'],
   [{ ...BUG, pagePath: 'app/notas' }, 'bad_request'],
-  [{ ...BUG, pagePath: '/app/`@octocat` x' }, 'bad_request'],
   [{ ...BUG, title: '   ' }, 'invalid_bug_report'],
   [{ title: BUG.title, description: BUG.description }, 'bad_request'],
 ])('an invalid report is refused: %#', async (payload, error) => {
@@ -273,7 +305,8 @@ function sign(body: string, secret = CHANNELS.GITHUB_WEBHOOK_SECRET) {
 }
 
 function issueEvent(action: string, number = 42, repo = 'Vapulab/notaflow') {
-  return JSON.stringify({ action, issue: { number }, repository: { full_name: repo } });
+  const issue = { number, html_url: `https://github.com/${repo}/issues/${number}` };
+  return JSON.stringify({ action, issue, repository: { full_name: repo } });
 }
 
 async function webhook(
@@ -347,6 +380,13 @@ test('the webhook refuses a bad signature and ignores other events, repositories
   expect((await webhook(s, closed, 'issues', 'sha256=00')).statusCode).toBe(401);
   expect((await webhook(s, JSON.stringify({ zen: 'hi' }), 'ping')).statusCode).toBe(204);
   expect((await webhook(s, issueEvent('closed', 42, 'Someone/else'))).statusCode).toBe(204);
+  // The same number in another repository, as if GITHUB_BUG_REPO had moved.
+  const moved = JSON.stringify({
+    action: 'closed',
+    issue: { number: 42, html_url: 'https://github.com/Vapulab/old/issues/42' },
+    repository: { full_name: 'Vapulab/notaflow' },
+  });
+  expect((await webhook(s, moved)).statusCode).toBe(204);
   expect((await webhook(s, issueEvent('closed', 7))).statusCode).toBe(204);
   expect((await webhook(s, issueEvent('labeled'))).statusCode).toBe(204);
   expect(s.status()?.status).toBe('open');
@@ -372,4 +412,13 @@ test('the bug gauges count open and closed reports', async () => {
   expect(text).toMatch(/notaflow_bug_reports\{status="open"\} 1/);
   expect(text).toMatch(/notaflow_bug_reports\{status="closed"\} 1/);
   expect(text).toMatch(/notaflow_bug_report_deliveries\{channel="notion",state="pending"\} 0/);
+});
+
+test('a screen path with markdown or an @ is stored as /, and the report still goes', async () => {
+  const s = await setup({ env: {} });
+  const response = await s.report({ ...BUG, pagePath: '/app/`@octocat` x' });
+  expect(response.statusCode).toBe(201);
+  const { id } = response.json<{ id: string }>();
+  const row = s.app.db.select().from(bugReports).where(eq(bugReports.id, id)).get();
+  expect(row?.pagePath).toBe('/');
 });

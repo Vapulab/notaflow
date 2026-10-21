@@ -26,8 +26,11 @@ export interface DiscordEmbed {
 // The three outbound calls; each throws on a failed answer so the delivery retries.
 export interface BugChannelClients {
   createIssue(issue: { title: string; body: string }): Promise<{ number: number; url: string }>;
+  // A retry looks first: the answer of a create that worked may have been lost.
+  findIssue(reportId: string): Promise<{ number: number; url: string } | null>;
   postDiscord(message: { content: string; embed?: DiscordEmbed }): Promise<void>;
   createNotionPage(card: NotionCard): Promise<{ id: string; url: string }>;
+  findNotionPage(reportId: string): Promise<{ id: string; url: string } | null>;
   setNotionStatus(pageId: string, status: NotionStatus): Promise<void>;
 }
 
@@ -40,13 +43,13 @@ export interface ChannelSettings {
 async function call(
   name: string,
   url: string,
-  init: { method: 'POST' | 'PATCH'; headers: Record<string, string>; body: unknown },
+  init: { method: 'GET' | 'POST' | 'PATCH'; headers: Record<string, string>; body?: unknown },
   dispatcher: Dispatcher | undefined,
 ): Promise<unknown> {
   const response = await request(url, {
     method: init.method,
     headers: { 'content-type': 'application/json', 'user-agent': USER_AGENT, ...init.headers },
-    body: JSON.stringify(init.body),
+    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
     headersTimeout: TIMEOUT_MS,
     bodyTimeout: TIMEOUT_MS,
     ...(dispatcher ? { dispatcher } : {}),
@@ -92,6 +95,9 @@ const todo = (text: string) => ({
   type: 'to_do',
   to_do: { rich_text: richText(text), checked: false },
 });
+
+// The line of the issue body that names the report, so a retry can find an issue it already opened.
+export const reportLine = (reportId: string) => `NotaFlow report: \`${reportId}\``;
 
 export function notionPageBody(databaseId: string, card: NotionCard) {
   return {
@@ -155,6 +161,31 @@ export function bugChannelClients(
       }
       return { number, url };
     },
+    async findIssue(reportId) {
+      const github = settings.github;
+      if (!github) throw new Error('GitHub is not configured');
+      const answer = await call(
+        'GitHub',
+        `https://api.github.com/repos/${github.repo}/issues?state=all&labels=bug&sort=created&direction=desc&per_page=100`,
+        {
+          method: 'GET',
+          headers: {
+            authorization: `Bearer ${github.token}`,
+            accept: 'application/vnd.github+json',
+            'x-github-api-version': '2022-11-28',
+          },
+        },
+        dispatcher,
+      );
+      const line = reportLine(reportId);
+      const issue = (Array.isArray(answer) ? answer : []).find((item) => {
+        const body = field(item, 'body');
+        return typeof body === 'string' && body.includes(line);
+      });
+      const number = field(issue, 'number');
+      const url = field(issue, 'html_url');
+      return typeof number === 'number' && typeof url === 'string' ? { number, url } : null;
+    },
     async postDiscord(message) {
       const url = settings.discordWebhookUrl;
       if (!url) throw new Error('Discord is not configured');
@@ -193,6 +224,25 @@ export function bugChannelClients(
         throw new Error('Notion answered without a page id');
       }
       return { id, url };
+    },
+    async findNotionPage(reportId) {
+      const notion = settings.notion;
+      if (!notion) throw new Error('Notion is not configured');
+      const answer = await call(
+        'Notion',
+        `https://api.notion.com/v1/databases/${encodeURIComponent(notion.databaseId)}/query`,
+        {
+          method: 'POST',
+          headers: notionHeaders(notion.token),
+          body: { filter: { property: 'ID NotaFlow', rich_text: { equals: reportId } } },
+        },
+        dispatcher,
+      );
+      const results = field(answer, 'results');
+      const page = Array.isArray(results) ? results[0] : undefined;
+      const id = field(page, 'id');
+      const url = field(page, 'url');
+      return typeof id === 'string' && typeof url === 'string' ? { id, url } : null;
     },
     async setNotionStatus(pageId, status) {
       const notion = settings.notion;
