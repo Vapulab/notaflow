@@ -11,10 +11,10 @@ export interface PolicyNotice {
 
 // An update that applies when published and is shown once in the app; null when there is none.
 export const POLICY_NOTICE: PolicyNotice | null = {
-  id: '2026-10-21-simples-annexes',
+  id: '2026-10-21-bug-screenshots',
   date: '2026-10-21',
-  text: 'Os termos de uso agora dizem que o NotaFlow atende empresas de todos os anexos do Simples Nacional (I a V).',
-  href: '/termos',
+  text: 'Os termos de uso agora dizem que o NotaFlow atende empresas de todos os anexos do Simples Nacional (I a V), e a política de privacidade explica as imagens que você anexa a um relato de bug, guardadas na Cloudflare e apagadas 30 dias depois da correção.',
+  href: '/privacidade',
 };
 
 // The version that announced the lifecycle reminders: only users who accepted it, or a later one, get them.
