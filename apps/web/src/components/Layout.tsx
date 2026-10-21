@@ -157,6 +157,9 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
   const route = useRoute();
   const me = useMe();
   const { accountId } = props;
+  const accounts = me?.accounts ?? [];
+  // A report belongs to an account: outside one, the dialog uses or asks for one of the person's.
+  const reportable = accountId !== undefined || accounts.length > 0;
   const [reporting, setReporting] = useState(false);
   // Membros is an owner tool; the server refuses it to anyone else anyway.
   const sections = SECTIONS.filter(
@@ -197,7 +200,7 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
                 <Avatar initials={initialsOf(me.name)} label={`${me.name} (${me.email})`} />
               </a>
             )}
-            {accountId && (
+            {reportable && (
               <button
                 type="button"
                 onClick={() => setReporting(true)}
@@ -219,10 +222,11 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
           </div>
         </nav>
       </header>
-      {accountId && (
+      {reportable && (
         <BugReportDialog
           open={reporting}
-          accountId={accountId}
+          {...(accountId ? { accountId } : {})}
+          accounts={accounts}
           onClose={() => setReporting(false)}
         />
       )}
