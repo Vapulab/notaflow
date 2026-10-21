@@ -94,6 +94,7 @@ test('an update names its actor and moves updated_at', async () => {
     simplesPercent: 600,
     simplesRbt12Cents: null,
     simplesRbt12At: null,
+    simplesBand6Iss: null,
     issRate: 200,
     ibscbsRegime: 'inside_das',
     ibscbsRegimeFrom: null,
