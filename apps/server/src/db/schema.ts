@@ -594,3 +594,21 @@ export const authPasskeys = sqliteTable(
     index('auth_passkeys_credential').on(table.credentialID),
   ],
 );
+
+// People who asked to be told when MEI, Lucro Presumido, or selling the certificate ships; the public writes it, so created_by is null.
+export const waitlistSignups = sqliteTable(
+  'waitlist_signups',
+  {
+    id: id(),
+    email: text('email').notNull(),
+    // JSON array of 'mei' | 'lucro_presumido' | 'certificate'.
+    interests: text('interests').notNull(),
+    sourcePage: text('source_page').notNull(),
+    campaign: text('campaign'),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('waitlist_signups_email').on(t.email).where(active)],
+);
