@@ -17,7 +17,7 @@ flowchart TB
     metrics["<b>Metrics</b><br/><i>[Component: metrics/*, prom-client]</i><br/>Requests, errors, and latency by module; invoices, syncs, mail queue, certificates, backups. Port 9464, never public."]
     lifecycle["<b>Lifecycle service</b><br/><i>[Component: lifecycle/*]</i><br/>Every 15 minutes in business hours: onboarding, first-invoice, and reactivation reminders to owners; signed opt-out."]
     errors["<b>Error reporter</b><br/><i>[Component: observability/errors, @sentry/node]</i><br/>Reports each 5xx with its module; removes e-mails, documents, cookies, headers, and queries first."]
-    bugs["<b>Bug reports</b><br/><i>[Component: bugs/*]</i><br/>Stores each report, masks personal data for the public issue, retries GitHub, Notion, and Discord after 1, 5, 30, 120 minutes; the issues webhook resolves a report."]
+    bugs["<b>Bug reports</b><br/><i>[Component: bugs/*]</i><br/>Stores each report, masks personal data for the public issue, retries GitHub, Notion, and Discord after 1, 5, 30, 120 minutes; the issues webhook resolves a report. Screenshots go to R2 and are deleted 30 days after the fix."]
     audit["<b>Audit log</b><br/><i>[Component: repos/AuditLog]</i><br/>Append-only: who, what, when, IP, browser, request id."]
   end
 
@@ -27,6 +27,7 @@ flowchart TB
   lookups["<b>Public lookups</b><br/><i>[External systems]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i>"]
   bugtools["<b>GitHub, Discord, Notion</b><br/><i>[External systems]</i>"]
+  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Bug screenshots bucket."]
 
   web -- "JSON [HTTPS]" --> authhook
   authhook -- "Session from" --> betterauth
@@ -65,6 +66,7 @@ flowchart TB
   bugs --> repos
   bugs -- "Issue, message, card [HTTPS]" --> bugtools
   bugtools -- "Issues webhook [HTTPS]" --> bugs
+  bugs -- "Screenshots: put, get, delete [HTTPS, S3 API]" --> r2
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
   classDef container fill:#438dd5,stroke:#2e6295,color:#fff
@@ -72,5 +74,5 @@ flowchart TB
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class web,db container
   class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors,lifecycle,bugs component
-  class nacional,resend,lookups,sentry,bugtools external
+  class nacional,resend,lookups,sentry,bugtools,r2 external
   style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

@@ -19,7 +19,7 @@ flowchart TB
   others["<b>Google, Turnstile, BrasilAPI, CNPJá, ViaCEP, Banco Central, HIBP</b><br/><i>[External systems]</i>"]
   posthog["<b>PostHog</b><br/><i>[External system]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Scrubbed error reports."]
-  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days."]
+  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days; private bucket of bug report screenshots."]
   github["<b>GitHub</b><br/><i>[External system]</i><br/>Masked bug issues in the public repository; issues webhook."]
   discord["<b>Discord</b><br/><i>[External system]</i><br/>Private bugs channel."]
   notion["<b>Notion</b><br/><i>[External system]</i><br/>Bugs database."]
@@ -47,6 +47,7 @@ flowchart TB
   github -- "Issues webhook [HTTPS through the tunnel]" --> tunnel
   server -- "Bug messages [HTTPS webhook]" --> discord
   server -- "Bug cards [HTTPS API]" --> notion
+  server -- "Bug screenshots: put, get, delete [HTTPS, S3 API]" --> r2
   ci -- "Pulls the new image, docker compose up [SSH]" --> server
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
