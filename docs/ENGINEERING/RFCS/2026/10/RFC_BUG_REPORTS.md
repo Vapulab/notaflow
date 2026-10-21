@@ -144,7 +144,8 @@ A customer attaches up to 3 images to a report. The team sees them on the admin 
 3. The dialog sends the images in the same JSON `POST`: `images: [{ contentType, data }]`, `data` in base64. The auth hook accepts only JSON for a `POST`, so there is no multipart upload. The route `bodyLimit` is 4.5 MB.
 4. The route checks the count (at most 3), the type (`image/webp`, `image/png`, `image/jpeg`), the base64 alphabet, the size (1 MB after decoding), and the first bytes of the file against the type (`invalid_bug_image`).
 5. Without R2, a report with images gets 400 `bug_images_unavailable`. A text-only report still works. `/api/public/config` gives `bugScreenshots: false`, and the dialog hides the picker.
-6. The service sends each image to R2 as `bug-reports/<reportId>/<n>.<ext>` before any row exists. Then one transaction inserts the report, one `bug_report_images` row per image, and the deliveries. If an upload fails, the request gets 502 `bug_images_failed`, the server deletes the images already sent, and no report is stored.
+6. The limit of 5 reports per hour also counts the reports of the same user that are still uploading. The service holds the slot before the first upload, so parallel requests cannot all pass the check.
+7. The service sends each image to R2 as `bug-reports/<reportId>/<n>.<ext>` before any row exists. Then one transaction inserts the report, one `bug_report_images` row per image, and the deliveries. If an upload fails, the request gets 502 `bug_images_failed`, the server deletes the images already sent, and no report is stored.
 
 ### What the channels get
 
@@ -239,7 +240,7 @@ The Notion database must have these properties with these exact names: `Título`
 | `notaflow_bug_report_deliveries` | `channel`: `github`, `discord`, `notion`; `state`: `pending` (also `sending`), `failed` |
 | `notaflow_bug_report_images` | `state`: `stored` (in R2), `purged` (deleted 30 days after the report closed) |
 
-Both gauges read the database at scrape time. A `failed` delivery counts for 7 days, so the alert `BugDeliveriesFailed` clears by itself. The Grafana dashboard `6. Bugs` (uid `bugs`) shows the reported, active, and resolved totals, the open and closed lines, and the deliveries by channel.
+Both gauges read the database at scrape time. A `failed` delivery counts for 7 days, so the alert `BugDeliveriesFailed` clears by itself. The Grafana dashboard `6. Bugs` (uid `bugs`) shows the reported, active, and resolved totals, the open and closed lines, the deliveries by channel, and the stored and purged screenshots.
 
 A failed delivery has no retry button yet. To send it again, set its `status` to `pending` and `attempts` to 0 in the database.
 
