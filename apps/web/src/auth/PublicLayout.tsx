@@ -8,6 +8,7 @@ export interface PublicConfig {
   googleEnabled: boolean;
   turnstileSiteKey: string | null;
   signupOpen: boolean;
+  bugScreenshots?: boolean;
   posthog?: { token: string; host: string } | null;
   sentry?: ErrorTrackingConfig | null;
 }

@@ -22,6 +22,7 @@ const ROUTES: [string, Route][] = [
   ['/app/comecar', { name: 'onboarding' }],
   ['/app/comecar/acc', { name: 'onboarding', accountId: 'acc' }],
   ['/admin', { name: 'admin' }],
+  ['/admin/bugs/r1', { name: 'adminBug', reportId: 'r1' }],
   ['/app/acc/notas', { name: 'invoices', accountId: 'acc' }],
   ['/app/acc/notas/inv1', { name: 'invoice', accountId: 'acc', invoiceId: 'inv1' }],
   ['/app/acc/notas/nova', { name: 'newInvoice', accountId: 'acc' }],

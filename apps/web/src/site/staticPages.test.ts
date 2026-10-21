@@ -129,7 +129,20 @@ test('the privacy policy says it keeps the campaign link of the signup, why, and
   const data = section(read('privacidade.html'), 'Que dados tratamos, para quê e com que base legal');
   expect(data).toMatch(/link de campanha[^<]*cadastro/);
   expect(data).toContain('canais de divulgação');
-  expect(read('privacidade.html')).toContain('Atualizada em 13 de outubro de 2026');
+});
+
+test('the privacy policy explains the screenshots of a bug report: what, why, where, who, and how long', () => {
+  const policy = read('privacidade.html');
+  expect(policy).toContain('Atualizada em 21 de outubro de 2026');
+  const data = section(policy, 'Que dados tratamos, para quê e com que base legal');
+  expect(data).toContain('relato de bug');
+  expect(data).toContain('dados dos clientes da sua empresa');
+  expect(data).toContain('Reproduzir e corrigir o bug');
+  expect(data).toContain('Só a equipe do NotaFlow');
+  expect(section(policy, 'Com quem compartilhamos')).toContain('Cloudflare R2');
+  expect(section(policy, 'Por quanto tempo guardamos')).toContain(
+    'até 30 dias depois que ele é corrigido',
+  );
 });
 
 test('the terms and the policy separate a material change (acceptance, 15 days) from an update (notice)', () => {

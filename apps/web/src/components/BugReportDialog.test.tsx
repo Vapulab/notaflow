@@ -48,8 +48,9 @@ test('a bug report sends the title, the text, and the current path, then thanks 
       'Obrigado! Recebemos o seu relato e vamos responder pelo e-mail da conta.',
     ),
   ).toBeTruthy();
-  expect(calls[0]?.init?.method).toBe('POST');
-  expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+  const post = calls.find((call) => call.url.endsWith('/bug-reports'));
+  expect(post?.init?.method).toBe('POST');
+  expect(JSON.parse(String(post?.init?.body))).toEqual({
     title: 'Botão não responde',
     description: 'Cliquei em Emitir.',
     pagePath: '/app/acc/notas',
