@@ -12,17 +12,73 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test('the header offers Reportar bug only inside an account', () => {
+test('the header offers Reportar bug on every page of a person with an account', () => {
   renderWithMe(<Layout title="Painel">x</Layout>, meFor('user'));
-  expect(screen.queryByRole('button', { name: 'Reportar bug' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Reportar bug' })).toBeTruthy();
   cleanup();
+  renderWithMe(<Layout title="Painel">x</Layout>, { ...meFor('admin'), accounts: [] });
+  expect(screen.queryByRole('button', { name: 'Reportar bug' })).toBeNull();
+});
+
+test('outside an account, a person with one account reports to it without a choice', async () => {
+  installDialogPolyfill();
+  const calls = stubApi({ '/api/accounts/acc/bug-reports': { id: 'b1' } });
+  renderWithMe(<Layout title="Painel">x</Layout>, meFor('user'));
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Reportar bug' }));
+  expect(screen.queryByLabelText('Empresa')).toBeNull();
+  await user.type(screen.getByLabelText('Título'), 'Erro no painel');
+  await user.type(screen.getByLabelText('O que aconteceu?'), 'A lista não abre.');
+  await user.click(screen.getByRole('button', { name: 'Enviar' }));
+  await screen.findByText(
+    'Obrigado! Recebemos o seu relato e vamos responder pelo e-mail da conta.',
+  );
+  expect(calls.some((call) => call.url === '/api/accounts/acc/bug-reports')).toBe(true);
+});
+
+test('outside an account, a person with two accounts picks the company first', async () => {
+  installDialogPolyfill();
+  const calls = stubApi({ '/api/accounts/acc2/bug-reports': { id: 'b1' } });
+  const me = meFor('user');
+  const second = {
+    id: 'acc2',
+    name: 'Outra empresa',
+    role: 'member' as const,
+    status: 'active' as const,
+    onboardingStep: 'done' as const,
+  };
+  renderWithMe(<Layout title="Painel">x</Layout>, { ...me, accounts: [...me.accounts, second] });
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Reportar bug' }));
+  await user.type(screen.getByLabelText('Título'), 'Erro no painel');
+  await user.type(screen.getByLabelText('O que aconteceu?'), 'A lista não abre.');
+  const send = screen.getByRole('button', { name: 'Enviar' });
+  expect(send.hasAttribute('disabled')).toBe(true);
+  await user.selectOptions(screen.getByLabelText('Empresa'), 'acc2');
+  await user.click(send);
+  await screen.findByText(
+    'Obrigado! Recebemos o seu relato e vamos responder pelo e-mail da conta.',
+  );
+  expect(calls.some((call) => call.url === '/api/accounts/acc2/bug-reports')).toBe(true);
+});
+
+test('inside an account, the report goes to that account with no choice', () => {
+  const me = meFor('user');
+  const second = {
+    id: 'acc2',
+    name: 'Outra empresa',
+    role: 'member' as const,
+    status: 'active' as const,
+    onboardingStep: 'done' as const,
+  };
   renderWithMe(
     <Layout title="Notas" accountId="acc">
       x
     </Layout>,
-    meFor('user'),
+    { ...me, accounts: [...me.accounts, second] },
   );
   expect(screen.getByRole('button', { name: 'Reportar bug' })).toBeTruthy();
+  expect(screen.queryByLabelText('Empresa')).toBeNull();
 });
 
 test('a bug report sends the title, the text, and the current path, then thanks the person', async () => {

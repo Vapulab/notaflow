@@ -1,7 +1,7 @@
 import { type ClipboardEvent, useState } from 'react';
 import { api } from '../api';
 import type { PublicConfig } from '../auth/PublicLayout';
-import { Alert, Button, Field, FileInput, Input, Modal, Textarea } from '../ui';
+import { Alert, Button, Field, FileInput, Input, Modal, Select, Textarea } from '../ui';
 import {
   BUG_IMAGE_TYPES,
   ImageTooLargeError,
@@ -22,7 +22,17 @@ interface Attached extends PreparedImage {
 
 let nextKey = 0;
 
-export function BugReportDialog(props: { open: boolean; accountId: string; onClose: () => void }) {
+// accountId: the account of the page; outside one, the person's only account, or a choice among several.
+export function BugReportDialog(props: {
+  open: boolean;
+  accountId?: string;
+  accounts: { id: string; name: string }[];
+  onClose: () => void;
+}) {
+  const only = props.accounts.length === 1 ? props.accounts[0]?.id : undefined;
+  const [chosen, setChosen] = useState('');
+  const accountId = props.accountId ?? only ?? chosen;
+  const choosing = props.accountId === undefined && only === undefined;
   // Asked when the dialog opens, so a page that never opens it makes no request.
   const config = useAsync(
     () => (props.open ? api.get<PublicConfig>('/api/public/config') : Promise.resolve(null)),
@@ -92,7 +102,7 @@ export function BugReportDialog(props: { open: boolean; accountId: string; onClo
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/api/accounts/${props.accountId}/bug-reports`, {
+      await api.post(`/api/accounts/${encodeURIComponent(accountId)}/bug-reports`, {
         title: title.trim(),
         description: description.trim(),
         pagePath: window.location.pathname,
@@ -125,6 +135,20 @@ export function BugReportDialog(props: { open: boolean; accountId: string; onClo
         </div>
       ) : (
         <div className="flex flex-col gap-4" onPaste={onPaste}>
+          {choosing && (
+            <Field label="Empresa">
+              <Select value={chosen} onChange={(e) => setChosen(e.target.value)}>
+                <option value="" disabled>
+                  Escolha a empresa
+                </option>
+                {props.accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
           <Field label="Título">
             <Input maxLength={TITLE_MAX} value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
@@ -189,7 +213,7 @@ export function BugReportDialog(props: { open: boolean; accountId: string; onClo
           {error && <Alert variant="error">{error}</Alert>}
           <div className="flex flex-wrap gap-3">
             <Button
-              disabled={busy || preparing > 0 || !title.trim() || !description.trim()}
+              disabled={busy || preparing > 0 || !accountId || !title.trim() || !description.trim()}
               onClick={() => void send()}
             >
               Enviar
