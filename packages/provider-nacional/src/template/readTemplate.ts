@@ -26,9 +26,9 @@ export class TemplateUnsupportedError extends Error {
   }
 }
 
-// Exactly what buildDpsXml writes, so reading and building are inverse operations.
+// Exactly what buildDpsXml writes in either layout, so reading and building are inverse operations.
 const SUPPORTED = new Set(
-  `tpAmb dhEmi verAplic serie nDPS dCompet tpEmit cLocEmi
+  `tpAmb dhEmi verAplic serie nDPS dCompet tpEmit finNFSe cLocEmi
   prest/CNPJ prest/IM prest/fone prest/email prest/regTrib/opSimpNac prest/regTrib/regApTribSN prest/regTrib/regEspTrib
   toma/CNPJ toma/CPF toma/NIF toma/IM toma/xNome toma/fone toma/email
   toma/end/endNac/cMun toma/end/endNac/CEP
@@ -42,7 +42,8 @@ const SUPPORTED = new Set(
   valores/trib/tribFed/piscofins/CST valores/trib/tribFed/piscofins/tpRetPisCofins valores/trib/tribFed/vRetCP
   valores/trib/totTrib/pTotTribSN valores/trib/totTrib/indTotTrib
   IBSCBS/finNFSe IBSCBS/indFinal IBSCBS/cIndOp IBSCBS/indDest
-  IBSCBS/valores/trib/gIBSCBS/CST IBSCBS/valores/trib/gIBSCBS/cClassTrib`.split(/\s+/),
+  IBSCBS/valores/trib/gIBSCBS/CST IBSCBS/valores/trib/gIBSCBS/cClassTrib
+  IBSCBS/valores/trib/CST IBSCBS/valores/trib/cClassTrib IBSCBS/valores/trib/gIBSCBS`.split(/\s+/),
 );
 
 function leafPaths(element: Element, prefix: string): string[] {
@@ -78,7 +79,7 @@ export function readTemplate(nfseXml: string): DpsTemplate {
     },
     serviceCents: decimalToCents(requiredText(dps, 'valores', 'vServPrest', 'vServ')),
     tax: taxOf(requiredChild(dps, 'valores', 'trib')),
-    ...(ibs ? { ibsCbs: ibsCbsOf(ibs) } : {}),
+    ...(ibs ? { ibsCbs: ibsCbsOf(ibs, text(dps, 'finNFSe')) } : {}),
   };
 }
 
@@ -181,14 +182,21 @@ function taxOf(trib: Element): Tax {
   };
 }
 
-function ibsCbsOf(ibs: Element): NonNullable<DpsInput['ibsCbs']> {
+// NT 009 moves finNFSe to infDPS, and CST and cClassTrib from gIBSCBS up to trib.
+function ibsCbsOf(ibs: Element, dpsPurpose: string | undefined): NonNullable<DpsInput['ibsCbs']> {
   const finalConsumer = text(ibs, 'indFinal') as '0' | '1' | undefined;
+  const purpose = text(ibs, 'finNFSe') ?? dpsPurpose;
+  const operationCode = text(ibs, 'cIndOp');
+  const trib = requiredChild(ibs, 'valores', 'trib');
+  const classified =
+    child(trib, 'gIBSCBS') && !child(trib, 'CST') ? requiredChild(trib, 'gIBSCBS') : trib;
+  if (purpose === undefined) throw new TemplateUnsupportedError(['IBSCBS/finNFSe']);
   return {
-    purpose: requiredText(ibs, 'finNFSe'),
+    purpose,
     ...(finalConsumer ? { finalConsumer } : {}),
-    operationCode: requiredText(ibs, 'cIndOp'),
+    ...(operationCode ? { operationCode } : {}),
     destination: requiredText(ibs, 'indDest'),
-    cst: requiredText(ibs, 'valores', 'trib', 'gIBSCBS', 'CST'),
-    classCode: requiredText(ibs, 'valores', 'trib', 'gIBSCBS', 'cClassTrib'),
+    cst: requiredText(classified, 'CST'),
+    classCode: requiredText(classified, 'cClassTrib'),
   };
 }

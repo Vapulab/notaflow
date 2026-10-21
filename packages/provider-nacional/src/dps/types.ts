@@ -82,7 +82,7 @@ export interface DpsInput {
   ibsCbs?: {
     purpose: string; // finNFSe
     finalConsumer?: '0' | '1'; // indFinal
-    operationCode: string; // cIndOp, 6 digits
+    operationCode?: string; // cIndOp, 6 digits; NT 009 forbids it for a CST with no IBS/CBS due
     destination: string; // indDest
     cst: string;
     classCode: string; // cClassTrib

@@ -1,6 +1,13 @@
 import { writeFileSync } from 'node:fs';
 import { buildDpsXml, formatBrasiliaDate, type DpsInput } from '@notaflow/provider-nacional';
-import { appVersion, cancelInvoice, certificate, client, env, nodeSigner } from '../2026-10-sefin/session';
+import {
+  appVersion,
+  cancelInvoice,
+  certificate,
+  client,
+  env,
+  nodeSigner,
+} from '../2026-10-sefin/session';
 
 // Stage 2a check in produção restrita: invoices built without a template. Every issued one is cancelled.
 const RESULTS = new URL('./results.local.json', import.meta.url);
@@ -22,7 +29,9 @@ function base(serviceCents: number): Omit<DpsInput, 'customer' | 'tax' | 'servic
         ? { municipalRegistration: process.env.NOTAFLOW_EMITTER_MUNICIPAL_REGISTRATION }
         : {}),
       simplesNacional: env('NOTAFLOW_SIMPLES_NACIONAL') as DpsInput['provider']['simplesNacional'],
-      simplesRegime: env('NOTAFLOW_SIMPLES_REGIME') as NonNullable<DpsInput['provider']['simplesRegime']>,
+      simplesRegime: env('NOTAFLOW_SIMPLES_REGIME') as NonNullable<
+        DpsInput['provider']['simplesRegime']
+      >,
       specialRegime: env('NOTAFLOW_SPECIAL_REGIME') as DpsInput['provider']['specialRegime'],
     },
     amounts: { serviceCents },
@@ -53,6 +62,16 @@ const domesticCustomer: DpsInput['customer'] = {
 
 const simplesTotalPercent = env('NOTAFLOW_SIMPLES_TOTAL_PERCENT');
 
+// NT 009 (E0855): every DPS with a competence from 2026-10-01 has the IBSCBS group; 000001 is the regular rate.
+const domesticIbsCbs: DpsInput['ibsCbs'] = {
+  purpose: '0',
+  finalConsumer: '0',
+  operationCode: '100301',
+  destination: '0',
+  cst: '000',
+  classCode: '000001',
+};
+
 const variants: Record<string, () => DpsInput> = {
   'domestic-iss': () => ({
     ...base(1000),
@@ -70,6 +89,7 @@ const variants: Record<string, () => DpsInput> = {
     ...base(1000),
     customer: domesticCustomer,
     service: service('Teste NotaFlow 2a: nota nacional sem aliquota'),
+    ibsCbs: domesticIbsCbs,
     tax: {
       issqnTaxation: '1',
       issRetention: '1',
@@ -86,6 +106,20 @@ const variants: Record<string, () => DpsInput> = {
       issRetention: '2',
       issRatePercent: '2.00',
       pisCofins: { cst: '00', retention: '0' },
+      simplesTotalPercent,
+    },
+  }),
+  // IN RFB 2110/2022 puts the 11% retention on Anexo IV only: does the Sefin accept vRetCP from any Simples ME/EPP?
+  'domestic-inss': () => ({
+    ...base(1000),
+    customer: domesticCustomer,
+    service: service('Teste NotaFlow: nota nacional com INSS retido'),
+    ibsCbs: domesticIbsCbs,
+    tax: {
+      issqnTaxation: '1',
+      issRetention: '1',
+      pisCofins: { cst: '00', retention: '0' },
+      cpRetainedCents: 110,
       simplesTotalPercent,
     },
   }),
@@ -126,7 +160,14 @@ const variants: Record<string, () => DpsInput> = {
         pisCofins: { cst: '00', retention: '0' },
         simplesTotalPercent,
       },
-      ibsCbs: { purpose: '0', finalConsumer: '0', operationCode: '100302', destination: '0', cst: '410', classCode: '410027' },
+      ibsCbs: {
+        purpose: '0',
+        finalConsumer: '0',
+        operationCode: '100302',
+        destination: '0',
+        cst: '410',
+        classCode: '410027',
+      },
     };
   },
 };
@@ -147,13 +188,10 @@ for (const [name, build] of Object.entries(variants)) {
     profile: 'rsa-sha256-exc-c14n',
   });
   const result = await client.issue(signed);
-  results[name] = result.kind === 'issued' ? { kind: 'issued', accessKey: result.accessKey } : result;
+  results[name] =
+    result.kind === 'issued' ? { kind: 'issued', accessKey: result.accessKey } : result;
   if (result.kind === 'issued') issued.push(result.accessKey);
-  console.log(
-    name,
-    result.kind,
-    result.kind === 'rejected' ? JSON.stringify(result.errors.map((e) => `${e.codigo}: ${e.descricao}`)) : '',
-  );
+  console.log(name, result.kind, result.kind === 'rejected' ? JSON.stringify(result.errors) : '');
 }
 
 const cancellations: Record<string, string> = {};
@@ -163,4 +201,6 @@ for (const accessKey of issued) {
   console.log('cancel', accessKey.slice(-6), cancellations[accessKey]);
 }
 writeFileSync(RESULTS, JSON.stringify({ results, cancellations }, null, 2));
-console.log(`Issued ${issued.length}, cancelled ${Object.values(cancellations).filter((c) => c === 'cancelled').length}.`);
+console.log(
+  `Issued ${issued.length}, cancelled ${Object.values(cancellations).filter((c) => c === 'cancelled').length}.`,
+);
