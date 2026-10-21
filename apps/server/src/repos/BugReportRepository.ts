@@ -188,6 +188,22 @@ export class BugReportRepository {
       .all();
   }
 
+  closedBefore(reportId: string, at: Date): boolean {
+    const row = this.db
+      .select({ id: bugReports.id })
+      .from(bugReports)
+      .where(
+        and(
+          eq(bugReports.id, reportId),
+          eq(bugReports.status, 'closed'),
+          lt(bugReports.closedAt, at),
+          notDeleted(bugReports),
+        ),
+      )
+      .get();
+    return row !== undefined;
+  }
+
   markImagePurged(imageId: string, at: Date): void {
     this.db
       .update(bugReportImages)

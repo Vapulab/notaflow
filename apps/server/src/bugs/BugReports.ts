@@ -95,11 +95,17 @@ export class BugReports {
         ...(on.notion ? (['notion_page'] as const) : []),
         ...(on.discord ? (['discord_report'] as const) : []),
       ];
-      this.deps.db.transaction(() => {
-        this.repo.create(ctx, input, reportId);
-        this.repo.addImages(ctx, reportId, stored);
-        this.queue(reportId, kinds, null, now);
-      });
+      try {
+        this.deps.db.transaction(() => {
+          this.repo.create(ctx, input, reportId);
+          this.repo.addImages(ctx, reportId, stored);
+          this.queue(reportId, kinds, null, now);
+        });
+      } catch (error) {
+        // No row points at the uploaded objects, and the purge only finds objects through rows.
+        await this.removeObjects(stored.map((image) => image.r2Key));
+        throw error;
+      }
       this.start(reportId, now);
       return reportId;
     } finally {
@@ -113,34 +119,53 @@ export class BugReports {
     if (images.length === 0) return [];
     const r2 = this.deps.r2;
     if (!r2) throw new HttpError(400, 'bug_images_unavailable');
-    const stored: StoredImage[] = [];
+    const uploads = images.map((image, index) => ({
+      image,
+      row: {
+        position: index + 1,
+        contentType: image.contentType,
+        sizeBytes: image.data.length,
+        r2Key: imageKey(reportId, index + 1, image.contentType),
+      },
+    }));
+    const stored: StoredImage[] = uploads.map((upload) => upload.row);
     try {
-      for (const [index, image] of images.entries()) {
-        const r2Key = imageKey(reportId, index + 1, image.contentType);
-        await r2.put(r2Key, image.data, image.contentType);
-        stored.push({
-          position: index + 1,
-          contentType: image.contentType,
-          sizeBytes: image.data.length,
-          r2Key,
-        });
+      for (const { image, row } of uploads) {
+        await r2.put(row.r2Key, image.data, image.contentType);
       }
     } catch (error) {
       this.deps.logError(`bug report ${reportId}: image upload failed: ${String(error)}`);
-      // No row will point at these objects, so remove them now.
-      await Promise.allSettled(stored.map((image) => r2.delete(image.r2Key)));
+      // Every key, also the failed one: R2 may have kept a PUT whose answer timed out.
+      await this.removeObjects(stored.map((image) => image.r2Key));
       throw new HttpError(502, 'bug_images_failed');
     }
     return stored;
+  }
+
+  // A missing object counts as deleted, so this is safe for keys that never reached R2.
+  private async removeObjects(keys: string[]): Promise<void> {
+    const r2 = this.deps.r2;
+    if (!r2 || keys.length === 0) return;
+    const results = await Promise.allSettled(keys.map((key) => r2.delete(key)));
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        this.deps.logError(
+          `bug image ${keys[index] ?? ''} left in R2 without a row: ${String(result.reason)}`,
+        );
+      }
+    }
   }
 
   // Deletes from R2 the images of reports closed more than 30 days ago; a failure waits for the next run.
   async purgeImages(now = new Date()): Promise<number> {
     const r2 = this.deps.r2;
     if (!r2) return 0;
-    const due = this.repo.imagesToPurge(new Date(now.getTime() - IMAGE_RETENTION_MS));
+    const closedBefore = new Date(now.getTime() - IMAGE_RETENTION_MS);
+    const due = this.repo.imagesToPurge(closedBefore);
     const done = new Map<string, { accountId: string; count: number }>();
     for (const image of due) {
+      // A webhook may reopen the report while an earlier delete waits on R2.
+      if (!this.repo.closedBefore(image.bugReportId, closedBefore)) continue;
       try {
         await r2.delete(image.r2Key);
       } catch (error) {

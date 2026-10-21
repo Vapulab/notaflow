@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { MockAgent } from 'undici';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { seedTenant, seedUser } from '../../test/fixtures';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { bugReportImages, bugReports } from '../db/schema';
+import { BugReportRepository } from '../repos/BugReportRepository';
 
 const R2 = {
   R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
@@ -33,7 +34,10 @@ const webp = { contentType: 'image/webp', data: WEBP.toString('base64') };
 const BUG = { title: 'Botão travou', description: 'Cliquei e nada.', pagePath: '/app/acc/notas' };
 
 let t: TestApp | undefined;
-afterEach(() => t?.close());
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await t?.close();
+});
 
 async function setup(env: Record<string, string> = R2) {
   const agent = new MockAgent();
@@ -207,16 +211,32 @@ test('parallel reports while the uploads are in flight still stop at 5 an hour',
   expect((await s.report(BUG)).statusCode).toBe(429);
 });
 
-test('a failed upload stores no report and removes the images already sent', async () => {
+test('a failed upload stores no report and deletes every key, also the failed one', async () => {
   const s = await setup();
   s.answers.put(1);
   s.answers.put(1, 500);
-  s.answers.delete();
+  s.answers.delete(404, 2);
   const response = await s.report({ ...BUG, images: [png, webp] });
   expect(response.statusCode).toBe(502);
   expect(response.json()).toMatchObject({ error: 'bug_images_failed' });
   expect(s.app.db.select().from(bugReports).all()).toHaveLength(0);
-  expect(s.deletes).toEqual([s.puts[0]?.path]);
+  // R2 may keep a PUT whose answer was lost, so the failed key goes too.
+  expect([...s.deletes].sort()).toEqual(s.puts.map((put) => put.path).sort());
+  expect(s.deletes).toHaveLength(2);
+});
+
+test('a database failure after the uploads deletes the uploaded objects', async () => {
+  const s = await setup();
+  s.answers.put(2);
+  s.answers.delete(204, 2);
+  vi.spyOn(BugReportRepository.prototype, 'create').mockImplementation(() => {
+    throw new Error('disk I/O error');
+  });
+  const response = await s.report({ ...BUG, images: [png, webp] });
+  expect(response.statusCode).toBe(500);
+  expect(s.app.db.select().from(bugReports).all()).toHaveLength(0);
+  expect(s.images()).toHaveLength(0);
+  expect([...s.deletes].sort()).toEqual(s.puts.map((put) => put.path).sort());
 });
 
 test('the deliveries count the images and link the admin page; the issue has no link', async () => {
@@ -314,17 +334,42 @@ test('the purge deletes the images of reports closed more than 30 days ago, once
   expect(metrics).toMatch(/notaflow_bug_report_images\{state="purged"\} 2/);
 });
 
+const ISSUE_URL = 'https://github.com/Vapulab/notaflow/issues/5';
+
+// The issue the GitHub delivery would have stored; the webhook finds the report by it.
+function withIssue(s: Awaited<ReturnType<typeof setup>>, id: string) {
+  s.app.db.update(bugReports).set({ githubIssueUrl: ISSUE_URL }).where(eq(bugReports.id, id)).run();
+}
+
 test('a reopen before the 30 days cancels the purge', async () => {
   const s = await setup();
   const id = await reportWithImages(s);
-  s.close(id, new Date(Date.now() - 31 * DAY));
-  s.app.db
-    .update(bugReports)
-    .set({ status: 'open', closedAt: null })
-    .where(eq(bugReports.id, id))
-    .run();
-  expect(await s.app.app.bugReports.purgeImages()).toBe(0);
+  withIssue(s, id);
+  const bugs = s.app.app.bugReports;
+  expect(bugs.issueChanged(ISSUE_URL, 'closed', new Date(Date.now() - 31 * DAY))).not.toBeNull();
+  expect(bugs.issueChanged(ISSUE_URL, 'open', new Date(Date.now() - DAY))).not.toBeNull();
+  expect(await bugs.purgeImages()).toBe(0);
   expect(s.deletes).toEqual([]);
+});
+
+test('a reopen during a purge run stops the deletes of that report', async () => {
+  const s = await setup();
+  const id = await reportWithImages(s);
+  withIssue(s, id);
+  const bugs = s.app.app.bugReports;
+  bugs.issueChanged(ISSUE_URL, 'closed', new Date(Date.now() - 31 * DAY));
+  s.r2
+    .intercept({ path: (path: string) => path.startsWith('/bugs/bug-reports/'), method: 'DELETE' })
+    .reply((request) => {
+      s.deletes.push(request.path);
+      // The webhook arrives while R2 answers the first delete.
+      bugs.issueChanged(ISSUE_URL, 'open');
+      return { statusCode: 204, data: '' };
+    });
+  s.answers.delete(204);
+  expect(await bugs.purgeImages()).toBe(1);
+  expect(s.deletes).toEqual([`/bugs/bug-reports/${id}/1.png`]);
+  expect(s.images().map((image) => image.purgedAt !== null)).toEqual([true, false]);
 });
 
 test('a failed delete is logged and retried on the next run', async () => {
