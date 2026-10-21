@@ -29,7 +29,11 @@ test.each([...PAGES, ...PARTIALS])('every link of %s goes somewhere that exists'
     if (href.startsWith('#')) expect(html, href).toContain(`id="${href.slice(1)}"`);
     else if (href.startsWith('mailto:')) expect(MAILBOXES.has(href.slice(7)), href).toBe(true);
     // The guide cites its sources: only official government sites.
-    else if (href.startsWith('https://') && !href.startsWith('https://notaflow.vapulab.com')) {
+    else if (
+      GUIDE_FILES.includes(page) &&
+      href.startsWith('https://') &&
+      !href.startsWith('https://notaflow.vapulab.com')
+    ) {
       const host = new URL(href).hostname;
       expect(host === 'gov.br' || host.endsWith('.gov.br'), href).toBe(true);
     } else if (href.startsWith('/guia') && href.includes('#')) {
