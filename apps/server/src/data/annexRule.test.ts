@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { fatorRApplies } from './fatorR';
+import { fatorRApplies } from './annexRule';
 
 test('the activities of LC 123, art. 18, §5º-I and §5º-M depend on the fator R', () => {
   expect(fatorRApplies(['7112000'])).toBe(true);

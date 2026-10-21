@@ -8,7 +8,7 @@ import {
 } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
-import { fatorRApplies } from '../data/fatorR';
+import { fatorRApplies } from '../data/annexRule';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { AuditLog } from '../repos/AuditLog';
