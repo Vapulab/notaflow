@@ -18,3 +18,28 @@
 .guide-text a {
   @apply text-primary underline hover:text-primary/80;
 }
+.guide-text table {
+  @apply mt-4 w-full border-collapse text-left text-sm;
+}
+.guide-text th,
+.guide-text td {
+  @apply border border-border px-3 py-2 align-top text-fg;
+}
+.guide-text th {
+  @apply bg-muted/10 font-semibold;
+}
+.guide-text caption {
+  @apply mt-2 caption-bottom text-left text-sm text-muted;
+}
+.guide-text dt {
+  @apply mt-6 scroll-mt-24 font-semibold text-fg;
+}
+.guide-text dd {
+  @apply mt-2 leading-relaxed text-fg;
+}
+.guide-table {
+  @apply mt-4 overflow-x-auto;
+}
+.guide-note {
+  @apply mt-10 rounded-lg border border-border p-5;
+}

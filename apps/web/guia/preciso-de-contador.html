@@ -75,11 +75,187 @@
 
     <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
       <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Preciso de contador?</h1>
-      <p>Quando dá para cuidar sozinho das notas e quando vale ter um contador.</p>
+      <p>
+        Uma parte do trabalho você consegue fazer sozinho, com segurança: emitir as notas, conferir a
+        alíquota e pagar o imposto do mês. Outra parte costuma pedir um contador. Esta página separa as
+        duas, para você saber o que acompanhar e o que perguntar.
+      </p>
+
+      <h2 id="sozinho">O que você consegue fazer sozinho</h2>
+      <ul>
+        <li>
+          <strong>Emitir as notas.</strong> Cada nota de serviço sai pela NFS-e nacional. O
+          <a href="/guia/primeira-nota">guia da primeira nota</a> mostra cada campo.
+        </li>
+        <li>
+          <strong>Conferir a alíquota.</strong> No Simples, a alíquota sai da receita dos últimos 12 meses
+          (o <a href="/guia/glossario#rbt12">RBT12</a>) e do <a href="/guia/glossario#anexo">Anexo</a> da sua
+          atividade. A <a href="/guia/calculadora-simples">calculadora do Simples</a> faz a conta com você.
+        </li>
+        <li>
+          <strong>Gerar e pagar o DAS.</strong> Todo mês, a empresa do Simples declara a receita no
+          <a href="/guia/glossario#pgdas-d">PGDAS-D</a> e paga o <a href="/guia/glossario#das">DAS</a> até o
+          dia 20 do mês seguinte. A declaração vale como confissão de dívida, então confira os valores
+          antes de transmitir. O atraso da declaração tem multa de 2% ao mês sobre os tributos declarados.
+        </li>
+        <li>
+          <strong>Acompanhar a receita.</strong> Some o que você faturou a cada mês. Esse número define a
+          faixa do Simples e mostra se a empresa se aproxima de um limite.
+        </li>
+      </ul>
+      <p>A <a href="/guia/rotina-do-mes">rotina do mês</a> junta esses passos em uma lista.</p>
+
+      <h2 id="com-contador">O que costuma pedir um contador</h2>
+      <ul>
+        <li>
+          <strong>A escrituração da empresa</strong>, ou seja, os livros (veja abaixo).
+        </li>
+        <li>
+          <strong>Folha de pagamento e pró-labore.</strong> Eles passam pelo eSocial e pela DCTFWeb. Toda
+          pessoa jurídica de direito privado entrega a DCTFWeb, montada a partir do eSocial e da EFD-Reinf,
+          até o último dia útil do mês seguinte. Na empresa do Simples, ela não traz os tributos pagos no
+          DAS.
+        </li>
+        <li>
+          <strong>As declarações anuais.</strong> No Simples, a DEFIS é entregue dentro do PGDAS-D até 31 de
+          março do ano seguinte. O atraso tem multa de 2% ao mês sobre os tributos declarados, até 20%. O
+          MEI entrega a DASN-SIMEI.
+        </li>
+        <li><strong>Uma mudança de regime</strong>, por exemplo do Simples para o Lucro Presumido.</li>
+        <li>
+          <strong>A saída do MEI</strong>, quando a receita passa do limite. A regra muda conforme o
+          excesso, e o <a href="/guia/mei">guia do MEI</a> explica os casos.
+        </li>
+        <li><strong>Uma fiscalização</strong> da Receita, do estado ou do município.</li>
+      </ul>
+      <p>
+        A ECD, a escrituração contábil digital, não se aplica à empresa do Simples. A exceção é a empresa
+        do Simples que recebeu aporte de investidor-anjo: ela entrega a ECD.
+      </p>
+
+      <h2 id="livros">Os livros da empresa</h2>
+      <p>Aqui há duas regras, e as duas valem ao mesmo tempo:</p>
+      <ul>
+        <li>
+          <strong>A regra do Simples.</strong> A ME e a EPP do Simples devem manter o Livro Caixa. O MEI não precisa dele. A escrituração completa, com o Livro
+          Diário e o Razão, dispensa o Livro Caixa.
+        </li>
+        <li>
+          <strong>A regra do Código Civil.</strong> O empresário e a sociedade empresária devem manter a
+          escrituração completa e levantar um balanço todo ano. O Código Civil dispensa só o pequeno
+          empresário, que é o empresário individual com receita até o limite do MEI.
+        </li>
+      </ul>
+      <p>
+        Qual escrituração a sua empresa mantém é uma boa pergunta para o seu contador.
+      </p>
+
+      <h2 id="por-regime">Por regime</h2>
+      <div class="guide-table">
+        <table>
+          <caption>Valores conferidos em 21 de outubro de 2026.</caption>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">MEI</th>
+              <th scope="col">Simples Nacional</th>
+              <th scope="col">Lucro Presumido</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Nota de serviço</th>
+              <td>NFS-e nacional, sem certificado. Obrigatória para cliente com CNPJ; opcional para pessoa física.</td>
+              <td>NFS-e. O NotaFlow emite para empresas do Simples com certificado A1.</td>
+              <td>NFS-e.</td>
+            </tr>
+            <tr>
+              <th scope="row">Imposto do mês</th>
+              <td>DAS-MEI de valor fixo: R$ 86,05 em 2026 para quem presta serviço, até o dia 20.</td>
+              <td>DAS calculado no PGDAS-D, com a alíquota do Anexo e da faixa, até o dia 20.</td>
+              <td>PIS (0,65%), Cofins (3%) e ISS; IRPJ e CSLL por trimestre, sobre um lucro presumido.</td>
+            </tr>
+            <tr>
+              <th scope="row">Declaração anual</th>
+              <td>DASN-SIMEI.</td>
+              <td>DEFIS, até 31 de março.</td>
+              <td>Confira com seu contador.</td>
+            </tr>
+            <tr>
+              <th scope="row">Livros</th>
+              <td>Sem Livro Caixa.</td>
+              <td>Livro Caixa ou escrituração completa; e a regra do Código Civil.</td>
+              <td>A regra do Código Civil.</td>
+            </tr>
+            <tr>
+              <th scope="row">O contador</th>
+              <td>Ajuda em momentos como contratar o empregado ou sair do MEI.</td>
+              <td>Costuma cuidar dos livros, da folha, do pró-labore e da DEFIS. As notas e o DAS você consegue acompanhar.</td>
+              <td>Costuma ser necessário: há mais tributos, cada um com sua regra.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Veja o caminho de cada um: <a href="/guia/mei">MEI</a>,
+        <a href="/guia/simples-nacional">Simples Nacional</a> e
+        <a href="/guia/lucro-presumido">Lucro Presumido</a>.
+      </p>
+
+      <h2 id="conversa">Como conversar com seu contador</h2>
+      <p>
+        O contador conhece a sua empresa e as regras dela. Você conhece o seu dia a dia. Quando você
+        entende a conta, a conversa fica mais fácil e os erros aparecem cedo. Algumas perguntas para levar:
+      </p>
+      <ul>
+        <li>"Qual é o meu Anexo e por quê?"</li>
+        <li>"Você calcula o <a href="/guia/glossario#fator-r">Fator R</a> todo mês?"</li>
+        <li>"O ISS está dentro do DAS, ou algum cliente retém o ISS?"</li>
+        <li>"Qual RBT12 você usou neste mês?"</li>
+        <li>"A minha empresa mantém Livro Caixa ou escrituração completa?"</li>
+      </ul>
+      <p>
+        Se um número do NotaFlow for diferente do número do seu contador, não é motivo para susto. Mostre a
+        conta, confira com seu contador e descubram juntos de onde vem a diferença.
+      </p>
 
       <section id="fontes">
         <h2>Fontes</h2>
-        <ul></ul>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, arts. 3º, 18-A, 25, 25-B e 26 §2º</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 38, 40, 63, 72, 97-A, 98 e 106</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=141910">IN RFB nº 2.237/2024, arts. 3º, 5º, 6º e 8º</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=114965">IN RFB nº 2.003/2021, art. 3º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm">Código Civil, arts. 970, 1.179 e 1.180</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm">LC 116/2003, arts. 3º e 4º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9430.htm">Lei nº 9.430/1996, art. 1º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9249.htm">Lei nº 9.249/1995, arts. 3º, 15 e 20</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9715.htm">Lei nº 9.715/1998, art. 8º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9718compilada.htm">Lei nº 9.718/1998, art. 8º</a>
+          </li>
+          <li>
+            <a href="https://www8.receita.fazenda.gov.br/simplesnacional/noticias/NoticiaCompleta.aspx?id=c3b2044c-ff97-432a-b33c-ecf2a3df6dc3">Portal do Simples Nacional, valores do DAS-MEI em 2026</a>
+          </li>
+        </ul>
       </section>
       <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
     </main>
