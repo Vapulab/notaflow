@@ -8,7 +8,7 @@ import {
 } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
-import { fatorRApplies } from '../data/annexRule';
+import { annexRule } from '../data/annexRule';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { AuditLog } from '../repos/AuditLog';
@@ -66,8 +66,8 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
         config.simplesAnnex && config.simplesRbt12Cents !== null
           ? simplesRates(config.simplesAnnex, config.simplesRbt12Cents)
           : null;
-      const fatorR = fatorRApplies(emitters.cnaesOf(ctx, request.params.emitterId) ?? null);
-      return { ...config, rates, fatorR };
+      const rule = annexRule(emitters.cnaesOf(ctx, request.params.emitterId) ?? null);
+      return { ...config, rates, annexRule: rule };
     },
   );
 

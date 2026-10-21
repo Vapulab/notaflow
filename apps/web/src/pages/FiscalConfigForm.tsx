@@ -92,10 +92,16 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
           Atualize a receita dos últimos 12 meses: a alíquota do Simples de cada mês depende dela.
         </Alert>
       )}
-      {annex === 'V' && config.fatorR === false && (
+      {annex === 'V' && config.annexRule === 'III' && (
         <Alert variant="warning">
           A atividade principal não depende do fator R: em geral ela é do Anexo III. Confira o anexo
           com o seu contador.
+        </Alert>
+      )}
+      {annex !== 'IV' && config.annexRule === 'IV' && (
+        <Alert variant="warning">
+          A atividade principal (obras, limpeza, vigilância ou advocacia) costuma ser do Anexo IV.
+          Confira o anexo com o seu contador.
         </Alert>
       )}
       <fieldset disabled={!canEdit} className="flex flex-col gap-4">

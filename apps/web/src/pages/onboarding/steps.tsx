@@ -339,8 +339,9 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
         : Promise.resolve(null),
     [base, emitter?.id],
   );
-  // Without a CNAE the payroll question stays; an activity outside the fator R is Anexo III.
-  const asksPayroll = fiscal.data?.fatorR !== false;
+  const rule = fiscal.data?.annexRule ?? null;
+  // Without a CNAE the payroll question stays.
+  const asksPayroll = rule === 'fator_r' || rule === null;
   const [revenue, setRevenue] = useState('');
   const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
   const [annexChoice, setAnnexChoice] = useState<SimplesAnnex | null>(null);
@@ -354,7 +355,13 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
   const annex =
     annexChoice ??
-    (!asksPayroll ? 'III' : payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
+    (rule === 'IV' || rule === 'III'
+      ? rule
+      : payroll === 'yes'
+        ? 'III'
+        : payroll === 'no'
+          ? 'V'
+          : null);
   const issRate = parsePercent(iss);
   const typedIss = issOutsideDas(annex, band);
   const ready =
@@ -420,8 +427,10 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
         )}
         {!asksPayroll && (
           <p className="text-sm text-fg">
-            A atividade principal não depende do fator R: Anexo III do Simples Nacional. Se o seu
-            contador indicar outro anexo, mude em Opções avançadas.
+            {rule === 'IV'
+              ? 'A atividade principal (obras, limpeza, vigilância ou advocacia) costuma ser do Anexo IV: a contribuição previdenciária (CPP) é paga fora do DAS.'
+              : 'A atividade principal não depende do fator R: Anexo III do Simples Nacional.'}{' '}
+            Se o seu contador indicar outro anexo, mude em Opções avançadas.
           </p>
         )}
         {asksPayroll && (

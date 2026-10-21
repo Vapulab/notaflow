@@ -289,7 +289,7 @@ test.each([
   expect(await screen.findByText(text)).toBeTruthy();
 });
 
-const fiscalRoutes = (fatorR: boolean | null = true) => ({
+const fiscalRoutes = (annexRule: 'III' | 'IV' | 'fator_r' | null = 'fator_r') => ({
   ...state('fiscal', true),
   [`${base}/emitters`]: [
     {
@@ -302,7 +302,7 @@ const fiscalRoutes = (fatorR: boolean | null = true) => ({
       certificate: null,
     },
   ],
-  [`${base}/emitters/em1/fiscal`]: { fatorR },
+  [`${base}/emitters/em1/fiscal`]: { annexRule },
   [`${base}/onboarding/fiscal-done`]: { step: 'sync' },
   [`${base}/invoices`]: { items: [], total: 0 },
 });
@@ -354,7 +354,7 @@ test('a payroll under 28% means Anexo V', async () => {
 });
 
 test('an activity outside the fator R skips the payroll question and saves Anexo III', async () => {
-  const calls = stubApi(fiscalRoutes(false));
+  const calls = stubApi(fiscalRoutes('III'));
   const user = userEvent.setup();
   renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
   await user.type(
@@ -373,8 +373,28 @@ test('an activity outside the fator R skips the payroll question and saves Anexo
   expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'III' });
 });
 
+test('works, cleaning, security, or law as the main activity start in Anexo IV', async () => {
+  const calls = stubApi(fiscalRoutes('IV'));
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '142.050,29',
+  );
+  expect(screen.getByText(/costuma ser do Anexo IV/)).toBeTruthy();
+  expect(screen.queryByRole('radio', { name: 'Não, menos de 28%' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'IV' });
+});
+
 test('Anexo I in the advanced options asks the municipal ISS rate', async () => {
-  const calls = stubApi(fiscalRoutes(false));
+  const calls = stubApi(fiscalRoutes('III'));
   const user = userEvent.setup();
   renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
   await user.type(

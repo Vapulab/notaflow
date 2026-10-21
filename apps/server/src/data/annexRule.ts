@@ -1,7 +1,7 @@
-// NotaFlow's own table, not an official one: LC 123, art. 18, §5º-I and §5º-M name the fator R activities
-// only in words (Res. CGSN 140, art. 25, §1º, V), and no CGSN annex links them to CNAEs. It only suggests.
+// NotaFlow's own tables, not official ones: LC 123, art. 18, names the activities of each annex only in
+// words (Res. CGSN 140, art. 25, §1º), and no CGSN annex links them to CNAEs. They only suggest.
 // Keys are CNAE prefixes (2 to 7 digits).
-const PREFIXES = [
+const FATOR_R = [
   // §5º-D: software, web pages, real estate administration, gyms, laboratories, imaging, prostheses.
   '6201501',
   '6201502',
@@ -35,9 +35,15 @@ const PREFIXES = [
   '86',
 ];
 
-// Whether the main activity (the first CNAE) moves between Anexos III and V by the fator R.
-export function fatorRApplies(cnaes: string[] | null): boolean | null {
+// §5º-C: works and landscaping, cleaning and security, and law firms pay the CPP outside the DAS.
+const ANNEX_IV = ['412', '42', '43', '7410202', '8130300', '80111', '8012900', '812', '6911701'];
+
+export type AnnexRule = 'III' | 'IV' | 'fator_r';
+
+// The annex the main activity (the first CNAE) suggests; fator_r moves between Anexos III and V.
+export function annexRule(cnaes: string[] | null): AnnexRule | null {
   const main = cnaes?.[0];
   if (!main) return null;
-  return PREFIXES.some((prefix) => main.startsWith(prefix));
+  if (ANNEX_IV.some((prefix) => main.startsWith(prefix))) return 'IV';
+  return FATOR_R.some((prefix) => main.startsWith(prefix)) ? 'fator_r' : 'III';
 }
