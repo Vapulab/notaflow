@@ -1,9 +1,11 @@
 import { type FormEvent, useState } from 'react';
-import { api, type FiscalConfig, type SimplesAnnex } from '../api';
+import { api, type Band6Iss, type FiscalConfig, type SimplesAnnex } from '../api';
 import { AmountInput } from '../components/AmountInput';
+import { Band6IssField } from '../components/Band6IssField';
 import { errorText } from '../components/Layout';
 import {
   ANNEX_OPTIONS,
+  asksBand6Iss,
   isSimplesAnnex,
   RBT12_LABEL,
   ratesLine,
@@ -31,6 +33,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
   const [revenue, setRevenue] = useState(
     config.simplesRbt12Cents === null ? '' : centsInput(config.simplesRbt12Cents),
   );
+  const [band6Iss, setBand6Iss] = useState<Band6Iss | null>(config.simplesBand6Iss ?? null);
   const [iss, setIss] = useState(config.issRate === null ? '' : percentInput(config.issRate));
   const [regime, setRegime] = useState(config.ibscbsRegime);
   const [from, setFrom] = useState(config.ibscbsRegimeFrom ?? '');
@@ -39,12 +42,18 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
   const [informedAt, setInformedAt] = useState(config.simplesRbt12At);
   const issRate = parsePercent(iss);
   const rbt12Cents = parseCents(revenue);
-  const unchanged = annex === config.simplesAnnex && rbt12Cents === config.simplesRbt12Cents;
-  const preview = useSimplesRates(ratesUrl, annex, unchanged ? null : rbt12Cents);
+  const unchanged =
+    annex === config.simplesAnnex &&
+    rbt12Cents === config.simplesRbt12Cents &&
+    band6Iss === (config.simplesBand6Iss ?? null);
+  const preview = useSimplesRates(ratesUrl, annex, unchanged ? null : rbt12Cents, band6Iss);
   const rates =
     unchanged && config.rates && config.simplesBand
       ? { band: config.simplesBand, ...config.rates }
       : preview.rates;
+  const asksBand6 = asksBand6Iss(annex, rates?.band ?? null);
+  const band6Unanswered =
+    asksBand6Iss(config.simplesAnnex, config.simplesBand) && !config.simplesBand6Iss;
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -52,7 +61,11 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
       setMessage({ variant: 'error', text: 'Informe a receita bruta dos últimos 12 meses.' });
       return;
     }
-    // Only band 6 has no ISS share: its ISS goes outside the DAS, at the municipal rate.
+    if (asksBand6 && !band6Iss) {
+      setMessage({ variant: 'error', text: 'Informe se o ISS ainda é pago no DAS.' });
+      return;
+    }
+    // Without an ISS share the ISS goes outside the DAS, at the municipal rate.
     const typedIss = rates?.iss === null;
     if (typedIss && (issRate === null || issRate > 500)) {
       setMessage({
@@ -66,6 +79,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
       const saved = await api.put<FiscalConfig>(props.url, {
         simplesAnnex: annex,
         simplesRbt12Cents: rbt12Cents,
+        ...(asksBand6 && band6Iss ? { simplesBand6Iss: band6Iss } : {}),
         ...(typedIss && issRate !== null ? { issRate } : {}),
         ibscbsRegime: regime,
         ...(from ? { ibscbsRegimeFrom: from } : {}),
@@ -90,6 +104,12 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
       {revenueIsStale(informedAt) && (
         <Alert variant="warning">
           Atualize a receita dos últimos 12 meses: a alíquota do Simples de cada mês depende dela.
+        </Alert>
+      )}
+      {band6Unanswered && (
+        <Alert variant="warning">
+          Na faixa 6 o ISS continua no DAS enquanto a receita deste ano não passar de R$ 3,6
+          milhões. Responda onde está o ISS e salve: até lá, as notas saem com o ISS fora do DAS.
         </Alert>
       )}
       {annex === 'V' && config.annexRule === 'III' && (
@@ -128,10 +148,11 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
           >
             <AmountInput unit="R$" value={revenue} onValueChange={setRevenue} />
           </Field>
+          {asksBand6 && <Band6IssField value={band6Iss} onChange={setBand6Iss} />}
           {rates?.iss === null && (
             <Field
               label="Alíquota de ISS (%)"
-              hint="Na faixa 6 o ISS sai do DAS: a alíquota do município, usada quando o cliente retém o ISS."
+              hint="Com o ISS fora do DAS: a alíquota do município, usada quando o cliente retém o ISS."
             >
               <AmountInput unit="%" value={iss} onValueChange={setIss} />
             </Field>
