@@ -49,6 +49,8 @@ test('every error code the server can send has a text', () => {
     'sefin_rejected',
     'ptax_unavailable',
     'invalid_idempotency_key',
+    'too_many_bug_reports',
+    'invalid_bug_report',
   ]) {
     expect(ERROR_TEXT[code]).toBeTruthy();
   }
