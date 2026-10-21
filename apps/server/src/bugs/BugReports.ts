@@ -54,6 +54,8 @@ export class BugReports {
   private readonly repo: BugReportRepository;
   private readonly audit: AuditLog;
   private readonly running = new Set<Promise<void>>();
+  // Reports of a user still uploading: they count for the limit before their row exists.
+  private readonly inFlight = new Map<string, number>();
 
   constructor(
     private readonly deps: {
@@ -77,25 +79,34 @@ export class BugReports {
     now = new Date(),
   ): Promise<string> {
     const since = new Date(now.getTime() - 3600_000);
-    if (this.repo.countByUserSince(ctx, since) >= REPORTS_PER_HOUR) {
+    const pending = this.inFlight.get(ctx.userId) ?? 0;
+    if (this.repo.countByUserSince(ctx, since) + pending >= REPORTS_PER_HOUR) {
       throw new HttpError(429, 'too_many_bug_reports');
     }
-    const reportId = randomUUID();
-    // The images reach R2 before any row exists: a failed upload leaves no report without its images.
-    const stored = await this.storeImages(reportId, images);
-    const { on } = this.deps;
-    const kinds: Kind[] = [
-      ...(on.github ? (['github_issue'] as const) : []),
-      ...(on.notion ? (['notion_page'] as const) : []),
-      ...(on.discord ? (['discord_report'] as const) : []),
-    ];
-    this.deps.db.transaction(() => {
-      this.repo.create(ctx, input, reportId);
-      this.repo.addImages(ctx, reportId, stored);
-      this.queue(reportId, kinds, null, now);
-    });
-    this.start(reportId, now);
-    return reportId;
+    // Hold the slot before the first await, so parallel requests cannot all pass the check.
+    this.inFlight.set(ctx.userId, pending + 1);
+    try {
+      const reportId = randomUUID();
+      // The images reach R2 before any row exists: a failed upload leaves no report without its images.
+      const stored = await this.storeImages(reportId, images);
+      const { on } = this.deps;
+      const kinds: Kind[] = [
+        ...(on.github ? (['github_issue'] as const) : []),
+        ...(on.notion ? (['notion_page'] as const) : []),
+        ...(on.discord ? (['discord_report'] as const) : []),
+      ];
+      this.deps.db.transaction(() => {
+        this.repo.create(ctx, input, reportId);
+        this.repo.addImages(ctx, reportId, stored);
+        this.queue(reportId, kinds, null, now);
+      });
+      this.start(reportId, now);
+      return reportId;
+    } finally {
+      const left = (this.inFlight.get(ctx.userId) ?? 1) - 1;
+      if (left > 0) this.inFlight.set(ctx.userId, left);
+      else this.inFlight.delete(ctx.userId);
+    }
   }
 
   private async storeImages(reportId: string, images: BugImage[]): Promise<StoredImage[]> {

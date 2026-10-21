@@ -189,6 +189,24 @@ test('three images of almost 1 MB each fit in the body limit', async () => {
   expect(s.images()).toHaveLength(3);
 });
 
+test('parallel reports while the uploads are in flight still stop at 5 an hour', async () => {
+  const s = await setup();
+  s.r2
+    .intercept({ path: (path: string) => path.startsWith('/bugs/bug-reports/'), method: 'PUT' })
+    .reply(200, '')
+    .delay(50)
+    .times(6);
+  const responses = await Promise.all(
+    Array.from({ length: 6 }, () => s.report({ ...BUG, images: [png] })),
+  );
+  const codes = responses.map((response) => response.statusCode).sort();
+  expect(codes).toEqual([201, 201, 201, 201, 201, 429]);
+  expect(s.app.db.select().from(bugReports).all()).toHaveLength(5);
+  expect(s.images()).toHaveLength(5);
+  // The slots free up once the uploads end: the stored count alone keeps the limit.
+  expect((await s.report(BUG)).statusCode).toBe(429);
+});
+
 test('a failed upload stores no report and removes the images already sent', async () => {
   const s = await setup();
   s.answers.put(1);
