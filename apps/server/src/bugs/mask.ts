@@ -27,6 +27,7 @@ export function maskPersonalData(text: string): string {
 // The literal words of the app routes (apps/web/src/router.ts); any other segment may name someone.
 const ROUTE_WORDS = new Set([
   'admin',
+  'bugs',
   'app',
   'cadastro',
   'clientes',

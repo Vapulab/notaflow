@@ -7,6 +7,7 @@ import { registerAuthRoutes } from './auth/authRoutes';
 import { BugReports } from './bugs/BugReports';
 import { bugChannelClients } from './bugs/channels';
 import { registerGithubWebhook } from './bugs/githubWebhook';
+import { r2Client } from './bugs/r2';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { MailOutbox } from './mail/outbox';
@@ -82,7 +83,7 @@ export interface AppDeps {
   issuerFactory?: IssuerFactory;
   exchangeRate?: ExchangeRateSource;
   cepDispatcher?: Dispatcher;
-  // GitHub, Discord, and Notion for bug reports; tests pass a MockAgent.
+  // GitHub, Discord, Notion, and the R2 screenshot bucket for bug reports; tests pass a MockAgent.
   bugDispatcher?: Dispatcher;
   cnpjDispatcher?: Dispatcher;
   ptaxDispatcher?: Dispatcher;
@@ -196,6 +197,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       discord: config.bugs.discordWebhookUrl !== null,
       notion: config.bugs.notion !== null,
     },
+    r2: config.bugs.r2 ? r2Client(config.bugs.r2, deps.bugDispatcher) : null,
     appOrigin: config.appOrigin,
     logError: (line) => app.log.error(line),
   });

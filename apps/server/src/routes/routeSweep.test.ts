@@ -41,7 +41,8 @@ beforeAll(async () => {
     userId: a.userId,
     invoiceId: invoice.id,
     customerId: customerId ?? '',
-    id: '1', // a mail outbox row
+    id: '1', // a mail outbox row, or a bug report that does not exist
+    position: '1',
   };
 });
 afterAll(() => t.close());
@@ -145,6 +146,7 @@ describe('every /api route', () => {
       googleEnabled: false,
       turnstileSiteKey: null,
       signupOpen: true,
+      bugScreenshots: false,
       posthog: null,
       sentry: null,
     });

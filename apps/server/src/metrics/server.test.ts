@@ -13,6 +13,7 @@ const sources = {
   lifecycleCounts: () => [],
   bugReportCounts: () => [],
   bugDeliveryCounts: () => [],
+  bugImageCounts: () => [],
 };
 let stop: (() => Promise<void>) | undefined;
 afterEach(async () => {

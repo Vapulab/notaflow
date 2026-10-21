@@ -26,6 +26,7 @@ export interface MetricSources {
   lifecycleCounts(): { phase: string; step: number; count: number }[];
   bugReportCounts(): { status: string; count: number }[];
   bugDeliveryCounts(): { channel: string; state: string; count: number }[];
+  bugImageCounts(): { state: string; count: number }[];
 }
 
 export class Metrics {
@@ -184,6 +185,17 @@ export class Metrics {
         for (const row of sources.bugDeliveryCounts()) {
           this.set({ channel: row.channel, state: row.state }, row.count);
         }
+      },
+    });
+    new Gauge({
+      name: 'notaflow_bug_report_images',
+      help: 'Bug report screenshots by state: stored (in R2), purged (deleted 30 days after the report closed)',
+      labelNames: ['state'],
+      registers,
+      collect() {
+        this.reset();
+        for (const state of ['stored', 'purged']) this.set({ state }, 0);
+        for (const row of sources.bugImageCounts()) this.set({ state: row.state }, row.count);
       },
     });
     new Gauge({

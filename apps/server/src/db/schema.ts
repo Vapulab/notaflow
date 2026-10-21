@@ -469,6 +469,33 @@ export const bugReports = sqliteTable(
   ],
 );
 
+// A screenshot of a bug report: the image lives in Cloudflare R2, never in SQLite; purged 30 days after the report closes.
+export const bugReportImages = sqliteTable(
+  'bug_report_images',
+  {
+    id: id(),
+    bugReportId: text('bug_report_id')
+      .notNull()
+      .references(() => bugReports.id),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    // 1 to 3, the order the person attached them.
+    position: integer('position').notNull(),
+    contentType: text('content_type', {
+      enum: ['image/webp', 'image/png', 'image/jpeg'],
+    }).notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    r2Key: text('r2_key').notNull(),
+    purgedAt: integer('purged_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('bug_report_images_position').on(t.bugReportId, t.position).where(active)],
+);
+
 // One row per message to GitHub, Discord, or Notion: retried with backoff like the mail outbox, and kept as failed.
 export const bugReportDeliveries = sqliteTable(
   'bug_report_deliveries',

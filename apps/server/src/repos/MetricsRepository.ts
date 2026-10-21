@@ -1,10 +1,11 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { and, count, eq, gt, inArray, or } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, isNotNull, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import {
   accounts,
   bugReportDeliveries,
+  bugReportImages,
   bugReports,
   certificates,
   emitters,
@@ -93,6 +94,16 @@ export class MetricsRepository implements MetricSources {
       .where(notDeleted(bugReports))
       .groupBy(bugReports.status)
       .all();
+  }
+
+  bugImageCounts() {
+    const rows = this.db
+      .select({ purged: isNotNull(bugReportImages.purgedAt), count: count() })
+      .from(bugReportImages)
+      .where(notDeleted(bugReportImages))
+      .groupBy(isNotNull(bugReportImages.purgedAt))
+      .all();
+    return rows.map((row) => ({ state: row.purged ? 'purged' : 'stored', count: row.count }));
   }
 
   // A delivery being sent right now still counts as pending; the channel is the first word of the kind.
