@@ -1,4 +1,5 @@
 import {
+  annexRule,
   BAND6_ISS,
   type Band6Iss,
   percentText,
@@ -10,7 +11,6 @@ import {
 } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
-import { annexRule } from '../data/annexRule';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { AuditLog } from '../repos/AuditLog';
