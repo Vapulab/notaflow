@@ -159,21 +159,49 @@ test('the ISS rate comes from the band; only band 6, outside the DAS, takes a ty
   expect(typed.json()).toMatchObject({ issRate: 300, rates: { iss: null } });
 });
 
-test('the fiscal config says whether the main CNAE depends on the fator R', async () => {
+test('the fiscal config suggests the annex of the main CNAE', async () => {
   const { a, url } = withEmitter();
   const headers = await t.as('a@example.com');
   const emitterId = url.split('/').at(-2) ?? '';
   const repo = new EmitterRepository(t.db);
   const ctx = { ...a, role: 'owner' as const, accountStatus: 'active' as const };
-  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
-    fatorR: null,
-  });
+  const read = async () => (await t.app.inject({ method: 'GET', url, headers })).json();
+  expect(await read()).toMatchObject({ annexRule: null });
   repo.setCnaes(ctx, emitterId, ['4330404']);
-  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
-    fatorR: false,
-  });
+  expect(await read()).toMatchObject({ annexRule: 'IV' });
   repo.setCnaes(ctx, emitterId, ['7112000']);
-  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
-    fatorR: true,
+  expect(await read()).toMatchObject({ annexRule: 'fator_r' });
+  repo.setCnaes(ctx, emitterId, ['9602501']);
+  expect(await read()).toMatchObject({ annexRule: 'III' });
+});
+
+test('every annex of the Simples is accepted; Anexo IV band 1 is 4.50%', async () => {
+  const { url } = withEmitter();
+  const headers = await t.as('a@example.com');
+  for (const simplesAnnex of ['I', 'II', 'III', 'IV', 'V']) {
+    const saved = await t.app.inject({
+      method: 'PUT',
+      url,
+      headers,
+      payload: { ...body, simplesAnnex, simplesRbt12Cents: 14_205_029 },
+    });
+    expect(saved.statusCode, simplesAnnex).toBe(200);
+  }
+  await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, simplesAnnex: 'IV', simplesRbt12Cents: 14_205_029 },
   });
+  expect((await t.app.inject({ method: 'GET', url, headers })).json()).toMatchObject({
+    simplesAnnex: 'IV',
+    rates: { domestic: 450, export: 153, iss: 200 },
+  });
+  const refused = await t.app.inject({
+    method: 'PUT',
+    url,
+    headers,
+    payload: { ...body, simplesAnnex: 'VI' },
+  });
+  expect(refused.statusCode).toBe(400);
 });

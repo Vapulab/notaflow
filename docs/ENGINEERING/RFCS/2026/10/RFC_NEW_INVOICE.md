@@ -229,4 +229,4 @@ Each invoice was found by the DPS id the server stores, and a resend of the same
 - [x] The source and update path of the national service code table (`cTribNac` list) to embed. Source: Anexo B v1.01 of 2026-01-22 (sheet `LISTA.SERV.NAC.`, 338 codes) from the NFS-e [Documentação Atual](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual). It is `apps/server/src/data/serviceCodes.json`. A new Anexo B version is converted again and committed.
 - [ ] The default PIS/COFINS CST and IBS/CBS class for a domestic service of a Simples optant in 2026, confirmed with the accountant or the Sefin check.
 - [ ] NT 009 rollout schedule, for the 2027 stage.
-- [ ] Does the Sefin accept `vRetCP` from an ME/EPP Simples optant? IN RFB 2110/2022, arts. 166 and 167, puts the 11% retention only on Anexo IV, which NotaFlow does not support yet. Check it in produção restrita.
+- [ ] Does the Sefin accept `vRetCP` from an ME/EPP Simples optant? IN RFB 2110/2022, arts. 166 and 167, puts the 11% retention only on Anexo IV. Check it in produção restrita.

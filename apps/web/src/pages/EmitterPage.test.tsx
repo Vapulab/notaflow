@@ -32,7 +32,7 @@ const fiscal = {
   issRate: 201,
   ibscbsRegime: 'inside_das',
   ibscbsRegimeFrom: null,
-  fatorR: true,
+  annexRule: 'fator_r',
 };
 const service = {
   id: 's1',
@@ -91,12 +91,22 @@ test('the owner sets the annex and the revenue; the band, both rates and the ISS
   expect(await screen.findByText('Configuração salva.')).toBeTruthy();
 });
 
-test('Anexo V for an activity outside the fator R shows a warning', async () => {
+test('an annex that differs from the one of the main activity shows a warning', async () => {
   stubApi(
-    routes({ [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesAnnex: 'V', fatorR: false } }),
+    routes({
+      [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesAnnex: 'V', annexRule: 'III' },
+    }),
+  );
+  const first = renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  expect(await screen.findByText(/não depende do fator R/)).toBeTruthy();
+  first.unmount();
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/fiscal`]: { ...fiscal, simplesAnnex: 'III', annexRule: 'IV' },
+    }),
   );
   renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
-  expect(await screen.findByText(/não depende do fator R/)).toBeTruthy();
+  expect(await screen.findByText(/costuma ser do Anexo IV/)).toBeTruthy();
 });
 
 test('a member reads the configuration and the services but changes nothing', async () => {

@@ -235,12 +235,17 @@ describe('getDanfse', () => {
     agent
       .get(ADN)
       .intercept({ path: `/danfse/${KEY}`, method: 'GET' })
-      .reply(200, Buffer.from('%PDF-1.7 synthetic'), { headers: { 'content-type': 'application/pdf' } });
+      .reply(200, Buffer.from('%PDF-1.7 synthetic'), {
+        headers: { 'content-type': 'application/pdf' },
+      });
     expect((await client.getDanfse(KEY))?.toString('latin1')).toBe('%PDF-1.7 synthetic');
   });
 
   test('404 returns null', async () => {
-    agent.get(ADN).intercept({ path: `/danfse/${KEY}`, method: 'GET' }).reply(404, '');
+    agent
+      .get(ADN)
+      .intercept({ path: `/danfse/${KEY}`, method: 'GET' })
+      .reply(404, '');
     expect(await client.getDanfse(KEY)).toBeNull();
   });
 
@@ -248,12 +253,17 @@ describe('getDanfse', () => {
     agent
       .get(ADN)
       .intercept({ path: `/danfse/${KEY}`, method: 'GET' })
-      .reply(503, '<html><body><h1>503 Service Unavailable</h1></body></html>', { headers: { 'content-type': 'text/html' } });
+      .reply(503, '<html><body><h1>503 Service Unavailable</h1></body></html>', {
+        headers: { 'content-type': 'text/html' },
+      });
     await expect(client.getDanfse(KEY)).rejects.toMatchObject({ status: 503, retryable: true });
   });
 
   test('a 200 that is not a PDF is an error', async () => {
-    agent.get(ADN).intercept({ path: `/danfse/${KEY}`, method: 'GET' }).reply(200, '<html>login</html>');
+    agent
+      .get(ADN)
+      .intercept({ path: `/danfse/${KEY}`, method: 'GET' })
+      .reply(200, '<html>login</html>');
     await expect(client.getDanfse(KEY)).rejects.toMatchObject({ status: 200 });
   });
 });

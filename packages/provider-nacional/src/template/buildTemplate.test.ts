@@ -176,9 +176,9 @@ describe('buildTemplate', () => {
 
   test('a retained INSS must be above zero and below the service amount', () => {
     expect(() => buildTemplate({ ...domestic, inssRetainedCents: 0 })).toThrow(RangeError);
-    expect(() =>
-      buildTemplate({ ...domestic, inssRetainedCents: domestic.serviceCents }),
-    ).toThrow(RangeError);
+    expect(() => buildTemplate({ ...domestic, inssRetainedCents: domestic.serviceCents })).toThrow(
+      RangeError,
+    );
   });
 
   test('a retained ISS without a rate is refused', () => {

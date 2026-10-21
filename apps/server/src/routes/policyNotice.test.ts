@@ -48,10 +48,10 @@ test('a notice that changed since the page loaded is refused', async () => {
   expect(stale.json()).toMatchObject({ error: 'policy_notice_changed' });
 });
 
-test('a notice never asks for acceptance, and this release has the signup source one', async () => {
+test('a notice never asks for acceptance, and this release has the Simples annexes one', async () => {
   const s = await appWith(NOTICE);
   expect((await s.me()).legalAccepted).toBe(false);
-  expect(POLICY_NOTICE?.id).toBe('2026-10-13-signup-source');
+  expect(POLICY_NOTICE?.id).toBe('2026-10-21-simples-annexes');
   const none = await appWith(null);
   expect((await none.me()).policyNotice).toBeNull();
 });

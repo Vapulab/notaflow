@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, type SimplesAnnex } from '../api';
 import { percentInput } from '../format';
 
 export interface SimplesRates {
@@ -10,6 +10,23 @@ export interface SimplesRates {
 }
 
 export const RBT12_LABEL = 'Receita bruta dos últimos 12 meses (R$)';
+
+export const ANNEX_OPTIONS: [SimplesAnnex, string][] = [
+  ['I', 'Anexo I (comércio)'],
+  ['II', 'Anexo II (indústria)'],
+  ['III', 'Anexo III (serviços)'],
+  ['IV', 'Anexo IV (obras, limpeza, vigilância, advocacia)'],
+  ['V', 'Anexo V (serviços com fator R)'],
+];
+
+export function isSimplesAnnex(value: string): value is SimplesAnnex {
+  return ANNEX_OPTIONS.some(([annex]) => annex === value);
+}
+
+// The DAS of Anexos I and II has no ISS share, so the ISS of a service uses the municipal rate.
+export function issOutsideDas(annex: SimplesAnnex | null, band: number | null): boolean {
+  return band === 6 || annex === 'I' || annex === 'II';
+}
 
 export function ratesLine(rates: SimplesRates): string {
   const iss = rates.iss === null ? 'ISS fora do DAS' : `ISS retido ${percentInput(rates.iss)}%`;
@@ -26,7 +43,7 @@ export function revenueIsStale(informedAt: string | null, today = new Date()): b
 // The server's calculation for a revenue the user is typing; null until it answers.
 export function useSimplesRates(
   url: string,
-  annex: 'III' | 'V',
+  annex: SimplesAnnex,
   rbt12Cents: number | null,
 ): { rates: SimplesRates | null; error: unknown } {
   const [state, setState] = useState<{ rates: SimplesRates | null; error: unknown }>({

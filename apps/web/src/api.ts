@@ -263,8 +263,10 @@ export interface CepAnswer {
   municipality: Municipality;
 }
 
+export type SimplesAnnex = 'I' | 'II' | 'III' | 'IV' | 'V';
+
 export interface FiscalConfig {
-  simplesAnnex: 'III' | 'V' | null;
+  simplesAnnex: SimplesAnnex | null;
   simplesBand: number | null;
   simplesPercent: number | null; // hundredths; the domestic rate
   simplesRbt12Cents: number | null;
@@ -275,8 +277,8 @@ export interface FiscalConfig {
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null;
-  // Whether the main CNAE moves between Anexos III and V by the fator R; null without a CNAE.
-  fatorR: boolean | null;
+  // The annex the main CNAE suggests; fator_r moves between Anexos III and V. Null without a CNAE.
+  annexRule: 'III' | 'IV' | 'fator_r' | null;
 }
 
 export interface ServiceExport {

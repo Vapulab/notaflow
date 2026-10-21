@@ -1,31 +1,66 @@
-// LC 123/2006, Anexos III and V (wording of LC 155/2016, in force since 2018), from the Planalto text.
+// LC 123/2006, Anexos I to V (wording of LC 155/2016, in force since 2018), from the Planalto text.
 // Rates and shares are in hundredths of a percent; the deduction and the band limits are in cents.
-export type SimplesAnnex = 'III' | 'V';
+export const SIMPLES_ANNEXES = ['I', 'II', 'III', 'IV', 'V'] as const;
+export type SimplesAnnex = (typeof SIMPLES_ANNEXES)[number];
+
+// The shares an export leaves out (art. 18, §14); a tax outside the DAS has no share.
+interface Share {
+  cofins: number;
+  pis: number;
+  iss?: number;
+  icms?: number;
+  ipi?: number;
+}
 
 interface Band {
   upTo: number;
   rate: number;
   deduction: number;
-  // Shares of the effective rate by tax; the export leaves out ISS, Cofins, and PIS.
-  share: { cofins: number; pis: number; iss: number };
+  share: Share;
 }
 
 const LIMITS = [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000, 480_000_000];
 
-const band = (index: number, rate: number, deductionReais: number, share: Band['share']) => {
+const band = (index: number, rate: number, deductionReais: number, share: Share) => {
   const upTo = LIMITS[index];
   if (upTo === undefined) throw new RangeError(`No band ${index + 1}`);
   return { upTo, rate, deduction: deductionReais * 100, share };
 };
 
+// Band 6 has no ICMS or ISS share: above R$ 3.6 million they leave the DAS (art. 13-A).
 const TABLES: Record<SimplesAnnex, Band[]> = {
+  I: [
+    band(0, 400, 0, { cofins: 1274, pis: 276, icms: 3400 }),
+    band(1, 730, 5_940, { cofins: 1274, pis: 276, icms: 3400 }),
+    band(2, 950, 13_860, { cofins: 1274, pis: 276, icms: 3350 }),
+    band(3, 1070, 22_500, { cofins: 1274, pis: 276, icms: 3350 }),
+    band(4, 1430, 87_300, { cofins: 1274, pis: 276, icms: 3350 }),
+    band(5, 1900, 378_000, { cofins: 2827, pis: 613 }),
+  ],
+  II: [
+    band(0, 450, 0, { cofins: 1151, pis: 249, ipi: 750, icms: 3200 }),
+    band(1, 780, 5_940, { cofins: 1151, pis: 249, ipi: 750, icms: 3200 }),
+    band(2, 1000, 13_860, { cofins: 1151, pis: 249, ipi: 750, icms: 3200 }),
+    band(3, 1120, 22_500, { cofins: 1151, pis: 249, ipi: 750, icms: 3200 }),
+    band(4, 1470, 85_500, { cofins: 1151, pis: 249, ipi: 750, icms: 3200 }),
+    band(5, 3000, 720_000, { cofins: 2096, pis: 454, ipi: 3500 }),
+  ],
   III: [
     band(0, 600, 0, { cofins: 1282, pis: 278, iss: 3350 }),
     band(1, 1120, 9_360, { cofins: 1405, pis: 305, iss: 3200 }),
     band(2, 1350, 17_640, { cofins: 1364, pis: 296, iss: 3250 }),
     band(3, 1600, 35_640, { cofins: 1364, pis: 296, iss: 3250 }),
     band(4, 2100, 125_640, { cofins: 1282, pis: 278, iss: 3350 }),
-    band(5, 3300, 648_000, { cofins: 1603, pis: 347, iss: 0 }),
+    band(5, 3300, 648_000, { cofins: 1603, pis: 347 }),
+  ],
+  // The CPP is paid outside the DAS (art. 18, §5º-C), so the shares add up to 100% without it.
+  IV: [
+    band(0, 450, 0, { cofins: 1767, pis: 383, iss: 4450 }),
+    band(1, 900, 8_100, { cofins: 2055, pis: 445, iss: 4000 }),
+    band(2, 1020, 12_420, { cofins: 1973, pis: 427, iss: 4000 }),
+    band(3, 1400, 39_780, { cofins: 1890, pis: 410, iss: 4000 }),
+    band(4, 2200, 183_780, { cofins: 1808, pis: 392, iss: 4000 }),
+    band(5, 3300, 828_000, { cofins: 2055, pis: 445 }),
   ],
   V: [
     band(0, 1550, 0, { cofins: 1410, pis: 305, iss: 1400 }),
@@ -33,12 +68,17 @@ const TABLES: Record<SimplesAnnex, Band[]> = {
     band(2, 1950, 9_900, { cofins: 1492, pis: 323, iss: 1900 }),
     band(3, 2050, 17_100, { cofins: 1574, pis: 341, iss: 2100 }),
     band(4, 2300, 62_100, { cofins: 1410, pis: 305, iss: 2350 }),
-    band(5, 3050, 540_000, { cofins: 1644, pis: 356, iss: 0 }),
+    band(5, 3050, 540_000, { cofins: 1644, pis: 356 }),
   ],
 };
 
-// Anexo III, band 5: the ISS is at most 5%; above an effective 14.92537% the rest is split like this.
-const III_BAND5_CAP = { iss: 5, cofins: 0.1928, pis: 0.0418, threshold: 14.92537 };
+// Band 5 of Anexos III and IV: the ISS is at most 5%; above the threshold the rest is split like this.
+const BAND5_CAP: Partial<Record<SimplesAnnex, { threshold: number; cofins: number; pis: number }>> =
+  {
+    III: { threshold: 14.92537, cofins: 0.1928, pis: 0.0418 },
+    IV: { threshold: 12.5, cofins: 0.3013, pis: 0.0654 },
+  };
+const ISS_CAP = 5;
 
 // The band of a gross revenue of the last 12 months (RBT12), or null above the Simples limit.
 export function simplesBand(rbt12Cents: number): number | null {
@@ -56,33 +96,35 @@ function effectiveRate(annex: SimplesAnnex, rbt12Cents: number) {
     rbt12Cents === 0
       ? row.rate / 100
       : (((rbt12Cents * row.rate) / 10_000 - row.deduction) / rbt12Cents) * 100;
-  return { number, row, effective };
+  const cap = BAND5_CAP[annex];
+  const capped = number === 5 && cap !== undefined && effective > cap.threshold ? cap : null;
+  return { row, effective, capped };
 }
 
 // The retained ISS rate in hundredths (CGSN 140, art. 27): the effective ISS share of the band.
-// Null in band 6, where the ISS goes outside the DAS at the municipal rate.
+// Null when the DAS has no ISS: Anexos I and II, and band 6, where the municipal rate applies.
 export function simplesIssRate(annex: SimplesAnnex, rbt12Cents: number): number | null {
-  const { number, row, effective } = effectiveRate(annex, rbt12Cents);
-  if (row.share.iss === 0) return null;
-  if (annex === 'III' && number === 5 && effective > III_BAND5_CAP.threshold) return 500;
+  const { row, effective, capped } = effectiveRate(annex, rbt12Cents);
+  if (row.share.iss === undefined) return null;
+  if (capped) return ISS_CAP * 100;
   return Math.round((effective * row.share.iss) / 100 + 1e-9);
 }
 
-// The rate for pTotTribSN, in hundredths: the effective rate, without ISS, Cofins, and PIS on an export.
+// The rate for pTotTribSN, in hundredths: the effective rate, without the shares an export leaves out.
 export function simplesRate(
   annex: SimplesAnnex,
   rbt12Cents: number,
   options: { export: boolean },
 ): number {
-  const { number, row, effective } = effectiveRate(annex, rbt12Cents);
+  const { row, effective, capped } = effectiveRate(annex, rbt12Cents);
   let percent = effective;
   if (options.export) {
-    if (annex === 'III' && number === 5 && effective > III_BAND5_CAP.threshold) {
-      const rest = effective - III_BAND5_CAP.iss;
-      percent = rest - rest * (III_BAND5_CAP.cofins + III_BAND5_CAP.pis);
+    if (capped) {
+      const rest = effective - ISS_CAP;
+      percent = rest - rest * (capped.cofins + capped.pis);
     } else {
-      const { cofins, pis, iss } = row.share;
-      percent = effective * (1 - (cofins + pis + iss) / 10_000);
+      const { cofins, pis, iss = 0, icms = 0, ipi = 0 } = row.share;
+      percent = effective * (1 - (cofins + pis + iss + icms + ipi) / 10_000);
     }
   }
   return Math.round(percent * 100 + 1e-9);

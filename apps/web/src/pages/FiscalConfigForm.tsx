@@ -1,8 +1,10 @@
 import { type FormEvent, useState } from 'react';
-import { api, type FiscalConfig } from '../api';
+import { api, type FiscalConfig, type SimplesAnnex } from '../api';
 import { AmountInput } from '../components/AmountInput';
 import { errorText } from '../components/Layout';
 import {
+  ANNEX_OPTIONS,
+  isSimplesAnnex,
   RBT12_LABEL,
   ratesLine,
   revenueIsStale,
@@ -25,7 +27,7 @@ export const OWNER_ONLY_TEXT = 'Só o dono da conta altera a configuração fisc
 export function FiscalConfigForm(props: { url: string; config: FiscalConfig; canEdit: boolean }) {
   const { config, canEdit } = props;
   const ratesUrl = props.url.replace(/\/emitters\/[^/]+\/fiscal$/, '/simples-rates');
-  const [annex, setAnnex] = useState<'III' | 'V'>(config.simplesAnnex ?? 'III');
+  const [annex, setAnnex] = useState<SimplesAnnex>(config.simplesAnnex ?? 'III');
   const [revenue, setRevenue] = useState(
     config.simplesRbt12Cents === null ? '' : centsInput(config.simplesRbt12Cents),
   );
@@ -90,18 +92,30 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
           Atualize a receita dos últimos 12 meses: a alíquota do Simples de cada mês depende dela.
         </Alert>
       )}
-      {annex === 'V' && config.fatorR === false && (
+      {annex === 'V' && config.annexRule === 'III' && (
         <Alert variant="warning">
-          A atividade principal não depende do fator R: em geral ela é do Anexo III. Confira o
-          anexo com o seu contador.
+          A atividade principal não depende do fator R: em geral ela é do Anexo III. Confira o anexo
+          com o seu contador.
+        </Alert>
+      )}
+      {annex !== 'IV' && config.annexRule === 'IV' && (
+        <Alert variant="warning">
+          A atividade principal (obras, limpeza, vigilância ou advocacia) costuma ser do Anexo IV.
+          Confira o anexo com o seu contador.
         </Alert>
       )}
       <fieldset disabled={!canEdit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Anexo do Simples">
-            <Select value={annex} onChange={(e) => setAnnex(e.target.value as 'III' | 'V')}>
-              <option value="III">Anexo III</option>
-              <option value="V">Anexo V</option>
+            <Select
+              value={annex}
+              onChange={(e) => isSimplesAnnex(e.target.value) && setAnnex(e.target.value)}
+            >
+              {ANNEX_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field
