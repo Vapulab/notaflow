@@ -289,7 +289,7 @@ test.each([
   expect(await screen.findByText(text)).toBeTruthy();
 });
 
-const fiscalRoutes = () => ({
+const fiscalRoutes = (fatorR: boolean | null = true) => ({
   ...state('fiscal', true),
   [`${base}/emitters`]: [
     {
@@ -302,7 +302,7 @@ const fiscalRoutes = () => ({
       certificate: null,
     },
   ],
-  [`${base}/emitters/em1/fiscal`]: {},
+  [`${base}/emitters/em1/fiscal`]: { fatorR },
   [`${base}/onboarding/fiscal-done`]: { step: 'sync' },
   [`${base}/invoices`]: { items: [], total: 0 },
 });
@@ -351,6 +351,26 @@ test('a payroll under 28% means Anexo V', async () => {
     simplesAnnex: 'V',
     simplesRbt12Cents: 9_000_000,
   });
+});
+
+test('an activity outside the fator R skips the payroll question and saves Anexo III', async () => {
+  const calls = stubApi(fiscalRoutes(false));
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '142.050,29',
+  );
+  expect(await screen.findByText(/não depende do fator R/)).toBeTruthy();
+  expect(screen.queryByRole('radio', { name: 'Não, menos de 28%' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toMatchObject({ simplesAnnex: 'III' });
 });
 
 test('a revenue above the Simples limit is explained, and nothing is saved', async () => {

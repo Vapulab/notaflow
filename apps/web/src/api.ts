@@ -275,6 +275,8 @@ export interface FiscalConfig {
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';
   ibscbsRegimeFrom: string | null;
+  // Whether the main CNAE moves between Anexos III and V by the fator R; null without a CNAE.
+  fatorR: boolean | null;
 }
 
 export interface ServiceExport {

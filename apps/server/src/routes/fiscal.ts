@@ -1,6 +1,7 @@
 import { percentText, simplesBand, simplesIssRate, simplesRate } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
+import { fatorRApplies } from '../data/fatorR';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { AuditLog } from '../repos/AuditLog';
@@ -58,7 +59,8 @@ export function fiscalRoutes(app: FastifyInstance, db: Database): void {
         config.simplesAnnex && config.simplesRbt12Cents !== null
           ? simplesRates(config.simplesAnnex, config.simplesRbt12Cents)
           : null;
-      return { ...config, rates };
+      const fatorR = fatorRApplies(emitters.cnaesOf(ctx, request.params.emitterId) ?? null);
+      return { ...config, rates, fatorR };
     },
   );
 

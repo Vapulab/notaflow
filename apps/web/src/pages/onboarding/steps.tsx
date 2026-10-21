@@ -4,6 +4,7 @@ import {
   ApiError,
   type CnpjDraft,
   type Emitter,
+  type FiscalConfig,
   type InvoicePage,
   type OnboardingState,
 } from '../../api';
@@ -329,6 +330,15 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const { draft } = props.state;
   const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
   const emitter = emitters.data?.[0];
+  const fiscal = useAsync(
+    () =>
+      emitter
+        ? api.get<FiscalConfig>(`${base}/emitters/${encodeURIComponent(emitter.id)}/fiscal`)
+        : Promise.resolve(null),
+    [base, emitter?.id],
+  );
+  // Without a CNAE the payroll question stays; an activity outside the fator R is Anexo III.
+  const asksPayroll = fiscal.data?.fatorR !== false;
   const [revenue, setRevenue] = useState('');
   const [payroll, setPayroll] = useState<'yes' | 'no' | null>(null);
   const [annexChoice, setAnnexChoice] = useState<'III' | 'V' | null>(null);
@@ -340,7 +350,9 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
   const band = revenueCents === null ? null : bandOf(revenueCents);
   const overLimit = revenueCents !== null && band === null;
   // Fator R: a payroll of 28% or more of the revenue puts these services in Anexo III.
-  const annex = annexChoice ?? (payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
+  const annex =
+    annexChoice ??
+    (!asksPayroll ? 'III' : payroll === 'yes' ? 'III' : payroll === 'no' ? 'V' : null);
   const issRate = parsePercent(iss);
   // Only band 6 has no ISS share in the DAS; elsewhere the server takes the ISS from the band.
   const typedIss = band === 6;
@@ -405,34 +417,43 @@ export function FiscalStep(props: { accountId: string; state: OnboardingState; o
             Acima de R$ 4.800.000,00 a empresa sai do Simples Nacional.
           </Alert>
         )}
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium text-fg">
-            A folha de salários dos últimos 12 meses, com o pró-labore, é de 28% ou mais da receita?
-          </legend>
-          {(
-            [
-              ['yes', 'Sim, 28% ou mais'],
-              ['no', 'Não, menos de 28%'],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 text-sm text-fg">
-              <input
-                type="radio"
-                name="payroll"
-                checked={payroll === value}
-                onChange={() => {
-                  setPayroll(value);
-                  setAnnexChoice(null);
-                }}
-              />
-              {label}
-            </label>
-          ))}
-          <p className="text-xs text-muted">
-            É o fator R: decide entre o Anexo III e o Anexo V. Se a sua atividade é sempre do Anexo
-            III, escolha o anexo em Opções avançadas; na dúvida, pergunte ao seu contador.
+        {!asksPayroll && (
+          <p className="text-sm text-fg">
+            A atividade principal não depende do fator R: Anexo III do Simples Nacional. Se o seu
+            contador indicar outro anexo, mude em Opções avançadas.
           </p>
-        </fieldset>
+        )}
+        {asksPayroll && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-fg">
+              A folha de salários dos últimos 12 meses, com o pró-labore, é de 28% ou mais da
+              receita?
+            </legend>
+            {(
+              [
+                ['yes', 'Sim, 28% ou mais'],
+                ['no', 'Não, menos de 28%'],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-2 text-sm text-fg">
+                <input
+                  type="radio"
+                  name="payroll"
+                  checked={payroll === value}
+                  onChange={() => {
+                    setPayroll(value);
+                    setAnnexChoice(null);
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+            <p className="text-xs text-muted">
+              É o fator R: decide entre o Anexo III e o Anexo V. Se a sua atividade é sempre do
+              Anexo III, escolha o anexo em Opções avançadas; na dúvida, pergunte ao seu contador.
+            </p>
+          </fieldset>
+        )}
         <details className="text-sm">
           <summary className="cursor-pointer text-muted">Opções avançadas</summary>
           <div className="mt-3 flex flex-col gap-4">
