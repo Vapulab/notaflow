@@ -43,7 +43,7 @@ const SUPPORTED = new Set(
   valores/trib/totTrib/pTotTribSN valores/trib/totTrib/indTotTrib
   IBSCBS/finNFSe IBSCBS/indFinal IBSCBS/cIndOp IBSCBS/indDest
   IBSCBS/valores/trib/gIBSCBS/CST IBSCBS/valores/trib/gIBSCBS/cClassTrib
-  IBSCBS/valores/trib/CST IBSCBS/valores/trib/cClassTrib`.split(/\s+/),
+  IBSCBS/valores/trib/CST IBSCBS/valores/trib/cClassTrib IBSCBS/valores/trib/gIBSCBS`.split(/\s+/),
 );
 
 function leafPaths(element: Element, prefix: string): string[] {
@@ -186,6 +186,7 @@ function taxOf(trib: Element): Tax {
 function ibsCbsOf(ibs: Element, dpsPurpose: string | undefined): NonNullable<DpsInput['ibsCbs']> {
   const finalConsumer = text(ibs, 'indFinal') as '0' | '1' | undefined;
   const purpose = text(ibs, 'finNFSe') ?? dpsPurpose;
+  const operationCode = text(ibs, 'cIndOp');
   const trib = requiredChild(ibs, 'valores', 'trib');
   const classified =
     child(trib, 'gIBSCBS') && !child(trib, 'CST') ? requiredChild(trib, 'gIBSCBS') : trib;
@@ -193,7 +194,7 @@ function ibsCbsOf(ibs: Element, dpsPurpose: string | undefined): NonNullable<Dps
   return {
     purpose,
     ...(finalConsumer ? { finalConsumer } : {}),
-    operationCode: requiredText(ibs, 'cIndOp'),
+    ...(operationCode ? { operationCode } : {}),
     destination: requiredText(ibs, 'indDest'),
     cst: requiredText(classified, 'CST'),
     classCode: requiredText(classified, 'cClassTrib'),

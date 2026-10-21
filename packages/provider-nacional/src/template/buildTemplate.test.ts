@@ -4,6 +4,7 @@ import { readFixture } from '../../test/fixtures';
 import { validateAgainstXsd } from '../../test/xsd';
 import { buildDpsXml } from '../dps/buildDpsXml';
 import { buildTemplate } from './buildTemplate';
+import type { DpsLayout } from '../dps/layout';
 import { readTemplate, type DpsTemplate } from './readTemplate';
 
 const domestic: NewInvoiceInput = {
@@ -70,12 +71,17 @@ const abroad: NewInvoiceInput = {
   foreign: { currencyCode: '220', amountCents: 123400 },
 };
 
-function dpsXml(template: DpsTemplate): string {
+// Production on 2026-11-30 still has NT 004; produção restrita on 2026-10-31 has NT 009 release 1.
+const LAYOUTS = {
+  nt004: { environment: 'producao' as const, issuedAt: new Date('2026-11-30T12:00:00Z') },
+  nt009: { environment: 'producao_restrita' as const, issuedAt: new Date('2026-10-31T12:00:00Z') },
+};
+
+function dpsXml(template: DpsTemplate, layout: DpsLayout): string {
   const { serviceCents, ...rest } = template;
   return buildDpsXml({
     ...rest,
-    environment: 'producao_restrita',
-    issuedAt: new Date('2026-10-31T12:00:00Z'),
+    ...LAYOUTS[layout],
     appVersion: 'notaflow-test',
     series: '900',
     number: 7,
@@ -85,14 +91,23 @@ function dpsXml(template: DpsTemplate): string {
 }
 
 // The built DPS inside a real NFS-e envelope reads back as the same template.
-function roundTrip(template: DpsTemplate): DpsTemplate {
+function roundTrip(template: DpsTemplate, layout: DpsLayout): DpsTemplate {
   const envelope = readFixture('NFSE_EXPORT_FULL.xml');
-  return readTemplate(envelope.replace(/<DPS [\s\S]*<\/DPS>/, dpsXml(template)));
+  return readTemplate(envelope.replace(/<DPS [\s\S]*<\/DPS>/, dpsXml(template, layout)));
 }
 
 function expectValidAndInverse(template: DpsTemplate) {
-  expect(validateAgainstXsd(dpsXml(template), 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
-  expect(roundTrip(template)).toEqual(template);
+  for (const layout of ['nt004', 'nt009'] as const) {
+    expect(validateAgainstXsd(dpsXml(template, layout), 'DPS_v1.01.xsd', layout).errors).toEqual(
+      [],
+    );
+  }
+  expect(roundTrip(template, 'nt004')).toEqual(template);
+  // NT 009 has no cIndOp for an export (CST 410), so that copy keeps everything else.
+  const { ibsCbs, ...rest } = template;
+  const withoutOperation =
+    ibsCbs?.cst === '410' ? { ...rest, ibsCbs: { ...ibsCbs, operationCode: undefined } } : template;
+  expect(roundTrip(template, 'nt009')).toEqual(JSON.parse(JSON.stringify(withoutOperation)));
 }
 
 describe('buildTemplate', () => {

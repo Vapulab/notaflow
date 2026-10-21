@@ -39,7 +39,8 @@ function fiscalGroupsOf(xml: string): Partial<ServiceInput> {
     ...(municipalTaxCode ? { municipalTaxCode } : {}),
     ...(nbsCode ? { nbsCode } : {}),
     ...(cst ? { pisCofinsCst: cst } : {}),
-    ...(ibsCbs
+    // An NT 009 export has no cIndOp, and a service needs one for the NT 004 layout: leave the group out.
+    ...(ibsCbs?.operationCode
       ? {
           ibsCbs: {
             operationCode: ibsCbs.operationCode,

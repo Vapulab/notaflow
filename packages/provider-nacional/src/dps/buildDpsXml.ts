@@ -6,6 +6,7 @@ import type { Address, DpsInput, ForeignAddress, ForeignTrade } from './types';
 
 export const NFSE_NAMESPACE = 'http://www.sped.fazenda.gov.br/nfse';
 export const SCHEMA_VERSION = '1.01';
+const UNTAXED_CST = new Set(['400', '410', '820']);
 
 // Element order follows tiposComplexos_v1.01.xsd of each layout; the XSD tests fail on any reorder.
 export function buildDpsXml(input: DpsInput): { id: string; xml: string } {
@@ -161,16 +162,17 @@ function amounts({ amounts: a, tax: t }: DpsInput): string {
 function ibsCbs({ ibsCbs: g }: DpsInput, layout: DpsLayout): string {
   if (!g) return '';
   const classification = tag('CST', g.cst) + tag('cClassTrib', g.classCode);
+  // NT 009, 2.16: CST 400, 410, and 820 have no IBS/CBS due, so no cIndOp (E0859) and no gIBSCBS (E0961).
+  const due = !UNTAXED_CST.has(g.cst);
   return (
     '<IBSCBS>' +
     (layout === 'nt004' ? tag('finNFSe', g.purpose) : '') +
     tag('indFinal', g.finalConsumer) +
-    tag('cIndOp', g.operationCode) +
+    (layout === 'nt004' || due ? tag('cIndOp', g.operationCode) : '') +
     tag('indDest', g.destination) +
-    // NT 009 moves CST and cClassTrib up to trib; gIBSCBS is optional and has nothing for us.
     (layout === 'nt004'
       ? `<valores><trib><gIBSCBS>${classification}</gIBSCBS></trib></valores>`
-      : `<valores><trib>${classification}</trib></valores>`) +
+      : `<valores><trib>${classification}${due ? '<gIBSCBS/>' : ''}</trib></valores>`) +
     '</IBSCBS>'
   );
 }
