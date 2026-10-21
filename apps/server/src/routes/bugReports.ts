@@ -24,7 +24,8 @@ export function bugReportRoutes(app: FastifyInstance, deps: { db: Database; bugs
           properties: {
             title: { type: 'string', maxLength: 120 },
             description: { type: 'string', maxLength: 4000 },
-            pagePath: { type: 'string', maxLength: 300, pattern: '^/' },
+            // A URL path only: no backtick, space, or @ can reach the issue markdown.
+            pagePath: { type: 'string', maxLength: 300, pattern: '^/[A-Za-z0-9/_.~%:?#=&-]*$' },
           },
         },
       },

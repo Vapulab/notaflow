@@ -258,6 +258,7 @@ test.each([
   [{ ...BUG, title: 'x'.repeat(121) }, 'bad_request'],
   [{ ...BUG, description: 'x'.repeat(4001) }, 'bad_request'],
   [{ ...BUG, pagePath: 'app/notas' }, 'bad_request'],
+  [{ ...BUG, pagePath: '/app/`@octocat` x' }, 'bad_request'],
   [{ ...BUG, title: '   ' }, 'invalid_bug_report'],
   [{ title: BUG.title, description: BUG.description }, 'bad_request'],
 ])('an invalid report is refused: %#', async (payload, error) => {

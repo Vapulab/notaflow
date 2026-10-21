@@ -41,11 +41,14 @@ test.each([
     '/app/0b9e7c1a-4f7e-4d39-9a0c-2b1c3d4e5f60/notas/7c9e6679-7425-40de-944b-e07fc1f90ae7',
     '/app/:id/notas/:id',
   ],
-  ['/app/acc/clientes/12345678000195', '/app/acc/clientes/:id'],
-  ['/app/acc/notas/123456', '/app/acc/notas/:id'],
-  ['/app/acc/notas/nova?cliente=c1#topo', '/app/acc/notas/nova'],
+  ['/app/acc/clientes/12345678000195', '/app/:id/clientes/:id'],
+  ['/app/acc/notas/123456', '/app/:id/notas/:id'],
+  ['/app/acc/notas/nova?cliente=c1#topo', '/app/:id/notas/nova'],
   ['/app/conta', '/app/conta'],
-  ['/app/acc/emitentes/abcdefghijklmnopqrstuvwxyz', '/app/acc/emitentes/:id'],
+  ['/app/acc/emitentes/abcdefghijklmnopqrstuvwxyz', '/app/:id/emitentes/:id'],
+  ['/app/acc/clientes/joao.silva@empresa.com', '/app/:id/clientes/:id'],
+  ['/app/acc/notas/`@octocat`', '/app/:id/notas/:id'],
+  ['/app/acc/clientes/Maria%20Souza', '/app/:id/clientes/:id'],
 ])('the path %s becomes %s', (path, masked) => {
   expect(maskPath(path)).toBe(masked);
 });

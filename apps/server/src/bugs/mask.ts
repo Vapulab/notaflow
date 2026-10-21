@@ -24,18 +24,28 @@ export function maskPersonalData(text: string): string {
   return RULES.reduce((masked, [pattern, label]) => masked.replace(pattern, label), text);
 }
 
-const ID_SEGMENT = [
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-  /^\d{4,}$/,
-  /^[0-9A-Z]{12}\d{2}$/,
-  /^[\w-]{20,}$/,
-];
+// The literal words of the app routes (apps/web/src/router.ts); any other segment may name someone.
+const ROUTE_WORDS = new Set([
+  'admin',
+  'app',
+  'cadastro',
+  'clientes',
+  'comecar',
+  'conta',
+  'emitentes',
+  'emitir',
+  'entrar',
+  'membros',
+  'notas',
+  'nova',
+  'recuperar-senha',
+]);
 
-// The route with every id replaced by :id, so the issue shows the screen and not whose data it was.
+// The route with every segment that is not a route word replaced by :id, so it shows the screen only.
 export function maskPath(path: string): string {
   const route = path.split(/[?#]/)[0] ?? '';
   return route
     .split('/')
-    .map((segment) => (ID_SEGMENT.some((pattern) => pattern.test(segment)) ? ':id' : segment))
+    .map((segment) => (segment === '' || ROUTE_WORDS.has(segment) ? segment : ':id'))
     .join('/');
 }
