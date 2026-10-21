@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { GUIDE_PAGES } from '../../web/src/site/guide/pages';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { openDatabase } from './db/openDatabase';
@@ -19,6 +20,10 @@ beforeAll(async () => {
   writeFileSync(join(root, 'landing.html'), '<!doctype html><main>landing</main>');
   writeFileSync(join(root, 'termos.html'), '<!doctype html><main>termos</main>');
   writeFileSync(join(root, 'privacidade.html'), '<!doctype html><main>privacidade</main>');
+  mkdirSync(join(root, 'guia'));
+  for (const page of GUIDE_PAGES) {
+    writeFileSync(join(root, page.file), `<!doctype html><main>guide ${page.path}</main>`);
+  }
   writeFileSync(join(root, '404.html'), '<!doctype html><main>nao-encontrada</main>');
   writeFileSync(join(root, 'llms.txt'), '# NotaFlow');
   config = loadConfig({
@@ -105,6 +110,14 @@ test.each([
   expect(response.headers['x-robots-tag']).toBe('noindex');
 });
 
+test('serves the guide pages without authentication', async () => {
+  const response = await app.inject({ url: '/guia/mei' });
+  expect(response.statusCode).toBe(200);
+  expect(response.body).toContain('guide /guia/mei');
+  expect((await app.inject({ url: '/guia' })).body).toContain('guide /guia');
+  expect(response.headers['x-robots-tag']).toBeUndefined();
+});
+
 test('the public pages may be indexed', async () => {
   for (const url of ['/', '/termos', '/privacidade']) {
     expect((await app.inject({ url })).headers['x-robots-tag']).toBeUndefined();
@@ -131,6 +144,7 @@ test('the sitemap lists the public pages at the app origin', async () => {
     'http://localhost:3000/',
     'http://localhost:3000/termos',
     'http://localhost:3000/privacidade',
+    ...GUIDE_PAGES.map((page) => `http://localhost:3000${page.path}`),
   ]);
 });
 

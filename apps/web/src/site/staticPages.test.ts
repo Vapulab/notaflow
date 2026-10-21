@@ -1,19 +1,31 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
+import { GUIDE_PAGES } from './guide/pages';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const PAGES = ['landing.html', 'termos.html', 'privacidade.html', '404.html'];
+const GUIDE_FILES = GUIDE_PAGES.map((page) => page.file);
+const PARTIALS = ['partials/guide-header.html', 'partials/guide-footer.html'];
+const PAGES = ['landing.html', 'termos.html', 'privacidade.html', '404.html', ...GUIDE_FILES];
 // The paths the server answers outside the app (see apps/server/src/web.ts) and the public app pages.
-const ROUTES = new Set(['/', '/termos', '/privacidade', '/entrar', '/cadastro']);
+const ROUTES = new Set([
+  '/',
+  '/termos',
+  '/privacidade',
+  '/entrar',
+  '/cadastro',
+  ...GUIDE_PAGES.map((page) => page.path),
+]);
 const MAILBOXES = new Set(['contato@vapulab.com', 'privacidade@vapulab.com']);
 
 const read = (page: string) => readFileSync(`${root}${page}`, 'utf8');
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1] ?? '');
 
-test.each(PAGES)('every link of %s goes somewhere that exists', (page) => {
+test.each([...PAGES, ...PARTIALS])('every link of %s goes somewhere that exists', (page) => {
   const html = read(page);
   for (const href of hrefs(html)) {
+    // A partial's skip link points at the <main> of the page that includes it.
+    if (href.startsWith('#') && page.startsWith('partials/')) continue;
     if (href.startsWith('#')) expect(html, href).toContain(`id="${href.slice(1)}"`);
     else if (href.startsWith('mailto:')) expect(MAILBOXES.has(href.slice(7)), href).toBe(true);
     else if (href.startsWith('https://notaflow.vapulab.com')) {
@@ -153,4 +165,31 @@ test('the terms and the policy separate a material change (acceptance, 15 days) 
     expect(text).toMatch(/atualização/i);
     expect(text).toContain('aceite');
   }
+});
+
+const AVISO =
+  'Este guia explica as regras gerais e não substitui a orientação de um profissional. Em caso de dúvida, consulte um contador de sua confiança.';
+
+test('the guide footer carries the fixed Aviso', () => {
+  expect(read('partials/guide-footer.html')).toContain(AVISO);
+});
+
+test.each(GUIDE_PAGES)('guide page $path has its title, canonical, markers, and structured data', (page) => {
+  const html = read(page.file);
+  expect(html).toContain(`<title>${page.title} | NotaFlow</title>`);
+  expect(html).toContain(`<link rel="canonical" href="https://notaflow.vapulab.com${page.path}" />`);
+  expect(html).toContain('<!--partial:guide-header-->');
+  expect(html).toContain('<!--partial:guide-footer-->');
+  expect(html).toContain('<section id="fontes"');
+  expect(html).toContain('<time datetime="2026-10-21">21 de outubro de 2026</time>');
+  expect(html).toContain('src="/src/site/guide/guide.ts"');
+  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+  expect(blocks).toHaveLength(1);
+  const graph = JSON.parse(blocks[0]?.[1] ?? '')['@graph'] as Record<string, unknown>[];
+  const article = graph.find((node) => node['@type'] === 'Article');
+  const crumbs = graph.find((node) => node['@type'] === 'BreadcrumbList') as
+    | { itemListElement: unknown[] }
+    | undefined;
+  expect(article).toMatchObject({ inLanguage: 'pt-BR', dateModified: '2026-10-21' });
+  expect(crumbs?.itemListElement).toHaveLength(page.path === '/guia' ? 2 : 3);
 });

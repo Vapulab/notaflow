@@ -1,0 +1,20 @@
+/* The guide pages: reading text, like the legal pages. */
+.guide-text h2 {
+  @apply mt-10 font-display text-2xl font-semibold text-fg;
+}
+.guide-text h3 {
+  @apply mt-6 font-semibold text-fg;
+}
+.guide-text p,
+.guide-text li {
+  @apply mt-3 leading-relaxed text-fg;
+}
+.guide-text ul {
+  @apply mt-3 list-disc pl-6;
+}
+.guide-text ol {
+  @apply mt-3 list-decimal pl-6;
+}
+.guide-text a {
+  @apply text-primary underline hover:text-primary/80;
+}
