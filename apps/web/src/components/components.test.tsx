@@ -58,6 +58,12 @@ test('every error code the server can send has a text', () => {
   }
 });
 
+test('a non-Simples emitter is told where to follow the guide', () => {
+  expect(ERROR_TEXT.emitter_not_simples).toBe(
+    'Este emitente não é ME/EPP do Simples Nacional. O NotaFlow ainda não emite para MEI e outros regimes; veja em notaflow.vapulab.com/guia quando isso muda.',
+  );
+});
+
 test('isDefinitive: a refusal before anything is reserved, never an unclear answer', () => {
   expect(isDefinitive(new ApiError(400, 'invalid_amount'))).toBe(true);
   expect(isDefinitive(new ApiError(409, 'fiscal_config_missing'))).toBe(true);

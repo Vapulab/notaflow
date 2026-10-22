@@ -4,6 +4,7 @@ import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { AdminRepository } from '../repos/AdminRepository';
 import { AuditLog } from '../repos/AuditLog';
+import { WaitlistRepository } from '../repos/WaitlistRepository';
 
 const email = { type: 'string', format: 'email', maxLength: 254 } as const;
 const name = { type: 'string', minLength: 1, maxLength: 200 } as const;
@@ -11,6 +12,29 @@ const name = { type: 'string', minLength: 1, maxLength: 200 } as const;
 export function adminRoutes(app: FastifyInstance, db: Database): void {
   const admin = new AdminRepository(db);
   const audit = new AuditLog(db);
+  const waitlist = new WaitlistRepository(db);
+
+  app.get('/api/admin/waitlist', async (request) => {
+    const ctx = adminContext(request);
+    return { signups: waitlist.list(ctx), counts: waitlist.counts(ctx) };
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/admin/waitlist/:id', async (request, reply) => {
+    db.transaction(() => {
+      if (!waitlist.remove(adminContext(request), request.params.id)) {
+        throw new HttpError(404, 'not_found');
+      }
+      audit.record({
+        userEmail: identityOf(request).email,
+        accountId: null,
+        action: 'waitlist.remove',
+        entity: request.params.id,
+        result: 'ok',
+        detail: 'e-mail anonymized',
+      });
+    });
+    return reply.status(204).send();
+  });
 
   app.get('/api/admin/accounts', async (request) => admin.listAccounts(adminContext(request)));
 

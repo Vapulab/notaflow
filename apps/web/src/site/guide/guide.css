@@ -1,0 +1,69 @@
+/* The guide pages: reading text, like the legal pages. */
+.guide-text h2 {
+  @apply mt-10 font-display text-2xl font-semibold text-fg;
+}
+.guide-text h3 {
+  @apply mt-6 font-semibold text-fg;
+}
+.guide-text p,
+.guide-text li {
+  @apply mt-3 leading-relaxed text-fg;
+}
+.guide-text ul {
+  @apply mt-3 list-disc pl-6;
+}
+.guide-text ol {
+  @apply mt-3 list-decimal pl-6;
+}
+.guide-text a {
+  @apply text-primary underline hover:text-primary/80;
+}
+.guide-text table {
+  @apply mt-4 w-full border-collapse text-left text-sm;
+}
+.guide-text th,
+.guide-text td {
+  @apply border border-border px-3 py-2 align-top text-fg;
+}
+.guide-text th {
+  @apply bg-muted/10 font-semibold;
+}
+.guide-text caption {
+  @apply mt-2 caption-bottom text-left text-sm text-muted;
+}
+.guide-text dt {
+  @apply mt-6 scroll-mt-24 font-semibold text-fg;
+}
+.guide-text dd {
+  @apply mt-2 leading-relaxed text-fg;
+}
+.guide-table {
+  @apply mt-4 overflow-x-auto;
+}
+.guide-note {
+  @apply mt-10 rounded-lg border border-border p-5;
+}
+/* The hub choices: 2x2 on a wide screen, one column on a phone. */
+.guide-cards {
+  @apply mt-6 grid gap-4 sm:grid-cols-2;
+}
+.guide-text .guide-card {
+  @apply block rounded-lg border border-border p-5 text-fg no-underline transition-colors hover:border-primary;
+}
+.guide-card p {
+  @apply text-sm text-muted;
+}
+.guide-text figure {
+  @apply mt-4;
+}
+.guide-text figure img {
+  @apply h-auto w-full rounded-lg border border-border;
+}
+.guide-text figcaption {
+  @apply mt-2 text-sm text-muted;
+}
+/* The calculator's revenue table: narrow cells, so an amount fits at 375 px. */
+.guide-text .guide-history th,
+.guide-text .guide-history td {
+  @apply px-1.5 py-1.5;
+}

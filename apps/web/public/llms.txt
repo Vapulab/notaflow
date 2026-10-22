@@ -30,6 +30,18 @@ Grátis, sem cartão de crédito e sem limite de notas. Se um dia houver cobran�
 - Nenhuma linha de nota ou cadastro é apagada sem registro, e cada ação tem trilha de auditoria.
 - Os dados ficam em servidor no Brasil.
 
+## Guia
+
+Um guia gratuito, em português, para quem está começando: o que é o Simples Nacional, a diferença para o MEI e o Lucro Presumido, como conseguir o certificado A1, a rotina do mês e a reforma tributária.
+
+- [Guia](https://notaflow.vapulab.com/guia): a página inicial do guia.
+- [Certificado digital A1](https://notaflow.vapulab.com/guia/certificado-digital): como conseguir o certificado.
+- [Simples Nacional](https://notaflow.vapulab.com/guia/simples-nacional)
+- [MEI](https://notaflow.vapulab.com/guia/mei)
+- [Preciso de contador?](https://notaflow.vapulab.com/guia/preciso-de-contador)
+- [Calculadora do Simples](https://notaflow.vapulab.com/guia/calculadora-simples)
+- [Primeira nota](https://notaflow.vapulab.com/guia/primeira-nota)
+
 ## Links
 
 - [Página inicial](https://notaflow.vapulab.com/): o produto, como funciona e perguntas frequentes.

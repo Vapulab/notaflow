@@ -10,7 +10,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const waitlist = {
+  signups: [
+    {
+      id: 'w-1',
+      email: 'maria@example.com',
+      interests: ['mei', 'certificate'],
+      sourcePage: '/guia/mei',
+      createdAt: '2026-10-20T12:00:00Z',
+    },
+  ],
+  counts: { mei: 3, lucro_presumido: 1, certificate: 2 },
+};
+
 const routes = {
+  '/api/admin/waitlist': waitlist,
   '/api/admin/accounts': [
     { id: 'acc-1', name: 'Vapulab', status: 'active', plan: 'free', members: 1 },
     { id: 'acc-2', name: 'Outra Empresa', status: 'active', plan: 'free', members: 0 },
@@ -146,4 +160,51 @@ test('the e-mails that failed for good can be resent, except login codes', async
     ).toBe(true),
   );
   expect(await section.findByText('E-mail reenviado.')).toBeTruthy();
+});
+
+test('the waitlist shows the counts and the rows, and removing one asks first', async () => {
+  const calls = stubApi({ ...routes, '/api/admin/waitlist/w-1': null });
+  vi.stubGlobal('confirm', vi.fn(() => true));
+  render(<AdminPage />);
+  const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
+  expect(await section.findByText('maria@example.com')).toBeTruthy();
+  expect(section.getByText('MEI: 3')).toBeTruthy();
+  expect(section.getByText('Lucro presumido: 1')).toBeTruthy();
+  expect(section.getByText('Certificado A1: 2')).toBeTruthy();
+  expect(section.getByText('/guia/mei')).toBeTruthy();
+  await userEvent.setup().click(section.getByRole('button', { name: 'Remover' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.url === '/api/admin/waitlist/w-1' && c.init?.method === 'DELETE'),
+    ).toBe(true),
+  );
+  expect(window.confirm).toHaveBeenCalled();
+});
+
+test('declining the confirm keeps the waitlist row', async () => {
+  const calls = stubApi({ ...routes, '/api/admin/waitlist/w-1': null });
+  vi.stubGlobal('confirm', vi.fn(() => false));
+  render(<AdminPage />);
+  const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
+  await userEvent.setup().click(await section.findByRole('button', { name: 'Remover' }));
+  expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false);
+});
+
+test('a failed waitlist removal shows an error, and the next removal clears it', async () => {
+  let fail = true;
+  stubApi({
+    ...routes,
+    '/api/admin/waitlist/w-1': () => (fail ? { error: 'not_found' } : null),
+  });
+  vi.stubGlobal('confirm', vi.fn(() => true));
+  render(<AdminPage />);
+  const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
+  const user = userEvent.setup();
+  await user.click(await section.findByRole('button', { name: 'Remover' }));
+  const alert = await section.findByText('Não encontrado.');
+  expect(alert.closest('[role="alert"]')).toBeTruthy();
+  fail = false;
+  await user.click(section.getByRole('button', { name: 'Remover' }));
+  expect(await section.findByText('maria@example.com removido.')).toBeTruthy();
+  expect(section.queryByText('Não encontrado.')).toBeNull();
 });

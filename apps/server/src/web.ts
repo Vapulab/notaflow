@@ -8,6 +8,17 @@ const STATIC_PAGES: [string, string][] = [
   ['/', 'landing.html'],
   ['/termos', 'termos.html'],
   ['/privacidade', 'privacidade.html'],
+  ['/guia', 'guia/index.html'],
+  ['/guia/mei', 'guia/mei.html'],
+  ['/guia/simples-nacional', 'guia/simples-nacional.html'],
+  ['/guia/primeira-nota', 'guia/primeira-nota.html'],
+  ['/guia/rotina-do-mes', 'guia/rotina-do-mes.html'],
+  ['/guia/lucro-presumido', 'guia/lucro-presumido.html'],
+  ['/guia/calculadora-simples', 'guia/calculadora-simples.html'],
+  ['/guia/certificado-digital', 'guia/certificado-digital.html'],
+  ['/guia/preciso-de-contador', 'guia/preciso-de-contador.html'],
+  ['/guia/glossario', 'guia/glossario.html'],
+  ['/guia/reforma-tributaria', 'guia/reforma-tributaria.html'],
 ];
 
 // The React app's screens (apps/web/src/router.ts); any other page path is a 404.

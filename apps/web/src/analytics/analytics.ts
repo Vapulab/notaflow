@@ -69,7 +69,15 @@ export function resetAnalytics(): void {
   client?.reset();
 }
 
-export type AnalyticsEvent = 'signup_completed' | 'onboarding_step' | 'invoice_issued';
+export type AnalyticsEvent =
+  | 'signup_completed'
+  | 'onboarding_step'
+  | 'invoice_issued'
+  // The public guide; its events never carry amounts.
+  | 'guide_path'
+  | 'guide_cnpj_regime'
+  | 'guide_calculator'
+  | 'waitlist_signup';
 
 // For tests: forget the client between them.
 export function stopAnalytics(): void {

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculadora do Simples Nacional | NotaFlow</title>
+    <meta name="description" content="Calcule a alíquota e o valor do imposto do Simples Nacional para serviços." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/guia/calculadora-simples" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="article" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="NotaFlow" />
+    <meta property="og:url" content="https://notaflow.vapulab.com/guia/calculadora-simples" />
+    <meta property="og:title" content="Calculadora do Simples Nacional | NotaFlow" />
+    <meta property="og:description" content="Calcule a alíquota e o valor do imposto do Simples Nacional para serviços." />
+    <meta property="og:image" content="https://notaflow.vapulab.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/guide/guide.ts"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Calculadora do Simples Nacional",
+          "description": "Calcule a alíquota e o valor do imposto do Simples Nacional para serviços.",
+          "inLanguage": "pt-BR",
+          "dateModified": "2026-10-21",
+          "mainEntityOfPage": "https://notaflow.vapulab.com/guia/calculadora-simples",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Vapulab",
+            "url": "https://vapulab.com"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "NotaFlow",
+              "item": "https://notaflow.vapulab.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Guia",
+              "item": "https://notaflow.vapulab.com/guia"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Calculadora do Simples Nacional",
+              "item": "https://notaflow.vapulab.com/guia/calculadora-simples"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <!--partial:guide-header-->
+
+    <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
+      <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Calculadora do Simples Nacional</h1>
+      <p>
+        Calcule a alíquota e o valor do DAS do mês para serviços, pelos mesmos passos do PGDAS-D. O cálculo
+        roda só no seu navegador: nenhum número sai desta página.
+      </p>
+      <p>
+        A alíquota efetiva sai desta fórmula: <strong>(RBT12 × alíquota nominal − parcela a deduzir) ÷ RBT12</strong>.
+        A RBT12 é a receita dos 12 meses antes do mês do cálculo. A alíquota nominal e a parcela a deduzir vêm
+        da faixa da RBT12 na tabela do Anexo. Cada imposto do DAS é uma parte dessa alíquota, e o DAS é a soma
+        dos impostos, cada um arredondado ao centavo.
+      </p>
+      <p>
+        A calculadora cobre os serviços dos Anexos III, IV e V. Comércio e indústria (Anexos I e II) ficam
+        fora. Leve o resultado ao seu contador para conferir.
+      </p>
+
+      <div data-calculator>
+        <noscript><p>A calculadora precisa de JavaScript ligado no navegador.</p></noscript>
+      </div>
+
+      <section id="fontes">
+        <h2>Fontes</h2>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, arts. 3º, 13-A, 18 (§§ 1º a 5º-M, 14, 18, 22-A, 24 a 26), 20 e 21, e Anexos III, IV e V</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 21 a 27</a>
+          </li>
+          <li>
+            <a href="https://www8.receita.fazenda.gov.br/SimplesNacional">Portal do Simples Nacional, manual do PGDAS-D, itens 8.2.1, 8.3 e 12</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/cgsn-atualiza-regras-do-simples-nacional-para-adequacao-a-reforma-tributaria-do-consumo">Receita Federal, Resolução CGSN nº 190/2026 (mudanças a partir de 2027)</a>
+          </li>
+        </ul>
+      </section>
+      <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
+    </main>
+
+    <!--partial:guide-footer-->
+  </body>
+</html>

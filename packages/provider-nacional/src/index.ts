@@ -31,6 +31,7 @@ export type {
   SefinError,
 } from './http/NacionalClient';
 export { buildTemplate } from './template/buildTemplate';
+export { annexRule, type AnnexRule } from './rules/annexRule';
 export { percentText } from './rules/simplesBands';
 export {
   BAND6_ISS,

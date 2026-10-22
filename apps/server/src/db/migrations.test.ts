@@ -98,6 +98,12 @@ function migratedFromPre3a(): BetterSqlite3.Database {
        VALUES ('bi1', 'b1', 'a1', 1, 'image/webp', 10, 'bug-reports/b1/1.webp', ${T0})`,
     )
     .run();
+  client
+    .prepare(
+      `INSERT INTO waitlist_signups (id, email, interests, source_page, updated_at)
+       VALUES ('w1', 'w@example.com', '["mei"]', '/guia/mei', ${T0})`,
+    )
+    .run();
   return client;
 }
 

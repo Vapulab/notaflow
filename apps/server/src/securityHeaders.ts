@@ -9,12 +9,22 @@ const TURNSTILE = 'https://challenges.cloudflare.com';
 const CLOUDFLARE_BEACON = 'https://static.cloudflareinsights.com';
 const CLOUDFLARE_INSIGHTS = 'https://cloudflareinsights.com';
 
+// The folders of built pages; the guide pages have their own inline scripts.
+const PAGE_DIRS = ['', 'guia'];
+
 // The sha256 of every inline <script> of the built pages (the theme script that runs before the first paint).
 export function inlineScriptHashes(webRoot: string | undefined): string[] {
   if (!webRoot || !existsSync(webRoot)) return [];
   const hashes = new Set<string>();
-  for (const file of readdirSync(webRoot).filter((name) => name.endsWith('.html'))) {
-    const html = readFileSync(join(webRoot, file), 'utf8');
+  const files = PAGE_DIRS.map((dir) => join(webRoot, dir))
+    .filter((dir) => existsSync(dir))
+    .flatMap((dir) =>
+      readdirSync(dir)
+        .filter((name) => name.endsWith('.html'))
+        .map((name) => join(dir, name)),
+    );
+  for (const file of files) {
+    const html = readFileSync(file, 'utf8');
     for (const match of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
       const body = match[1] ?? '';
       if (body.trim()) hashes.add(`'sha256-${createHash('sha256').update(body).digest('base64')}'`);

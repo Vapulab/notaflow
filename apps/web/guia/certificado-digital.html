@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Certificado digital A1 | NotaFlow</title>
+    <meta name="description" content="O que é o certificado digital A1, onde comprar e como usar para emitir notas." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/guia/certificado-digital" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="article" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="NotaFlow" />
+    <meta property="og:url" content="https://notaflow.vapulab.com/guia/certificado-digital" />
+    <meta property="og:title" content="Certificado digital A1 | NotaFlow" />
+    <meta property="og:description" content="O que é o certificado digital A1, onde comprar e como usar para emitir notas." />
+    <meta property="og:image" content="https://notaflow.vapulab.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/guide/guide.ts"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Certificado digital A1",
+          "description": "O que é o certificado digital A1, onde comprar e como usar para emitir notas.",
+          "inLanguage": "pt-BR",
+          "dateModified": "2026-10-21",
+          "mainEntityOfPage": "https://notaflow.vapulab.com/guia/certificado-digital",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Vapulab",
+            "url": "https://vapulab.com"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "NotaFlow",
+              "item": "https://notaflow.vapulab.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Guia",
+              "item": "https://notaflow.vapulab.com/guia"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Certificado digital A1",
+              "item": "https://notaflow.vapulab.com/guia/certificado-digital"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <!--partial:guide-header-->
+
+    <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
+      <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Certificado digital A1</h1>
+      <p>
+        O certificado digital é a identidade eletrônica da sua empresa. A Receita Federal o descreve como
+        um documento eletrônico de identidade, emitido por uma Autoridade Certificadora credenciada. Para
+        empresas, ele costuma ser vendido com o nome e-CNPJ.
+      </p>
+      <p>
+        Esta página explica para que ele serve, qual tipo escolher, como comprar e como cuidar dele. Você
+        consegue fazer tudo isso sozinho.
+      </p>
+
+      <h2 id="por-que">Por que o NotaFlow pede o certificado</h2>
+      <p>
+        O emissor nacional da NFS-e, no site do governo, não exige certificado. Você entra com usuário e
+        senha, e o MEI também pode entrar com a conta gov.br nível prata ou ouro. Para emitir pelo site,
+        você não precisa comprar um certificado.
+      </p>
+      <p>
+        O NotaFlow funciona de outro jeito. Ele envia cada nota pela API do sistema nacional, e a API
+        exige que a <a href="/guia/glossario#dps">DPS</a> venha assinada com o certificado digital do
+        emitente. O sistema recusa um certificado que não seja da ICP-Brasil ou que não tenha um
+        CNPJ. A conexão com a API também usa o certificado.
+      </p>
+      <p>
+        Então o certificado é uma necessidade do NotaFlow, não do sistema nacional. Em troca, o NotaFlow
+        assina e envia a nota por você, calcula a alíquota e traz as notas que você já emitiu.
+      </p>
+
+      <h2 id="a1-ou-a3">A1 ou A3</h2>
+      <p>Os certificados e-CNPJ podem ser do tipo A1 ou A3.</p>
+      <ul>
+        <li>
+          <strong>A1:</strong> fica guardado no computador ou no celular, como um arquivo protegido por
+          senha. A validade é de 1 ano.
+        </li>
+        <li>
+          <strong>A3:</strong> fica em um cartão, em um token ou na nuvem (em um HSM remoto). A validade é
+          de 1 a 5 anos, conforme a oferta de cada autoridade.
+        </li>
+      </ul>
+      <p>
+        O NotaFlow usa só o A1, porque um servidor consegue carregar um arquivo, mas não um cartão ou um
+        token. O NotaFlow aceita o arquivo .pfx ou .p12 e a senha dele.
+      </p>
+
+      <h2 id="quem-pode-pedir">Quem pode pedir</h2>
+      <p>
+        A empresa precisa ter o CNPJ válido. O certificado é emitido para a empresa e leva o nome, o CPF e
+        a data de nascimento de uma pessoa responsável por ela perante a Receita. Antes da emissão, essa
+        pessoa passa por uma validação de identidade.
+      </p>
+      <p>
+        A Receita não emite certificado para um CNPJ inapto, suspenso ou cancelado, e as regras do ITI
+        proíbem a emissão para um CNPJ baixado ou nulo. Antes de comprar, pergunte à autoridade
+        certificadora quem da empresa pode fazer o pedido e quais documentos levar.
+      </p>
+
+      <h2 id="como-comprar">Como comprar</h2>
+      <ol>
+        <li>
+          <strong>Escolha uma autoridade certificadora.</strong> O ITI, que cuida da ICP-Brasil, mantém a
+          <a href="https://www.gov.br/iti/pt-br/assuntos/icp-brasil/autoridades-certificadoras">lista oficial
+          das autoridades certificadoras</a>. Compre de uma autoridade dessa lista.
+        </li>
+        <li>
+          <strong>Compare o preço.</strong> O ITI não regula os valores. O preço muda de uma autoridade
+          para outra.
+        </li>
+        <li>
+          <strong>Faça a validação de identidade.</strong> Ela pode ser presencial, por videoconferência ou
+          com um certificado ICP-Brasil válido, entre outras formas que o ITI permite. A forma a distância
+          precisa ter a mesma segurança da presencial. Na videoconferência, você agenda um horário e envia
+          seus documentos pessoais, e um agente confirma a sua identidade.
+        </li>
+        <li>
+          <strong>Receba o certificado.</strong> Depois da validação, a autoridade emite o certificado A1 e
+          você fica com o arquivo e a senha.
+        </li>
+        <li>
+          <strong>Envie ao NotaFlow.</strong> No cadastro da empresa, envie o arquivo e a senha. O NotaFlow
+          testa o certificado no sistema nacional antes de usar.
+        </li>
+      </ol>
+
+      <h2 id="cuidados">Cuidados com o arquivo e a senha</h2>
+      <p>
+        Quem tem o arquivo e a senha consegue assinar em nome da sua empresa. Por isso:
+      </p>
+      <ul>
+        <li>Guarde o arquivo em um lugar seguro e não envie o arquivo nem a senha por e-mail.</li>
+        <li>O ITI orienta que a senha nunca seja anotada.</li>
+        <li>
+          O ITI não traz um procedimento para recuperar a senha. Se esquecer a senha ou tiver um problema
+          com ela, fale com a sua autoridade certificadora.
+        </li>
+        <li>
+          Se o arquivo ou a senha vazarem, o responsável pelo certificado pode pedir a revogação dele.
+        </li>
+      </ul>
+
+      <h2 id="validade">Validade e renovação</h2>
+      <p>
+        Só é possível assinar com um certificado enquanto ele for válido. Quando o certificado vence, o
+        NotaFlow não consegue mais emitir notas por você, e o próprio NotaFlow avisa quando o vencimento
+        está perto.
+      </p>
+      <p>
+        Peça a renovação à autoridade certificadora antes do vencimento: a Receita diz que o pedido de
+        renovação deve ser feito dentro do período de validade. Depois, envie o novo arquivo ao NotaFlow.
+      </p>
+
+      <h2 id="selo-eletronico">O que vem depois: o Selo Eletrônico</h2>
+      <p>
+        A Resolução CG ICP-Brasil nº 211/2024 criou o Selo Eletrônico, um tipo de certificado que vai
+        substituir o certificado de pessoa jurídica (A1 ou A3).
+      </p>
+      <p>
+        Até 2 de março de 2029, todos os tipos de certificado de hoje continuam valendo, inclusive o A1. A
+        partir de 3 de março de 2029, o A1 não poderá mais ser usado. Então, até lá, nada muda para você:
+        compre e renove o A1 como de costume.
+      </p>
+      <p>
+        Ainda não encontramos um texto oficial sobre o uso do Selo Eletrônico na API da NFS-e. Quando houver, este
+        guia vai mostrar o que muda.
+      </p>
+
+      <section class="guide-note" aria-labelledby="em-breve">
+        <h2 id="em-breve" class="!mt-0">Em breve: compre seu certificado pelo NotaFlow</h2>
+        <p>
+          Estamos preparando a compra do certificado A1 aqui no NotaFlow. Deixe seu e-mail e avisamos quando
+          estiver pronto.
+        </p>
+        <form data-waitlist data-interest="certificate"></form>
+      </section>
+
+      <section id="fontes">
+        <h2>Fontes</h2>
+        <ul>
+          <li>
+            <a href="https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/senhas/senhas/certificados-digitais/orientacoes-sobre-emissao-renovacao-e-revogacao-de-certificados-digitais-e-cpf-ou-e-cnpj">Receita Federal, orientações sobre emissão, renovação e revogação de certificados e-CPF e e-CNPJ</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/senhas/senhas/certificados-digitais/duvidas-frequentes">Receita Federal, dúvidas frequentes sobre certificados digitais, questão 4</a>
+          </li>
+          <li>
+            <a href="https://www.receita.fazenda.gov.br/acsrf/LeiautedeCertificadosdaSRF.pdf">Receita Federal, Leiaute dos certificados digitais da RFB, v4.1</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/iti/pt-br/acesso-a-informacao/perguntas-frequentes/certificacao-digital">ITI, perguntas frequentes sobre certificação digital</a>
+          </li>
+          <li>
+            <a href="https://repositorio.iti.gov.br/instrucoes-normativas/IN2026_36_identificacao_requerente.htm">IN ITI nº 36/2026, arts. 2º, 14 e 73</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/iti/pt-br/assuntos/icp-brasil/autoridades-certificadoras">ITI, Autoridades Certificadoras da ICP-Brasil</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/iti/pt-br/assuntos/comite-gestor/perguntas-frequentes-cg-icp-brasil">Resolução CG ICP-Brasil nº 211/2024, perguntas frequentes do CG ICP-Brasil</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/anexo_i-sefin_adn-dps_nfse-snnfse-v1-01-20260209.xlsx">Anexo I da NFS-e nacional, v1.01, grupo Signature</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/guia-emissorpubliconacionalweb_snnfse-ern-v12.pdf">Guia do Emissor Público Nacional Web, itens 1.1 e 10.6</a>
+          </li>
+        </ul>
+      </section>
+      <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
+    </main>
+
+    <!--partial:guide-footer-->
+  </body>
+</html>

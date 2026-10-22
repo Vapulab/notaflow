@@ -41,13 +41,18 @@ beforeAll(async () => {
     userId: a.userId,
     invoiceId: invoice.id,
     customerId: customerId ?? '',
-    id: '1', // a mail outbox row, or a bug report that does not exist
+    id: '1', // a mail outbox row, a bug report, or a waitlist signup that does not exist
     position: '1',
   };
 });
 afterAll(() => t.close());
 
-const PUBLIC = new Set(['GET /api/health', 'GET /api/public/config']);
+const PUBLIC = new Set([
+  'GET /api/health',
+  'GET /api/public/config',
+  'GET /api/public/cnpj-regime/:cnpj',
+  'POST /api/public/waitlist',
+]);
 
 function fill(url: string): string {
   return url.replace(/:([A-Za-z]+)/g, (_, name: string) => {

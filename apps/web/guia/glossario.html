@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glossário | NotaFlow</title>
+    <meta name="description" content="Os termos de nota fiscal e de imposto explicados em palavras simples." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/guia/glossario" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="article" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="NotaFlow" />
+    <meta property="og:url" content="https://notaflow.vapulab.com/guia/glossario" />
+    <meta property="og:title" content="Glossário | NotaFlow" />
+    <meta property="og:description" content="Os termos de nota fiscal e de imposto explicados em palavras simples." />
+    <meta property="og:image" content="https://notaflow.vapulab.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/guide/guide.ts"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Glossário",
+          "description": "Os termos de nota fiscal e de imposto explicados em palavras simples.",
+          "inLanguage": "pt-BR",
+          "dateModified": "2026-10-21",
+          "mainEntityOfPage": "https://notaflow.vapulab.com/guia/glossario",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Vapulab",
+            "url": "https://vapulab.com"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "NotaFlow",
+              "item": "https://notaflow.vapulab.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Guia",
+              "item": "https://notaflow.vapulab.com/guia"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Glossário",
+              "item": "https://notaflow.vapulab.com/guia/glossario"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <!--partial:guide-header-->
+
+    <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
+      <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Glossário</h1>
+      <p>
+        Os termos de nota fiscal e de imposto explicados em palavras simples, em ordem alfabética. As outras
+        páginas do guia apontam para cá quando usam um destes termos.
+      </p>
+
+      <dl>
+        <dt id="aliquota-efetiva">Alíquota efetiva</dt>
+        <dd>
+          O percentual que a empresa do Simples paga de fato sobre a receita do mês. A conta é (RBT12 ×
+          alíquota nominal − parcela a deduzir) ÷ RBT12. Por exemplo, no Anexo III com RBT12 de R$ 300.000,00,
+          a alíquota efetiva é 8,08%. A <a href="/guia/calculadora-simples">calculadora do Simples</a> faz a
+          conta.
+        </dd>
+
+        <dt id="aliquota-nominal">Alíquota nominal</dt>
+        <dd>
+          O percentual que a tabela do Anexo mostra para cada faixa. Ela entra na conta da
+          <a href="#aliquota-efetiva">alíquota efetiva</a>, mas não é o que você paga.
+        </dd>
+
+        <dt id="anexo">Anexo</dt>
+        <dd>
+          Cada tabela de alíquotas da LC 123/2006. Os serviços ficam nos Anexos III, IV ou V, conforme a
+          atividade. O Anexo define a alíquota de cada faixa e como o valor se divide entre os tributos.
+        </dd>
+
+        <dt id="cbs">CBS</dt>
+        <dd>
+          A Contribuição Social sobre Bens e Serviços, criada pela reforma tributária. A partir de 2027, ela é cobrada e o PIS e a
+          Cofins deixam de existir. Veja a <a href="/guia/reforma-tributaria">reforma tributária</a>.
+        </dd>
+
+        <dt id="chave-de-acesso">Chave de acesso</dt>
+        <dd>
+          O código de 50 dígitos que identifica cada NFS-e. Ele reúne o município, o CPF ou CNPJ de quem
+          emite e o número da nota, entre outros dados.
+        </dd>
+
+        <dt id="cnae">CNAE</dt>
+        <dd>
+          O código da atividade da empresa, que aparece no cartão CNPJ. A lei do Simples descreve as
+          atividades de cada Anexo em palavras, não por CNAE. Por isso, confira o Anexo da sua atividade com
+          seu contador.
+        </dd>
+
+        <dt id="codigo-de-tributacao-nacional">Código de tributação nacional</dt>
+        <dd>
+          O código que diz qual serviço a NFS-e nacional descreve. No NotaFlow, ele vem sugerido a partir do
+          CNAE da sua empresa.
+        </dd>
+
+        <dt id="competencia">Competência</dt>
+        <dd>
+          A data em que o serviço foi prestado. Ela não pode ser depois da data de emissão da DPS. Na
+          substituição de uma nota de MEI, ME ou EPP, a competência não pode mudar.
+        </dd>
+
+        <dt id="das">DAS</dt>
+        <dd>
+          A guia única de pagamento do Simples. Ela reúne vários tributos, como IRPJ, CSLL, Cofins,
+          PIS/Pasep e ISS e, na maior parte das atividades, a contribuição previdenciária (CPP). No Anexo
+          IV, a CPP é paga fora do DAS. O DAS vence no dia 20 do mês seguinte. O MEI paga o
+          DAS-MEI, de valor fixo.
+        </dd>
+
+        <dt id="dps">DPS</dt>
+        <dd>
+          A declaração com os dados da nota que a empresa envia, com um número em sequência. O sistema
+          nacional confere a DPS e a transforma em NFS-e.
+        </dd>
+
+        <dt id="faixa">Faixa</dt>
+        <dd>
+          Cada degrau de receita dos Anexos. São seis faixas: até R$ 180.000,00, até R$ 360.000,00, até
+          R$ 720.000,00, até R$ 1.800.000,00, até R$ 3.600.000,00 e até R$ 4.800.000,00. O
+          <a href="#rbt12">RBT12</a> diz em qual faixa a empresa está no mês.
+        </dd>
+
+        <dt id="fator-r">Fator R</dt>
+        <dd>
+          A folha de salários dos últimos 12 meses, com pró-labore, contribuição previdenciária e FGTS,
+          dividida pela receita do mesmo período. Para algumas atividades, um Fator R de 28% ou mais leva ao
+          Anexo III, e um Fator R menor leva ao Anexo V. Nas faixas 1 a 5, a alíquota nominal do Anexo V é
+          maior que a do Anexo III.
+        </dd>
+
+        <dt id="ibs">IBS</dt>
+        <dd>
+          O Imposto sobre Bens e Serviços, criado pela reforma tributária, com uma parte estadual e uma
+          parte municipal. Ele começa com alíquotas de teste em 2026. De 2029 a 2032, o ISS e o ICMS
+          diminuem, e em 2033 acabam.
+        </dd>
+
+        <dt id="inss-retido">INSS retido</dt>
+        <dd>
+          Na cessão de mão de obra, o cliente retém 11% do valor bruto da nota e recolhe ao INSS até o dia 20
+          do mês seguinte. Na empresa do Simples, isso só acontece nas atividades do Anexo IV.
+        </dd>
+
+        <dt id="iss">ISS</dt>
+        <dd>
+          O Imposto Sobre Serviços de Qualquer Natureza, dos municípios e do Distrito Federal, com alíquota
+          de 2% a 5%. Na empresa do Simples, o ISS vem
+          dentro do DAS, como uma parte da alíquota efetiva.
+        </dd>
+
+        <dt id="iss-retido">ISS retido</dt>
+        <dd>
+          Quando a lei manda (a do município ou, em alguns casos, a LC 116/2003), o cliente desconta o ISS da nota e paga direto ao município. Para
+          a empresa do Simples, a alíquota retida é a parte do ISS na alíquota efetiva do mês anterior,
+          escrita na nota, e essa parte sai do DAS daquela receita. O MEI não sofre retenção de ISS.
+        </dd>
+
+        <dt id="nbs">NBS</dt>
+        <dd>
+          Mais um código que classifica o serviço na nota, além do código de tributação nacional. No
+          NotaFlow, ele fica em "Mais opções".
+        </dd>
+
+        <dt id="nfs-e">NFS-e</dt>
+        <dd>
+          A Nota Fiscal de Serviço eletrônica. A NFS-e nacional é emitida pelo sistema do governo, pelo emissor
+          na web ou pela API, e cada uma tem sua <a href="#chave-de-acesso">chave de acesso</a>.
+        </dd>
+
+        <dt id="parcela-a-deduzir">Parcela a deduzir</dt>
+        <dd>
+          O valor fixo que a tabela do Anexo mostra para cada faixa e que se subtrai na conta da
+          <a href="#aliquota-efetiva">alíquota efetiva</a>. Na faixa 2 do Anexo III, por exemplo, ela é
+          R$ 9.360,00.
+        </dd>
+
+        <dt id="pgdas-d">PGDAS-D</dt>
+        <dd>
+          O sistema da Receita onde a empresa do Simples declara a receita do mês e gera o DAS. A
+          declaração é entregue até o vencimento do DAS e vale como confissão de dívida.
+        </dd>
+
+        <dt id="prestador">Prestador</dt>
+        <dd>Quem presta o serviço e emite a nota. No NotaFlow, é a sua empresa.</dd>
+
+        <dt id="rbt12">RBT12</dt>
+        <dd>
+          A receita bruta dos 12 meses anteriores ao mês que você calcula. Ela define a faixa e a alíquota
+          efetiva do Simples. Na empresa nova, o primeiro mês usa a receita do próprio mês × 12, e os meses
+          seguintes usam a média dos meses que já passaram, multiplicada por 12.
+        </dd>
+
+        <dt id="tomador">Tomador</dt>
+        <dd>Quem recebe o serviço: o seu cliente, pessoa física ou empresa.</dd>
+      </dl>
+
+      <section id="fontes">
+        <h2>Fontes</h2>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm">LC 123/2006, art. 18, §§ 1º, 1º-A, 5º-J, 5º-M e 24, e Anexos III a V</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278">Resolução CGSN nº 140/2018, arts. 22, 25, 26, 27, 38, 40 e 106-A</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm">LC 116/2003, arts. 1º, 6º, 8º e 8º-A</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l8212cons.htm">Lei nº 8.212/1991, art. 31</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=126687">IN RFB nº 2.110/2022, arts. 166 e 167</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/anexo_i-sefin_adn-dps_nfse-snnfse-v1-01-20260209.xlsx">Anexo I da NFS-e nacional, v1.01, campos infNFSe/id e dCompet</a>
+          </li>
+          <li>
+            <a href="https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/guia-emissorpubliconacionalweb_snnfse-ern-v12.pdf">Guia do Emissor Público Nacional Web, item 4.1</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm">LC 214/2025, ementa</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc132.htm">EC 132/2023, ADCT, arts. 125 a 129</a>
+          </li>
+        </ul>
+      </section>
+      <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
+    </main>
+
+    <!--partial:guide-footer-->
+  </body>
+</html>

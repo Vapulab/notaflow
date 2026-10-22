@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lucro Presumido | NotaFlow</title>
+    <meta name="description" content="Como funciona a emissão de nota fiscal de serviço no Lucro Presumido." />
+    <link rel="canonical" href="https://notaflow.vapulab.com/guia/lucro-presumido" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="article" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="NotaFlow" />
+    <meta property="og:url" content="https://notaflow.vapulab.com/guia/lucro-presumido" />
+    <meta property="og:title" content="Lucro Presumido | NotaFlow" />
+    <meta property="og:description" content="Como funciona a emissão de nota fiscal de serviço no Lucro Presumido." />
+    <meta property="og:image" content="https://notaflow.vapulab.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('malphas-theme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/site/guide/guide.ts"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Lucro Presumido",
+          "description": "Como funciona a emissão de nota fiscal de serviço no Lucro Presumido.",
+          "inLanguage": "pt-BR",
+          "dateModified": "2026-10-21",
+          "mainEntityOfPage": "https://notaflow.vapulab.com/guia/lucro-presumido",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Vapulab",
+            "url": "https://vapulab.com"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "NotaFlow",
+              "item": "https://notaflow.vapulab.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Guia",
+              "item": "https://notaflow.vapulab.com/guia"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Lucro Presumido",
+              "item": "https://notaflow.vapulab.com/guia/lucro-presumido"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="min-h-screen bg-surface font-sans text-fg antialiased">
+    <!--partial:guide-header-->
+
+    <main id="conteudo" class="guide-text mx-auto max-w-3xl px-5 pb-20 pt-8">
+      <h1 class="font-display text-4xl font-semibold leading-tight tracking-tight">Lucro Presumido</h1>
+      <p>
+        No Lucro Presumido, a empresa não paga uma guia única como no Simples. Cada tributo tem a sua conta:
+        o IRPJ e a CSLL sobre um lucro presumido, o PIS e a Cofins sobre a receita, e o ISS ao município.
+        Esta página explica a ideia de cada conta, para você entender o que aparece na sua nota e nas suas
+        guias.
+      </p>
+
+      <h2 id="irpj-csll">IRPJ e CSLL: o lucro presumido</h2>
+      <p>
+        A lei presume que uma parte da receita é lucro, e o IRPJ e a CSLL incidem sobre essa parte. A
+        apuração é por trimestre. Para os serviços em geral, a presunção é de 32% da receita, tanto para o
+        IRPJ quanto para a CSLL. Assim, de cada R$ 100,00 de receita de serviço, R$ 32,00 formam a base
+        desses dois tributos.
+      </p>
+      <ul>
+        <li>
+          <strong>IRPJ:</strong> 15% sobre o lucro presumido, mais um adicional de 10% sobre a parte do
+          lucro que passa de R$ 20.000,00 por mês, ou seja, R$ 60.000,00 por trimestre.
+        </li>
+        <li><strong>CSLL:</strong> 9% sobre o lucro presumido.</li>
+      </ul>
+      <p>
+        Desde a LC 224/2025, a presunção tem um acréscimo de 10% na parte da receita que passa de
+        R$ 5 milhões por ano (R$ 1,25 milhão por trimestre, e a parte não usada passa para o trimestre
+        seguinte, no mesmo ano). Para o IRPJ, a regra vale desde 1º de janeiro de 2026, e para a CSLL,
+        desde 1º de abril de 2026. Para uma empresa pequena, abaixo desse valor, nada muda.
+      </p>
+
+      <h2 id="pis-cofins">PIS e Cofins</h2>
+      <p>
+        No Lucro Presumido, o PIS e a Cofins ficam no regime cumulativo: o PIS é de 0,65% e a Cofins é de
+        3% sobre a receita. Com a reforma tributária, o PIS e a Cofins acabam a partir de 2027 e dão lugar
+        à CBS. O <a href="/guia/reforma-tributaria">guia da reforma tributária</a> mostra o calendário.
+      </p>
+
+      <h2 id="iss">ISS</h2>
+      <p>
+        O <a href="/guia/glossario#iss">ISS</a> é do município, com alíquota de 2% a 5%, conforme a lei de
+        cada município. Em geral, ele é devido no município do estabelecimento de quem presta o serviço.
+        Em alguns serviços da lista da LC 116/2003, como obras, limpeza e eventos, ele é devido no
+        município do cliente ou da obra. Quando a lei do município manda, o cliente retém o ISS da nota.
+      </p>
+
+      <h2 id="quem-pode">Quem pode optar</h2>
+      <p>
+        Pode optar pelo Lucro Presumido a empresa com receita de até R$ 78.000.000,00 no ano anterior (ou
+        R$ 6.500.000,00 vezes o número de meses de atividade).
+      </p>
+
+      <h2 id="contador">Por que o contador pesa mais aqui</h2>
+      <p>
+        No Simples, uma conta só gera o DAS do mês, e você consegue conferir essa conta sozinho. No Lucro
+        Presumido, há mais tributos, cada um com a sua base, a sua alíquota e o seu período: o PIS, a
+        Cofins e o ISS sobre a receita, o IRPJ e a CSLL por trimestre, e o adicional do IRPJ. E o Código
+        Civil pede ao empresário e à sociedade empresária a escrituração completa e um balanço por ano.
+      </p>
+      <p>
+        Por isso, no Lucro Presumido, o contador costuma ser necessário. Você ainda pode entender as contas
+        e conferir as notas, e as perguntas do guia <a href="/guia/preciso-de-contador">Preciso de
+        contador?</a> ajudam nessa conversa.
+      </p>
+
+      <section class="guide-note" aria-labelledby="em-breve">
+        <h2 id="em-breve" class="!mt-0">Em breve no NotaFlow</h2>
+        <p>
+          O NotaFlow ainda não emite para empresas do Lucro Presumido. Estamos trabalhando nisso. Deixe seu
+          e-mail e avisamos quando estiver pronto.
+        </p>
+        <form data-waitlist data-interest="lucro_presumido"></form>
+      </section>
+
+      <section id="fontes">
+        <h2>Fontes</h2>
+        <ul>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9430.htm">Lei nº 9.430/1996, art. 1º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9249.htm">Lei nº 9.249/1995, arts. 3º, 15 e 20</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l7689.htm">Lei nº 7.689/1988, art. 3º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9715.htm">Lei nº 9.715/1998, art. 8º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/l9718compilada.htm">Lei nº 9.718/1998, arts. 8º e 13</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/2003/l10.833compilado.htm">Lei nº 10.833/2003, art. 10</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp224.htm">LC 224/2025, art. 4º</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12808.htm">Decreto nº 12.808/2025, art. 12</a>
+          </li>
+          <li>
+            <a href="https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=148694">IN RFB nº 2.305/2025, arts. 3º e 15</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm">LC 116/2003, arts. 3º, 4º, 6º, 8º e 8º-A</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm">Código Civil, arts. 1.179 e 1.180</a>
+          </li>
+          <li>
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm">LC 214/2025, art. 542</a>
+          </li>
+        </ul>
+      </section>
+      <p class="mt-8 text-sm text-muted">Atualizado em <time datetime="2026-10-21">21 de outubro de 2026</time></p>
+    </main>
+
+    <!--partial:guide-footer-->
+  </body>
+</html>

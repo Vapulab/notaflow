@@ -122,6 +122,7 @@ export function AdminPage() {
       <NewUserForm act={act} />
       <SetMemberForm act={act} accounts={accounts.data ?? []} />
       <FailedMail />
+      <Waitlist />
       <Card>
         <h2 className={SECTION_TITLE_CLASSES}>Auditoria (últimas 100)</h2>
         <ul className="flex flex-col gap-1 text-sm">
@@ -359,6 +360,105 @@ function FailedMail() {
                         Reenviar
                       </Button>
                     )}
+                  </TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </section>
+    </Card>
+  );
+}
+
+interface WaitlistSignup {
+  id: string;
+  email: string;
+  interests: WaitlistInterest[];
+  sourcePage: string;
+  createdAt: string;
+}
+
+type WaitlistInterest = 'mei' | 'lucro_presumido' | 'certificate';
+
+const INTEREST_LABEL: Record<WaitlistInterest, string> = {
+  mei: 'MEI',
+  lucro_presumido: 'Lucro presumido',
+  certificate: 'Certificado A1',
+};
+
+// The notify-me list of the guide; the policy promises removal on request.
+function Waitlist() {
+  const list = useAsync(
+    () =>
+      api.get<{ signups: WaitlistSignup[]; counts: Record<WaitlistInterest, number> }>(
+        '/api/admin/waitlist',
+      ),
+    [],
+  );
+  const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  async function remove(signup: WaitlistSignup) {
+    if (removing || !window.confirm(`Remover ${signup.email} da lista de espera?`)) return;
+    setMessage(null);
+    setRemoving(true);
+    try {
+      await api.delete(`/api/admin/waitlist/${encodeURIComponent(signup.id)}`);
+      setMessage({ variant: 'info', text: `${signup.email} removido.` });
+      list.reload();
+    } catch (error) {
+      setMessage({ variant: 'error', text: errorText(error) });
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <section aria-labelledby="waitlist" className="flex flex-col gap-3">
+        <h2 id="waitlist" className={SECTION_TITLE_CLASSES}>
+          Lista de espera
+        </h2>
+        {message && <Alert variant={message.variant}>{message.text}</Alert>}
+        {list.error && <Alert variant="error">{errorText(list.error)}</Alert>}
+        {list.data && (
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {(Object.keys(INTEREST_LABEL) as WaitlistInterest[]).map((interest) => (
+              <li key={interest}>
+                <Badge variant="neutral">{`${INTEREST_LABEL[interest]}: ${list.data?.counts[interest] ?? 0}`}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+        {list.data?.signups.length === 0 && <p className="text-sm text-muted">Ninguém ainda.</p>}
+        {list.data && list.data.signups.length > 0 && (
+          <Table>
+            <THead>
+              <tr>
+                <TH>E-mail</TH>
+                <TH>Interesses</TH>
+                <TH>Página</TH>
+                <TH>Em</TH>
+                <TH>Ação</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {list.data.signups.map((signup) => (
+                <tr key={signup.id}>
+                  <TD>{signup.email}</TD>
+                  <TD>{signup.interests.map((i) => INTEREST_LABEL[i]).join(', ')}</TD>
+                  <TD>{signup.sourcePage}</TD>
+                  <TD className="whitespace-nowrap">{formatDateTime(signup.createdAt)}</TD>
+                  <TD>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={removing}
+                      onClick={() => void remove(signup)}
+                    >
+                      Remover
+                    </Button>
                   </TD>
                 </tr>
               ))}

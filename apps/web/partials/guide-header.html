@@ -1,0 +1,54 @@
+    <a
+      href="#conteudo"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-fg"
+      >Pular para o conteúdo</a
+    >
+    <header class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5">
+      <a href="/" aria-label="NotaFlow, página inicial" class="inline-flex items-center gap-2 font-display text-xl font-semibold text-fg">
+        <svg viewBox="0 0 128 100" class="h-7 w-auto" aria-hidden="true">
+          <defs>
+            <mask id="nf-gap-guide">
+              <rect width="128" height="100" fill="white" />
+              <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" fill="black" stroke="black" stroke-width="6" />
+            </mask>
+          </defs>
+          <g class="fill-fg" mask="url(#nf-gap-guide)">
+            <rect x="8" y="12" width="16" height="76" />
+            <polygon points="8,12 25,12 76,88 59,88" />
+          </g>
+          <g class="fill-brand">
+            <rect x="60" y="12" width="16" height="76" />
+            <rect x="60" y="12" width="56" height="16" />
+            <path d="M8,50 H102 V38 L120,56 L102,74 V62 H8 Z" />
+          </g>
+        </svg>
+        NotaFlow
+      </a>
+      <nav class="flex items-center gap-2 text-sm" aria-label="Principal">
+        <a
+          href="/guia"
+          class="rounded px-3 py-2 font-medium text-fg hover:bg-muted/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >Guia</a
+        >
+        <a
+          href="/entrar"
+          class="rounded px-3 py-2 font-medium text-fg hover:bg-muted/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >Entrar</a
+        >
+        <a
+          href="/cadastro"
+          class="hidden rounded bg-primary px-3 py-2 font-medium text-primary-fg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 sm:inline-block"
+          >Criar conta grátis</a
+        >
+        <button
+          type="button"
+          data-theme-toggle
+          title="Alternar entre tema claro e escuro"
+          aria-label="Alternar entre tema claro e escuro"
+          class="rounded border border-border px-2 py-1 text-sm text-muted hover:text-fg focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          <span class="dark:hidden" aria-hidden="true">☾</span>
+          <span class="hidden dark:inline" aria-hidden="true">☀</span>
+        </button>
+      </nav>
+    </header>

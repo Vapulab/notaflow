@@ -142,6 +142,18 @@ ${content}
 </body></html>`;
 }
 
+// Escapes the text and turns each https:// URL in it into a link.
+function linkUrls(text: string): string {
+  return text
+    .split(/(https:\/\/\S+)/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? `<a href="${escapeHtml(part)}" style="color:${COLOR.primary}">${escapeHtml(part)}</a>`
+        : escapeHtml(part),
+    )
+    .join('');
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -174,6 +186,7 @@ function reminderCopy(phase: LifecyclePhase, step: 1 | 2, variant: LifecycleVari
             'Seu cadastro no NotaFlow está quase pronto: falta o certificado digital da empresa.',
             'O NotaFlow usa o e-CNPJ do tipo A1, um arquivo .pfx ou .p12 com senha, para assinar as notas no sistema nacional. Se a empresa ainda não tem um, ele é comprado em uma autoridade certificadora credenciada na ICP-Brasil. O certificado A3, em cartão ou token, não funciona em um serviço on-line.',
             'O arquivo e a senha ficam cifrados e só são usados para assinar as suas notas.',
+            `Como conseguir o certificado: ${APP}/guia/certificado-digital`,
           ],
           button: { label: 'Enviar o certificado', path: onboarding.path },
         }
@@ -182,7 +195,7 @@ function reminderCopy(phase: LifecyclePhase, step: 1 | 2, variant: LifecycleVari
           paragraphs: [
             'Seu cadastro no NotaFlow está esperando o certificado digital A1 da empresa.',
             'Quando ele chegar, é só enviar o arquivo .pfx ou .p12 e a senha para terminar o cadastro e emitir a primeira nota.',
-            'Se tiver dúvida sobre qual certificado comprar, responda este e-mail: quem responde é uma pessoa.',
+            `Se tiver dúvida sobre qual certificado comprar, leia ${APP}/guia/certificado-digital ou responda este e-mail: quem responde é uma pessoa.`,
           ],
           button: { label: 'Enviar o certificado', path: onboarding.path },
         };
@@ -310,7 +323,7 @@ export function lifecycleEmail(input: {
     text: `${greeting}\n\n${copy.paragraphs.join('\n\n')}\n\n${copy.button.label}: ${href}\n\n${footer}\n${stop} ${input.unsubscribeUrl}\n`,
     html: layout(
       `<p style="margin:0 0 16px">${escapeHtml(greeting)}</p>
-${copy.paragraphs.map((p) => `<p style="margin:0 0 16px">${escapeHtml(p)}</p>`).join('\n')}
+${copy.paragraphs.map((p) => `<p style="margin:0 0 16px">${linkUrls(p)}</p>`).join('\n')}
 ${buttonHtml({ label: copy.button.label, href })}`,
       `${escapeHtml(footer)} ${escapeHtml(stop)} <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:${COLOR.muted}">Descadastrar</a>`,
     ),
