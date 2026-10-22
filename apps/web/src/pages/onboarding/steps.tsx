@@ -259,6 +259,14 @@ export function CertificateStep(props: {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </Field>
+          <a
+            className="text-sm text-primary underline"
+            href="/guia/certificado-digital"
+            target="_blank"
+            rel="noopener"
+          >
+            Não tenho certificado A1: veja como conseguir
+          </a>
           <Field label="Senha do certificado">
             <Input
               type="password"

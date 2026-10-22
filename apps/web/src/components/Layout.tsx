@@ -90,7 +90,8 @@ export const ERROR_TEXT: Record<string, string> = {
   invalid_competence: 'A competência não é uma data válida.',
   invalid_description: 'Informe uma descrição do serviço.',
   foreign_amount_not_allowed: 'Cliente no Brasil: a nota é só em reais.',
-  emitter_not_simples: 'Este emitente não é ME/EPP do Simples Nacional.',
+  emitter_not_simples:
+    'Este emitente não é ME/EPP do Simples Nacional. O NotaFlow ainda não emite para MEI e outros regimes; veja em notaflow.vapulab.com/guia quando isso muda.',
   retention_not_allowed: 'Só um cliente pessoa jurídica no Brasil pode reter o ISS ou o INSS.',
   invalid_inss_retention: 'O INSS retido precisa ser menor que o valor do serviço.',
   invalid_iss_rate: 'Alíquota de ISS inválida para este serviço.',

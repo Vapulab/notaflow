@@ -33,6 +33,7 @@ const ROUTES = [
   /^\/app\/acc-1\/notas\/nova$/,
   /^\/termos$/,
   /^\/privacidade$/,
+  /^\/guia\/certificado-digital$/,
 ];
 const appLinks = (body: string) =>
   [...body.matchAll(/https:\/\/notaflow\.vapulab\.com(\/[^\s"<)]*)/g)].map((m) => m[1] ?? '');
@@ -72,6 +73,19 @@ test.each(CASES)(
     expect(words, 'words').toBeLessThan(200);
   },
 );
+
+test.each([1, 2] as const)('certificate reminder %s links the certificate guide', (step) => {
+  const mail = lifecycleEmail({
+    phase: 'activation',
+    step,
+    variant: 'certificate',
+    name: 'Ana',
+    accountId: 'acc-1',
+    unsubscribeUrl: 'https://notaflow.vapulab.com/lembretes/descadastrar?u=u1&t=tok',
+  });
+  for (const body of [mail.html, mail.text])
+    expect(body).toContain('https://notaflow.vapulab.com/guia/certificado-digital');
+});
 
 test('the welcome e-mail is a guide to the first invoice, with no opt-out link', () => {
   const mail = welcomeEmail('Ana');

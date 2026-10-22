@@ -182,6 +182,17 @@ test('the certificate step: password not remembered, advanced options folded, mi
   ).toBeTruthy();
 });
 
+test('the certificate step links the guide on how to get an A1, in a new tab', async () => {
+  stubApi(state('certificate', true));
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('certificate'));
+  const link = await screen.findByRole('link', {
+    name: 'Não tenho certificado A1: veja como conseguir',
+  });
+  expect(link.getAttribute('href')).toBe('/guia/certificado-digital');
+  expect(link.getAttribute('target')).toBe('_blank');
+  expect(link.getAttribute('rel')).toContain('noopener');
+});
+
 test('"Trocar cartão" goes back to the card step', async () => {
   const calls = stubApi({
     ...state('certificate', true),

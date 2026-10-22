@@ -47,6 +47,8 @@ export const api = {
   post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     request<T>('POST', path, body, headers),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+  // Fastify refuses a JSON request without a body, so a DELETE sends an empty object.
+  delete: <T>(path: string) => request<T>('DELETE', path, {}),
 };
 
 export type Environment = 'producao' | 'producao_restrita';

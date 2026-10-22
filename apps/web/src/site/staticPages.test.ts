@@ -206,3 +206,30 @@ test.each(GUIDE_PAGES)('guide page $path has its title, canonical, markers, and 
   expect(article).toMatchObject({ inLanguage: 'pt-BR', dateModified: '2026-10-21' });
   expect(crumbs?.itemListElement).toHaveLength(page.path === '/guia' ? 2 : 3);
 });
+
+test('the landing links the guide in the header and the footer', () => {
+  const html = read('landing.html');
+  const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  const footer = html.slice(html.indexOf('<footer class="border-t'));
+  expect(header).toContain('href="/guia"');
+  expect(footer).toContain('href="/guia"');
+});
+
+test('the privacy policy has one section on the notify-me list', () => {
+  const html = clean(read('privacidade.html'));
+  expect(html).toContain('Lista de aviso sobre novidades');
+  for (const part of ['e-mail', 'interesses', 'página', 'campanha', 'privacidade@vapulab.com', 'até que'])
+    expect(html, part).toContain(part);
+});
+
+test('the guide page on the first invoice describes the band 6 ISS field', () => {
+  const html = read('guia/primeira-nota.html');
+  expect(html).toContain('id="campo-iss-faixa-6"');
+  expect(html).toContain('ISS na faixa 6');
+});
+
+test('llms.txt points to the guide', () => {
+  const text = read('public/llms.txt');
+  expect(text).toContain('https://notaflow.vapulab.com/guia');
+  expect(text).toContain('https://notaflow.vapulab.com/guia/certificado-digital');
+});
