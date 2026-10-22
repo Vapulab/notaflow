@@ -10,6 +10,10 @@ The table merges three research parts: Simples Nacional rates and rules (topics 
 
 | topic | fact | value | source (URL + article) | checked on |
 | --- | --- | --- | --- | --- |
+| Simples rates / Anexos I, II | Anexo I title and rates | "Alíquotas e Partilha do Simples Nacional – Comércio" (LC 155/2016, vigência 01/01/2018). Rates 4,00%, 7,30%, 9,50%, 10,70%, 14,30%, 19,00%; deductions –, 5.940,00, 13.860,00, 22.500,00, 87.300,00, 378.000,00 | https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm Anexo I | 2026-10-21 |
+| Simples rates / Anexos I, II | Anexo I shares | Bands 1 and 2: IRPJ 5,50%; CSLL 3,50%; Cofins 12,74%; PIS/Pasep 2,76%; CPP 41,50%; ICMS 34,00%. Bands 3 to 5: IRPJ 5,50%; CSLL 3,50%; Cofins 12,74%; PIS/Pasep 2,76%; CPP 42,00%; ICMS 33,50%. Band 6: IRPJ 13,50%; CSLL 10,00%; Cofins 28,27%; PIS/Pasep 6,13%; CPP 42,10%; ICMS – | LC123, Anexo I | 2026-10-21 |
+| Simples rates / Anexos I, II | Anexo II title and rates | "Alíquotas e Partilha do Simples Nacional – Indústria" (LC 155/2016, vigência 01/01/2018). Rates 4,50%, 7,80%, 10,00%, 11,20%, 14,70%, 30,00%; deductions –, 5.940,00, 13.860,00, 22.500,00, 85.500,00, 720.000,00 | https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm Anexo II | 2026-10-21 |
+| Simples rates / Anexos I, II | Anexo II shares | Bands 1 to 5: IRPJ 5,50%; CSLL 3,50%; Cofins 11,51%; PIS/Pasep 2,49%; CPP 37,50%; IPI 7,50%; ICMS 32,00%. Band 6: IRPJ 8,50%; CSLL 7,50%; Cofins 20,96%; PIS/Pasep 4,54%; CPP 23,50%; IPI 35,00%; ICMS – | LC123, Anexo II | 2026-10-21 |
 | Simples rates / Anexos III, IV, V | Anexo III title | "Receitas de locação de bens móveis e de prestação de serviços não relacionados no § 5o-C do art. 18" | LC123, Anexo III (LC 155/2016, vigência 01/01/2018) | 2026-10-21 |
 | Simples rates / Anexos III, IV, V | Anexo III band 1 | rate 6,00%; deduction –; IRPJ 4,00%; CSLL 3,50%; Cofins 12,82%; PIS/Pasep 2,78%; CPP 43,40%; ISS 33,50% | LC123, Anexo III | 2026-10-21 |
 | Simples rates / Anexos III, IV, V | Anexo III band 2 | rate 11,20%; deduction 9.360,00; IRPJ 4,00%; CSLL 3,50%; Cofins 14,05%; PIS/Pasep 3,05%; CPP 43,40%; ISS 32,00% | LC123, Anexo III | 2026-10-21 |

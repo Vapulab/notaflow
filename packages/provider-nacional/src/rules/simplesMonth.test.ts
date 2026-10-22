@@ -30,6 +30,27 @@ describe('simplesShares', () => {
     expect(sum(shares.shares)).toBe(10_000);
   });
 
+  // LC 123, Anexos I and II (LC 155/2016), planalto.gov.br, checked on 2026-10-21.
+  test.each([
+    ['I', 1, { irpj: 550, csll: 350, cofins: 1274, pis: 276, cpp: 4150, icms: 3400 }],
+    ['I', 2, { irpj: 550, csll: 350, cofins: 1274, pis: 276, cpp: 4150, icms: 3400 }],
+    ['I', 3, { irpj: 550, csll: 350, cofins: 1274, pis: 276, cpp: 4200, icms: 3350 }],
+    ['I', 4, { irpj: 550, csll: 350, cofins: 1274, pis: 276, cpp: 4200, icms: 3350 }],
+    ['I', 5, { irpj: 550, csll: 350, cofins: 1274, pis: 276, cpp: 4200, icms: 3350 }],
+    ['I', 6, { irpj: 1350, csll: 1000, cofins: 2827, pis: 613, cpp: 4210 }],
+    ...[1, 2, 3, 4, 5].map(
+      (band) =>
+        [
+          'II',
+          band,
+          { irpj: 550, csll: 350, cofins: 1151, pis: 249, cpp: 3750, ipi: 750, icms: 3200 },
+        ] as const,
+    ),
+    ['II', 6, { irpj: 850, csll: 750, cofins: 2096, pis: 454, cpp: 2350, ipi: 3500 }],
+  ] as const)('Anexo %s band %s: the shares of the law', (annex, band, shares) => {
+    expect(simplesShares(annex, reais(LIMITS[band - 1] ?? 0)).shares).toEqual(shares);
+  });
+
   test('Anexo IV has no CPP share: it is paid outside the DAS (art. 18 §5º-C)', () => {
     expect(simplesShares('IV', reais(300_000)).taxes.cpp).toBeUndefined();
   });
@@ -311,6 +332,20 @@ describe('simplesMonth', () => {
     expect(line('not_on_invoice')).toEqual({ rate: 500, cents: reais(500) });
   });
 
+  test('no ISS in the DAS of the month: no retained ISS rate, whatever the input', () => {
+    const retained = (annex: 'I' | 'III', rbt12Cents: number) =>
+      (['first_month', 'not_on_invoice', { rbt12Cents }] as const).map(
+        (retainedIss) =>
+          simplesMonth({
+            rbt12Cents,
+            lines: [{ annex, kind: 'iss_retained', revenueCents: reais(10_000), retainedIss }],
+          }).lines[0]?.retainedIss,
+      );
+    // Band 6 without an answer: the ISS goes to the municipality.
+    expect(retained('III', reais(4_500_000))).toEqual([null, null, null]);
+    expect(retained('I', reais(100_000))).toEqual([null, null, null]);
+  });
+
   test('an export takes out ISS, PIS and Cofins, as simplesRate does (art. 18 §14)', () => {
     const month = simplesMonth({
       rbt12Cents: reais(184_700),
@@ -388,7 +423,7 @@ describe('simplesMonth', () => {
         lines: [{ annex: 'III', kind: 'normal', revenueCents: reais(1_000) }],
       });
     expect(month(360_000_000).warnings).toEqual(['iss_cap']);
-    expect(month(360_000_001).warnings).toEqual(['over_sublimit']);
+    expect(month(360_000_001).warnings).toEqual(['band6']);
     expect(month(reais(1_000_000)).warnings).toEqual([]);
     expect(() => month(480_000_001)).toThrow(RangeError);
   });
@@ -487,7 +522,7 @@ describe('simplesMonth', () => {
     });
     expect(month.lines.map((line) => line.dasCents)).toEqual([reais(148_198.08), reais(97_863.39)]);
     expect(month.totalCents).toBe(reais(246_061.47));
-    expect(month.warnings).toEqual(['over_sublimit', 'iss_cap']);
+    expect(month.warnings).toEqual(['band6', 'iss_cap']);
   });
 });
 

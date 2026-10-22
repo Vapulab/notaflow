@@ -33,8 +33,7 @@ function monthIndex(month: string): number {
 const monthName = (index: number) =>
   `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 
-// The RBT12 of a month (LC 123 art. 18 §1º and §2º; CGSN 140 art. 22). A missing month counts as zero.
-// The same window annualizes the payroll of the Fator R under 13 months (CGSN 140 art. 26 §4º).
+// CGSN 140 art. 22; a missing month counts as zero; it also annualizes the Fator R payroll (art. 26 §4º).
 export function rbt12Window(input: {
   month: string;
   activityStart: string;
@@ -88,7 +87,7 @@ export interface SimplesMonthLine {
 export interface SimplesMonth {
   lines: SimplesMonthLine[];
   totalCents: number;
-  warnings: ('over_sublimit' | 'iss_cap')[];
+  warnings: ('band6' | 'iss_cap')[];
 }
 
 function retainedIssRate(
@@ -137,8 +136,9 @@ export function simplesMonth(input: {
       taxes[tax] = cents;
       dasCents += cents;
     }
+    // No ISS in this month's DAS (Anexos I and II, band 6 outside): no Simples rate to retain.
     const retainedRate =
-      line.kind === 'iss_retained' && line.retainedIss
+      line.kind === 'iss_retained' && line.retainedIss && shares.percents.iss !== undefined
         ? retainedIssRate(line.annex, line.retainedIss, options)
         : null;
     return {
@@ -156,7 +156,7 @@ export function simplesMonth(input: {
   });
   const warnings: SimplesMonth['warnings'] = [];
   // Band 6 starts above the R$ 3.6 million sublimit: the band 6 answer decides the ISS.
-  if (band === 6) warnings.push('over_sublimit');
+  if (band === 6) warnings.push('band6');
   if (issCap) warnings.push('iss_cap');
   return { lines, totalCents: lines.reduce((sum, line) => sum + line.dasCents, 0), warnings };
 }

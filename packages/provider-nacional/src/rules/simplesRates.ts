@@ -266,8 +266,7 @@ export function simplesShares(
   };
 }
 
-// The retained ISS rate in hundredths (CGSN 140, art. 27): the effective ISS share of the band.
-// Null when the DAS has no ISS: Anexos I and II, and band 6 once the ISS leaves the DAS.
+// CGSN 140, art. 27: the retained ISS rate is the ISS share of the band; null when the DAS has none.
 export function simplesIssRate(
   annex: SimplesAnnex,
   rbt12Cents: number,
