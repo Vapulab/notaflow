@@ -62,3 +62,8 @@
 .guide-text figcaption {
   @apply mt-2 text-sm text-muted;
 }
+/* The calculator's revenue table: narrow cells, so an amount fits at 375 px. */
+.guide-text .guide-history th,
+.guide-text .guide-history td {
+  @apply px-1.5 py-1.5;
+}

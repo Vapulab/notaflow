@@ -46,7 +46,8 @@ export const ANNEX_QUESTIONS: AnnexQuestion[] = [
 ];
 
 export type AnnexAnswer =
-  | { result: 'III' | 'IV' | 'V' | 'fator_r' | 'out_of_scope'; law: string }
+  | { result: 'III' | 'IV' | 'V' | 'fator_r'; law: string }
+  | { result: 'out_of_scope'; law: string }
   | { result: 'undecided' };
 
 const lawOf = (id: string) => ANNEX_QUESTIONS.find((question) => question.id === id)?.law ?? '';

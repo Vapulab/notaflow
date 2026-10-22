@@ -14,3 +14,7 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-cnpj-check]')) 
 }
 for (const form of document.querySelectorAll<HTMLFormElement>('form[data-waitlist]'))
   mountWaitlist(form);
+// Only the calculator page loads the Simples tables.
+const calculator = document.querySelector<HTMLElement>('[data-calculator]');
+if (calculator)
+  void import('./calculator').then(({ mountCalculator }) => mountCalculator(calculator));
