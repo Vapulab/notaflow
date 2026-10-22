@@ -142,6 +142,18 @@ ${content}
 </body></html>`;
 }
 
+// Escapes the text and turns each https:// URL in it into a link.
+function linkUrls(text: string): string {
+  return text
+    .split(/(https:\/\/\S+)/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? `<a href="${escapeHtml(part)}" style="color:${COLOR.primary}">${escapeHtml(part)}</a>`
+        : escapeHtml(part),
+    )
+    .join('');
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -311,7 +323,7 @@ export function lifecycleEmail(input: {
     text: `${greeting}\n\n${copy.paragraphs.join('\n\n')}\n\n${copy.button.label}: ${href}\n\n${footer}\n${stop} ${input.unsubscribeUrl}\n`,
     html: layout(
       `<p style="margin:0 0 16px">${escapeHtml(greeting)}</p>
-${copy.paragraphs.map((p) => `<p style="margin:0 0 16px">${escapeHtml(p)}</p>`).join('\n')}
+${copy.paragraphs.map((p) => `<p style="margin:0 0 16px">${linkUrls(p)}</p>`).join('\n')}
 ${buttonHtml({ label: copy.button.label, href })}`,
       `${escapeHtml(footer)} ${escapeHtml(stop)} <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:${COLOR.muted}">Descadastrar</a>`,
     ),

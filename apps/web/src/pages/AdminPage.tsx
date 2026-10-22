@@ -396,16 +396,21 @@ function Waitlist() {
       ),
     [],
   );
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   async function remove(signup: WaitlistSignup) {
-    if (!window.confirm(`Remover ${signup.email} da lista de espera?`)) return;
+    if (removing || !window.confirm(`Remover ${signup.email} da lista de espera?`)) return;
+    setMessage(null);
+    setRemoving(true);
     try {
       await api.delete(`/api/admin/waitlist/${encodeURIComponent(signup.id)}`);
-      setMessage(`${signup.email} removido.`);
+      setMessage({ variant: 'info', text: `${signup.email} removido.` });
       list.reload();
     } catch (error) {
-      setMessage(errorText(error));
+      setMessage({ variant: 'error', text: errorText(error) });
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -415,7 +420,7 @@ function Waitlist() {
         <h2 id="waitlist" className={SECTION_TITLE_CLASSES}>
           Lista de espera
         </h2>
-        {message && <Alert variant="info">{message}</Alert>}
+        {message && <Alert variant={message.variant}>{message.text}</Alert>}
         {list.error && <Alert variant="error">{errorText(list.error)}</Alert>}
         {list.data && (
           <ul className="flex flex-wrap gap-2 text-sm">
@@ -446,7 +451,12 @@ function Waitlist() {
                   <TD>{signup.sourcePage}</TD>
                   <TD className="whitespace-nowrap">{formatDateTime(signup.createdAt)}</TD>
                   <TD>
-                    <Button variant="secondary" size="sm" onClick={() => void remove(signup)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={removing}
+                      onClick={() => void remove(signup)}
+                    >
                       Remover
                     </Button>
                   </TD>

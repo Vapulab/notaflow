@@ -85,6 +85,8 @@ test.each([1, 2] as const)('certificate reminder %s links the certificate guide'
   });
   for (const body of [mail.html, mail.text])
     expect(body).toContain('https://notaflow.vapulab.com/guia/certificado-digital');
+  expect(mail.html).toContain('<a href="https://notaflow.vapulab.com/guia/certificado-digital"');
+  expect(mail.text).not.toContain('<a ');
 });
 
 test('the welcome e-mail is a guide to the first invoice, with no opt-out link', () => {

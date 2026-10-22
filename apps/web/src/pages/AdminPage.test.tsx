@@ -189,3 +189,22 @@ test('declining the confirm keeps the waitlist row', async () => {
   await userEvent.setup().click(await section.findByRole('button', { name: 'Remover' }));
   expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false);
 });
+
+test('a failed waitlist removal shows an error, and the next removal clears it', async () => {
+  let fail = true;
+  stubApi({
+    ...routes,
+    '/api/admin/waitlist/w-1': () => (fail ? { error: 'not_found' } : null),
+  });
+  vi.stubGlobal('confirm', vi.fn(() => true));
+  render(<AdminPage />);
+  const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
+  const user = userEvent.setup();
+  await user.click(await section.findByRole('button', { name: 'Remover' }));
+  const alert = await section.findByText('Não encontrado.');
+  expect(alert.closest('[role="alert"]')).toBeTruthy();
+  fail = false;
+  await user.click(section.getByRole('button', { name: 'Remover' }));
+  expect(await section.findByText('maria@example.com removido.')).toBeTruthy();
+  expect(section.queryByText('Não encontrado.')).toBeNull();
+});
