@@ -79,13 +79,13 @@ The content and the IRPJ, CSLL and CPP shares of Task 2 depend on this task.
   - `type RevenueKind = 'normal' | 'iss_retained' | 'export'`
   - `rbt12Window(input: { month: string; activityStart: string; revenues: Record<string, number> }): { rbt12Cents: number; rule: 'full' | 'first_month' | 'proportional'; months: string[] }` (months as `YYYY-MM`)
   - `fatorR(input: { payroll: { salaries: number; proLabore: number; fgts: number; cpp: number; other: number }; rbt12Cents: number }): { ratioHundredths: number; annex: 'III' | 'V' }`
-  - `simplesMonth(input: { rbt12Cents: number; lines: { annex: SimplesAnnex; kind: RevenueKind; revenueCents: number }[] }): { lines: { annex: SimplesAnnex; kind: RevenueKind; revenueCents: number; rate: number; dasCents: number; taxes: Partial<Record<SimplesTax, number>> }[]; totalCents: number; warnings: ('over_sublimit' | 'iss_cap')[] }`. It throws `RangeError` above R$ 4,8 mi, as `simplesRate` does.
+  - `simplesMonth(input: { rbt12Cents: number; lines: { annex: SimplesAnnex; kind: RevenueKind; revenueCents: number }[] }): { lines: { annex: SimplesAnnex; kind: RevenueKind; revenueCents: number; rate: number; dasCents: number; taxes: Partial<Record<SimplesTax, number>> }[]; totalCents: number; warnings: ('band6' | 'iss_cap')[] }`. It throws `RangeError` above R$ 4,8 mi, as `simplesRate` does.
   - `annexRule` and `AnnexRule`, unchanged.
 
 - [ ] **Step 1: Write the failing tests** in `simplesMonth.test.ts`:
   - `simplesShares('III', 18_000_000)`: band 1, `effectiveRate` 600, the taxes add up to 600.
   - Every band of every Anexo: the shares add up to 10000 (100%) before the effective rate (a table test over `SIMPLES_ANNEXES` × 6).
-  - `simplesShares('III', 18_000_001).band === 2`; `simplesShares('III', 360_000_000)` has no `over_sublimit`; 360_000_001 has it; 480_000_001 throws.
+  - `simplesShares('III', 18_000_001).band === 2`; `simplesShares('III', 360_000_000)` has no `band6`; 360_000_001 has it; 480_000_001 throws.
   - `rbt12Window` with a 14-month history: `rule: 'full'`, the 12 months before `month`, not `month` itself.
   - `rbt12Window` with `activityStart === month`: `rule: 'first_month'`, revenue of the month × 12.
   - `rbt12Window` in month 3 of activity: `rule: 'proportional'`, the average of months 1 and 2 × 12.

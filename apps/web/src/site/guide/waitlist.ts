@@ -70,7 +70,10 @@ export function mountWaitlist(form: HTMLFormElement): void {
   let siteKey: string | null = null;
   let widget: { api: TurnstileApi; id: string } | null = null;
   let captchaFailed = false;
-  void publicConfig().then((config) => {
+  button.disabled = true;
+  // Until the config answers, a submit cannot know if the captcha is needed.
+  const ready = publicConfig().then((config) => {
+    button.disabled = false;
     siteKey = config?.turnstileSiteKey ?? null;
     if (!siteKey) return;
     const key = siteKey;
@@ -98,8 +101,7 @@ export function mountWaitlist(form: HTMLFormElement): void {
     if (widget) widget.api.reset(widget.id);
   };
 
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
+  const send = () => {
     const interests = boxes
       .map((label) => label.querySelector('input'))
       .filter((box): box is HTMLInputElement => box?.checked === true)
@@ -137,5 +139,10 @@ export function mountWaitlist(form: HTMLFormElement): void {
         resetCaptcha();
         button.disabled = false;
       });
+  };
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void ready.then(send);
   });
 }

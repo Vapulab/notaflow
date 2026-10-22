@@ -84,11 +84,11 @@ describe('regime by CNPJ', () => {
     expect((await regime(CNPJ)).json()).toEqual({ regime: 'other' });
   });
 
-  test('a company that is not active answers other', async () => {
+  test('a company that is not active answers inactive', async () => {
     brasil(200, brasilBody({ descricao_situacao_cadastral: 'BAIXADA', opcao_pelo_mei: true }));
     const response = await regime(CNPJ);
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ regime: 'other' });
+    expect(response.json()).toEqual({ regime: 'inactive' });
   });
 
   test('not found: 404; both sources down: 503', async () => {

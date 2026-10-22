@@ -120,3 +120,26 @@ test('a Turnstile script that fails to load shows an error instead of waiting', 
   await submit(form, 'ana@example.com');
   expect(fetch.mock.calls.some(([url]) => url === '/api/public/waitlist')).toBe(false);
 });
+
+test('a submit before the config answers waits for it, so a site key still asks for the captcha', async () => {
+  vi.mocked(loadTurnstile).mockReturnValue(new Promise(() => {}));
+  let answerConfig: (response: Response) => void = () => {};
+  const fetch = vi.fn((url: string, _init?: RequestInit) =>
+    url === '/api/public/config'
+      ? new Promise<Response>((resolve) => (answerConfig = resolve))
+      : Promise.resolve(new Response(null, { status: 204 })),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const form = setup('mei');
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+  expect(button?.disabled).toBe(true);
+  const input = form.querySelector<HTMLInputElement>('input[type="email"]');
+  if (input) input.value = 'ana@example.com';
+  form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  await Promise.resolve();
+  expect(fetch.mock.calls.some(([url]) => url === '/api/public/waitlist')).toBe(false);
+  answerConfig(new Response(JSON.stringify({ turnstileSiteKey: 'site-key' }), { status: 200 }));
+  await vi.waitFor(() => expect(text(form)).toContain('Confirme que você não é um robô.'));
+  expect(fetch.mock.calls.some(([url]) => url === '/api/public/waitlist')).toBe(false);
+  expect(button?.disabled).toBe(false);
+});

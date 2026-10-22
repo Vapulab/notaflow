@@ -58,6 +58,16 @@ test('other says the company is not in the Simples and to confirm with the accou
   );
 });
 
+test('inactive says the CNPJ is not active, with no path link', async () => {
+  vi.stubGlobal('fetch', answer(200, { regime: 'inactive' }));
+  const root = setup();
+  await check(root, '12345678000195');
+  expect(text(root)).toContain(
+    'Este CNPJ não está ativo na Receita. Confira o número ou fale com seu contador.',
+  );
+  expect(root.querySelector('[role="status"] a')).toBeNull();
+});
+
 test.each([
   [400, 'invalid_cnpj', 'CNPJ inválido'],
   [404, 'cnpj_not_found', 'Não encontramos'],

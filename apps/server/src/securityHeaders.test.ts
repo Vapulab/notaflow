@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
@@ -8,6 +8,7 @@ import { loadConfig } from './config';
 import { openDatabase } from './db/openDatabase';
 
 const THEME = "(function(){document.documentElement.dataset.theme='dark'})();";
+const GUIDE = "window.guide='mei';";
 const roots: string[] = [];
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -25,6 +26,11 @@ async function appWith(origin: string, env: Record<string, string> = {}) {
   writeFileSync(
     join(root, 'landing.html'),
     `<!doctype html><script>${THEME}</script><main></main>`,
+  );
+  mkdirSync(join(root, 'guia'));
+  writeFileSync(
+    join(root, 'guia', 'mei.html'),
+    `<!doctype html><script>${GUIDE}</script><main></main>`,
   );
   const config = loadConfig({
     NODE_ENV: 'test',
@@ -110,4 +116,11 @@ test('with a browser Sentry DSN, a page may send its errors to that ingest host 
   const csp = String((await app.inject({ url: '/app' })).headers['content-security-policy']);
   expect(csp).toMatch(/connect-src [^;]*https:\/\/o123\.ingest\.us\.sentry\.io/);
   expect(csp).not.toMatch(/script-src [^;]*sentry/);
+});
+
+test('a guide page inline script is allowed by its hash', async () => {
+  const app = await appWith('http://localhost:3000');
+  const csp = String((await app.inject({ url: '/guia/mei' })).headers['content-security-policy']);
+  const hash = createHash('sha256').update(GUIDE).digest('base64');
+  expect(csp).toContain(`'sha256-${hash}'`);
 });

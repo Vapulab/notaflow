@@ -1,7 +1,8 @@
 // Screenshots of the invoice screens for /guia/primeira-nota, with synthetic data only.
-// Run: pnpm build:web, then pnpm exec tsx scripts/guide-screenshots.mjs
+// Run: pnpm exec playwright install chromium (once), pnpm build:web, then pnpm exec tsx scripts/guide-screenshots.mjs
 /* global document, HTMLElement, Image, localStorage -- the page.evaluate callbacks run in the browser */
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { fileURLToPath, URL } from 'node:url';
 import { chromium } from 'playwright';
 import { buildApp } from '../apps/server/src/app.ts';
@@ -12,42 +13,61 @@ import { seedTenant } from '../apps/server/test/fixtures.ts';
 import { startFakeNacional } from '../packages/fake-nacional/src/index.ts';
 import { makeTestCertificate } from '../packages/test-kit/src/index.ts';
 
-const PORT = 4321;
-const ORIGIN = `http://127.0.0.1:${PORT}`;
 const EMAIL = 'dono@example.com';
 const webRoot = fileURLToPath(new URL('../apps/web/dist', import.meta.url));
 const outDir = fileURLToPath(new URL('../apps/web/public/guia/', import.meta.url));
 
+// The origin must be known before the app is built, so ask the system for a free port first.
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      server.close(() =>
+        typeof address === 'object' && address
+          ? resolve(address.port)
+          : reject(new Error('no port')),
+      );
+    });
+  });
+
 const fake = await startFakeNacional();
-const { db, close } = openDatabase(':memory:');
-const config = loadConfig({
-  NODE_ENV: 'development',
-  HOST: '127.0.0.1',
-  PORT: String(PORT),
-  DATABASE_PATH: ':memory:',
-  APP_ORIGIN: ORIGIN,
-  NFSE_MASTER_KEY: Buffer.alloc(32, 9).toString('base64'),
-  AUTH_MODE: 'dev',
-  DEV_USER_EMAIL: EMAIL,
-  BETTER_AUTH_SECRET: 'screenshot-secret-'.repeat(3),
-  NACIONAL_FAKE_URL: fake.urls.sefin.replace('/SefinNacional', ''),
-});
-const app = buildApp({
-  config,
-  db,
-  webRoot,
-  policyNotice: null,
-  onEmitterCreated: () => {},
-  // A fixed PTAX: the real one is a network call.
-  exchangeRate: async (currency, date) => ({
-    currency,
-    date,
-    rateE4: 50_000,
-    source: 'PTAX venda, fechamento',
-  }),
-});
 let browser;
+let app;
+let close;
 try {
+  const PORT = await freePort();
+  const ORIGIN = `http://127.0.0.1:${PORT}`;
+  const opened = openDatabase(':memory:');
+  const db = opened.db;
+  close = opened.close;
+  const config = loadConfig({
+    NODE_ENV: 'development',
+    HOST: '127.0.0.1',
+    PORT: String(PORT),
+    DATABASE_PATH: ':memory:',
+    APP_ORIGIN: ORIGIN,
+    NFSE_MASTER_KEY: Buffer.alloc(32, 9).toString('base64'),
+    AUTH_MODE: 'dev',
+    DEV_USER_EMAIL: EMAIL,
+    BETTER_AUTH_SECRET: 'screenshot-secret-'.repeat(3),
+    NACIONAL_FAKE_URL: fake.urls.sefin.replace('/SefinNacional', ''),
+  });
+  app = buildApp({
+    config,
+    db,
+    webRoot,
+    policyNotice: null,
+    onEmitterCreated: () => {},
+    // A fixed PTAX: the real one is a network call.
+    exchangeRate: async (currency, date) => ({
+      currency,
+      date,
+      rateE4: 50_000,
+      source: 'PTAX venda, fechamento',
+    }),
+  });
   await app.ready();
   const { accountId } = seedTenant(db, { accountName: 'Conta de exemplo', email: EMAIL });
   const headers = { origin: ORIGIN, 'content-type': 'application/json' };
@@ -102,6 +122,8 @@ try {
   const page = await browser.newPage({
     viewport: { width: 1200, height: 900 },
     colorScheme: 'light',
+    locale: 'pt-BR',
+    timezoneId: 'America/Sao_Paulo',
   });
   await page.addInitScript(() => localStorage.setItem('malphas-theme', 'light'));
   mkdirSync(outDir, { recursive: true });
@@ -158,7 +180,7 @@ try {
   await shot(review, 'revisar');
 } finally {
   await browser?.close();
-  await app.close();
-  close();
+  await app?.close();
+  close?.();
   await fake.close();
 }

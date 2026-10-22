@@ -2,9 +2,9 @@ import { track } from '../../analytics/analytics';
 import { buttonClasses, INPUT_CLASSES, LABEL_CLASSES } from '../../ui/classes';
 import { h, TOO_MANY } from './dom';
 
-type Regime = 'mei' | 'simples' | 'other';
+type Regime = 'mei' | 'simples' | 'other' | 'inactive';
 
-const PATHS: Record<Regime, { text: string; link: string; href: string }> = {
+const PATHS: Record<Regime, { text: string; link?: string; href?: string }> = {
   mei: {
     text: 'Sua empresa é MEI.',
     link: 'Veja o caminho do MEI',
@@ -20,6 +20,9 @@ const PATHS: Record<Regime, { text: string; link: string; href: string }> = {
     link: 'Veja o caminho do Lucro Presumido',
     href: '/guia/lucro-presumido',
   },
+  inactive: {
+    text: 'Este CNPJ não está ativo na Receita. Confira o número ou fale com seu contador.',
+  },
 };
 
 const ERRORS: Record<number, string> = {
@@ -30,7 +33,7 @@ const ERRORS: Record<number, string> = {
 const UNAVAILABLE = 'A consulta não está disponível agora. Tente de novo em alguns minutos.';
 
 const isRegime = (value: unknown): value is Regime =>
-  value === 'mei' || value === 'simples' || value === 'other';
+  value === 'mei' || value === 'simples' || value === 'other' || value === 'inactive';
 
 export function mountCnpjCheck(root: HTMLElement): void {
   const input = h('input', {
@@ -76,7 +79,11 @@ export function mountCnpjCheck(root: HTMLElement): void {
         }
         track('guide_cnpj_regime', { result: regime });
         const path = PATHS[regime];
-        show(h('p', {}, path.text, ' ', h('a', { href: path.href }, path.link), '.'));
+        show(
+          path.link && path.href
+            ? h('p', {}, path.text, ' ', h('a', { href: path.href }, path.link), '.')
+            : h('p', {}, path.text),
+        );
       })
       .catch(() => show(h('p', { class: 'nf-text-danger' }, UNAVAILABLE)))
       .finally(() => {

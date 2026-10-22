@@ -46,7 +46,7 @@ export function guideRoutes(
     } catch (error) {
       if (!(error instanceof LookupError)) throw error;
       // A company that is not active is not in the Simples, whatever its old option.
-      if (error.code === 'cnpj_not_active') return { regime: 'other' as const };
+      if (error.code === 'cnpj_not_active') return { regime: 'inactive' as const };
       throw new HttpError(error.code === 'cnpj_not_found' ? 404 : 503, error.code);
     }
   });
