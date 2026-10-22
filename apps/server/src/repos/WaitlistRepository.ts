@@ -3,7 +3,7 @@ import type { AdminContext } from '@notaflow/core';
 import { and, desc, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { waitlistSignups } from '../db/schema';
-import { created, notDeleted, softDelete, touched } from '../db/stamps';
+import { created, notDeleted, removed, touched } from '../db/stamps';
 
 export const WAITLIST_INTERESTS = ['mei', 'lucro_presumido', 'certificate'] as const;
 
@@ -76,7 +76,13 @@ export class WaitlistRepository {
     return totals;
   }
 
+  // The privacy policy promises erasure: the row stays for the audit, the e-mail does not.
   remove(ctx: AdminContext, id: string): boolean {
-    return softDelete(this.db, waitlistSignups, id, ctx);
+    const changed = this.db
+      .update(waitlistSignups)
+      .set({ email: `removed:${id}`, campaign: null, ...removed(ctx) })
+      .where(and(eq(waitlistSignups.id, id), notDeleted(waitlistSignups)))
+      .run().changes;
+    return changed > 0;
   }
 }

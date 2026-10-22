@@ -74,6 +74,30 @@ test('remove then signUp again creates a new row; list and counts skip removed r
   expect(again?.sourcePage).toBe('/q');
 });
 
+test('remove replaces the e-mail with a placeholder and clears the campaign', () => {
+  repo.signUp({ email: 'a@x.com', interests: ['mei'], sourcePage: '/guia/mei', campaign: 'c1' });
+  const id = repo.list(admin)[0]?.id ?? '';
+  expect(repo.remove(admin, id)).toBe(true);
+  const raw = db.$client
+    .prepare('SELECT email, campaign, deleted_at, deleted_by FROM waitlist_signups WHERE id = ?')
+    .get(id) as {
+    email: string;
+    campaign: string | null;
+    deleted_at: number | null;
+    deleted_by: string;
+  };
+  expect(raw.email).toBe(`removed:${id}`);
+  expect(raw.campaign).toBeNull();
+  expect(raw.deleted_at).not.toBeNull();
+  expect(raw.deleted_by).toBe('admin-1');
+  const all = db.$client
+    .prepare("SELECT COUNT(*) AS n FROM waitlist_signups WHERE email = 'a@x.com'")
+    .get() as { n: number };
+  expect(all.n).toBe(0);
+  repo.signUp({ email: 'a@x.com', interests: ['mei'], sourcePage: '/q', campaign: null });
+  expect(repo.list(admin).map((r) => r.email)).toEqual(['a@x.com']);
+});
+
 test('a raw DELETE fails', () => {
   repo.signUp({ email: 'a@x.com', interests: ['mei'], sourcePage: '/guia/mei', campaign: null });
   expect(() => db.$client.prepare('DELETE FROM waitlist_signups').run()).toThrow(

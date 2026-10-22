@@ -20,9 +20,19 @@ export function adminRoutes(app: FastifyInstance, db: Database): void {
   });
 
   app.delete<{ Params: { id: string } }>('/api/admin/waitlist/:id', async (request, reply) => {
-    if (!waitlist.remove(adminContext(request), request.params.id)) {
-      throw new HttpError(404, 'not_found');
-    }
+    db.transaction(() => {
+      if (!waitlist.remove(adminContext(request), request.params.id)) {
+        throw new HttpError(404, 'not_found');
+      }
+      audit.record({
+        userEmail: identityOf(request).email,
+        accountId: null,
+        action: 'waitlist.remove',
+        entity: request.params.id,
+        result: 'ok',
+        detail: 'e-mail anonymized',
+      });
+    });
     return reply.status(204).send();
   });
 

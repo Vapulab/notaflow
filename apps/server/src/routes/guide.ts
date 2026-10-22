@@ -28,12 +28,15 @@ export function guideRoutes(
 ): void {
   const waitlist = new WaitlistRepository(deps.db);
   const cnpjLimit = createRateLimiter({ windowMs: HOUR, max: 30 });
+  // One cap for every visitor: onboarding shares the BrasilAPI quota and must keep working.
+  const cnpjGlobalLimit = createRateLimiter({ windowMs: HOUR, max: 300 });
   const waitlistLimit = createRateLimiter({ windowMs: HOUR, max: 10 });
 
   app.get<{ Params: { cnpj: string } }>('/api/public/cnpj-regime/:cnpj', async (request) => {
     if (!cnpjLimit(visitorIp(request))) throw new HttpError(429, 'too_many_requests');
     const cnpj = request.params.cnpj.replace(/[.\-/\s]/g, '').toUpperCase();
     if (!isValidCnpj(cnpj)) throw new HttpError(400, 'invalid_cnpj');
+    if (!cnpjGlobalLimit('all')) throw new HttpError(503, 'cnpj_lookup_unavailable');
     try {
       const draft = await lookupCnpj(
         cnpj,

@@ -1,6 +1,7 @@
 import { type Dispatcher, getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { seedTenant, seedUser } from '../../test/fixtures';
+import { AuditLog } from '../repos/AuditLog';
 import { createTestApp, ORIGIN, type TestApp } from '../../test/testApp';
 
 const CNPJ = '12345678000195';
@@ -222,6 +223,32 @@ describe('notify-me list', () => {
   });
 });
 
+describe('global CNPJ cap', () => {
+  beforeEach(() => boot());
+
+  test('the 301st lookup in an hour from any IP: 503 cnpj_lookup_unavailable, and no lookup', async () => {
+    brasil(200, brasilBody());
+    for (let i = 0; i < 300; i += 1) {
+      expect((await regime(CNPJ, `198.20.${Math.floor(i / 25)}.${i % 25}`)).statusCode).toBe(200);
+    }
+    const calls = brasilCalls;
+    const response = await regime(CNPJ, '198.21.0.1');
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ error: 'cnpj_lookup_unavailable' });
+    expect(brasilCalls).toBe(calls);
+  });
+
+  test('a request refused per IP does not use the global quota', async () => {
+    brasil(200, brasilBody());
+    for (let i = 0; i < 30; i += 1) await regime(CNPJ);
+    for (let i = 0; i < 40; i += 1) expect((await regime(CNPJ)).statusCode).toBe(429);
+    for (let i = 0; i < 270; i += 1) {
+      expect((await regime(CNPJ, `198.22.${Math.floor(i / 25)}.${i % 25}`)).statusCode).toBe(200);
+    }
+    expect((await regime(CNPJ, '198.23.0.1')).statusCode).toBe(503);
+  });
+});
+
 describe('admin list', () => {
   beforeEach(async () => {
     await boot();
@@ -263,6 +290,8 @@ describe('admin list', () => {
       payload: {},
     });
     expect(removed.statusCode).toBe(204);
+    const entry = new AuditLog(t.db).list().find((e) => e.action === 'waitlist.remove');
+    expect(entry).toMatchObject({ userEmail: 'admin@example.com', entity: id, result: 'ok' });
     const after = await t.app.inject({ method: 'GET', url: '/api/admin/waitlist', headers });
     expect(after.json<{ signups: unknown[] }>().signups).toHaveLength(0);
     const again = await t.app.inject({
