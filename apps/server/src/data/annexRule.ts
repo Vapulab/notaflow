@@ -2,7 +2,8 @@
 // words (Res. CGSN 140, art. 25, §1º), and no CGSN annex links them to CNAEs. They only suggest.
 // Keys are CNAE prefixes (2 to 7 digits).
 const FATOR_R = [
-  // §5º-D: software, web pages, real estate administration, gyms, laboratories, imaging, prostheses.
+  // §5º-D and §5º-B XX: software, web pages, real estate, gyms, laboratories, imaging, prostheses.
+  '3250706',
   '6201501',
   '6201502',
   '6202300',
@@ -12,28 +13,27 @@ const FATOR_R = [
   '8591100',
   '8592901',
   '9313100',
-  // §5º-I VI and VIII: engineering, architecture, surveying, technical tests, research, design, appraisal.
-  '7111100',
-  '7112000',
-  '7119',
-  '7120100',
+  // §5º-B XVIII and §5º-I VI to XII: architecture, engineering, and other intellectual services.
+  '71',
   '72',
-  '7410203',
-  '7410299',
-  // §5º-I V, VII, IX to XI: dispatchers, translation, sales agents, audit, consulting, advertising.
+  '73',
+  '741',
+  '7490',
+  // §5º-I V, VII, IX, X: dispatchers, sales agents, audit, consulting, journalism.
   '5250801',
   '5250802',
   '461',
+  '6391700',
   '6920602',
   '7020400',
-  '731',
-  '7320300',
-  '7490101',
-  '7490104',
+  '9002701',
   // §5º-I II and §5º-M: veterinary, medicine, dentistry, physiotherapy, psychology, and similar.
   '7500100',
   '86',
 ];
+
+// §5º-I XII covers only intellectual services: diving is not one.
+const NOT_INTELLECTUAL = ['7490102'];
 
 // §5º-C: works and landscaping, cleaning and security, and law firms pay the CPP outside the DAS.
 const ANNEX_IV = ['412', '42', '43', '7410202', '8130300', '80111', '8012900', '812', '6911701'];
@@ -45,5 +45,6 @@ export function annexRule(cnaes: string[] | null): AnnexRule | null {
   const main = cnaes?.[0];
   if (!main) return null;
   if (ANNEX_IV.some((prefix) => main.startsWith(prefix))) return 'IV';
+  if (NOT_INTELLECTUAL.includes(main)) return 'III';
   return FATOR_R.some((prefix) => main.startsWith(prefix)) ? 'fator_r' : 'III';
 }

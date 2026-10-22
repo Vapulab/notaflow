@@ -389,3 +389,19 @@ test('the ISS share of the band is the law, even below 2%', async () => {
   expect(response.json()).toMatchObject({ status: 'issued' });
   expect(xmlOf(t, s.a, response.json<{ id: string }>().id)).toContain('<pAliq>1.92</pAliq>');
 });
+
+test('band 6 with the ISS still in the DAS issues with the ISS of band 5 and retains 5%', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const fiscal = await s.call('PUT', `/emitters/${s.emitterId}/fiscal`, {
+    simplesAnnex: 'III',
+    simplesRbt12Cents: 450_000_000,
+    simplesBand6Iss: 'under_sublimit',
+    ibscbsRegime: 'inside_das',
+  });
+  expect(fiscal.json()).toMatchObject({ issRate: 500 });
+  const response = await s.call('POST', '/invoices/new', brazilInvoice(s, { issRetained: true }));
+  expect(response.json()).toMatchObject({ status: 'issued' });
+  const xml = xmlOf(t, s.a, response.json<{ id: string }>().id);
+  expect(xml).toContain('<pAliq>5.00</pAliq>');
+  expect(xml).toContain('<pTotTribSN>24.70</pTotTribSN>');
+});

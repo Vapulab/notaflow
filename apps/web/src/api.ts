@@ -264,6 +264,8 @@ export interface CepAnswer {
 }
 
 export type SimplesAnnex = 'I' | 'II' | 'III' | 'IV' | 'V';
+// Band 6 only: whether this year's revenue passed R$ 3.6 million and the ISS left the DAS.
+export type Band6Iss = 'under_sublimit' | 'over_sublimit' | 'outside';
 
 export interface FiscalConfig {
   simplesAnnex: SimplesAnnex | null;
@@ -271,8 +273,9 @@ export interface FiscalConfig {
   simplesPercent: number | null; // hundredths; the domestic rate
   simplesRbt12Cents: number | null;
   simplesRbt12At: string | null;
+  simplesBand6Iss: Band6Iss | null;
   // The rates of pTotTribSN for the saved revenue; an export leaves out ISS, PIS, and COFINS.
-  // iss: the retained ISS, the ISS share of the band; null in band 6, outside the DAS.
+  // iss: the retained ISS, the ISS share of the band; null where the ISS is outside the DAS.
   rates: { domestic: number; export: number; iss: number | null } | null;
   issRate: number | null; // hundredths
   ibscbsRegime: 'inside_das' | 'regular';

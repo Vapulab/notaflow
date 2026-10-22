@@ -26,7 +26,7 @@ import { HttpError } from '../httpError';
 import type { IssuerFactory } from '../providers/providerFactory';
 import { AuditLog } from '../repos/AuditLog';
 import { CustomerRepository, type CustomerRow } from '../repos/CustomerRepository';
-import { EmitterRepository } from '../repos/EmitterRepository';
+import { EmitterRepository, type FiscalConfig } from '../repos/EmitterRepository';
 import { DPS_NUMBER_TAKEN, InvoiceRepository, isOwnInvoice } from '../repos/InvoiceRepository';
 import { ServiceRepository } from '../repos/ServiceRepository';
 import type { VaultCertificateStore } from '../vault/VaultCertificateStore';
@@ -163,6 +163,7 @@ export class IssueService {
       fiscal?.simplesAnnex && fiscal.simplesRbt12Cents !== null
         ? simplesRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, {
             export: template.service.foreignTrade !== undefined,
+            ...band6Of(fiscal),
           })
         : undefined;
     const pending = this.deps.db.transaction(() => {
@@ -276,7 +277,10 @@ export class IssueService {
     const simplesPercent =
       input.simplesPercent ??
       (fiscal.simplesAnnex && fiscal.simplesRbt12Cents !== null
-        ? simplesRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, { export: abroad })
+        ? simplesRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, {
+            export: abroad,
+            ...band6Of(fiscal),
+          })
         : null);
     if (simplesPercent === null) throw new HttpError(409, 'simples_revenue_missing');
     if (foreign && !BACEN_CURRENCY[foreign.currencyCode]) {
@@ -287,7 +291,7 @@ export class IssueService {
     // The ISS share of the band is the law (CGSN 140, art. 27), even below 2%; a typed rate is not.
     const bandIss =
       fiscal.simplesAnnex && fiscal.simplesRbt12Cents !== null
-        ? simplesIssRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents)
+        ? simplesIssRate(fiscal.simplesAnnex, fiscal.simplesRbt12Cents, band6Of(fiscal))
         : null;
     const fromBand = input.issRate === undefined && bandIss !== null;
     const issRate = input.issRate ?? bandIss ?? fiscal.issRate ?? undefined;
@@ -702,6 +706,11 @@ export class IssueService {
   private now(): Date {
     return this.deps.now ? this.deps.now() : new Date();
   }
+}
+
+// A band 6 config saved before the question has no answer, and keeps the ISS outside the DAS.
+function band6Of(fiscal: FiscalConfig) {
+  return fiscal.simplesBand6Iss ? { band6Iss: fiscal.simplesBand6Iss } : {};
 }
 
 // dhEmi is now minus 60 seconds, so the competence is checked against that date in Brasília.

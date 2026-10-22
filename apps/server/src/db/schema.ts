@@ -1,4 +1,4 @@
-import { SIMPLES_ANNEXES } from '@notaflow/provider-nacional';
+import { BAND6_ISS, SIMPLES_ANNEXES } from '@notaflow/provider-nacional';
 import { sql } from 'drizzle-orm';
 import {
   blob,
@@ -136,6 +136,8 @@ export const emitters = sqliteTable(
     // Gross revenue of the last 12 months (RBT12): the band and the rate of each invoice come from it.
     simplesRbt12Cents: integer('simples_rbt12_cents'),
     simplesRbt12At: integer('simples_rbt12_at', { mode: 'timestamp_ms' }),
+    // Band 6 only: whether the ISS is still in the DAS (CGSN 140, art. 21 III b); null elsewhere.
+    simplesBand6Iss: text('simples_band6_iss', { enum: BAND6_ISS }),
     // The company's CNAEs (JSON list of 7-digit codes), main first; they suggest its services.
     cnaes: text('cnaes'),
     issRate: integer('iss_rate'),

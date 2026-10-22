@@ -331,6 +331,33 @@ test('the fiscal step shows the activity and asks only the revenue and the payro
   });
 });
 
+test('in band 6 the fiscal step asks whether the ISS is still in the DAS', async () => {
+  const calls = stubApi(fiscalRoutes('III'));
+  const user = userEvent.setup();
+  renderWithMe(<OnboardingPage accountId="acc" />, meWith('fiscal'));
+  await user.type(
+    await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)'),
+    '4.500.000,00',
+  );
+  const save = screen.getByRole('button', { name: 'Salvar e continuar' }) as HTMLButtonElement;
+  expect(save.disabled).toBe(true);
+  await user.selectOptions(screen.getByLabelText('ISS na faixa 6'), 'under_sublimit');
+  expect(screen.queryByLabelText('Alíquota de ISS (%)')).toBeNull();
+  await user.click(save);
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/onboarding/fiscal-done`)).toBe(true),
+  );
+  const put = calls.find(
+    (c) => c.url === `${base}/emitters/em1/fiscal` && c.init?.method === 'PUT',
+  );
+  expect(JSON.parse(String(put?.init?.body))).toEqual({
+    simplesAnnex: 'III',
+    simplesRbt12Cents: 450_000_000,
+    simplesBand6Iss: 'under_sublimit',
+    ibscbsRegime: 'inside_das',
+  });
+});
+
 test('a payroll under 28% means Anexo V', async () => {
   const calls = stubApi(fiscalRoutes());
   const user = userEvent.setup();

@@ -283,10 +283,84 @@ test('in band 6 the ISS goes outside the DAS, so its rate is typed', async () =>
   const revenue = await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
   await user.clear(revenue);
   await user.type(revenue, '400000000');
+  await user.selectOptions(await screen.findByLabelText('ISS na faixa 6'), 'outside');
   const iss = await screen.findByLabelText('Alíquota de ISS (%)');
   await user.clear(iss);
   await user.type(iss, '300');
   await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
   await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
-  expect(bodyOf(calls, 'PUT')).toMatchObject({ simplesRbt12Cents: 400_000_000, issRate: 300 });
+  expect(bodyOf(calls, 'PUT')).toMatchObject({
+    simplesRbt12Cents: 400_000_000,
+    simplesBand6Iss: 'outside',
+    issRate: 300,
+  });
+});
+
+// CGSN 140, art. 21 III b: the ISS stays in the DAS while this year's revenue is under R$ 3.6 million.
+test('in band 6 under the sublimit the ISS stays in the DAS and comes from band 5', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/simples-rates`]: (url: string) =>
+        url.includes('band6Iss=under_sublimit')
+          ? { band: 6, domestic: 2470, export: 1581, iss: 500 }
+          : { band: 6, domestic: 1860, export: 1497, iss: null },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  const revenue = await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
+  await user.clear(revenue);
+  await user.type(revenue, '450000000');
+  await screen.findByLabelText('ISS na faixa 6');
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  expect(await screen.findByText(/Informe se o ISS ainda é pago no DAS/)).toBeTruthy();
+  expect(calls.some((c) => c.init?.method === 'PUT')).toBe(false);
+  await user.selectOptions(screen.getByLabelText('ISS na faixa 6'), 'under_sublimit');
+  expect(
+    await screen.findByText(
+      'Faixa 6 · alíquota efetiva 24,70% · exportação 15,81% · ISS retido 5,00%',
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText('Alíquota de ISS (%)')).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'PUT')).toBe(true));
+  expect(bodyOf(calls, 'PUT')).toEqual({
+    simplesAnnex: 'III',
+    simplesRbt12Cents: 450_000_000,
+    simplesBand6Iss: 'under_sublimit',
+    ibscbsRegime: 'inside_das',
+  });
+});
+
+test('a save in band 6 before the rates preview answers still asks where the ISS goes', async () => {
+  // The preview never answers, so only the local band can show the question.
+  const calls = stubApi(routes({ [`${base}/simples-rates`]: () => new Promise(() => {}) }));
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  const revenue = await screen.findByLabelText('Receita bruta dos últimos 12 meses (R$)');
+  await user.clear(revenue);
+  await user.type(revenue, '450000000');
+  expect(screen.getByLabelText('ISS na faixa 6')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
+  expect(await screen.findByText('Informe se o ISS ainda é pago no DAS.')).toBeTruthy();
+  expect(calls.some((c) => c.init?.method === 'PUT')).toBe(false);
+});
+
+test('a band 6 configuration saved before the question asks for the answer', async () => {
+  stubApi(
+    routes({
+      [`${base}/emitters/em1/fiscal`]: {
+        ...fiscal,
+        simplesBand: 6,
+        simplesRbt12Cents: 450_000_000,
+        simplesBand6Iss: null,
+        rates: { domestic: 1860, export: 1497, iss: null },
+        issRate: 300,
+      },
+    }),
+  );
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  expect(
+    await screen.findByText(/o ISS continua no DAS enquanto a receita deste ano/),
+  ).toBeTruthy();
 });

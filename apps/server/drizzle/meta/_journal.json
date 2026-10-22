@@ -141,6 +141,13 @@
       "when": 1792607461401,
       "tag": "0019_bug_report_images",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792622022680,
+      "tag": "0020_simples_band6_iss",
+      "breakpoints": true
     }
   ]
 }

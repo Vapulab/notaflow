@@ -33,9 +33,12 @@ export type {
 export { buildTemplate } from './template/buildTemplate';
 export { percentText } from './rules/simplesBands';
 export {
+  BAND6_ISS,
+  type Band6Iss,
   SIMPLES_ANNEXES,
   type SimplesAnnex,
   simplesBand,
+  simplesBreakdown,
   simplesIssRate,
   simplesRate,
 } from './rules/simplesRates';

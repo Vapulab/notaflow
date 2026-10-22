@@ -27,7 +27,7 @@ const band = (index: number, rate: number, deductionReais: number, share: Share)
   return { upTo, rate, deduction: deductionReais * 100, share };
 };
 
-// Band 6 has no ICMS or ISS share: above R$ 3.6 million they leave the DAS (art. 13-A).
+// Band 6 prints no ICMS or ISS share (art. 13-A); simplesBreakdown adds the ISS while it stays in the DAS.
 const TABLES: Record<SimplesAnnex, Band[]> = {
   I: [
     band(0, 400, 0, { cofins: 1274, pis: 276, icms: 3400 }),
@@ -73,12 +73,29 @@ const TABLES: Record<SimplesAnnex, Band[]> = {
 };
 
 // Band 5 of Anexos III and IV: the ISS is at most 5%; above the threshold the rest is split like this.
+// Anexo V prints no cap: its band 5 maximum (21.275%) stays under the threshold, so only band 6 uses it.
 const BAND5_CAP: Partial<Record<SimplesAnnex, { threshold: number; cofins: number; pis: number }>> =
   {
     III: { threshold: 14.92537, cofins: 0.1928, pis: 0.0418 },
     IV: { threshold: 12.5, cofins: 0.3013, pis: 0.0654 },
+    V: { threshold: 5 / 0.235, cofins: 14.1 / 76.5, pis: 3.05 / 76.5 },
   };
 const ISS_CAP = 5;
+const SUBLIMIT = 360_000_000;
+
+// Where a band 6 ISS goes (CGSN 140, art. 21 III b and art. 24 I; LC 123, art. 20 §1º and §1º-A).
+export const BAND6_ISS = [
+  'under_sublimit', // neither this year's nor last year's revenue passed R$ 3.6 million: in the DAS
+  'over_sublimit', // this year's passed it; the ISS leaves the DAS next month or in January
+  'outside', // last year's passed it, or the ISS already left this year: to the municipality
+] as const;
+export type Band6Iss = (typeof BAND6_ISS)[number];
+
+export interface SimplesOptions {
+  export: boolean;
+  // Only band 6 reads it; without it, the ISS is outside the DAS.
+  band6Iss?: Band6Iss;
+}
 
 // The band of a gross revenue of the last 12 months (RBT12), or null above the Simples limit.
 export function simplesBand(rbt12Cents: number): number | null {
@@ -86,46 +103,73 @@ export function simplesBand(rbt12Cents: number): number | null {
   return index === -1 ? null : index + 1;
 }
 
-function effectiveRate(annex: SimplesAnnex, rbt12Cents: number) {
-  const number = simplesBand(rbt12Cents);
+function bandRow(annex: SimplesAnnex, number: number | null): Band {
   const row = number === null ? undefined : TABLES[annex][number - 1];
-  if (number === null || !row)
+  if (!row)
     throw new RangeError('A revenue above R$ 4,800,000.00 is outside the Simples Nacional.');
-  // A company with no revenue yet pays the nominal rate of band 1.
-  const effective =
-    rbt12Cents === 0
-      ? row.rate / 100
-      : (((rbt12Cents * row.rate) / 10_000 - row.deduction) / rbt12Cents) * 100;
+  return row;
+}
+
+// A company with no revenue yet pays the nominal rate of band 1.
+function effectivePercent(row: Band, rbt12Cents: number): number {
+  return rbt12Cents === 0
+    ? row.rate / 100
+    : (((rbt12Cents * row.rate) / 10_000 - row.deduction) / rbt12Cents) * 100;
+}
+
+const exportShare = ({ cofins, pis, iss = 0, icms = 0, ipi = 0 }: Share) =>
+  (cofins + pis + iss + icms + ipi) / 10_000;
+
+// The Simples percent (an export leaves out Cofins, PIS, ISS, ICMS, IPI) and the ISS in the DAS, or null.
+export function simplesBreakdown(
+  annex: SimplesAnnex,
+  rbt12Cents: number,
+  options: SimplesOptions,
+): { percent: number; iss: number | null } {
+  const number = simplesBand(rbt12Cents);
+  const row = bandRow(annex, number);
+  const effective = effectivePercent(row, rbt12Cents);
   const cap = BAND5_CAP[annex];
+  const band5 = bandRow(annex, 5);
+  const band6Iss = options.band6Iss ?? 'outside';
+  if (number === 6 && band6Iss !== 'outside' && band5.share.iss !== undefined && cap) {
+    // The band 5 formula on the RBT12, or on the sublimit for the revenue above it.
+    const base = band6Iss === 'under_sublimit' ? rbt12Cents : SUBLIMIT;
+    const fullIss = (effectivePercent(band5, base) * band5.share.iss) / 10_000;
+    const iss = Math.min(fullIss, ISS_CAP);
+    const excess = fullIss - iss;
+    if (!options.export) return { percent: effective + fullIss, iss };
+    const federal = effective * (1 - exportShare(row.share));
+    return { percent: federal + excess * (1 - cap.cofins - cap.pis), iss };
+  }
   const capped = number === 5 && cap !== undefined && effective > cap.threshold ? cap : null;
-  return { row, effective, capped };
+  const iss = row.share.iss === undefined ? null : (effective * row.share.iss) / 10_000;
+  if (capped) {
+    const rest = effective - ISS_CAP;
+    return {
+      percent: options.export ? rest - rest * (capped.cofins + capped.pis) : effective,
+      iss: ISS_CAP,
+    };
+  }
+  return { percent: options.export ? effective * (1 - exportShare(row.share)) : effective, iss };
 }
 
 // The retained ISS rate in hundredths (CGSN 140, art. 27): the effective ISS share of the band.
-// Null when the DAS has no ISS: Anexos I and II, and band 6, where the municipal rate applies.
-export function simplesIssRate(annex: SimplesAnnex, rbt12Cents: number): number | null {
-  const { row, effective, capped } = effectiveRate(annex, rbt12Cents);
-  if (row.share.iss === undefined) return null;
-  if (capped) return ISS_CAP * 100;
-  return Math.round((effective * row.share.iss) / 100 + 1e-9);
+// Null when the DAS has no ISS: Anexos I and II, and band 6 once the ISS leaves the DAS.
+export function simplesIssRate(
+  annex: SimplesAnnex,
+  rbt12Cents: number,
+  options: { band6Iss?: Band6Iss } = {},
+): number | null {
+  const { iss } = simplesBreakdown(annex, rbt12Cents, { ...options, export: false });
+  return iss === null ? null : Math.round(iss * 100 + 1e-9);
 }
 
 // The rate for pTotTribSN, in hundredths: the effective rate, without the shares an export leaves out.
 export function simplesRate(
   annex: SimplesAnnex,
   rbt12Cents: number,
-  options: { export: boolean },
+  options: SimplesOptions,
 ): number {
-  const { row, effective, capped } = effectiveRate(annex, rbt12Cents);
-  let percent = effective;
-  if (options.export) {
-    if (capped) {
-      const rest = effective - ISS_CAP;
-      percent = rest - rest * (capped.cofins + capped.pis);
-    } else {
-      const { cofins, pis, iss = 0, icms = 0, ipi = 0 } = row.share;
-      percent = effective * (1 - (cofins + pis + iss + icms + ipi) / 10_000);
-    }
-  }
-  return Math.round(percent * 100 + 1e-9);
+  return Math.round(simplesBreakdown(annex, rbt12Cents, options).percent * 100 + 1e-9);
 }
