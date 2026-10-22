@@ -76,3 +76,10 @@ test('a CNPJ with the wrong length is refused before any call', async () => {
   expect(fetch).not.toHaveBeenCalled();
   expect(text(root)).toContain('CNPJ inválido');
 });
+
+test('a network failure says the lookup is not available', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+  const root = setup();
+  await check(root, '12345678000195');
+  expect(text(root)).toContain('A consulta não está disponível agora.');
+});

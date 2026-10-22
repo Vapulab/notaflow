@@ -12,6 +12,7 @@ export interface TurnstileApi {
     },
   ): string;
   remove(widgetId: string): void;
+  reset(widgetId: string): void;
 }
 
 declare global {

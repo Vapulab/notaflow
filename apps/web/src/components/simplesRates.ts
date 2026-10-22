@@ -32,9 +32,7 @@ export function simplesBand(revenueCents: number | null): number | null {
   return index === -1 ? null : index + 1;
 }
 
-export function isBand6Iss(value: string): value is Band6Iss {
-  return value === 'under_sublimit' || value === 'over_sublimit' || value === 'outside';
-}
+export { isBand6Iss } from './band6IssText';
 
 // Anexos I and II have no ISS in the DAS, so only Anexos III, IV, and V ask in band 6.
 export function asksBand6Iss(annex: SimplesAnnex | null, band: number | null): boolean {

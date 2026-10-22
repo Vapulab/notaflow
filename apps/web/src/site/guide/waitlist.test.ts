@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { loadTurnstile } from '../../auth/turnstileScript';
 import { resetPublicConfig } from '../publicConfig';
 import { mountWaitlist } from './waitlist';
+
+vi.mock('../../auth/turnstileScript', () => ({ loadTurnstile: vi.fn() }));
 
 const text = (element: Element) => (element.textContent ?? '').replace(/\s+/g, ' ');
 
@@ -13,11 +16,11 @@ function setup(interest = 'mei') {
   return form;
 }
 
-function stubFetch(status: number, body: unknown = null) {
+function stubFetch(status: number, body: unknown = null, siteKey: string | null = null) {
   const fetch = vi.fn((url: string, _init?: RequestInit) =>
     Promise.resolve(
       url === '/api/public/config'
-        ? new Response(JSON.stringify({ turnstileSiteKey: null }), { status: 200 })
+        ? new Response(JSON.stringify({ turnstileSiteKey: siteKey }), { status: 200 })
         : new Response(body === null ? null : JSON.stringify(body), { status }),
     ),
   );
@@ -86,4 +89,34 @@ test('a form with no interest checked does not post', async () => {
   await submit(form, 'ana@example.com');
   expect(fetch.mock.calls.some(([url]) => url === '/api/public/waitlist')).toBe(false);
   expect(text(form)).toContain('Escolha pelo menos um aviso.');
+});
+
+test('with a site key, the token goes in the body and the widget resets after the answer', async () => {
+  const reset = vi.fn();
+  vi.mocked(loadTurnstile).mockResolvedValue({
+    render: (_element, options) => {
+      options.callback('token-1');
+      return 'widget-1';
+    },
+    remove: vi.fn(),
+    reset,
+  });
+  const fetch = stubFetch(204, null, 'site-key');
+  const form = setup('mei');
+  await vi.waitFor(() => expect(loadTurnstile).toHaveBeenCalled());
+  await Promise.resolve();
+  await submit(form, 'ana@example.com');
+  const post = fetch.mock.calls.find(([url]) => url === '/api/public/waitlist');
+  expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ turnstileToken: 'token-1' });
+  await vi.waitFor(() => expect(reset).toHaveBeenCalledWith('widget-1'));
+  expect(text(form)).toContain('quando o NotaFlow estiver preparado');
+});
+
+test('a Turnstile script that fails to load shows an error instead of waiting', async () => {
+  vi.mocked(loadTurnstile).mockRejectedValue(new Error('blocked'));
+  const fetch = stubFetch(204, null, 'site-key');
+  const form = setup('mei');
+  await vi.waitFor(() => expect(text(form)).toContain('A verificação contra robôs não carregou.'));
+  await submit(form, 'ana@example.com');
+  expect(fetch.mock.calls.some(([url]) => url === '/api/public/waitlist')).toBe(false);
 });

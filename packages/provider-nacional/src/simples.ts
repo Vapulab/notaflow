@@ -1,7 +1,10 @@
 // The browser entry: pure rules only, so the bundle pulls no HTTP client and no signer.
 export { type AnnexRule, annexRule } from './rules/annexRule';
 export {
+  addMonths,
   fatorR,
+  monthIndex,
+  monthName,
   rbt12Window,
   type RetainedIss,
   type RevenueKind,

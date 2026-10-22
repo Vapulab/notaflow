@@ -104,7 +104,11 @@ export function buildCalculatorForm() {
       { type: 'button', class: secondary(), 'data-add-activity': '' },
       'Adicionar atividade',
     ),
-    paste: h('button', { type: 'button', class: secondary('sm') }, 'Preencher com a lista'),
+    paste: h(
+      'button',
+      { type: 'button', class: secondary('sm'), 'data-paste': '' },
+      'Preencher com a lista',
+    ),
   };
   parts.fatorStep.hidden = true;
   const retainedRules = text.RETAINED_OPTIONS.map(([value, label]) =>
@@ -143,11 +147,15 @@ export function buildCalculatorForm() {
       'rbt12',
       '3. A receita dos últimos 12 meses (RBT12)',
       h('p', {}, text.RBT12_INTRO),
-      labeled('month', 'Mês do cálculo', textInput('month', { type: 'month' })),
+      labeled(
+        'month',
+        'Mês do cálculo',
+        textInput('month', { type: 'month', placeholder: 'AAAA-MM' }),
+      ),
       labeled(
         'activity-start',
         'Início de atividade (opcional)',
-        textInput('activity-start', { type: 'month' }),
+        textInput('activity-start', { type: 'month', placeholder: 'AAAA-MM' }),
         text.START_HINT,
       ),
       parts.history,

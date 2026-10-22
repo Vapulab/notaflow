@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import * as simples from '../simples';
-import { fatorR, rbt12Window, simplesMonth } from './simplesMonth';
+import {
+  addMonths,
+  fatorR,
+  monthIndex,
+  monthName,
+  rbt12Window,
+  simplesMonth,
+} from './simplesMonth';
 import { BAND6_ISS, SIMPLES_ANNEXES, simplesRate, simplesShares } from './simplesRates';
 
 const reais = (value: number) => Math.round(value * 100);
@@ -526,12 +533,15 @@ describe('simplesMonth', () => {
   });
 });
 
-test('the browser entry exports the calculation and the CNAE hint, nothing more', () => {
+test('the browser entry exports the calculation, the month helpers, and the CNAE hint', () => {
   expect(Object.keys(simples).sort()).toEqual([
     'BAND6_ISS',
     'SIMPLES_ANNEXES',
+    'addMonths',
     'annexRule',
     'fatorR',
+    'monthIndex',
+    'monthName',
     'rbt12Window',
     'simplesBand',
     'simplesBreakdown',
@@ -540,4 +550,11 @@ test('the browser entry exports the calculation and the CNAE hint, nothing more'
     'simplesRate',
     'simplesShares',
   ]);
+});
+
+test('the month helpers count across years', () => {
+  expect(addMonths('2026-01', -1)).toBe('2025-12');
+  expect(addMonths('2025-12', 13)).toBe('2027-01');
+  expect(monthName(monthIndex('2026-09'))).toBe('2026-09');
+  expect(() => monthIndex('2026-13')).toThrow(RangeError);
 });

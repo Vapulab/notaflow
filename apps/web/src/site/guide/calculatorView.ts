@@ -106,6 +106,18 @@ export function formula(rbt12Cents: number, shares: SimplesShares): string {
   return `(${base} × ${percent(shares.nominalRate)} − ${formatCents(shares.deductionCents)}) ÷ ${base} = ${percent(effective)}`;
 }
 
+// The PGDAS-D rounds each tax to the cent, so the sum can differ from rate × revenue by a cent or two.
+function roundingNote(dasCents: number, revenueCents: number, rate: number): HTMLElement | null {
+  const plain = Math.round((revenueCents * rate) / 10_000);
+  if (dasCents === plain) return null;
+  const gap = formatCents(Math.abs(dasCents - plain));
+  return h(
+    'p',
+    { class: 'text-sm text-muted' },
+    `A soma fica ${gap} ${dasCents > plain ? 'acima' : 'abaixo'} de ${percent(rate)} × ${formatCents(revenueCents)} porque o PGDAS-D arredonda cada imposto ao centavo (manual do PGDAS-D, item 12).`,
+  );
+}
+
 export function renderLines(month: SimplesMonth, views: LineView[]): HTMLElement[] {
   return month.lines.map((line, index) => {
     const view = views[index];
@@ -140,6 +152,7 @@ export function renderLines(month: SimplesMonth, views: LineView[]): HTMLElement
         ),
       ),
       h('p', { class: 'font-semibold' }, `DAS desta receita: ${formatCents(line.dasCents)}`),
+      roundingNote(line.dasCents, line.revenueCents, line.rate),
       line.retainedIss
         ? h(
             'p',
@@ -164,7 +177,7 @@ export const inputClasses = `${INPUT_CLASSES} w-full`;
 
 type Window = Parameters<typeof text.windowText>[0];
 
-export function renderResult(input: {
+export interface ResultView {
   domestic: Window;
   foreign: Window | null;
   fator: {
@@ -176,8 +189,13 @@ export function renderResult(input: {
   month: SimplesMonth;
   views: LineView[];
   todayCents: number | null;
-  showMonth: (month: string) => string;
-}): HTMLElement[] {
+  // Both the DAS and the rate were typed: the comparison uses the DAS.
+  bothCompared: boolean;
+}
+
+export const showMonth = (month: string) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;
+
+export function renderResult(input: ResultView): HTMLElement[] {
   const { fator, month, todayCents } = input;
   const total = formatCents(month.totalCents);
   const difference = todayCents === null ? 0 : todayCents - month.totalCents;
@@ -187,13 +205,10 @@ export function renderResult(input: {
       : `Diferença: ${formatCents(Math.abs(difference))} ${difference > 0 ? 'a mais' : 'a menos'} do que o cálculo.`;
   return [
     h('h2', {}, 'O seu DAS do mês'),
-    h('p', {}, text.windowText(input.domestic, 'Receita dos 12 meses', input.showMonth)),
+    h('p', {}, text.windowText(input.domestic, 'Receita dos 12 meses', showMonth)),
+    input.domestic.rbt12Cents === 0 ? h('p', {}, text.ZERO_RBT12) : h('span'),
     input.foreign
-      ? h(
-          'p',
-          {},
-          text.windowText(input.foreign, 'Receita de exportação dos 12 meses', input.showMonth),
-        )
+      ? h('p', {}, text.windowText(input.foreign, 'Receita de exportação dos 12 meses', showMonth))
       : h('span'),
     fator
       ? h(
@@ -209,6 +224,7 @@ export function renderResult(input: {
       ? []
       : [
           h('h3', {}, 'Comparação'),
+          input.bothCompared ? h('p', {}, text.BOTH_COMPARED) : h('span'),
           h(
             'p',
             {},

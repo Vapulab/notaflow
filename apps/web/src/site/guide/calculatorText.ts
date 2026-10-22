@@ -54,7 +54,12 @@ export const UNDECIDED_SHORT = 'Ainda não dá para saber o Anexo: responda a to
 export const UNDECIDED =
   'Suas respostas não decidem o Anexo, e a calculadora não adivinha. Responda a todas as perguntas, ou leve a dúvida ao seu contador.';
 export const OUT_OF_SCOPE =
-  'Comunicação e transporte intermunicipal ou interestadual de cargas pagam o ICMS dentro do Simples (LC 123, art. 18 §5º-E). A calculadora não cobre esses serviços.';
+  'Comunicação e transporte intermunicipal ou interestadual de cargas ou de passageiros pagam o ICMS dentro do Simples (LC 123, art. 18 §5º-E). A calculadora não cobre esses serviços.';
+export const LABOR =
+  'Ceder mão de obra fora das atividades do Anexo IV exclui a empresa do Simples (IN RFB 2.110/2022, art. 167, parágrafo único). Fale com seu contador.';
+export const ZERO_RBT12 =
+  'Nenhuma receita nos meses anteriores: a receita dos 12 meses é R$ 0,00 e conta como R$ 1,00 (Res. CGSN 140, art. 21, parágrafo único).';
+export const BOTH_COMPARED = 'Você informou o DAS e a alíquota: a comparação usa o valor do DAS.';
 export const EXIT =
   'Acima de R$ 4,8 milhões, a empresa sai do Simples Nacional (LC 123, art. 3º II e §9º). A calculadora não calcula esse caso: fale com seu contador.';
 export const OVER_SUBLIMIT =
@@ -67,7 +72,7 @@ export const WARNINGS = {
   band6:
     'A receita dos 12 meses está na faixa 6, acima do sublimite de R$ 3,6 milhões. Onde fica o ISS depende da receita do ano (LC 123, art. 13-A e art. 20; Res. CGSN 140, art. 21 III b e art. 24). Confirme com seu contador.',
   iss_cap:
-    'Na faixa 5, a parte do ISS passou de 5% e ficou em 5%. A diferença foi para os tributos federais da mesma faixa (LC 123, art. 18 §1º-B I). Confirme com seu contador.',
+    'Pela fórmula da faixa 5, a parte do ISS passaria de 5%, e ela fica em 5%. A diferença vai para os tributos federais da mesma faixa (LC 123, art. 18 §1º-B I; Res. CGSN 140, art. 21 III b). Confirme com seu contador.',
 } as const;
 export const COMPARE_NEUTRAL =
   'A diferença pode ter um motivo, como uma atividade em outro Anexo. Leve este cálculo ao seu contador.';

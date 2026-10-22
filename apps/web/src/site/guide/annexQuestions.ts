@@ -9,8 +9,8 @@ export interface AnnexQuestion {
 export const ANNEX_QUESTIONS: AnnexQuestion[] = [
   {
     id: 'icms_service',
-    text: 'É serviço de comunicação ou de transporte intermunicipal ou interestadual de cargas?',
-    help: 'Esses serviços pagam o ICMS dentro do Simples, e não o ISS. Esta calculadora não cobre esse caso.',
+    text: 'É serviço de comunicação, ou de transporte intermunicipal ou interestadual de cargas ou de passageiros?',
+    help: 'Esses serviços, também o transporte fluvial, pagam o ICMS dentro do Simples, e não o ISS. Esta calculadora não cobre esse caso.',
     law: 'LC 123, art. 18 §5º-E',
   },
   {
@@ -22,12 +22,12 @@ export const ANNEX_QUESTIONS: AnnexQuestion[] = [
   {
     id: 'labor',
     text: 'Você cede mão de obra ao cliente?',
-    help: 'Ceder mão de obra é colocar pessoas da sua empresa à disposição do cliente, para trabalhar no local dele e sob as ordens dele. Nas atividades do Anexo IV isso não muda o Anexo.',
-    law: 'LC 123, art. 18 §5º-C',
+    help: 'Ceder mão de obra é colocar pessoas da sua empresa à disposição do cliente, para trabalhar no local dele e sob as ordens dele. Só as atividades do Anexo IV podem ceder mão de obra no Simples.',
+    law: 'IN RFB 2.110/2022, arts. 166 e 167',
   },
   {
     id: 'fator_r_listed',
-    text: 'É uma destas atividades: fisioterapia, arquitetura e urbanismo, medicina, enfermagem, odontologia, psicologia, fonoaudiologia, nutrição, administração ou locação de imóveis de terceiros, academia, desenvolvimento ou licença de software, criação de sites, montagem de estandes, laboratório de análises, exames de imagem ou prótese?',
+    text: 'É uma destas atividades: fisioterapia, arquitetura e urbanismo, medicina, enfermagem, odontologia, psicologia, psicanálise, terapia ocupacional, acupuntura, podologia, fonoaudiologia, clínica de nutrição ou de vacinação, banco de leite, administração ou locação de imóveis de terceiros, academia, desenvolvimento ou licença de software, criação de sites, montagem de estandes, laboratório de análises, exames de imagem ou prótese?',
     help: 'Essas atividades ficam no Anexo III quando a folha de salários é de 28% da receita ou mais, e no Anexo V quando é menor. É o Fator R.',
     law: 'LC 123, art. 18 §5º-B XVI, XVIII a XXI, §5º-D e §5º-M',
   },
@@ -46,8 +46,8 @@ export const ANNEX_QUESTIONS: AnnexQuestion[] = [
 ];
 
 export type AnnexAnswer =
-  | { result: 'III' | 'IV' | 'V' | 'fator_r'; law: string }
-  | { result: 'out_of_scope'; law: string }
+  | { result: 'III' | 'IV' | 'V' | 'fator_r'; law: string; note?: string }
+  | { result: 'out_of_scope'; reason: 'icms_service' | 'labor'; law: string }
   | { result: 'undecided' };
 
 const lawOf = (id: string) => ANNEX_QUESTIONS.find((question) => question.id === id)?.law ?? '';
@@ -62,8 +62,14 @@ export function annexFromAnswers(answers: Record<string, boolean | undefined>): 
   if (answers.icms_service)
     return named.length > 0
       ? { result: 'undecided' }
-      : { result: 'out_of_scope', law: lawOf('icms_service') };
-  if (answers.labor && !answers.annex_iv) return { result: 'undecided' };
+      : { result: 'out_of_scope', reason: 'icms_service', law: lawOf('icms_service') };
+  // IN RFB 2.110/2022, art. 167, sole paragraph: labor assignment outside Anexo IV excludes the company.
+  if (answers.labor && !answers.annex_iv)
+    return {
+      result: 'out_of_scope',
+      reason: 'labor',
+      law: 'IN RFB 2.110/2022, art. 167, parágrafo único',
+    };
   const [only, ...others] = named;
   if (others.length > 0) return { result: 'undecided' };
   if (only === 'annex_iv') return { result: 'IV', law: lawOf('annex_iv') };
@@ -72,6 +78,7 @@ export function annexFromAnswers(answers: Record<string, boolean | undefined>): 
   if (answers.intellectual) return { result: 'fator_r', law: lawOf('intellectual') };
   return {
     result: 'III',
-    law: 'LC 123, Anexo III (serviços não relacionados no art. 18 §5º-C) e art. 18 §5º-I XII',
+    law: 'LC 123, art. 18 §5º-F e Anexo III',
+    note: 'Se a sua atividade é intelectual ou técnica, responda Sim na última pergunta.',
   };
 }

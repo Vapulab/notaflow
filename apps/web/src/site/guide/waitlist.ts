@@ -1,6 +1,6 @@
 import { track } from '../../analytics/analytics';
 import { campaignOf } from '../../analytics/source';
-import { loadTurnstile } from '../../auth/turnstileScript';
+import { loadTurnstile, type TurnstileApi } from '../../auth/turnstileScript';
 import { buttonClasses, INPUT_CLASSES, LABEL_CLASSES } from '../../ui/classes';
 import { publicConfig } from '../publicConfig';
 import { h, TOO_MANY } from './dom';
@@ -16,6 +16,8 @@ const ERRORS: Record<number, string> = {
   403: 'Não conseguimos confirmar o envio. Recarregue a página e tente de novo.',
   429: TOO_MANY,
 };
+const CAPTCHA_FAILED =
+  'A verificação contra robôs não carregou. Recarregue a página ou tente de novo mais tarde.';
 const FAILED = 'Não foi possível enviar agora. Tente de novo mais tarde.';
 
 // One notify-me form per page; the page's own interest comes checked.
@@ -61,28 +63,40 @@ export function mountWaitlist(form: HTMLFormElement): void {
     status,
   );
 
+  const show = (text: string, error: boolean) =>
+    status.replaceChildren(h('p', { class: error ? 'nf-text-danger' : '' }, text));
+
   let token: string | null = null;
   let siteKey: string | null = null;
+  let widget: { api: TurnstileApi; id: string } | null = null;
+  let captchaFailed = false;
   void publicConfig().then((config) => {
     siteKey = config?.turnstileSiteKey ?? null;
     if (!siteKey) return;
     const key = siteKey;
     loadTurnstile().then(
-      (api) =>
-        api.render(captcha, {
+      (api) => {
+        const id = api.render(captcha, {
           sitekey: key,
           callback: (value) => (token = value),
           'expired-callback': () => (token = null),
           'error-callback': () => (token = null),
           theme: 'auto',
           language: 'pt-br',
-        }),
-      () => (token = null),
+        });
+        widget = { api, id };
+      },
+      () => {
+        captchaFailed = true;
+        show(CAPTCHA_FAILED, true);
+      },
     );
   });
-
-  const show = (text: string, error: boolean) =>
-    status.replaceChildren(h('p', { class: error ? 'nf-text-danger' : '' }, text));
+  // A token serves one request: after any answer, the widget gives a new one.
+  const resetCaptcha = () => {
+    token = null;
+    if (widget) widget.api.reset(widget.id);
+  };
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -93,6 +107,7 @@ export function mountWaitlist(form: HTMLFormElement): void {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
       return show('Informe um e-mail válido.', true);
     if (interests.length === 0) return show('Escolha pelo menos um aviso.', true);
+    if (captchaFailed) return show(CAPTCHA_FAILED, true);
     if (siteKey && !token) return show('Confirme que você não é um robô.', true);
     const campaign = campaignOf(window.location.search);
     const body = {
@@ -115,10 +130,11 @@ export function mountWaitlist(form: HTMLFormElement): void {
           interests: interests.join(','),
           page: window.location.pathname,
         });
-        show('Pronto! Avisamos você por e-mail quando estiver pronto.', false);
+        show('Pronto! Avisamos você por e-mail quando o NotaFlow estiver preparado.', false);
       })
       .catch(() => show(FAILED, true))
       .finally(() => {
+        resetCaptcha();
         button.disabled = false;
       });
   });

@@ -24,14 +24,16 @@ const LEAVES_OUT: Record<RevenueKind, readonly SimplesTax[]> = {
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
-function monthIndex(month: string): number {
+export function monthIndex(month: string): number {
   const match = MONTH.exec(month);
   if (!match) throw new RangeError(`Not a YYYY-MM month: ${month}`);
   return Number(match[1]) * 12 + Number(match[2]) - 1;
 }
 
-const monthName = (index: number) =>
+export const monthName = (index: number) =>
   `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+
+export const addMonths = (month: string, count: number) => monthName(monthIndex(month) + count);
 
 // CGSN 140 art. 22; a missing month counts as zero; it also annualizes the Fator R payroll (art. 26 §4º).
 export function rbt12Window(input: {

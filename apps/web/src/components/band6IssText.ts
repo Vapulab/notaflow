@@ -20,3 +20,7 @@ export const BAND6_ISS_OPTIONS: [Band6Iss, string][] = [
     'Fora do DAS: a receita do ano passado passou de R$ 3,6 milhões, ou o ISS já saiu do DAS neste ano',
   ],
 ];
+
+export function isBand6Iss(value: string): value is Band6Iss {
+  return value === 'under_sublimit' || value === 'over_sublimit' || value === 'outside';
+}
