@@ -53,6 +53,9 @@ importers:
       '@notaflow/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@notaflow/danfse-pdf':
+        specifier: workspace:*
+        version: link:../../packages/danfse-pdf
       '@notaflow/provider-nacional':
         specifier: workspace:*
         version: link:../../packages/provider-nacional
