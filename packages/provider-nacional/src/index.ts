@@ -10,7 +10,15 @@ export {
 } from './xml/formatters';
 export { parseEventXml } from './parse/parseEventXml';
 export { parseNfseXml } from './parse/parseNfseXml';
-export { NfseParseError } from './xml/readXml';
+export {
+  child,
+  childElements,
+  NfseParseError,
+  parseXmlRoot,
+  requiredChild,
+  requiredText,
+  text,
+} from './xml/readXml';
 export { buildCancelEventXml } from './events/buildCancelEventXml';
 export type { CancelEventInput, CancelReason } from './events/buildCancelEventXml';
 export { createMtlsDispatcher } from './http/createMtlsDispatcher';
