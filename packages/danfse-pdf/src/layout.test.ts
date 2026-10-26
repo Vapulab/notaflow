@@ -17,3 +17,6 @@ test('the identification block matches NT 008 item 2.4.5', () => {
   expect(FIELDS.find((f) => f.key === 'accessKey')).toMatchObject({ x: 0.3, y: 1.48, width: 15.3, height: 0.77, maxChars: 50 });
   expect(FIELDS.find((f) => f.key === 'nfseNumber')).toMatchObject({ x: 0.3, y: 2.27, width: 5.09, maxChars: 13 });
 });
+test('the header municipality keeps the NT 37 character size', () => {
+  expect(FIELDS.find((f) => f.key === 'municipality')).toMatchObject({ x: 15.62, y: 0.3, maxChars: 37 });
+});

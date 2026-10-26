@@ -26,7 +26,7 @@ const ROWS = [
   // Header: the municipality text is "Município: name / UF" and is hidden when cTribNac is 99
   ['logo', 'header', 'Logomarca da NFSe', '', 0.49, 0.44, 4.0, 0.85],
   ['documentTitle', 'header', 'Documento Auxiliar da NFS-e', '', 5.41, 0.3, 10.19, 1.16],
-  ['municipality', 'header', 'Município', 'NFSe/infNFSe/ + NFSe/infNFSe/emit/enderNac/ xLocEmi + UF', 15.62, 0.3, 5.09, 0.64],
+  ['municipality', 'header', 'Município', 'NFSe/infNFSe/ + NFSe/infNFSe/emit/enderNac/ xLocEmi + UF', 15.62, 0.3, 5.09, 0.64, 37],
   ['generatorEnvironment', 'header', 'Ambiente Gerador', 'NFSe/infNFSe/ ambGer', 15.62, 0.97, 5.09, 0.24, 1],
   ['environmentType', 'header', 'Tipo de Ambiente', 'NFSe/infNFSe/DPS/infDPS/ tpAmb', 15.62, 1.22, 5.09, 0.24, 1],
 
