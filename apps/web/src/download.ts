@@ -1,5 +1,4 @@
 import { ApiError } from './api';
-import { ERROR_TEXT, errorText } from './components/Layout';
 
 // Fetches a file from the API and hands it to the browser, so an API error reaches the page.
 export async function downloadFile(url: string): Promise<void> {
@@ -20,12 +19,4 @@ export async function downloadFile(url: string): Promise<void> {
   link.download = name;
   link.click();
   URL.revokeObjectURL(href);
-}
-
-// Any 5xx on the PDF download is the ADN not rendering it, also when a proxy replaced our body.
-export function danfseErrorText(error: unknown): string {
-  if (error instanceof ApiError && error.status >= 500) {
-    return ERROR_TEXT.danfse_unavailable ?? errorText(error);
-  }
-  return errorText(error);
 }

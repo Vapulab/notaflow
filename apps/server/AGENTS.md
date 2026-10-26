@@ -11,6 +11,8 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 - Tests: `test/testApp.ts` builds the app on an in-memory database, logs in with `t.as(email)` (a real session cookie), collects sent e-mail in `t.mail`, and starts the fake national system
 - Local run: copy `.env.example` to `.env.local`, then `pnpm fake:nacional`, `pnpm seed:admin <email> <name>`, and `pnpm dev:server`
 
+- DANFSe download: `GET .../invoices/:invoiceId/danfse` in `src/routes/invoices.ts` draws the PDF from the stored XML with `@notaflow/danfse-pdf`; it never calls the ADN
+
 ## Documentation Index
 
 - [Tenancy](../../docs/ENGINEERING/ARCHITECTURE/TENANCY.md) - accounts, roles, guards, and the route sweep

@@ -12,6 +12,7 @@ flowchart TB
     sync["<b>Sync service and scheduler</b><br/><i>[Component: sync/*]</i><br/>Reads each emitter's documents from the ADN every 30 minutes, with a cursor per environment."]
     vault["<b>Certificate vault</b><br/><i>[Component: vault/*]</i><br/>AES-256-GCM envelope: a data key per certificate, wrapped by the master key; a replaced key is destroyed."]
     provider["<b>National provider</b><br/><i>[Component: packages/provider-nacional, signer-node]</i><br/>DPS and event XML, XSD-checked; XML signature; Sefin and ADN client over mTLS."]
+    danfse["<b>DANFSe renderer</b><br/><i>[Component: packages/danfse-pdf, pdf-lib]</i><br/>Draws the DANFSe PDF from the stored invoice XML, in the NT 008 layout. No call to the ADN."]
     repos["<b>Repositories</b><br/><i>[Component: repos/*]</i><br/>Every query needs the account context; soft delete only."]
     outbox["<b>Mail outbox</b><br/><i>[Component: mail/outbox]</i><br/>Stores each e-mail, retries after 1, 5, 30, 120 minutes, keeps dead letters."]
     metrics["<b>Metrics</b><br/><i>[Component: metrics/*, prom-client]</i><br/>Requests, errors, and latency by module; invoices, syncs, mail queue, certificates, backups. Port 9464, never public."]
@@ -43,6 +44,7 @@ flowchart TB
   provider -- "[HTTPS, mTLS]" --> nacional
   onboarding -- "CNPJ, CEP [HTTPS]" --> lookups
   issue -- "PTAX [HTTPS]" --> lookups
+  routes -- "Draws the PDF with" --> danfse
   routes --> repos
   issue --> repos
   sync --> repos
@@ -73,6 +75,6 @@ flowchart TB
   classDef component fill:#85bbf0,stroke:#5d82a8,color:#0b2540
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class web,db container
-  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,repos,outbox,audit,metrics,errors,lifecycle,bugs component
+  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,danfse,repos,outbox,audit,metrics,errors,lifecycle,bugs component
   class nacional,resend,lookups,sentry,bugtools,r2 external
   style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

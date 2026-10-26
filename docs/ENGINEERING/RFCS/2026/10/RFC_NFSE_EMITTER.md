@@ -271,7 +271,7 @@ A `suspended` account can log in and read, but cannot issue or cancel. This is t
 - Cancellation by substitution and the fiscal analysis request.
 - Other providers (ABRASF municipal systems, NF-e).
 - Email delivery of the invoice to the customer.
-- Local DANFSe (PDF) renderer in the national layout. The ADN DANFSe API is suspended since 2026-08-03 (NT 008/2026). Lincoln decides in Stage 1b if it moves into Stage 1.
+- Local DANFSe (PDF) renderer in the national layout. The ADN DANFSe API is suspended since 2026-08-03 (NT 008/2026). Lincoln decides in Stage 1b if it moves into Stage 1. Update: NotaFlow now draws the DANFSe from the stored XML; see [RFC: DANFSe PDF Generation](RFC_DANFSE_PDF.md).
 - Postgres.
 - Terms of use and privacy policy (LGPD). Required before the first paying customer, because the app stores third-party A1 certificates.
 

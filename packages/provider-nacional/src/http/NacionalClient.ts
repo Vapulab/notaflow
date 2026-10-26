@@ -182,22 +182,6 @@ export class NacionalClient {
     return gunzipBase64(String((body as Json).nfseXmlGZipB64));
   }
 
-  // The DANFS-e PDF that the ADN renders; null when the ADN has no invoice for the key.
-  async getDanfse(accessKey: string): Promise<Buffer | null> {
-    const response = await request(`${this.urls.adn}/danfse/${encodeURIComponent(accessKey)}`, {
-      method: 'GET',
-      dispatcher: this.dispatcher,
-      signal: AbortSignal.timeout(this.timeoutMs),
-      headers: { accept: 'application/pdf' },
-    });
-    const bytes = Buffer.from(await response.body.arrayBuffer());
-    if (response.statusCode === 404) return null;
-    // A proxy page with status 200 must never reach the user as a PDF.
-    if (response.statusCode === 200 && bytes.subarray(0, 5).toString('latin1') === '%PDF-')
-      return bytes;
-    throw httpError(response.statusCode, decodeBody(bytes).slice(0, 500));
-  }
-
   async registerEvent(accessKey: string, signedEventXml: string): Promise<EventResult> {
     const url = `${this.urls.sefin}/nfse/${encodeURIComponent(accessKey)}/eventos`;
     const { status, body } = await this.call('POST', url, {

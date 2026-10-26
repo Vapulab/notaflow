@@ -8,7 +8,7 @@ import {
 } from '@notaflow/provider-nacional';
 import { buildAccessKey, buildEventXml, buildNfseXml, readDps } from './fakeXml';
 
-export type FakeRoute = 'issue' | 'getNfse' | 'getDps' | 'event' | 'dfe' | 'convenio' | 'danfse';
+export type FakeRoute = 'issue' | 'getNfse' | 'getDps' | 'event' | 'dfe' | 'convenio';
 export type FakeOutcome =
   { kind: 'reply'; status: number; body: unknown } | { kind: 'delay'; ms: number };
 
@@ -89,7 +89,6 @@ export async function startFakeNacional(
       handle: event,
     },
     { route: 'dfe', method: 'GET', pattern: /^\/adn\/contribuintes\/DFe\/([0-9]+)$/, handle: dfe },
-    { route: 'danfse', method: 'GET', pattern: /^\/adn\/danfse\/([0-9A-Z]{50})$/, handle: danfse },
     {
       route: 'convenio',
       method: 'GET',
@@ -144,20 +143,6 @@ export async function startFakeNacional(
     return {
       status: 200,
       body: { chaveAcesso: invoice.accessKey, nfseXmlGZipB64: gzipBase64(invoice.nfseXml) },
-    };
-  }
-
-  function danfse(match: RegExpMatchArray): Reply {
-    const accessKey = match[1] ?? '';
-    if (!state.invoices.get(accessKey)) return { status: 404, body: null };
-    const pdf = `%PDF-1.4
-% NotaFlow fake DANFS-e ${accessKey}
-%%EOF
-`;
-    return {
-      status: 200,
-      body: null,
-      raw: { contentType: 'application/pdf', bytes: Buffer.from(pdf, 'latin1') },
     };
   }
 

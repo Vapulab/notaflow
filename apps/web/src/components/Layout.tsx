@@ -119,7 +119,6 @@ export const ERROR_TEXT: Record<string, string> = {
   invalid_justification: 'A justificativa precisa ter de 15 a 255 caracteres.',
   invalid_address: 'Endereço incompleto.',
   invalid_idempotency_key: 'Erro interno do formulário. Recarregue a página.',
-  danfse_unavailable: 'O ADN não está gerando o PDF agora. Tente de novo em alguns minutos.',
   too_many_bug_reports: 'Você já enviou 5 relatos na última hora. Tente de novo mais tarde.',
   invalid_bug_report: 'Preencha o título e o que aconteceu.',
   invalid_bug_image: 'Uma das imagens não é um PNG, JPEG ou WebP válido. Remova e anexe de novo.',

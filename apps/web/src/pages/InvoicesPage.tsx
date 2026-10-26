@@ -3,7 +3,7 @@ import { api, type Emitter, type InvoicePage, type InvoiceSummary } from '../api
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { formatCents, formatCompetence } from '../format';
-import { danfseErrorText, downloadFile } from '../download';
+import { downloadFile } from '../download';
 import { navigate, routeHref } from '../router';
 import {
   Alert,
@@ -89,7 +89,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
     try {
       await downloadFile(`${base}/invoices/${encodeURIComponent(invoiceId)}/danfse`);
     } catch (error) {
-      setPdfError(danfseErrorText(error));
+      setPdfError(errorText(error));
     }
   }
 
