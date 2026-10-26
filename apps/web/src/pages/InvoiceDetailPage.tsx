@@ -35,7 +35,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
   const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload);
+  usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload, invoice.loading);
 
   async function downloadPdf() {
     setMessage(null);

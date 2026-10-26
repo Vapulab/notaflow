@@ -386,6 +386,7 @@ function FailedDanfse() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function retry(invoiceId: string) {
+    setMessage(null);
     try {
       await api.post(`/api/admin/danfse/${encodeURIComponent(invoiceId)}/retry`, {});
       setMessage('A nota volta para a fila de PDFs.');

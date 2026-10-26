@@ -105,3 +105,33 @@ test('the detail polls its invoice while the PDF is pending and keeps the downlo
   await tick(10_000);
   expect(calls).toHaveLength(3);
 });
+
+test('a slow fetch is never overlapped, and its answer still updates the row', async () => {
+  let started = 0;
+  let status = 'pending';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.startsWith('/api/accounts/acc/emitters')) return Response.json([]);
+      started += 1;
+      const body = { items: [{ ...invoice, pdfStatus: status }], total: 1 };
+      // The first load is quick; later ones take 7 s.
+      if (started > 1) {
+        status = 'ready';
+        await new Promise((resolve) => setTimeout(resolve, 7000));
+        return Response.json({ items: [{ ...invoice, pdfStatus: 'ready' }], total: 1 });
+      }
+      return Response.json(body);
+    }),
+  );
+  renderWithMe(<InvoicesPage accountId="acc" />, meFor('user'));
+  await settle();
+  await tick(3000);
+  expect(started).toBe(2);
+  await tick(3000);
+  expect(started).toBe(2);
+  await tick(4000);
+  expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
+  await tick(10_000);
+  expect(started).toBe(2);
+});

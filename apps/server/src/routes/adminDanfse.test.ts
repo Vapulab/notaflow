@@ -98,6 +98,17 @@ test('without a queue the list is empty and retry answers 404', async () => {
   expect((await retry(invoiceId)).statusCode).toBe(404);
 });
 
+test('the admin routes refuse an anonymous request', async () => {
+  const list = await t.app.inject({ method: 'GET', url: '/api/admin/danfse/failed' });
+  expect(list.statusCode).toBe(401);
+  const post = await t.app.inject({
+    method: 'POST',
+    url: `/api/admin/danfse/${invoiceId}/retry`,
+    payload: {},
+  });
+  expect(post.statusCode).toBe(401);
+});
+
 test('the admin routes refuse a non-admin', async () => {
   expect((await get('a@example.com')).statusCode).toBe(403);
   expect((await retry(invoiceId, 'a@example.com')).statusCode).toBe(403);

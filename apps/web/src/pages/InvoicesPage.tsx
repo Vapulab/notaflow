@@ -78,7 +78,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
     page.data?.items.some(
       (i) => i.pdfStatus === 'pending' && (i.status === 'issued' || i.status === 'cancelled'),
     ) ?? false;
-  usePolling(waitingForPdf, page.reload);
+  usePolling(waitingForPdf, page.reload, page.loading);
 
   async function lookup(event: FormEvent) {
     event.preventDefault();
