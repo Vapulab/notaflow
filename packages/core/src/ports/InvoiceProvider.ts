@@ -16,8 +16,6 @@ export interface InvoiceProvider {
   checkConnection(municipality: string): Promise<void>;
   fetchSince(nsu: number): Promise<SyncBatch>;
   getInvoice(accessKey: string): Promise<ProviderInvoice | null>;
-  // The official PDF of the invoice; null when the system has no invoice for the key.
-  getDanfse(accessKey: string): Promise<Uint8Array | null>;
 }
 
 export function isSyncInvoice(

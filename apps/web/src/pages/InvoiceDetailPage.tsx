@@ -4,7 +4,7 @@ import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { useAsync } from '../components/useAsync';
 import { formatCents, formatCompetence, formatDate } from '../format';
-import { danfseErrorText, downloadFile } from '../download';
+import { downloadFile } from '../download';
 import { routeHref } from '../router';
 import {
   Alert,
@@ -39,7 +39,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
     try {
       await downloadFile(`${url}/danfse`);
     } catch (error) {
-      setMessage({ variant: 'error', text: danfseErrorText(error) });
+      setMessage({ variant: 'error', text: errorText(error) });
     }
   }
 

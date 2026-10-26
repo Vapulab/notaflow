@@ -1,8 +1,13 @@
 import { makeTestCertificate } from '@notaflow/test-kit';
+import { PDFDocument } from 'pdf-lib';
+import { extractText } from 'unpdf';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { issueOnFake } from '../../test/fakeInvoices';
 import { seedTenant } from '../../test/fixtures';
+import { providerEvent } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
+import { certificates } from '../db/schema';
+import { InvoiceRepository } from '../repos/InvoiceRepository';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -158,50 +163,102 @@ test('another account sees none of the invoices', async () => {
   expect(detail.statusCode).toBe(404);
 });
 
-test('the DANFS-e route downloads the PDF from the ADN in the invoice environment', async () => {
-  const { a } = await synced();
-  const headers = await t.as('owner@example.com');
+async function danfseOf(accountId: string, id: string) {
+  return t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${accountId}/invoices/${id}/danfse`,
+    headers: await t.as('owner@example.com'),
+  });
+}
+
+async function firstInvoice(accountId: string) {
   const list = await t.app.inject({
     method: 'GET',
-    url: `/api/accounts/${a.accountId}/invoices`,
-    headers,
+    url: `/api/accounts/${accountId}/invoices`,
+    headers: await t.as('owner@example.com'),
   });
-  const first = list.json<{ items: { id: string; number: string }[] }>().items[0];
-  const response = await t.app.inject({
-    method: 'GET',
-    url: `/api/accounts/${a.accountId}/invoices/${first?.id ?? ''}/danfse`,
-    headers,
-  });
+  const first = list.json<{ items: { id: string; number: string; accessKey: string }[] }>()
+    .items[0];
+  if (!first) throw new Error('no invoice');
+  return first;
+}
+
+async function pdfOf(response: { rawPayload: Buffer }) {
+  const bytes = new Uint8Array(response.rawPayload);
+  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+  const { text } = await extractText(bytes, { mergePages: true });
+  return { pages: doc.getPageCount(), text };
+}
+
+test('the route draws the DANFSe from the stored XML', async () => {
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  const response = await danfseOf(a.accountId, first.id);
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toBe('application/pdf');
-  expect(response.headers['content-disposition']).toBe(
-    `attachment; filename="DANFSe-${first?.number ?? ''}.pdf"`,
-  );
-  expect(response.rawPayload.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  expect(response.headers['content-disposition']).toMatch(/^attachment; filename="DANFSe-\w+\.pdf"$/);
+  const pdf = await pdfOf(response);
+  expect(pdf.pages).toBe(1);
+  expect(pdf.text).not.toMatch(/CANCELADA|SUBSTITUÍDA/);
 });
 
-test('when the ADN cannot render the PDF the route answers 503 danfse_unavailable', async () => {
+test('an invoice with no XML answers 404 not_found', async () => {
+  const { a, emitterId } = await onboarded();
+  const invoices = new InvoiceRepository(t.db);
+  const id = invoices.createPending(a, {
+    emitterId,
+    dpsId: 'DPS355030821234567800019500900000000000000001',
+    dpsSeries: '900',
+    dpsNumber: 1,
+    competence: '2026-09-30',
+    serviceCents: 1000,
+    description: 'Servico',
+    customerId: null,
+    customerDocument: null,
+    customerName: null,
+    serviceCode: '010101',
+    environment: 'producao_restrita',
+    templateOf: null,
+  });
+  invoices.markRejected(a, id, [{ code: 'E0001', message: 'rejected' }]);
+  const response = await danfseOf(a.accountId, id);
+  expect(response.statusCode).toBe(404);
+  expect(response.json()).toEqual({ error: 'not_found' });
+});
+
+test('a cancelled invoice prints CANCELADA', async () => {
+  const { a, emitterId } = await synced();
+  const first = await firstInvoice(a.accountId);
+  new InvoiceRepository(t.db).recordEvent(
+    a,
+    emitterId,
+    providerEvent({ accessKey: first.accessKey, code: '101101' }),
+  );
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).text).toContain('CANCELADA');
+});
+
+test('an invoice with event 105102 prints SUBSTITUÍDA', async () => {
+  const { a, emitterId } = await synced();
+  const first = await firstInvoice(a.accountId);
+  new InvoiceRepository(t.db).recordEvent(
+    a,
+    emitterId,
+    providerEvent({ accessKey: first.accessKey, code: '105102' }),
+  );
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).text).toContain('SUBSTITUÍDA');
+});
+
+test('the route works without an active certificate', async () => {
   const { a } = await synced();
-  const headers = await t.as('owner@example.com');
-  const list = await t.app.inject({
-    method: 'GET',
-    url: `/api/accounts/${a.accountId}/invoices`,
-    headers,
-  });
-  const id = list.json<{ items: { id: string }[] }>().items[0]?.id ?? '';
-  t.fake.next('danfse', {
-    kind: 'reply',
-    status: 503,
-    body: '<html>503 Service Unavailable</html>',
-  });
-  const response = await t.app.inject({
-    method: 'GET',
-    url: `/api/accounts/${a.accountId}/invoices/${id}/danfse`,
-    headers,
-  });
-  // 503, not 502: the Cloudflare proxy replaces the body of a 502 with its own page.
-  expect(response.statusCode).toBe(503);
-  expect(response.json()).toEqual({ error: 'danfse_unavailable' });
+  t.db.update(certificates).set({ active: false }).run();
+  const first = await firstInvoice(a.accountId);
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
 });
 
 test('another account gets 404 on the DANFS-e route', async () => {

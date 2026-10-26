@@ -69,38 +69,6 @@ test('each issued or cancelled invoice has Emitir parecida and PDF in the list',
   expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
 });
 
-test('a PDF the ADN cannot render shows why', async () => {
-  vi.stubGlobal(
-    'URL',
-    Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} }),
-  );
-  stubApi({
-    '/api/accounts/acc/invoices/inv1/danfse': { error: 'danfse_unavailable' },
-    '/api/accounts/acc/invoices': { items: [invoice], total: 1 },
-    '/api/accounts/acc/emitters': [],
-  });
-  render(<InvoicesPage accountId="acc" />);
-  const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: 'PDF' }));
-  expect(await screen.findByText(/não está gerando o PDF/i)).toBeTruthy();
-});
-
-test('a 5xx whose body a proxy replaced still says the ADN is not rendering the PDF', async () => {
-  vi.stubGlobal(
-    'URL',
-    Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} }),
-  );
-  stubApi({
-    '/api/accounts/acc/invoices/inv1/danfse': { error: 'http_502' },
-    '/api/accounts/acc/invoices': { items: [invoice], total: 1 },
-    '/api/accounts/acc/emitters': [],
-  });
-  render(<InvoicesPage accountId="acc" />);
-  const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: 'PDF' }));
-  expect(await screen.findByText(/não está gerando o PDF/i)).toBeTruthy();
-});
-
 test('a click on the row opens the invoice; the list has no number or environment column', async () => {
   stubApi({
     '/api/accounts/acc/invoices': { items: [invoice], total: 1 },
@@ -121,7 +89,7 @@ test('the row opens with Enter, and its buttons do not open it', async () => {
     Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} }),
   );
   stubApi({
-    '/api/accounts/acc/invoices/inv1/danfse': { error: 'danfse_unavailable' },
+    '/api/accounts/acc/invoices/inv1/danfse': { error: 'not_found' },
     '/api/accounts/acc/invoices': { items: [invoice], total: 1 },
     '/api/accounts/acc/emitters': [],
   });

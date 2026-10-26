@@ -10,6 +10,7 @@
     "@better-auth/passkey": "1.7.7",
     "@fastify/static": "^10.1.6",
     "@notaflow/core": "workspace:*",
+    "@notaflow/danfse-pdf": "workspace:*",
     "@notaflow/provider-nacional": "workspace:*",
     "@notaflow/signer-node": "workspace:*",
     "@sentry/node": "^11.6.0",

@@ -1,3 +1,4 @@
+import { markFor, renderDanfse } from '@notaflow/danfse-pdf';
 import type { FastifyInstance } from 'fastify';
 import { accountContext } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
@@ -95,21 +96,13 @@ export function invoiceRoutes(
     async (request, reply) => {
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
-      if (!invoice?.accessKey) throw new HttpError(404, 'not_found');
-      const certificate = await certificates.loadActive(ctx, invoice.emitterId);
-      if (!certificate) throw new HttpError(409, 'no_active_certificate');
-      let pdf: Uint8Array | null;
-      try {
-        // The invoice's own environment: produção restrita invoices live in another ADN.
-        pdf = await deps
-          .providerFactory({ environment: invoice.environment, certificate })
-          .getDanfse(invoice.accessKey);
-      } catch (error) {
-        request.log.warn({ err: error, accessKey: invoice.accessKey }, 'DANFS-e not available');
-        // 503, not 502: the Cloudflare proxy replaces the body of a 502 with its own page.
-        throw new HttpError(503, 'danfse_unavailable');
-      }
-      if (!pdf) throw new HttpError(404, 'invoice_not_found');
+      const xml = invoice ? invoices.xml(ctx, invoice.id) : null;
+      if (!invoice || xml === null) throw new HttpError(404, 'not_found');
+      const mark = markFor(
+        invoice.status,
+        invoice.events.map((event) => event.code),
+      );
+      const pdf = await renderDanfse(xml, { mark });
       const name = (invoice.number ?? invoice.id).replace(/[^0-9A-Za-z-]/g, '');
       return reply
         .header('content-type', 'application/pdf')
