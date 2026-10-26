@@ -181,7 +181,9 @@ export function memoryQueue(): DanfseQueue & {
   return {
     jobs,
     async add(job) {
-      if (!has(jobId(job.invoiceId, job.mark))) jobs.push(job);
+      const id = jobId(job.invoiceId, job.mark);
+      // A failed job stays in BullMQ (removeOnFail keeps it), so its id is taken too.
+      if (!has(id) && !failedJobs.has(id)) jobs.push(job);
     },
     async failed(limit) {
       return [...failedJobs.values()].slice(0, limit);

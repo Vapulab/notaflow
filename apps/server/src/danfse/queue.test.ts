@@ -70,6 +70,16 @@ describe('memoryQueue lifecycle', () => {
     expect(q.jobs).toHaveLength(1);
   });
 
+  test('adding a failed id is a no-op, and retry then enqueues exactly one job', async () => {
+    const q = memoryQueue();
+    await q.add(job());
+    q.fail('inv1:none', 'boom');
+    await q.add(job());
+    expect(q.jobs).toEqual([]);
+    await q.retry('inv1:none');
+    expect(q.jobs).toEqual([job()]);
+  });
+
   test('fail removes the job and retry puts it back', async () => {
     const q = memoryQueue();
     await q.add(job());
