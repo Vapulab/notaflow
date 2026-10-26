@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
+import { degrees, grayscale, PDFDocument, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import QRCode from 'qrcode';
 import { box, cm, drawField, drawTextAt, fitText, RED, wrapText, type FieldStyle } from './draw';
 import { BLOCKS, FIELDS, type FieldKey, type LayoutField } from './layout';
+import { drawBlocks, SHADED } from './blocks';
 import { readDanfseData, type DanfseData } from './readDanfseData';
 
 export type DanfseMark = 'none' | 'cancelada' | 'substituida';
@@ -17,7 +18,6 @@ export function qrUrl(accessKey: string): string {
 const QR_CAPTION =
   'A autenticidade desta NFS-e pode ser verificada pela leitura deste código QR ou pela consulta da chave de acesso no portal nacional da NFS-e';
 const PAD = 2;
-const SHADED: ReadonlySet<FieldKey> = new Set(['issuerType']);
 const IDENTIFICATION_LABEL = { labelSize: 7, upper: true } as const;
 
 interface Ctx {
@@ -99,6 +99,27 @@ async function drawIdentification(ctx: Ctx, doc: PDFDocument): Promise<void> {
   });
 }
 
+const WATERMARK_TEXT = { cancelada: 'CANCELADA', substituida: 'SUBSTITUÍDA' } as const;
+const WATERMARK_SIZE = 60;
+
+function drawWatermark(ctx: Ctx, mark: DanfseMark): void {
+  if (mark === 'none') return;
+  const { page, regular } = ctx;
+  const text = WATERMARK_TEXT[mark];
+  const width = regular.widthOfTextAtSize(text, WATERMARK_SIZE);
+  const half = regular.heightAtSize(WATERMARK_SIZE, { descender: false }) / 2;
+  const cos = Math.SQRT1_2;
+  // The rotation pivots on the text origin, so back off by half the width and half the cap height.
+  page.drawText(text, {
+    x: page.getWidth() / 2 - (width / 2) * cos + half * cos,
+    y: page.getHeight() / 2 - (width / 2) * cos - half * cos,
+    size: WATERMARK_SIZE,
+    font: regular,
+    color: grayscale(0.65),
+    rotate: degrees(45),
+  });
+}
+
 export async function renderDanfse(xml: string, options: { mark: DanfseMark }): Promise<Uint8Array> {
   const data = readDanfseData(xml);
   const doc = await PDFDocument.create();
@@ -117,8 +138,8 @@ export async function renderDanfse(xml: string, options: { mark: DanfseMark }): 
   box(page, 0.2, 0.2, 21 - 0.4, 29.7 - 0.4, { lineWidth: 1 });
   drawHeader(ctx);
   await drawIdentification(ctx, doc);
-  // Task 4 draws the other blocks and the watermark for options.mark.
-  void options.mark;
+  drawBlocks(ctx);
+  drawWatermark(ctx, options.mark);
 
   return doc.save();
 }

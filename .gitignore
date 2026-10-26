@@ -18,3 +18,5 @@ __pycache__/
 .remember/
 .claude/settings.local.json
 .playwright-mcp/
+
+packages/danfse-pdf/golden/
