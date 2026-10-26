@@ -368,6 +368,12 @@ export const invoices = sqliteTable(
     idempotencyKey: text('idempotency_key'),
     xmlGzip: blob('xml_gzip', { mode: 'buffer' }),
     sefinMessages: text('sefin_messages', { mode: 'json' }),
+    // DANFSe PDF state; null while the row has no XML.
+    pdfStatus: text('pdf_status', { enum: ['pending', 'ready', 'failed'] }),
+    // The mark of the last enqueued job: a render of an older mark does not make the row ready.
+    pdfMark: text('pdf_mark', { enum: ['none', 'cancelada', 'substituida'] }),
+    pdfEnqueuedAt: integer('pdf_enqueued_at', { mode: 'timestamp_ms' }),
+    pdfRenderedAt: integer('pdf_rendered_at', { mode: 'timestamp_ms' }),
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -376,6 +382,7 @@ export const invoices = sqliteTable(
   },
   (table) => [
     uniqueIndex('invoices_emitter_idempotency_key').on(table.emitterId, table.idempotencyKey),
+    index('invoices_pdf_status').on(table.pdfStatus),
   ],
 );
 
