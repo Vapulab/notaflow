@@ -24,3 +24,11 @@ test('linesFitting survives the cm round trip and keeps the last line inside the
   }
   expect(linesFitting(20)).toBe(2);
 });
+test('fitLines keeps line breaks as paragraphs and blank lines', () => {
+  expect(fitLines(font, 'one\ntwo\n\nthree', 7, 300, 10)).toEqual(['one', 'two', '', 'three']);
+});
+test('fitLines keeps a 300-character token inside the box', () => {
+  const lines = fitLines(font, `http://x/${'a'.repeat(300)}`, 7, 60, 4);
+  expect(lines).toHaveLength(4);
+  for (const line of lines) expect(line.length * 3).toBeLessThanOrEqual(60);
+});

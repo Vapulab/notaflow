@@ -46,9 +46,16 @@ function fixedText(block: LayoutBlock, data: DanfseData): string | undefined {
   }
 }
 
+// Wraps each paragraph on its own; an empty paragraph stays as a blank line.
+function wrapParagraphs(font: PDFFont, text: string, size: number, widthPt: number): string[] {
+  const paragraphs = text.split(/\r?\n/).map(flat);
+  while (paragraphs.length > 1 && paragraphs[paragraphs.length - 1] === '') paragraphs.pop();
+  return paragraphs.flatMap((p) => (p === '' ? [''] : wrapText(font, p, size, widthPt)));
+}
+
 // Lines that fit; the last one ends with "..." when the text needs more.
 export function fitLines(font: PDFFont, text: string, size: number, widthPt: number, maxLines: number): string[] {
-  const lines = wrapText(font, flat(text), size, widthPt);
+  const lines = wrapParagraphs(font, text, size, widthPt);
   const kept = lines.slice(0, Math.max(1, maxLines));
   const last = kept.length - 1;
   const tail = kept[last] ?? '';
@@ -70,7 +77,7 @@ interface Placed {
 function plan(ctx: BlockCtx): Placed[] {
   const blocks = BLOCKS.filter((b) => b.key !== 'header' && b.key !== 'identification');
   const complementaryWidth = cm(20.4) - 2 * PAD;
-  const complementaryLines = wrapText(ctx.regular, flat(ctx.data.fields.complementaryInfo), 7, complementaryWidth).length;
+  const complementaryLines = wrapParagraphs(ctx.regular, ctx.data.fields.complementaryInfo, 7, complementaryWidth).length;
   const complementaryGrow = Math.max(0, (complementaryLines * LINE + 2 * PAD) / cm(1) - 0.39);
 
   let saved = 0;

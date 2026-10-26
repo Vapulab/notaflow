@@ -37,6 +37,22 @@ export function fitText(font: PDFFont, text: string, size: number, maxWidthPt: n
   return `${chars.join('')}...`;
 }
 
+// Breaks a word wider than the box at character level.
+function breakWord(font: PDFFont, word: string, size: number, maxWidthPt: number): string[] {
+  const pieces: string[] = [];
+  let piece = '';
+  for (const char of word) {
+    if (piece !== '' && font.widthOfTextAtSize(piece + char, size) > maxWidthPt) {
+      pieces.push(piece);
+      piece = char;
+    } else {
+      piece += char;
+    }
+  }
+  if (piece !== '') pieces.push(piece);
+  return pieces;
+}
+
 export function wrapText(font: PDFFont, text: string, size: number, maxWidthPt: number): string[] {
   const lines: string[] = [];
   let line = '';
@@ -47,6 +63,11 @@ export function wrapText(font: PDFFont, text: string, size: number, maxWidthPt: 
       line = word;
     } else {
       line = next;
+    }
+    if (font.widthOfTextAtSize(line, size) > maxWidthPt) {
+      const pieces = breakWord(font, line, size, maxWidthPt);
+      line = pieces.pop() ?? '';
+      lines.push(...pieces);
     }
   }
   if (line !== '') lines.push(line);

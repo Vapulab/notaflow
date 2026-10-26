@@ -10,7 +10,6 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 - Login: Better Auth in `src/auth/betterAuth.ts`, mounted at `/api/auth/*` by `src/auth/authRoutes.ts`; `src/auth/authHook.ts` turns the session into an identity; e-mail in `src/mail/`
 - Tests: `test/testApp.ts` builds the app on an in-memory database, logs in with `t.as(email)` (a real session cookie), collects sent e-mail in `t.mail`, and starts the fake national system
 - Local run: copy `.env.example` to `.env.local`, then `pnpm fake:nacional`, `pnpm seed:admin <email> <name>`, and `pnpm dev:server`
-
 - DANFSe download: `GET .../invoices/:invoiceId/danfse` in `src/routes/invoices.ts` draws the PDF from the stored XML with `@notaflow/danfse-pdf`; it never calls the ADN
 
 ## Documentation Index

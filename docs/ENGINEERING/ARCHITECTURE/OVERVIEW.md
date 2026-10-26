@@ -41,6 +41,7 @@ Production on the Hostinger VPS: the app's Docker Compose service behind the sha
 | `packages/signer-node` | Loads a `.pfx` and signs XML (`Signer` port). |
 | `packages/provider-nacional` | DPS and event XML, and the Sefin and ADN client. |
 | `packages/fake-nacional` | In-memory fake of the Sefin and the ADN for development and tests. Never in production. |
+| `packages/danfse-pdf` | Draws the DANFSe PDF from the stored invoice XML (NT 008). |
 | `services/signer-py` | Python `Signer`, kept as plan B. |
 | `apps/server` | API, persistence, vault, authorization (Stage 1a-2); sync jobs (Stage 1a-3). |
 | `apps/web` | React UI, built with Vite and served by the server (Stage 1a-3). |

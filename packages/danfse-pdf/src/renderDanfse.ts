@@ -28,8 +28,15 @@ interface Ctx {
   data: DanfseData;
 }
 
+const assets = new Map<string, Uint8Array>();
+
 function asset(name: string): Uint8Array {
-  return readFileSync(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
+  let bytes = assets.get(name);
+  if (!bytes) {
+    bytes = readFileSync(fileURLToPath(new URL(`../assets/${name}`, import.meta.url)));
+    assets.set(name, bytes);
+  }
+  return bytes;
 }
 
 function field(key: FieldKey): LayoutField {
@@ -131,8 +138,8 @@ export async function renderDanfse(xml: string, options: { mark: DanfseMark }): 
   const page = doc.addPage([595.28, 841.89]);
   const ctx: Ctx = {
     page,
-    regular: await doc.embedFont(asset('LiberationSans-Regular.ttf')),
-    bold: await doc.embedFont(asset('LiberationSans-Bold.ttf')),
+    regular: await doc.embedFont(asset('LiberationSans-Regular.ttf'), { subset: true }),
+    bold: await doc.embedFont(asset('LiberationSans-Bold.ttf'), { subset: true }),
     logo: await doc.embedPng(asset('nfse-logo-horizontal.png')),
     data,
   };

@@ -7,7 +7,7 @@ Draws the DANFSe PDF (NT 008 v1.02) from the invoice XML. The national ADN endpo
 - Entry point: `src/index.ts`
 - Layout table: `src/layout.ts` (`BLOCKS`, `FIELDS`), transcribed from NT 008 item 2.4.5. Units are cm from the top-left.
 - Spec and assets: `spec/` (the NT PDF), `assets/` (Liberation Sans fonts, NFS-e logo). Each folder has a `SOURCE.md`.
-- Depends on: `@notaflow/provider-nacional`, `pdf-lib`, `@pdf-lib/fontkit`, `qrcode`.
+- Depends on: `@notaflow/core` (`/places` subpath), `@notaflow/provider-nacional`, `pdf-lib`, `@pdf-lib/fontkit`, `qrcode`.
 
 ## Documentation Index
 

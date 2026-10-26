@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import type { PDFFont, PDFPage } from 'pdf-lib';
-import { box, cm, drawField } from './draw';
+import { box, cm, drawField, wrapText } from './draw';
 
 test('cm converts centimetres to points', () => {
   expect(cm(1)).toBeCloseTo(28.3465, 4);
@@ -35,4 +35,11 @@ test('field content keeps its descenders inside a 0.63 cm cell', () => {
   const content = drawText.mock.calls[1]?.[1];
   expect(label.y).toBeGreaterThan(content.y);
   expect(content.y - 1.5).toBeGreaterThan(cellBottom);
+});
+test('wrapText breaks a token wider than the box at character level', () => {
+  const font = { widthOfTextAtSize: (text: string) => [...text].length * 3 } as unknown as PDFFont;
+  const lines = wrapText(font, `see https://x.example/${'a'.repeat(300)} end`, 7, 60);
+  expect(lines.length).toBeGreaterThan(5);
+  for (const line of lines) expect([...line].length * 3).toBeLessThanOrEqual(60);
+  expect(lines.join('').replace(/ /g, '')).toBe(`seehttps://x.example/${'a'.repeat(300)}end`);
 });
