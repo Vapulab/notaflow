@@ -361,3 +361,47 @@ test('without the queue settings the route draws on demand', async () => {
   expect((await pdfOf(response)).pages).toBe(1);
   expect(await onDemand()).toContain('danfse_on_demand_total 1');
 });
+
+test('an R2 body that errors mid-stream falls back to drawing on demand', async () => {
+  await withR2(async () => ({
+    body: new Readable({
+      read() {
+        this.destroy(new Error('connection reset'));
+      },
+    }),
+    size: 100,
+  }));
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('an R2 object above 2 MB is not read and the PDF is drawn on demand', async () => {
+  await withR2(async () => ({ body: Readable.from([STORED]), size: 3 * 1024 * 1024 }));
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.rawPayload.equals(STORED)).toBe(false);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('a ready invoice that is then cancelled is drawn on demand with CANCELADA', async () => {
+  await withR2(async () => ({ body: Readable.from([STORED]), size: STORED.length }));
+  const { a, emitterId } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  new InvoiceRepository(t.db).recordEvent(
+    a,
+    emitterId,
+    providerEvent({ accessKey: first.accessKey, code: '101101' }),
+  );
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).text).toContain('CANCELADA');
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});

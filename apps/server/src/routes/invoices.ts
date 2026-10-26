@@ -1,7 +1,7 @@
 import { markFor, renderDanfse } from '@notaflow/danfse-pdf';
 import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
-import type { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
 import { accountContext } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
@@ -15,6 +15,7 @@ import { ServiceRepository } from '../repos/ServiceRepository';
 import { applyDocument } from '../sync/applyDocument';
 import { VaultCertificateStore } from '../vault/VaultCertificateStore';
 
+const MAX_STORED_BYTES = 2 * 1024 * 1024;
 const ACCESS_KEY = /^[0-9A-Z]{50}$/;
 
 interface ListQuery {
@@ -109,15 +110,19 @@ export function invoiceRoutes(
       const xml = invoice ? invoices.xml(ctx, invoice.id) : null;
       if (!invoice || xml === null) throw new HttpError(404, 'not_found');
       const name = (invoice.number ?? invoice.id).replace(/[^0-9A-Za-z-]/g, '');
-      const send = (body: Buffer | Readable) =>
+      const send = (body: Buffer) =>
         reply
           .header('content-type', 'application/pdf')
           .header('content-disposition', `attachment; filename="DANFSe-${name}.pdf"`)
+          .header('content-length', body.length)
           .send(body);
       if (deps.danfseR2 && invoice.pdfStatus === 'ready' && invoice.accessKey) {
         try {
           const stored = await deps.danfseR2.get(`danfse/${invoice.accessKey}.pdf`);
-          if (stored) return send(stored.body);
+          if (stored && (stored.size === null || stored.size <= MAX_STORED_BYTES)) {
+            // Buffered so a stream error lands here, before the 200 is committed.
+            return send(await buffer(stored.body));
+          }
         } catch (error) {
           request.log.warn(
             { module: 'danfse', invoiceId: invoice.id, err: error },
