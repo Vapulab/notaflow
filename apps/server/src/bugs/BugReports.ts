@@ -15,7 +15,7 @@ import {
 import { type BugChannelClients, type DiscordEmbed, imagesText, reportLine } from './channels';
 import { type BugImage, imageKey } from './images';
 import { maskPath, maskPersonalData } from './mask';
-import type { R2Client } from './r2';
+import type { R2Client } from '@notaflow/r2';
 
 type Kind = (typeof bugReportDeliveries.$inferSelect)['kind'];
 type Delivery = typeof bugReportDeliveries.$inferSelect;

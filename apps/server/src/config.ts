@@ -1,3 +1,5 @@
+import type { R2Settings } from '@notaflow/r2';
+
 export type AuthConfig = { mode: 'session' } | { mode: 'dev'; email: string };
 
 // Development only: dev mode skips the session, but Better Auth still needs a secret to start.
@@ -39,13 +41,6 @@ export interface BugChannels {
   notion: { token: string; databaseId: string } | null;
   // The private bucket of the screenshots; null refuses images and keeps text-only reports.
   r2: R2Settings | null;
-}
-
-export interface R2Settings {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucket: string;
 }
 
 export class ConfigError extends Error {

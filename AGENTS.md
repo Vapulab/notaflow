@@ -26,6 +26,7 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 | Server | [apps/server/AGENTS.md](apps/server/AGENTS.md) |
 | Web | [apps/web/AGENTS.md](apps/web/AGENTS.md) |
 | DANFSe PDF | [packages/danfse-pdf/AGENTS.md](packages/danfse-pdf/AGENTS.md) |
+| R2 client | [packages/r2/AGENTS.md](packages/r2/AGENTS.md) |
 | Python signer | [services/signer-py/AGENTS.md](services/signer-py/AGENTS.md) |
 
 ## Docs

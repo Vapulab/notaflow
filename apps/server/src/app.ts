@@ -7,7 +7,7 @@ import { registerAuthRoutes } from './auth/authRoutes';
 import { BugReports } from './bugs/BugReports';
 import { bugChannelClients } from './bugs/channels';
 import { registerGithubWebhook } from './bugs/githubWebhook';
-import { r2Client } from './bugs/r2';
+import { r2Client } from '@notaflow/r2';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { MailOutbox } from './mail/outbox';
