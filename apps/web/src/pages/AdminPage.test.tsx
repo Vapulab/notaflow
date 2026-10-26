@@ -208,3 +208,46 @@ test('a failed waitlist removal shows an error, and the next removal clears it',
   expect(await section.findByText('maria@example.com removido.')).toBeTruthy();
   expect(section.queryByText('Não encontrado.')).toBeNull();
 });
+
+test('admin lists failed DANFSe jobs and a retry calls the API', async () => {
+  let items = [
+    {
+      invoiceId: 'inv-9',
+      accessKey: 'K'.repeat(50),
+      accountName: 'Conta Falha',
+      failedReason: 'Render crashed',
+      failedAt: '2026-10-26T12:00:00Z',
+    },
+  ];
+  const calls = stubApi({
+    ...routes,
+    '/api/admin/danfse/failed': () => ({ items }),
+    '/api/admin/danfse/inv-9/retry': () => {
+      items = [];
+      return null;
+    },
+  });
+  render(<AdminPage />);
+  const user = userEvent.setup();
+  const section = (await screen.findByRole('heading', { name: /pdfs não gerados/i })).closest(
+    'section',
+  ) as HTMLElement;
+  expect(await within(section).findByText('Conta Falha')).toBeTruthy();
+  expect(within(section).getByText('Render crashed')).toBeTruthy();
+  await user.click(within(section).getByRole('button', { name: 'Gerar de novo' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === '/api/admin/danfse/inv-9/retry' && c.init?.method === 'POST')).toBe(
+      true,
+    ),
+  );
+  expect(await within(section).findByText(/nenhum/i)).toBeTruthy();
+});
+
+test('a queue outage shows a short message, not a crash', async () => {
+  stubApi({ ...routes, '/api/admin/danfse/failed': { error: 'queue_unavailable' } });
+  render(<AdminPage />);
+  const section = (await screen.findByRole('heading', { name: /pdfs não gerados/i })).closest(
+    'section',
+  ) as HTMLElement;
+  expect(await within(section).findByText(/fila.*indispon/i)).toBeTruthy();
+});

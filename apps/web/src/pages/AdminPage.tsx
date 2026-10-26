@@ -122,6 +122,7 @@ export function AdminPage() {
       <NewUserForm act={act} />
       <SetMemberForm act={act} accounts={accounts.data ?? []} />
       <FailedMail />
+      <FailedDanfse />
       <Waitlist />
       <Card>
         <h2 className={SECTION_TITLE_CLASSES}>Auditoria (últimas 100)</h2>
@@ -360,6 +361,75 @@ function FailedMail() {
                         Reenviar
                       </Button>
                     )}
+                  </TD>
+                </tr>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </section>
+    </Card>
+  );
+}
+
+interface FailedDanfseRow {
+  invoiceId: string;
+  accessKey: string;
+  accountName: string;
+  failedReason: string;
+  failedAt: string;
+}
+
+// The queue gave up on these PDFs; a retry puts the invoice back for the next sweep.
+function FailedDanfse() {
+  const failed = useAsync(() => api.get<{ items: FailedDanfseRow[] }>('/api/admin/danfse/failed'), []);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function retry(invoiceId: string) {
+    try {
+      await api.post(`/api/admin/danfse/${encodeURIComponent(invoiceId)}/retry`, {});
+      setMessage('A nota volta para a fila de PDFs.');
+      failed.reload();
+    } catch (error) {
+      setMessage(errorText(error));
+    }
+  }
+
+  return (
+    <Card>
+      <section aria-labelledby="failed-danfse" className="flex flex-col gap-3">
+        <h2 id="failed-danfse" className={SECTION_TITLE_CLASSES}>
+          PDFs não gerados
+        </h2>
+        {message && <Alert variant="info">{message}</Alert>}
+        {failed.error && <Alert variant="error">{errorText(failed.error)}</Alert>}
+        {failed.data?.items.length === 0 && (
+          <p className="text-sm text-muted">Nenhum. Todos foram gerados.</p>
+        )}
+        {failed.data && failed.data.items.length > 0 && (
+          <Table>
+            <THead>
+              <tr>
+                <TH>Conta</TH>
+                <TH>Chave de acesso</TH>
+                <TH>Motivo</TH>
+                <TH>Falhou em</TH>
+                <TH>Ação</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {failed.data.items.map((row) => (
+                <tr key={row.invoiceId}>
+                  <TD>{row.accountName}</TD>
+                  <TD>
+                    <code className="font-mono text-xs break-all">{row.accessKey}</code>
+                  </TD>
+                  <TD>{row.failedReason}</TD>
+                  <TD className="whitespace-nowrap">{formatDateTime(row.failedAt)}</TD>
+                  <TD>
+                    <Button variant="secondary" size="sm" onClick={() => void retry(row.invoiceId)}>
+                      Gerar de novo
+                    </Button>
                   </TD>
                 </tr>
               ))}

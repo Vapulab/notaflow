@@ -1,7 +1,7 @@
 import type { DanfseMark } from '@notaflow/danfse-pdf';
-import { and, asc, eq, isNotNull, isNull, lte, min, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lte, min, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
-import { invoiceEvents, invoices } from '../db/schema';
+import { accounts, emitters, invoiceEvents, invoices } from '../db/schema';
 import { pdfPending } from './InvoiceRepository';
 import { notDeleted, touched } from '../db/stamps';
 
@@ -117,6 +117,19 @@ export class DanfseRepository {
         .where(and(eq(invoices.id, id), eq(invoices.pdfStatus, 'failed'), notDeleted(invoices)))
         .run().changes > 0
     );
+  }
+
+  // For the admin list: no XML and no customer data leave this method.
+  describe(invoiceIds: string[]): { invoiceId: string; accessKey: string; accountName: string }[] {
+    if (invoiceIds.length === 0) return [];
+    const rows = this.db
+      .select({ invoiceId: invoices.id, accessKey: invoices.accessKey, accountName: accounts.name })
+      .from(invoices)
+      .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
+      .innerJoin(accounts, eq(accounts.id, emitters.accountId))
+      .where(and(inArray(invoices.id, invoiceIds), notDeleted(invoices)))
+      .all();
+    return rows.flatMap((r) => (r.accessKey ? [{ ...r, accessKey: r.accessKey }] : []));
   }
 
   oldestPendingAt(): Date | null {

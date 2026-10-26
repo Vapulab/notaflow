@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { api, type InvoiceDetail } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
+import { PdfButton } from '../components/PdfButton';
 import { useAsync } from '../components/useAsync';
+import { usePolling } from '../components/usePolling';
 import { formatCents, formatCompetence, formatDate } from '../format';
 import { downloadFile } from '../download';
 import { routeHref } from '../router';
@@ -33,6 +35,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
   const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload);
 
   async function downloadPdf() {
     setMessage(null);
@@ -147,9 +150,11 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
       <div className="flex flex-wrap items-center gap-4">
         <Link href={`${url}/xml`}>Baixar XML</Link>
         {data.accessKey && (
-          <Button size="sm" variant="secondary" onClick={() => void downloadPdf()}>
-            Baixar PDF (DANFS-e)
-          </Button>
+          <PdfButton
+            status={data.pdfStatus}
+            label="Baixar PDF (DANFS-e)"
+            onDownload={() => void downloadPdf()}
+          />
         )}
       </div>
       {data.events.length > 0 && (

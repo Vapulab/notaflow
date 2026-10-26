@@ -46,6 +46,7 @@ import { LifecycleRepository } from './repos/LifecycleRepository';
 import { meRoutes } from './routes/me';
 import { guideRoutes } from './routes/guide';
 import { publicConfigRoutes } from './routes/publicConfig';
+import { adminDanfseRoutes } from './routes/adminDanfse';
 import { adminMailRoutes } from './routes/adminMail';
 import { memberRoutes } from './routes/members';
 import { onboardingRoutes } from './routes/onboarding';
@@ -273,6 +274,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   adminRoutes(app, db);
   memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });
   adminMailRoutes(app, { db, outbox });
+  adminDanfseRoutes(app, { db });
   onboardingRoutes(app, {
     db,
     emitterOnboarding: new EmitterOnboarding({

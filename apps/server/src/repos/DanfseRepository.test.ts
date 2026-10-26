@@ -193,6 +193,16 @@ describe('DanfseRepository', () => {
   });
 });
 
+describe('describe', () => {
+  test('names the account and the access key, and skips unknown ids', () => {
+    const id = sync(1);
+    expect(repo.describe([id, 'missing'])).toEqual([
+      { invoiceId: id, accessKey: KEY.replace('0042', '1001'), accountName: 'A' },
+    ]);
+    expect(repo.describe([])).toEqual([]);
+  });
+});
+
 describe('a re-sync', () => {
   test('keeps a ready invoice ready when the XML and status did not change', () => {
     const id = syncEventKey();
