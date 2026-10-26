@@ -23,10 +23,9 @@ export interface DanfseQueueEvents {
 }
 
 export interface DanfseQueue {
-  // The same job id twice is a no-op.
+  // A job with the same id that waits, runs, or is delayed stays; one in the failed set is replaced by this payload.
   add(job: DanfseJob): Promise<void>;
   failed(limit: number): Promise<FailedJob[]>;
-  retry(jobId: string): Promise<void>;
   counts(): Promise<{ failed: number; workers: number }>;
   listen(events: DanfseQueueEvents): void;
   close(): Promise<void>;
@@ -81,10 +80,14 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
   return {
     async add(job) {
       ensureReady();
-      await queue.add('render', job, {
-        ...JOB_OPTIONS,
-        jobId: toBullId(jobId(job.invoiceId, job.mark)),
-      });
+      const id = toBullId(jobId(job.invoiceId, job.mark));
+      // A failed job keeps its id for 30 days and would swallow the add, so drop it first.
+      const old = await Job.fromId(queue, id);
+      if (old && (await old.getState()) === 'failed') {
+        // The job may vanish between the calls; the add below is still right then.
+        await old.remove().catch(() => undefined);
+      }
+      await queue.add('render', job, { ...JOB_OPTIONS, jobId: id });
     },
     async failed(limit) {
       ensureReady();
@@ -102,11 +105,6 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
           },
         ];
       });
-    },
-    async retry(id) {
-      ensureReady();
-      const j = await Job.fromId(queue, toBullId(id));
-      if (j) await j.retry('failed');
     },
     async counts() {
       ensureReady();
@@ -171,7 +169,6 @@ export function memoryQueue(): DanfseQueue & {
 } {
   const jobs: DanfseJob[] = [];
   const failedJobs = new Map<string, FailedJob>();
-  const failedPayloads = new Map<string, DanfseJob>();
   const listeners: DanfseQueueEvents[] = [];
   const removeJob = (id: string): DanfseJob | undefined => {
     const at = jobs.findIndex((j) => jobId(j.invoiceId, j.mark) === id);
@@ -182,18 +179,13 @@ export function memoryQueue(): DanfseQueue & {
     jobs,
     async add(job) {
       const id = jobId(job.invoiceId, job.mark);
-      // A failed job stays in BullMQ (removeOnFail keeps it), so its id is taken too.
-      if (!has(id) && !failedJobs.has(id)) jobs.push(job);
+      if (has(id)) return;
+      // Like BullMQ: a failed job with the same id is replaced by the new payload.
+      failedJobs.delete(id);
+      jobs.push(job);
     },
     async failed(limit) {
       return [...failedJobs.values()].slice(0, limit);
-    },
-    async retry(id) {
-      const parsed = parseJobId(id);
-      if (!failedJobs.delete(id) || !parsed) return;
-      const original = failedPayloads.get(id);
-      failedPayloads.delete(id);
-      if (original) jobs.push(original);
     },
     async counts() {
       return { failed: failedJobs.size, workers: 0 };
@@ -209,8 +201,7 @@ export function memoryQueue(): DanfseQueue & {
     },
     fail(id, reason) {
       const parsed = parseJobId(id);
-      const payload = removeJob(id);
-      if (payload) failedPayloads.set(id, payload);
+      removeJob(id);
       failedJobs.set(id, {
         jobId: id,
         invoiceId: parsed?.invoiceId ?? id,

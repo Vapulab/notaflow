@@ -1,6 +1,6 @@
 import { markFor } from '@notaflow/danfse-pdf';
 import type { DanfseRepository } from '../repos/DanfseRepository';
-import { type DanfseQueue, type DanfseQueueEvents, jobId, parseJobId } from './queue';
+import { type DanfseQueue, type DanfseQueueEvents, parseJobId } from './queue';
 
 export interface DanfseMetrics {
   job(result: 'completed' | 'failed'): void;
@@ -52,6 +52,7 @@ export class DanfseDispatcher {
 
   events(): DanfseQueueEvents {
     const { repo, metrics, log } = this.deps;
+    // The job metrics count jobs, not rows: a stale result still counts.
     return {
       completed: (id, result) => {
         const parsed = parseJobId(id);
@@ -78,14 +79,8 @@ export class DanfseDispatcher {
     };
   }
 
+  // The next sweep adds the job with the current XML; add replaces a failed job of the same id.
   async retry(invoiceId: string): Promise<boolean> {
-    const { repo, queue } = this.deps;
-    const mark = repo.lastMark(invoiceId);
-    const moved = repo.retry(invoiceId);
-    if (moved && mark) {
-      // A failed id stays taken in the queue, so only queue.retry re-runs it; an error waits for the next sweep.
-      await queue.retry(jobId(invoiceId, mark)).catch(() => undefined);
-    }
-    return moved;
+    return this.deps.repo.retry(invoiceId);
   }
 }

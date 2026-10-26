@@ -1,3 +1,5 @@
+import { Job, Queue, UnrecoverableError, Worker } from 'bullmq';
+import { Redis } from 'ioredis';
 import { describe, expect, test, vi } from 'vitest';
 import {
   bullmqQueue,
@@ -45,8 +47,6 @@ describe('memoryQueue', () => {
       { jobId: 'inv1:none', invoiceId: 'inv1', failedReason: 'boom' },
     ]);
     expect(await q.counts()).toEqual({ failed: 1, workers: 0 });
-    await q.retry('inv1:none');
-    expect(await q.counts()).toEqual({ failed: 0, workers: 0 });
     q.complete('inv1:none');
     expect(events.completed).toHaveBeenCalledWith('inv1:none', { renderMs: 0, bytes: 0 });
   });
@@ -70,24 +70,22 @@ describe('memoryQueue lifecycle', () => {
     expect(q.jobs).toHaveLength(1);
   });
 
-  test('adding a failed id is a no-op, and retry then enqueues exactly one job', async () => {
+  test('adding a failed id replaces it with the new payload', async () => {
     const q = memoryQueue();
     await q.add(job());
     q.fail('inv1:none', 'boom');
-    await q.add(job());
     expect(q.jobs).toEqual([]);
-    await q.retry('inv1:none');
-    expect(q.jobs).toEqual([job()]);
+    const fresh = { ...job(), xmlGzipBase64: 'NEW' };
+    await q.add(fresh);
+    expect(q.jobs).toEqual([fresh]);
+    expect(await q.counts()).toEqual({ failed: 0, workers: 0 });
   });
 
-  test('fail removes the job and retry puts it back', async () => {
+  test('adding a waiting id keeps the first payload', async () => {
     const q = memoryQueue();
     await q.add(job());
-    q.fail('inv1:none', 'boom');
-    expect(q.jobs).toEqual([]);
-    await q.retry('inv1:none');
+    await q.add({ ...job(), xmlGzipBase64: 'NEW' });
     expect(q.jobs).toEqual([job()]);
-    expect(await q.counts()).toEqual({ failed: 0, workers: 0 });
   });
 });
 
@@ -106,13 +104,47 @@ describe.runIf(process.env.TEST_REDIS_URL)('bullmqQueue on a real Redis', () => 
     }
   });
 
+  test('adding a failed id replaces the failed job with the new payload', async () => {
+    const url = process.env.TEST_REDIS_URL ?? '';
+    const q = bullmqQueue(url);
+    const id = `f${Date.now()}`;
+    const worker = new Worker(
+      'danfse',
+      async () => {
+        throw new UnrecoverableError('boom');
+      },
+      { connection: new Redis(url, { maxRetriesPerRequest: null }) },
+    );
+    try {
+      await vi.waitFor(() => q.add(job(id)), { timeout: 3000 });
+      await vi.waitFor(
+        async () => expect((await q.failed(100)).map((f) => f.invoiceId)).toContain(id),
+        {
+          timeout: 5000,
+        },
+      );
+      await worker.close();
+      await q.add({ ...job(id), xmlGzipBase64: 'NEW' });
+      expect((await q.failed(100)).map((f) => f.invoiceId)).not.toContain(id);
+      const probe = new Queue('danfse', {
+        connection: new Redis(url, { maxRetriesPerRequest: null }),
+      });
+      const fresh = await Job.fromId(probe, `${id}_none`);
+      expect(fresh?.data.xmlGzipBase64).toBe('NEW');
+      await fresh?.remove();
+      await probe.close();
+    } finally {
+      await worker.close();
+      await q.close();
+    }
+  });
+
   test('every call rejects fast when Redis is down', async () => {
     const q = bullmqQueue('redis://127.0.0.1:1');
     try {
       await expect(q.add(job())).rejects.toThrow();
       await expect(q.counts()).rejects.toThrow();
       await expect(q.failed(5)).rejects.toThrow();
-      await expect(q.retry('a:none')).rejects.toThrow();
     } finally {
       await q.close();
     }

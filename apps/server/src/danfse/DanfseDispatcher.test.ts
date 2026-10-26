@@ -116,17 +116,39 @@ describe('events', () => {
 });
 
 describe('retry', () => {
-  test('retry moves the row to pending and retries the job', async () => {
+  test('retry moves the row to pending, and the next sweep adds a fresh job', async () => {
     const id = sync(1);
     await dispatcher.sweep();
     queue.fail(`${id}:none`, 'boom');
     expect(await dispatcher.retry(id)).toBe(true);
     expect(row(id)?.pdfStatus).toBe('pending');
+    expect(await dispatcher.sweep()).toBe(1);
     expect(queue.jobs.map((j) => j.invoiceId)).toEqual([id]);
-    expect(await queue.counts()).toEqual({ failed: 0, workers: 0 });
   });
 
   test('retry of a row that is not failed returns false', async () => {
     expect(await dispatcher.retry(sync(1))).toBe(false);
   });
+});
+
+test('a failed row whose XML changes gets a fresh job with the new XML', async () => {
+  const id = sync(1);
+  await dispatcher.sweep();
+  queue.fail(`${id}:none`, 'boom');
+  const before = row(id)?.xmlGzip;
+  invoiceRepo.upsertSynced(
+    a,
+    emitterId,
+    providerInvoice({
+      accessKey: KEY.replace('0042', '1001'),
+      number: '1',
+      xml: '<NFSe>changed</NFSe>',
+    }),
+    null,
+  );
+  expect(row(id)?.xmlGzip?.equals(before ?? Buffer.alloc(0))).toBe(false);
+  expect(row(id)?.pdfStatus).toBe('pending');
+  expect(await dispatcher.sweep()).toBe(1);
+  const xml = gunzipSync(Buffer.from(queue.jobs[0]?.xmlGzipBase64 ?? '', 'base64')).toString();
+  expect(xml).toBe('<NFSe>changed</NFSe>');
 });
