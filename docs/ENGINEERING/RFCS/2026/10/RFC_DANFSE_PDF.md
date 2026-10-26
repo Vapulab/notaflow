@@ -1,6 +1,6 @@
 # RFC: DANFSe PDF Generation
 
-**Status:** Approved in design (2026-10-26)
+**Status:** Approved in design (2026-10-26). Plan A (renderer) is merged. Plan B (queue, worker, R2, PDF state) is implemented on `feat/danfse-queue`. The link page, share options, and automatic e-mail are not built yet.
 **Date:** 2026-10-26
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -60,7 +60,7 @@ Each invoice also gets a public link, `/n/<token>`. The page behind the link sho
 4. A customer can share a public link to the PDF with their own customer. The link page shows NotaFlow.
 5. The screens show the PDF state ("Gerando PDF…") without blocking the screen.
 6. A member can copy the link or share it (native share, WhatsApp, their own e-mail app, or an e-mail that NotaFlow sends).
-7. Invoices already in the database get their PDF through a backfill.
+7. Invoices already in the database get their PDF through the migration that marks them pending.
 
 **Non-goals**
 
@@ -93,7 +93,7 @@ Lincoln made these decisions in the design conversation:
 | Sharing | "Copiar link" stays, and a "Compartilhar" button adds native share, WhatsApp, `mailto:`, and an e-mail that NotaFlow sends |
 | Automatic e-mail | NotaFlow e-mails the link to the customer's customer after each issue, from day one (a per-emitter setting) |
 | Other calls approved on 2026-10-26 | The link works on a suspended account; the token is stored in plain text; XML stays at most 30 days in Redis; the rate limits below |
-| Old invoices | A backfill |
+| Old invoices | Migration 0022 marks them pending; the sweep enqueues them |
 | Future | The app may leave the VM for a cloud |
 
 These are design calls by the author of this RFC, open to review:
@@ -102,7 +102,7 @@ These are design calls by the author of this RFC, open to review:
 | --- | --- | --- |
 | PDF engine | Draw in code (`pdf-lib` or `pdfkit`), no Chromium | The DANFSe is a fixed form. Chromium costs 300 to 500 MB per browser. |
 | Job payload | Carries the XML (gzip, base64), not only the id | The worker needs no database access. |
-| PDF state | The app listens to BullMQ `QueueEvents` and writes `invoices.pdf_status` | The worker stays stateless. |
+| PDF state | The app marks rows pending in the same transaction as the change, a sweep enqueues them, and the app listens to BullMQ `QueueEvents` to write `invoices.pdf_status` | The worker stays stateless, and a Redis outage loses no work. |
 | Cancellation | A third trigger; it draws the PDF again with the "CANCELADA" watermark | NT 008, item 2.5.1 makes the watermark mandatory. This was "future" in the conversation; the NT moved it into scope. |
 | Shared renderer | A new package `packages/danfse-pdf` | The worker and the on-demand path in the app use the same code. |
 | Link token | 32 random bytes, base64url, stored as plain text | The screens must give the same URL again ("Copiar link", "Compartilhar"). A hash cannot give it back, and a new link per copy breaks links already sent. A leaked database already leaks the invoice data itself. |
@@ -132,16 +132,18 @@ flowchart LR
   redis --> listen
 ```
 
-1. **Enqueue.** The app adds a job to the queue `danfse` when one of these happens:
-   - Sync stores a new invoice with XML (import).
+1. **Mark pending.** Every change that needs a new PDF sets `invoices.pdf_status = 'pending'` in the same transaction as the change:
+   - Sync stores a new invoice with XML, or an existing invoice changes its XML or its status.
    - `markIssued` stores the XML of an invoice that the app issued.
-   - Any change of an invoice to `cancelled`: `markCancelled`, `recordEvent`, the cancelled flag on the sync insert, and `promote` (which also serves the manual `/invoices/lookup` import). The job draws the PDF again with the watermark.
-   - The backfill script runs.
+   - Any change of an invoice to `cancelled`: `markCancelled`, `recordEvent`, the cancelled flag on the sync insert, and `promote`. The job draws the PDF again with the watermark.
 
-   The app sets `invoices.pdf_status = 'pending'` in the same transaction as the trigger. It adds the job after the commit. If Redis is down at that moment, the row stays `pending`. A periodic sweep re-enqueues rows that stay `pending` for more than 10 minutes (author's call).
-2. **Render.** The worker unzips the XML, calls `renderDanfse(xml, { status, environment })` from `packages/danfse-pdf`, and puts the result in R2 at `danfse/<accessKey>.pdf`. A new render of the same invoice writes over the old object.
-3. **Record.** The app's `QueueEvents` listener gets `completed` or `failed` (final) and writes `pdf_status = 'ready'` or `'failed'`, with `pdf_rendered_at`.
-4. **Serve.** See [Download and Public Link](#download-and-public-link).
+   `pdf_pending_since` records when the row became pending. A re-enqueue keeps it.
+2. **Sweep (outbox).** The app has no "enqueue after commit" step. A dispatcher in the app (`apps/server/src/danfse/DanfseDispatcher.ts`) runs every 10 s. It reads at most 100 `pending` rows and adds one job per row. A Redis outage cannot lose work: the row stays `pending` and the next sweep retries. When a job with the same id is in the failed set, the queue removes it and adds the fresh one. A waiting, active, or delayed job with the same id stays as it is.
+3. **Render.** The worker unzips the XML, calls `renderDanfse(xml, { status, environment })` from `packages/danfse-pdf`, and puts the result in R2 at `danfse/<accessKey>.pdf`. A new render of the same invoice writes over the old object.
+4. **Record.** The app's `QueueEvents` listener gets `completed` or `failed` (final) and writes `pdf_status = 'ready'` or `'failed'`, with `pdf_rendered_at`.
+5. **Serve.** See [Download and Public Link](#download-and-public-link).
+
+The worker is the same image as the app with another command (`node --import tsx apps/danfse-worker/src/main.ts`).
 
 ---
 
@@ -172,13 +174,13 @@ The PDF document metadata (`Producer`, `Creator`) says "NotaFlow". This metadata
 | --- | --- |
 | Queue name | `danfse` |
 | Job id | `<invoiceId>:<mark>`, where mark is `none`, `cancelada`, or `substituida`, so a repeated trigger does not create a second job |
-| Payload | `{ invoiceId, accessKey, mark, environment, xmlGzipBase64 }`. The app computes `mark` from the invoice status and its events, not from `invoices.status` alone |
+| Payload | `{ invoiceId, accessKey, mark, xmlGzipBase64 }`. The app computes `mark` from the invoice status and its events, not from `invoices.status` alone. BullMQ does not allow `:` in a custom id, so the queue adapter maps it to `_` inside Redis; the port keeps `<invoiceId>:<mark>` |
 | Attempts | 5, exponential backoff from 30 s |
 | Completed jobs | Removed at once (`removeOnComplete: true`) |
-| DLQ | A job that fails 5 times stays in the BullMQ failed set for 30 days. This set is the DLQ. A re-enqueue (sweep, on-demand, admin) of a job id in the failed set retries that job instead of a silent no-op, and sets `pdf_status` to match. |
+| DLQ | A job that fails 5 times stays in the BullMQ failed set for 30 days. This set is the DLQ. The admin "Gerar de novo" button only moves the row back to `pending`. The next sweep (within 10 s) adds the job again with the current XML. |
 | Worker concurrency | 2 (author's call; the VM has 4 vCPU) |
 
-A platform admin sees the DLQ on a new admin page: the invoice, the last error, and a "Reenfileirar" button.
+A platform admin sees the DLQ on the section "PDFs não gerados" of `/admin`: the invoice, the last error, and a "Gerar de novo" button.
 
 The on-demand path keeps the customer safe when a job is in the DLQ: the download still works.
 
@@ -230,7 +232,7 @@ Each share sends a PostHog event with the channel. The NotaFlow e-mail has a rat
 
 **Automatic e-mail after issue.** Each emitter has a setting "Enviar a nota por e-mail ao tomador após emitir". When it is on, the server sends the same NotaFlow e-mail right after an issue succeeds. Rules (author's calls):
 
-- It applies only to invoices that the app issues (`origin = 'app'`). Sync and the backfill never send e-mail, so an import never mails old customers.
+- It applies only to invoices that the app issues (`origin = 'app'`). Sync and the migration never send e-mail, so an import never mails old customers.
 - The address comes from the customer e-mail in the XML. With no address, the server skips the e-mail, and the detail page shows "Tomador sem e-mail na nota".
 - The e-mail carries the link, not the PDF as an attachment. The link page is the marketing surface, and the link works before the PDF is in R2.
 - The setting is off for existing emitters and on for new emitters. The issue form shows the state next to the "Emitir" button ("O tomador vai receber por e-mail"), with a link to change it. The account owner turns it on knowingly; NotaFlow never mails a third party without that choice.
@@ -246,8 +248,11 @@ New columns on `invoices`:
 | --- | --- | --- |
 | `pdf_status` | `'pending' \| 'ready' \| 'failed'`, null | Null for an invoice with no XML (rejected, pending issue) |
 | `pdf_rendered_at` | timestamp, null | When the current R2 object was written |
+| `pdf_pending_since` | timestamp, null | When the row became pending; kept across re-enqueues. The metric `danfse_pending_oldest_seconds` reads its minimum |
 
-New table `invoice_links`:
+Migration 0022 adds the columns and sets `pdf_status = 'pending'` on every invoice that has XML. This is the backfill (see [Backfill](#backfill)).
+
+New table `invoice_links` (not built yet):
 
 | Column | Type | Note |
 | --- | --- | --- |
@@ -266,19 +271,23 @@ Every query goes through a repository that takes the account context. The `/n/<t
 
 New containers in `deploy/compose.yaml`:
 
-- `redis`: `redis:7-alpine`, `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume, no published port. The VM has no swap, so the memory limit is required.
-- `danfse-worker`: a new image built from the repo (for example `apps/danfse-worker`), with `REDIS_URL` and the R2 settings. It has no database volume.
+- `redis`: `redis:7-alpine`, `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume `redis`, a read-only root, a `redis-cli ping` health check, no published port. It sits only on the internal network `danfse`, so nothing outside the stack reaches it. The VM has no swap, so the memory limit is required.
+- `danfse-worker`: the same image as the app (`${IMAGE}`) with another command. It has the `.env` file and no database volume. It waits for a healthy Redis (`depends_on` with `service_healthy`). It sits on `danfse` and on the Compose default network, which is not internal and gives it egress to R2. It does not join `northub` or `monitoring`.
+
+The `app` keeps `northub` and `monitoring` and joins `danfse`. It does not depend on Redis: without it, the queue is off and downloads draw on demand.
 
 New environment variables. Before adding a name, grep the root `.env` for collisions (it holds other projects' variables).
 
 | Name | Used by |
 | --- | --- |
-| `REDIS_URL` | app, worker |
+| `REDIS_URL` (`redis://redis:6379`) | app, worker |
 | `R2_DANFSE_ACCESS_KEY_ID`, `R2_DANFSE_SECRET_ACCESS_KEY`, `R2_DANFSE_BUCKET` | app, worker (with the existing `R2_ACCOUNT_ID`) |
 
-The R2 client in `apps/server/src/bugs/r2.ts` moves to a shared package, so the worker can use it.
+The four DANFSe values go together. With `REDIS_URL` unset, the queue is off: no sweep, and the download draws on demand (dev and tests). `R2_ACCOUNT_ID` alone does not count as a partial bug-report R2 setup, because both features share it.
 
-This change adds a queue, a worker, and a container. It updates the C4 diagrams in the same PR: `c4-2-containers`, `c4-3-server-components`, and `c4-4-deployment` (`.mmd` and PNG).
+The R2 client moved from `apps/server/src/bugs/r2.ts` to the package `packages/r2`, so the worker can use it.
+
+This change adds a queue, a worker, and a container. It updates the C4 diagrams in the same PR: `c4-2-containers` and `c4-4-deployment` (`.mmd` and PNG). The manual steps are in the [DANFSe Queue tutorial](../../../../TUTORIALS/DANFSE_QUEUE.md).
 
 Estimated cost on the current VM (4 vCPU, 16 GB, 1.5 GB in use on 2026-10-26): Redis 10 to 30 MB, worker 100 to 150 MB, about 50 to 150 ms of CPU per PDF.
 
@@ -292,15 +301,19 @@ Estimated cost on the current VM (4 vCPU, 16 GB, 1.5 GB in use on 2026-10-26): R
 | `danfse_dlq_size` | gauge |
 | `danfse_render_seconds` | histogram |
 | `danfse_on_demand_total` | counter (downloads that had to draw on demand) |
-| `danfse_link_views_total` | counter |
+| `danfse_link_views_total` | counter (with the link page, not built yet) |
+| `danfse_workers` | gauge (workers connected to the queue) |
+| `danfse_pending_oldest_seconds` | gauge (age of the oldest pending row) |
 
-Alert to Discord (existing Grafana path) when `danfse_dlq_size > 0` for 15 minutes, or when the worker is down for 5 minutes.
+Job metrics count jobs, not rows. The queue gauges refresh lazily on a scrape, at most once per 30 s, so a value can be one scrape plus 30 s old.
+
+Alerts to Discord: `DanfseDeadLetters` (`danfse_dlq_size > 0`), `DanfseWorkerDown` (no worker connected, or Redis down), and `DanfsePendingStale` (the oldest pending PDF waits too long). The rules are in `deploy/monitoring/prometheus/rules.yml`.
 
 ---
 
 ## Backfill
 
-`pnpm danfse:backfill` enqueues every invoice with XML and `pdf_status` null, in pages of 100 with a short pause between pages. It can run again: the job id prevents duplicates, and an invoice with `pdf_status = 'ready'` is skipped. It works the same on the VM and in a cloud. Run it once after the deploy.
+There is no backfill script. Migration 0022 marks every invoice that has XML as `pending`, and the sweep (100 rows every 10 s) enqueues them after the deploy. The job id prevents duplicates, and the sweep is safe to repeat. It works the same on the VM and in a cloud. No manual step is needed.
 
 ---
 

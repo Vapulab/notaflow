@@ -12,6 +12,8 @@ flowchart TB
     backup["<b>Backup timer</b><br/><i>[Container: systemd timer]</i><br/>Online SQLite backup every day, 14 kept; an encrypted copy goes to R2."]
     cardworker["<b>CNPJ card parser</b><br/><i>[Container: Node child process]</i><br/>Reads the uploaded PDF text, 128 MB of memory, at most 2 at a time."]
     monitoring["<b>Monitoring stack</b><br/><i>[Containers: Prometheus, Alertmanager, Loki, Alloy, Grafana]</i><br/>Metrics by module, logs, alerts, and panels at grafana.vapulab.com."]
+    redis[("<b>Redis queue</b><br/><i>[Container: Redis 7, BullMQ]</i><br/>Queue danfse: the XML of each invoice to draw. Failed jobs stay 30 days (the DLQ).")]
+    danfseworker["<b>DANFSe worker</b><br/><i>[Container: Node 22, same image as the server]</i><br/>Draws the DANFSe PDF from the job XML. No database access."]
   end
 
   nacional["<b>National NFS-e system</b><br/><i>[External system]</i><br/>Sefin Nacional and ADN"]
@@ -19,7 +21,7 @@ flowchart TB
   others["<b>Google, Turnstile, BrasilAPI, CNPJá, ViaCEP, Banco Central, HIBP</b><br/><i>[External systems]</i>"]
   posthog["<b>PostHog</b><br/><i>[External system]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Scrubbed error reports."]
-  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days; private bucket of bug report screenshots."]
+  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days; private bucket of bug report screenshots; private bucket of DANFSe PDFs."]
   github["<b>GitHub</b><br/><i>[External system]</i><br/>Masked bug issues in the public repository; issues webhook."]
   discord["<b>Discord</b><br/><i>[External system]</i><br/>Private bugs channel."]
   notion["<b>Notion</b><br/><i>[External system]</i><br/>Bugs database."]
@@ -48,6 +50,10 @@ flowchart TB
   server -- "Bug messages [HTTPS webhook]" --> discord
   server -- "Bug cards [HTTPS API]" --> notion
   server -- "Bug screenshots: put, get, delete [HTTPS, S3 API]" --> r2
+  server -- "Sweeps pending rows into jobs, reads results [Redis]" --> redis
+  danfseworker -- "Takes jobs [Redis]" --> redis
+  danfseworker -- "Puts the PDF [HTTPS, S3 API]" --> r2
+  server -- "Gets the PDF [HTTPS, S3 API]" --> r2
   ci -- "Pulls the new image, docker compose up [SSH]" --> server
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff
@@ -55,7 +61,7 @@ flowchart TB
   classDef db fill:#438dd5,stroke:#2e6295,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class user person
-  class web,pages,tunnel,server,backup,cardworker,monitoring container
-  class db db
+  class web,pages,tunnel,server,backup,cardworker,monitoring,danfseworker container
+  class db,redis db
   class nacional,resend,others,posthog,sentry,ci,r2,github,discord,notion external
   style boundary fill:#f5f8fc,stroke:#1168bd,stroke-dasharray:6 4,color:#0b4884

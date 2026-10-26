@@ -21,11 +21,48 @@ services:
       # Prometheus scrapes /metrics on port 9464 here (deploy/monitoring).
       monitoring:
         aliases: [notaflow]
+      # Reaches Redis. The app does not depend on it: with Redis down, downloads draw on demand.
+      danfse:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    read_only: true
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - danfse
+
+  danfse-worker:
+    image: ${IMAGE:?IMAGE is not set}
+    restart: unless-stopped
+    command: ["node", "--import", "tsx", "apps/danfse-worker/src/main.ts"]
+    env_file: .env
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - danfse
+      # The Compose default network is not internal, so it gives the worker egress to R2 without joining northub or monitoring.
+      - default
 
 volumes:
   data:
+  redis:
 
 networks:
+  # Internal: no route out, so Redis cannot be reached from outside the stack.
+  danfse:
+    internal: true
   northub:
     name: northub_default
     external: true
