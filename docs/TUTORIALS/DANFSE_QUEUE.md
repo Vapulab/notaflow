@@ -70,6 +70,10 @@ The alerts go to Discord. The rules are in `deploy/monitoring/prometheus/rules.y
 | DanfseWorkerDown | No worker is connected to the queue, or Redis is down. | Run `docker compose ps` and `docker compose logs danfse-worker`, then `docker compose up -d redis danfse-worker`. |
 | DanfsePendingStale | The oldest pending PDF waits too long. | Check the worker, then check that `REDIS_URL` and the R2 values are in `.env`. |
 
-## Roll back
+## Turn the feature off
 
-Remove `REDIS_URL` from `/opt/notaflow/.env` and run `docker compose up -d`. The app turns the queue off and draws every PDF on demand. Stop the worker with `docker compose stop danfse-worker`.
+Do not only remove the lines from `.env`. The next `docker compose up -d` (each deploy runs it) starts the worker again. Without its values, the worker exits at start, restarts in a loop, and `DanfseWorkerDown` fires.
+
+1. Stop the worker and Redis: `docker compose stop danfse-worker redis`.
+2. Remove `REDIS_URL` and the three `R2_DANFSE_*` lines from `/opt/notaflow/.env`, so the app turns the queue off and draws every PDF on demand.
+3. Remove the `danfse-worker` and `redis` services from `/opt/notaflow/compose.yaml` before the next deploy copies the file back, or the deploy starts them again. To keep the feature off for good, remove them from `deploy/compose.yaml` in a PR.

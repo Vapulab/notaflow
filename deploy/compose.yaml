@@ -3,6 +3,9 @@
 #
 # No host port: only the northub Cloudflare tunnel reaches the app, on the network northub_default,
 # with the alias "notaflow" (ingress notaflow.vapulab.com -> http://notaflow:3000).
+#
+# The danfse-worker takes its five DANFSe values from this .env by substitution, defaulting to empty, so a
+# missing line never breaks `docker compose up -d` for the app (the worker then exits on its config check).
 name: notaflow
 
 services:
@@ -25,7 +28,7 @@ services:
       danfse:
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     read_only: true
@@ -43,8 +46,18 @@ services:
     image: ${IMAGE:?IMAGE is not set}
     restart: unless-stopped
     command: ["node", "--import", "tsx", "apps/danfse-worker/src/main.ts"]
-    env_file: .env
+    # Only the five values it needs, not the whole .env. ":-" keeps a missing line from breaking `up -d` for the app.
+    environment:
+      REDIS_URL: ${REDIS_URL:-}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_DANFSE_ACCESS_KEY_ID: ${R2_DANFSE_ACCESS_KEY_ID:-}
+      R2_DANFSE_SECRET_ACCESS_KEY: ${R2_DANFSE_SECRET_ACCESS_KEY:-}
+      R2_DANFSE_BUCKET: ${R2_DANFSE_BUCKET:-}
     read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
     tmpfs:
       - /tmp
     depends_on:

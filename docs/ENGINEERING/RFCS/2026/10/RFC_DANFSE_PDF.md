@@ -271,8 +271,8 @@ Every query goes through a repository that takes the account context. The `/n/<t
 
 New containers in `deploy/compose.yaml`:
 
-- `redis`: `redis:7-alpine`, `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume `redis`, a read-only root, a `redis-cli ping` health check, no published port. It sits only on the internal network `danfse`, so nothing outside the stack reaches it. The VM has no swap, so the memory limit is required.
-- `danfse-worker`: the same image as the app (`${IMAGE}`) with another command. It has the `.env` file and no database volume. It waits for a healthy Redis (`depends_on` with `service_healthy`). It sits on `danfse` and on the Compose default network, which is not internal and gives it egress to R2. It does not join `northub` or `monitoring`.
+- `redis`: `redis:7.4.7-alpine` (an exact tag), `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume `redis`, a read-only root, a `redis-cli ping` health check, no published port. It sits only on the internal network `danfse`, so nothing outside the stack reaches it. The VM has no swap, so the memory limit is required.
+- `danfse-worker`: the same image as the app (`${IMAGE}`) with another command. It gets only the five values it needs (`REDIS_URL`, `R2_ACCOUNT_ID`, and the three `R2_DANFSE_*`) through `environment`, not the whole `.env`, and has no database volume. It drops all capabilities and sets `no-new-privileges`. It waits for a healthy Redis (`depends_on` with `service_healthy`). It sits on `danfse` and on the Compose default network, which is not internal and gives it egress to R2. It does not join `northub` or `monitoring`.
 
 The `app` keeps `northub` and `monitoring` and joins `danfse`. It does not depend on Redis: without it, the queue is off and downloads draw on demand.
 
