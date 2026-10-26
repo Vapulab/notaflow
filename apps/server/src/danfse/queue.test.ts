@@ -1,5 +1,12 @@
 import { describe, expect, test, vi } from 'vitest';
-import { bullmqQueue, type DanfseJob, jobId, memoryQueue, parseJobId } from './queue';
+import {
+  bullmqQueue,
+  type DanfseJob,
+  isFinalFailure,
+  jobId,
+  memoryQueue,
+  parseJobId,
+} from './queue';
 
 const job = (invoiceId = 'inv1', mark: DanfseJob['mark'] = 'none'): DanfseJob => ({
   invoiceId,
@@ -34,12 +41,43 @@ describe('memoryQueue', () => {
     expect(events.failed).not.toHaveBeenCalled();
     q.fail('inv1:none', 'boom');
     expect(events.failed).toHaveBeenCalledWith('inv1:none', 'boom');
-    expect(await q.failed(10)).toMatchObject([{ jobId: 'inv1:none', invoiceId: 'inv1', failedReason: 'boom' }]);
+    expect(await q.failed(10)).toMatchObject([
+      { jobId: 'inv1:none', invoiceId: 'inv1', failedReason: 'boom' },
+    ]);
     expect(await q.counts()).toEqual({ failed: 1, workers: 0 });
     await q.retry('inv1:none');
     expect(await q.counts()).toEqual({ failed: 0, workers: 0 });
     q.complete('inv1:none');
     expect(events.completed).toHaveBeenCalledWith('inv1:none', { renderMs: 0, bytes: 0 });
+  });
+});
+
+test('isFinalFailure reports an early failed state and the last attempt, not a retry', () => {
+  expect(isFinalFailure('failed', 1, 5)).toBe(true);
+  expect(isFinalFailure('missing', 0, 1)).toBe(true);
+  expect(isFinalFailure('active', 5, 5)).toBe(true);
+  expect(isFinalFailure('delayed', 1, 5)).toBe(false);
+  expect(isFinalFailure('waiting', 4, 5)).toBe(false);
+});
+
+describe('memoryQueue lifecycle', () => {
+  test('complete removes the job so the same id can be added again', async () => {
+    const q = memoryQueue();
+    await q.add(job());
+    q.complete('inv1:none');
+    expect(q.jobs).toEqual([]);
+    await q.add(job());
+    expect(q.jobs).toHaveLength(1);
+  });
+
+  test('fail removes the job and retry puts it back', async () => {
+    const q = memoryQueue();
+    await q.add(job());
+    q.fail('inv1:none', 'boom');
+    expect(q.jobs).toEqual([]);
+    await q.retry('inv1:none');
+    expect(q.jobs).toEqual([job()]);
+    expect(await q.counts()).toEqual({ failed: 0, workers: 0 });
   });
 });
 
@@ -58,10 +96,13 @@ describe.runIf(process.env.TEST_REDIS_URL)('bullmqQueue on a real Redis', () => 
     }
   });
 
-  test('add rejects fast when Redis is down', async () => {
+  test('every call rejects fast when Redis is down', async () => {
     const q = bullmqQueue('redis://127.0.0.1:1');
     try {
       await expect(q.add(job())).rejects.toThrow();
+      await expect(q.counts()).rejects.toThrow();
+      await expect(q.failed(5)).rejects.toThrow();
+      await expect(q.retry('a:none')).rejects.toThrow();
     } finally {
       await q.close();
     }

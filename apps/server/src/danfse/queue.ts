@@ -73,13 +73,21 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
   queue.on('error', ignore);
   events.on('error', ignore);
 
+  // BullMQ waits for a first connection and never rejects on ECONNREFUSED; fail at once instead.
+  const ensureReady = () => {
+    if (producer.status !== 'ready') throw new Error('Redis is not connected');
+  };
+
   return {
     async add(job) {
-      // The offline queue is off, but BullMQ still waits for a first connection; fail at once instead.
-      if (producer.status !== 'ready') throw new Error('Redis is not connected');
-      await queue.add('render', job, { ...JOB_OPTIONS, jobId: toBullId(jobId(job.invoiceId, job.mark)) });
+      ensureReady();
+      await queue.add('render', job, {
+        ...JOB_OPTIONS,
+        jobId: toBullId(jobId(job.invoiceId, job.mark)),
+      });
     },
     async failed(limit) {
+      ensureReady();
       const jobs = await queue.getFailed(0, Math.max(limit, 1) - 1);
       return jobs.flatMap((j) => {
         const id = j.id ? fromBullId(j.id) : null;
@@ -96,10 +104,12 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
       });
     },
     async retry(id) {
+      ensureReady();
       const j = await Job.fromId(queue, toBullId(id));
       if (j) await j.retry('failed');
     },
     async counts() {
+      ensureReady();
       const [failed, workers] = await Promise.all([
         queue.getFailedCount(),
         queue.getWorkersCount(),
@@ -113,8 +123,9 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
       // 'failed' fires on every attempt, so look at the attempts left before reporting.
       events.on('failed', ({ jobId: id, failedReason }) => {
         void Job.fromId(queue, id)
-          .then((j) => {
-            if (!j || j.attemptsMade >= (j.opts.attempts ?? 1)) {
+          .then(async (j) => {
+            const state = j ? await j.getState() : 'missing';
+            if (isFinalFailure(state, j?.attemptsMade ?? 0, j?.opts.attempts ?? 1)) {
               handlers.failed(fromBullId(id), failedReason);
             }
           })
@@ -129,6 +140,11 @@ export function bullmqQueue(redisUrl: string): DanfseQueue {
       await Promise.race([closed, new Promise((resolve) => setTimeout(resolve, 2000).unref())]);
     },
   };
+}
+
+// A job moved to failed early (an unrecoverable error) is final too, whatever its attempts count.
+export function isFinalFailure(state: string, attemptsMade: number, attempts: number): boolean {
+  return state === 'failed' || state === 'missing' || attemptsMade >= attempts;
 }
 
 function parseResult(value: unknown): { renderMs: number; bytes: number } {
@@ -155,7 +171,12 @@ export function memoryQueue(): DanfseQueue & {
 } {
   const jobs: DanfseJob[] = [];
   const failedJobs = new Map<string, FailedJob>();
+  const failedPayloads = new Map<string, DanfseJob>();
   const listeners: DanfseQueueEvents[] = [];
+  const removeJob = (id: string): DanfseJob | undefined => {
+    const at = jobs.findIndex((j) => jobId(j.invoiceId, j.mark) === id);
+    return at < 0 ? undefined : jobs.splice(at, 1)[0];
+  };
   const has = (id: string) => jobs.some((j) => jobId(j.invoiceId, j.mark) === id);
   return {
     jobs,
@@ -166,7 +187,11 @@ export function memoryQueue(): DanfseQueue & {
       return [...failedJobs.values()].slice(0, limit);
     },
     async retry(id) {
-      failedJobs.delete(id);
+      const parsed = parseJobId(id);
+      if (!failedJobs.delete(id) || !parsed) return;
+      const original = failedPayloads.get(id);
+      failedPayloads.delete(id);
+      if (original) jobs.push(original);
     },
     async counts() {
       return { failed: failedJobs.size, workers: 0 };
@@ -176,10 +201,14 @@ export function memoryQueue(): DanfseQueue & {
     },
     async close() {},
     complete(id) {
+      // Like removeOnComplete: the job leaves, so the same id can be added again.
+      removeJob(id);
       for (const l of listeners) l.completed(id, { renderMs: 0, bytes: 0 });
     },
     fail(id, reason) {
       const parsed = parseJobId(id);
+      const payload = removeJob(id);
+      if (payload) failedPayloads.set(id, payload);
       failedJobs.set(id, {
         jobId: id,
         invoiceId: parsed?.invoiceId ?? id,
