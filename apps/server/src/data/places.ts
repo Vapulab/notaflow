@@ -1,21 +1,13 @@
-import { readFileSync } from 'node:fs';
+import {
+  COUNTRIES,
+  type Country,
+  countryByCode,
+  MUNICIPALITIES,
+  type Municipality,
+  municipalityByCode,
+} from '@notaflow/core/places';
 
-export interface Municipality {
-  code: string; // IBGE, 7 digits
-  name: string;
-  uf: string;
-}
-
-export interface Country {
-  code: string; // ISO 3166-1 alpha-2
-  name: string;
-}
-
-// Anexo A v1.00 of 2025-12-10, sheets TAB.MUN_IBGE and TAB.PAÍS_ISO2: https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/anexo_a-municipio_ibge-paises_iso2-v1-00-snnfse-20251210.xlsx
-const load = <T>(file: string) =>
-  JSON.parse(readFileSync(new URL(file, import.meta.url), 'utf8')) as T[];
-const MUNICIPALITIES = load<Municipality>('./municipalities.json');
-const COUNTRIES = load<Country>('./countries.json');
+export type { Country, Municipality };
 
 const fold = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -24,8 +16,6 @@ const MUNICIPALITY_INDEX = MUNICIPALITIES.map((m) => ({
   text: fold(`${m.name} ${m.uf}`),
 }));
 const COUNTRY_INDEX = COUNTRIES.map((c) => ({ entry: c, text: fold(`${c.name} ${c.code}`) }));
-const BY_MUNICIPALITY = new Map(MUNICIPALITIES.map((m) => [m.code, m]));
-const BY_COUNTRY = new Map(COUNTRIES.map((c) => [c.code, c]));
 
 function search<T>(index: { entry: T; text: string }[], query: string, limit: number): T[] {
   const folded = fold(query).trim();
@@ -48,9 +38,9 @@ export function searchCountries(query: string, limit = 20): Country[] {
 }
 
 export function municipality(code: string): Municipality | null {
-  return BY_MUNICIPALITY.get(code) ?? null;
+  return municipalityByCode(code) ?? null;
 }
 
 export function country(code: string): Country | null {
-  return BY_COUNTRY.get(code) ?? null;
+  return countryByCode(code) ?? null;
 }

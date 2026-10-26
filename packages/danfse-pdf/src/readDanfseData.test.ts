@@ -73,7 +73,7 @@ test('foreign customer: city and postal code come from the foreign address', () 
   const d = readDanfseData(readFixture('NFSE_EXPORT.xml')).fields;
   expect(d.customerCity).toBe('Testville / NY');
   expect(d.customerPostalCode).toBe('99999');
-  expect(d.issqnIncidence).toBe('US');
+  expect(d.issqnIncidence).toBe('Estados Unidos');
 });
 test('the municipality is hidden when the national tax code item is 99', () => {
   const xml = readFixture('NFSE_DOMESTIC.xml').replace('<cTribNac>010101</cTribNac>', '<cTribNac>990101</cTribNac>');
@@ -84,7 +84,9 @@ test('block switches follow the XML', () => {
   expect(domestic.recipient).toBe('same');
   expect(domestic.intermediary).toBe('absent');
   expect(domestic.issqn).toBe('present');
-  expect(readDanfseData(readFixture('NFSE_EXPORT.xml')).issqn).toBe('notSubject');
+  expect(readDanfseData(readFixture('NFSE_EXPORT.xml')).issqn).toBe('present');
+  const notIncident = readFixture('NFSE_DOMESTIC.xml').replace('<tribISSQN>1</tribISSQN>', '<tribISSQN>4</tribISSQN>');
+  expect(readDanfseData(notIncident).issqn).toBe('notSubject');
 });
 test('a dest with another document is present; the same document is "same"', () => {
   const dest = (cnpj: string): string => `<IBSCBS><dest><CNPJ>${cnpj}</CNPJ><xNome>Destino</xNome></dest></IBSCBS>`;
@@ -112,4 +114,30 @@ test('the export invoice with IBS/CBS prints the CST and the finality', () => {
   expect(d.ibsCbsClassification).toBe('410 / 410027');
   expect(d.purpose).toBe('NFS-e regular');
   expect(d.ibsCbsOperation).toBe('100302');
+});
+test('a municipality outside the issuer city prints the official name and UF', () => {
+  const xml = readFixture('NFSE_DOMESTIC.xml').replace('<endNac><cMun>3550308</cMun>', '<endNac><cMun>4113700</cMun>');
+  const d = readDanfseData(xml).fields;
+  expect(d.customerCity).toBe('Londrina / PR');
+  expect(d.customerPostalCode).toBe('4113700 / 01.310-100');
+});
+test('the service location and the incidence print municipality and country names', () => {
+  const xml = readFixture('NFSE_DOMESTIC.xml')
+    .replace('<cLocPrestacao>3550308</cLocPrestacao>', '<cLocPrestacao>3304557</cLocPrestacao>')
+    .replace('<tribISSQN>1</tribISSQN>', '<tribISSQN>3</tribISSQN><cPaisResult>US</cPaisResult>');
+  const d = readDanfseData(xml).fields;
+  expect(d.serviceLocation).toBe('Rio de Janeiro / RJ');
+  expect(d.issqnIncidence).toBe('Estados Unidos');
+});
+test('the municipal benefit prints the real value from the XML', () => {
+  const bm = (type: string, inner: string): string =>
+    readFixture('NFSE_DOMESTIC.xml')
+      .replace('<valores><vISSQN>', '<valores><tpBM>' + type + '</tpBM><vISSQN>')
+      .replace('</tribMun>', `${inner}</tribMun>`);
+  const pct = readDanfseData(bm('2', '<BM><nBM>1</nBM><pRedBCBM>10.00</pRedBCBM></BM>')).fields.municipalBenefit;
+  expect(pct).toBe('Redução da BC em 10,00%');
+  const amount = readDanfseData(bm('3', '<BM><nBM>1</nBM><vRedBCBM>25.50</vRedBCBM></BM>')).fields.municipalBenefit;
+  expect(amount).toBe('Redução da BC em R$ 25,50');
+  expect(readDanfseData(bm('4', '<pAliq>2.50</pAliq>')).fields.municipalBenefit).toBe('Alíquota Diferenciada de 2,50%');
+  expect(readDanfseData(bm('1', '')).fields.municipalBenefit).toBe('Isenção');
 });

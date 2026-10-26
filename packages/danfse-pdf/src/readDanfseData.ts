@@ -1,4 +1,5 @@
 import { child, childElements, decimalToCents, formatBrasiliaDateTime, parseXmlRoot, requiredChild, NfseParseError } from '@notaflow/provider-nacional';
+import { countryByCode, municipalityByCode } from '@notaflow/core/places';
 import * as codes from './codes';
 import { FIELDS, type FieldKey } from './layout';
 
@@ -124,6 +125,17 @@ function ufOf(ibgeCode: string | undefined): string | undefined {
   return ibgeCode ? codes.UF_BY_IBGE[ibgeCode.slice(0, 2)] : undefined;
 }
 
+// The official table first; the names the XML carries cover a code the table misses.
+function placeText(code: string, names: ReadonlyMap<string, string>): string {
+  const entry = municipalityByCode(code);
+  if (entry) return `${entry.name} / ${entry.uf}`;
+  return join([names.get(code) ?? code, ufOf(code)], ' / ') ?? code;
+}
+
+function countryText(code: string | undefined): string | undefined {
+  return code === undefined ? undefined : (countryByCode(code)?.name ?? code);
+}
+
 interface Party {
   document: string | undefined;
   municipalRegistration: string | undefined;
@@ -149,7 +161,9 @@ function readParty(party: El | undefined, names: ReadonlyMap<string, string>, em
     ? join([val(foreign, 'xCidade'), val(foreign, 'xEstProvReg')], ' / ')
     : cMun === undefined
       ? undefined
-      : join([names.get(cMun) ?? cMun, val(emitAddress, 'UF') ?? ufOf(cMun)], ' / ');
+      : emitAddress && val(emitAddress, 'UF') && !municipalityByCode(cMun)
+        ? join([names.get(cMun) ?? cMun, val(emitAddress, 'UF')], ' / ')
+        : placeText(cMun, names);
   return {
     document: partyDocument(party, emit),
     municipalRegistration: pick('IM'),
@@ -216,8 +230,8 @@ export function readDanfseData(xml: string): DanfseData {
   const cLocEmi = val(dps, 'cLocEmi');
   const emitUf = val(emit, 'enderNac', 'UF') ?? ufOf(cLocEmi);
   const placeParts = (code: string | undefined, name: string | undefined, country: string | undefined): string | undefined => {
-    if (code === undefined && name === undefined) return country;
-    return join([name ?? (code === undefined ? undefined : (names.get(code) ?? code)), ufOf(code), country], ' / ');
+    const place = code === undefined ? name : name === undefined ? placeText(code, names) : join([name, ufOf(code)], ' / ');
+    return join([place, countryText(country)], ' / ');
   };
 
   const reductions = [
@@ -314,7 +328,7 @@ export function readDanfseData(xml: string): DanfseData {
     issqnImmunity: describe(codes.ISSQN_IMMUNITY, val(tribMun, 'tpImunidade')),
     issqnSuspension: describe(codes.ISSQN_SUSPENSION, val(tribMun, 'exigSusp', 'tpSusp')),
     issqnSuspensionProcess: val(tribMun, 'exigSusp', 'nProcesso'),
-    municipalBenefit: describe(codes.MUNICIPAL_BENEFIT, val(nfseValues, 'tpBM')),
+    municipalBenefit: municipalBenefit(val(nfseValues, 'tpBM'), at(tribMun, 'BM'), val(tribMun, 'pAliq')),
     municipalBenefitCalc: money(val(nfseValues, 'vCalcBM') ?? val(tribMun, 'BM', 'vRedBCBM')),
     deductions: money(val(dpsValues, 'vDedRed', 'vDR')) ?? sumMoney([val(nfseValues, 'vCalcDR'), reeRepRes]),
     issqnUnconditionalDiscount: money(val(dpsValues, 'vDescCondIncond', 'vDescIncond')),
@@ -387,10 +401,18 @@ export function readDanfseData(xml: string): DanfseData {
     customer,
     recipient,
     intermediary: intermParty ? 'present' : 'absent',
-    issqn: ['2', '3', '4'].includes(val(tribMun, 'tribISSQN') ?? '') ? 'notSubject' : 'present',
+    issqn: val(tribMun, 'tribISSQN') === '4' ? 'notSubject' : 'present',
   };
 }
 
 function prefixed(prefix: string, value: string | undefined): string | undefined {
   return value === undefined ? undefined : `${prefix}${value}`;
+}
+
+// The XSD texts carry placeholders; the real value comes from the XML.
+function municipalBenefit(type: string | undefined, bm: El | undefined, rate: string | undefined): string | undefined {
+  const text = describe(codes.MUNICIPAL_BENEFIT, type);
+  if (text === undefined || type === undefined) return text;
+  const detail = type === '2' ? percent(val(bm, 'pRedBCBM')) : type === '3' ? money(val(bm, 'vRedBCBM')) : type === '4' ? percent(rate) : undefined;
+  return detail === undefined ? text : `${text} ${detail}`;
 }

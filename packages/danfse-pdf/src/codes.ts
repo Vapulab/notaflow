@@ -61,9 +61,9 @@ export const ISSQN_SUSPENSION: Record<string, string> = {
 
 export const MUNICIPAL_BENEFIT: Record<string, string> = {
   '1': 'Isenção',
-  '2': "Redução da BC em 'ppBM' %",
-  '3': "Redução da BC em R$ 'vInfoBM'",
-  '4': "Alíquota Diferenciada de 'aliqDifBM' %",
+  '2': 'Redução da BC em',
+  '3': 'Redução da BC em',
+  '4': 'Alíquota Diferenciada de',
 };
 
 export const ISSQN_WITHHOLDING: Record<string, string> = {
