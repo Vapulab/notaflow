@@ -7,7 +7,7 @@ import { registerAuthRoutes } from './auth/authRoutes';
 import { BugReports } from './bugs/BugReports';
 import { bugChannelClients } from './bugs/channels';
 import { registerGithubWebhook } from './bugs/githubWebhook';
-import { r2Client } from '@notaflow/r2';
+import { type R2Client, r2Client } from '@notaflow/r2';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { DanfseDispatcher } from './danfse/DanfseDispatcher';
@@ -101,6 +101,8 @@ export interface AppDeps {
   errorReporter?: ErrorReporter;
   // Set only when the DANFSe queue is configured; tests pass a memory queue.
   danfseQueue?: DanfseQueue;
+  // Tests inject a fake DANFSe bucket; production builds it from config.danfse.
+  danfseR2?: Pick<R2Client, 'get'>;
 }
 
 // Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
@@ -283,7 +285,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   emitterRoutes(app, { db, masterKey: config.masterKey, providerFactory, onEmitterCreated });
   syncRoutes(app, { db, sync: syncService });
-  invoiceRoutes(app, { db, masterKey: config.masterKey, providerFactory });
+  invoiceRoutes(app, {
+    db,
+    masterKey: config.masterKey,
+    providerFactory,
+    danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
+    metrics,
+  });
   const issue = new IssueService({
     db,
     certificates,

@@ -35,6 +35,7 @@ export class Metrics {
   private readonly httpDuration: Histogram<'module'>;
   private readonly invoicesIssued: Counter<'result'>;
   private readonly invoicesCancelled: Counter<'result'>;
+  private readonly danfseOnDemandTotal: Counter;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
 
@@ -64,6 +65,11 @@ export class Metrics {
       name: 'invoices_cancelled_total',
       help: 'Cancel attempts by result',
       labelNames: ['result'],
+      registers,
+    });
+    this.danfseOnDemandTotal = new Counter({
+      name: 'danfse_on_demand_total',
+      help: 'DANFSe downloads drawn on demand, not served from R2',
       registers,
     });
     this.syncRuns = new Counter({
@@ -222,6 +228,10 @@ export class Metrics {
 
   cancel(result: string): void {
     this.invoicesCancelled.inc({ result });
+  }
+
+  danfseOnDemand(): void {
+    this.danfseOnDemandTotal.inc();
   }
 
   syncRun(emitterId: string, error: string | null | undefined, at: Date): void {

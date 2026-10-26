@@ -1,4 +1,6 @@
 import { makeTestCertificate } from '@notaflow/test-kit';
+import { Readable } from 'node:stream';
+import { eq } from 'drizzle-orm';
 import { PDFDocument } from 'pdf-lib';
 import { extractText } from 'unpdf';
 import { afterEach, beforeEach, expect, test } from 'vitest';
@@ -6,7 +8,7 @@ import { issueOnFake } from '../../test/fakeInvoices';
 import { seedTenant } from '../../test/fixtures';
 import { providerEvent } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
-import { certificates } from '../db/schema';
+import { certificates, invoices } from '../db/schema';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
 let t: TestApp;
@@ -276,4 +278,86 @@ test('another account gets 404 on the DANFS-e route', async () => {
     headers: await t.as('b@example.com'),
   });
   expect(response.statusCode).toBe(404);
+});
+
+const STORED = Buffer.from('%PDF-1.7 stored in r2');
+
+async function withR2(get: (key: string) => Promise<{ body: Readable; size: number | null } | null>) {
+  await t.close();
+  t = await createTestApp({ danfseR2: { get } });
+}
+
+function setPdfStatus(id: string, status: 'pending' | 'ready' | 'failed') {
+  t.db.update(invoices).set({ pdfStatus: status }).where(eq(invoices.id, id)).run();
+}
+
+const onDemand = async () =>
+  (await t.app.metrics.registry.getSingleMetricAsString('danfse_on_demand_total')).split('\n');
+
+test('a ready invoice streams the PDF from R2', async () => {
+  const keys: string[] = [];
+  await withR2(async (key) => {
+    keys.push(key);
+    return { body: Readable.from([STORED]), size: STORED.length };
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toBe('application/pdf');
+  expect(response.headers['content-disposition']).toMatch(/^attachment; filename="DANFSe-\w+\.pdf"$/);
+  expect(response.rawPayload.equals(STORED)).toBe(true);
+  expect(keys).toEqual([`danfse/${first.accessKey}.pdf`]);
+  expect(await onDemand()).toContain('danfse_on_demand_total 0');
+});
+
+test('a ready invoice whose R2 object is missing is drawn on demand', async () => {
+  await withR2(async () => null);
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('an R2 error falls back to drawing on demand', async () => {
+  await withR2(async () => {
+    throw new Error('R2 answered 503');
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('a pending invoice is drawn on demand and counted', async () => {
+  let calls = 0;
+  await withR2(async () => {
+    calls += 1;
+    return null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'pending');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(calls).toBe(0);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('without the queue settings the route draws on demand', async () => {
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
 });
