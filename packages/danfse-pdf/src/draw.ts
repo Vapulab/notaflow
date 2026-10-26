@@ -88,7 +88,9 @@ export function drawField(
   const pad = 2;
   box(page, f.x, f.y, f.width, f.height, { fill: style.fill, lineWidth: 0.5 });
   const label = style.upper ? f.label.toUpperCase() : f.label;
-  drawTextAt(page, label, fonts.bold, style.labelSize, cm(f.x) + pad, cm(f.y) + pad);
+  const labelBaseline = style.labelSize + 0.5;
+  drawTextAt(page, label, fonts.bold, style.labelSize, cm(f.x) + pad, cm(f.y) + labelBaseline - style.labelSize);
   const content = fitText(fonts.regular, value, 7, cm(f.width) - 2 * pad);
-  drawTextAt(page, content, fonts.regular, 7, cm(f.x) + pad, cm(f.y) + pad + style.labelSize + 2);
+  // The content baseline sits 8 pt under the label baseline so descenders stay inside the cell.
+  drawTextAt(page, content, fonts.regular, 7, cm(f.x) + pad, cm(f.y) + labelBaseline + 8 - 7);
 }

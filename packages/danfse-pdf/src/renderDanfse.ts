@@ -70,7 +70,9 @@ function drawHeader(ctx: Ctx): void {
     const f = field(key);
     const text = data.fields[key];
     if (text === '-') continue;
-    drawTextAt(page, fitText(regular, text, size, cm(f.width) - 2 * PAD), regular, size, cm(f.x) + PAD, cm(f.y) + PAD);
+    // The 0.24 cm rows are only 6.8 pt tall: the baseline sits at 5 pt so descenders stay inside the header.
+    const baseline = f.height < 0.3 ? 5 : PAD + size;
+    drawTextAt(page, fitText(regular, text, size, cm(f.width) - 2 * PAD), regular, size, cm(f.x) + PAD, cm(f.y) + baseline - size);
   }
 }
 

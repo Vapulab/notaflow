@@ -14,6 +14,14 @@ export const SHADED: ReadonlySet<FieldKey> = new Set(['issuerType', 'netAmountWi
 
 const PAD = 2;
 const LINE = 8.5;
+// A 7 pt line needs its baseline (7 pt) plus the descender (1.5 pt) inside the box.
+const LINE_EXTENT = 8.5;
+// Absorbs the cm round trip, which turns 5 lines into 4.999999999999999.
+const EPSILON = 1e-6;
+
+export function linesFitting(heightPt: number): number {
+  return Math.max(1, Math.floor((heightPt - LINE_EXTENT) / LINE + EPSILON) + 1);
+}
 const FIXED_HEIGHT = 0.32;
 // The Canhoto block (y 28.10, height 0.67) is not printed, so its bottom edge is where the content ends.
 const CONTENT_BOTTOM = 28.77;
@@ -39,7 +47,7 @@ function fixedText(block: LayoutBlock, data: DanfseData): string | undefined {
 }
 
 // Lines that fit; the last one ends with "..." when the text needs more.
-function fitLines(font: PDFFont, text: string, size: number, widthPt: number, maxLines: number): string[] {
+export function fitLines(font: PDFFont, text: string, size: number, widthPt: number, maxLines: number): string[] {
   const lines = wrapText(font, flat(text), size, widthPt);
   const kept = lines.slice(0, Math.max(1, maxLines));
   const last = kept.length - 1;
@@ -99,7 +107,8 @@ function drawTitleCell(ctx: BlockCtx, title: string, y: number, height: number):
 function drawFixed(ctx: BlockCtx, p: Placed, text: string): void {
   const y = p.block.y + p.dy;
   box(ctx.page, 0.3, y, 20.4, p.height, { lineWidth: 0.5 });
-  drawTextAt(ctx.page, text, ctx.bold, 7, cm(0.3) + PAD, cm(y) + (cm(p.height) - 7) / 2);
+  // Cap height 5 pt and descender 1.5 pt are centered in the box.
+  drawTextAt(ctx.page, text, ctx.bold, 7, cm(0.3) + PAD, cm(y) + (cm(p.height) + 3.5) / 2 - 7);
 }
 
 function drawComplementary(ctx: BlockCtx, p: Placed, f: LayoutField): void {
@@ -111,7 +120,7 @@ function drawComplementary(ctx: BlockCtx, p: Placed, f: LayoutField): void {
   const contentY = y + strip;
   const contentHeight = p.height - strip;
   box(page, 0.3, contentY, 20.4, contentHeight, { lineWidth: 0.5 });
-  const maxLines = Math.floor((cm(contentHeight) - 2 * PAD) / LINE);
+  const maxLines = linesFitting(cm(contentHeight) - 2 * PAD);
   drawLines(ctx, fitLines(regular, data.fields[f.key], 7, cm(20.4) - 2 * PAD, maxLines), cm(0.3) + PAD, cm(contentY) + PAD);
 }
 
@@ -141,7 +150,7 @@ function drawFull(ctx: BlockCtx, p: Placed): void {
       box(page, placed.x, placed.y, placed.width, height, { lineWidth: 0.5 });
       drawTextAt(page, f.label, bold, 6, cm(placed.x) + PAD, cm(placed.y) + PAD);
       const top = cm(placed.y) + PAD + 6 + 2;
-      const maxLines = Math.floor((cm(placed.y + height) - PAD - top) / LINE) + 1;
+      const maxLines = linesFitting(cm(placed.y + height) - top);
       drawLines(ctx, fitLines(regular, value, 7, cm(placed.width) - 2 * PAD, maxLines), cm(placed.x) + PAD, top);
     } else {
       drawField(page, ctx, placed, value, { labelSize: 6, upper: false, fill: SHADED.has(f.key) });

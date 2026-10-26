@@ -110,3 +110,37 @@ test('block titles are bold uppercase and the net amount with IBS/CBS is shaded'
   const shaded = drawRectangle.mock.calls.filter((c) => c[0]?.color !== undefined);
   expect(shaded.length).toBeGreaterThan(10);
 });
+
+test('a long complementary text still prints the mandatory tax totals line', async () => {
+  const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+  for (let chars = 60; chars <= 2000; chars += 20) {
+    drawText.mockClear();
+    const xml = readFixture('NFSE_DOMESTIC.xml').replace('</xDescServ>', `</xDescServ><infoCompl><xInfComp>${'Informação '.repeat(Math.ceil(chars / 11)).slice(0, chars)}</xInfComp></infoCompl>`);
+    await renderDanfse(xml, { mark: 'none' });
+    const printed = drawText.mock.calls.map((c) => c[0]).join(' ');
+    expect(printed, `${chars} chars`).toContain('Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012');
+  }
+}, 60_000);
+test('every line of the service description ends above the box bottom', async () => {
+  const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+  const drawRectangle = vi.spyOn(PDFPage.prototype, 'drawRectangle');
+  const long = `${'Informação '.repeat(200)}`;
+  const xml = readFixture('NFSE_DOMESTIC.xml')
+    .replace(/<xDescServ>[^<]*<\/xDescServ>/, `<xDescServ>${'Serviço '.repeat(250)}</xDescServ><infoCompl><xInfComp>${long}</xInfComp></infoCompl>`);
+  await renderDanfse(xml, { mark: 'none' });
+  const labelIndex = drawText.mock.calls.findIndex((c) => c[0] === 'Descrição do Serviço');
+  const labelOrder = drawText.mock.invocationCallOrder[labelIndex] ?? 0;
+  const rects = drawRectangle.mock.calls.map((c, i) => ({ o: c[0], order: drawRectangle.mock.invocationCallOrder[i] ?? 0 })).filter((r) => r.order < labelOrder);
+  const rect = rects[rects.length - 1]?.o;
+  const lines = drawText.mock.calls.filter((c, i) => i > labelIndex && typeof c[0] === 'string' && c[0].startsWith('Serviço'));
+  expect(lines.length).toBeGreaterThan(3);
+  for (const line of lines) expect((line[1]?.y ?? 0) - 1.5).toBeGreaterThanOrEqual(rect?.y ?? Infinity);
+});
+test('both header environment lines sit inside the header box', async () => {
+  const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+  const xml = readFixture('NFSE_DOMESTIC.xml').replace('</xLocEmi>', '</xLocEmi><ambGer>1</ambGer>');
+  await renderDanfse(xml, { mark: 'none' });
+  const lines = drawText.mock.calls.filter((c) => c[1]?.size === 6 && (c[1]?.x ?? 0) >= cm(15.6) && (c[1]?.y ?? 0) > 841.89 - cm(1.5));
+  expect(lines.length).toBeGreaterThanOrEqual(2);
+  for (const line of lines) expect(841.89 - (line[1]?.y ?? 0) + 1.2).toBeLessThan(cm(1.46));
+});
