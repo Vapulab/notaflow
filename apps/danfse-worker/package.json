@@ -1,0 +1,19 @@
+{
+  "name": "@notaflow/danfse-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@notaflow/danfse-pdf": "workspace:*",
+    "@notaflow/r2": "workspace:*",
+    "bullmq": "5.81.5",
+    "ioredis": "5.11.1"
+  },
+  "devDependencies": {
+    "@notaflow/provider-nacional": "workspace:*",
+    "pdf-lib": "1.17.1"
+  }
+}
