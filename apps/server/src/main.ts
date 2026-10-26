@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApp } from './app';
+import { bullmqQueue } from './danfse/queue';
 import { ConfigError, loadConfig } from './config';
 import { openDatabase } from './db/openDatabase';
 import { startMetricsServer } from './metrics/server';
@@ -11,6 +12,7 @@ import { runAllOnce, startScheduler } from './sync/scheduler';
 const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
 const BUG_INTERVAL_MS = 30_000;
+const DANFSE_INTERVAL_MS = 10_000;
 const LIFECYCLE_INTERVAL_MS = 15 * 60_000;
 // A daily job, checked every hour: a deploy restarts the process, so a 24-hour timer could never fire.
 const BUG_IMAGE_PURGE_INTERVAL_MS = 60 * 60_000;
@@ -22,6 +24,7 @@ try {
   const app = buildApp({
     config,
     db,
+    ...(config.danfse ? { danfseQueue: bullmqQueue(config.danfse.redisUrl) } : {}),
     ...(existsSync(join(webRoot, 'index.html')) ? { webRoot } : {}),
   });
   await app.listen({ host: config.host, port: config.port });
@@ -65,6 +68,17 @@ try {
     LIFECYCLE_INTERVAL_MS,
     (error) => app.log.error({ err: error }, 'lifecycle run failed'),
   );
+  const danfse = app.danfse;
+  if (danfse) {
+    startScheduler(
+      async () => {
+        const queued = await danfse.dispatcher.sweep();
+        if (queued > 0) app.log.info({ module: 'danfse', queued }, 'DANFSe renders enqueued');
+      },
+      DANFSE_INTERVAL_MS,
+      (error) => app.log.error({ err: error }, 'DANFSe sweep failed'),
+    );
+  }
 } catch (error) {
   if (error instanceof ConfigError) {
     console.error(error.message);

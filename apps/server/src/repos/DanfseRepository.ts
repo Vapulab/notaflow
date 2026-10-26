@@ -119,6 +119,15 @@ export class DanfseRepository {
     );
   }
 
+  lastMark(id: string): DanfseMark | null {
+    const row = this.db
+      .select({ mark: invoices.pdfMark })
+      .from(invoices)
+      .where(and(eq(invoices.id, id), notDeleted(invoices)))
+      .get();
+    return row?.mark ?? null;
+  }
+
   oldestPendingAt(): Date | null {
     const row = this.db
       .select({ at: min(invoices.pdfPendingSince) })
