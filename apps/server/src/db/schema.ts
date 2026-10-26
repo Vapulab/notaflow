@@ -374,6 +374,8 @@ export const invoices = sqliteTable(
     pdfMark: text('pdf_mark', { enum: ['none', 'cancelada', 'substituida'] }),
     pdfEnqueuedAt: integer('pdf_enqueued_at', { mode: 'timestamp_ms' }),
     pdfRenderedAt: integer('pdf_rendered_at', { mode: 'timestamp_ms' }),
+    // Set on every change that makes the PDF stale; the optimistic version of an enqueue and the age of the backlog.
+    pdfPendingSince: integer('pdf_pending_since', { mode: 'timestamp_ms' }),
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

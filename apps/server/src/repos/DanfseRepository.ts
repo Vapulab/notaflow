@@ -2,6 +2,7 @@ import type { DanfseMark } from '@notaflow/danfse-pdf';
 import { and, asc, eq, isNotNull, isNull, lte, min, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { invoiceEvents, invoices } from '../db/schema';
+import { pdfPending } from './InvoiceRepository';
 import { notDeleted, touched } from '../db/stamps';
 
 export interface DueInvoice {
@@ -10,6 +11,8 @@ export interface DueInvoice {
   status: string;
   xmlGzip: Buffer;
   eventCodes: string[];
+  // The version to hand back to markEnqueued.
+  pendingSince: Date | null;
 }
 
 const REENQUEUE_AFTER_MS = 10 * 60_000;
@@ -26,6 +29,7 @@ export class DanfseRepository {
         accessKey: invoices.accessKey,
         status: invoices.status,
         xmlGzip: invoices.xmlGzip,
+        pendingSince: invoices.pdfPendingSince,
       })
       .from(invoices)
       .where(
@@ -58,17 +62,30 @@ export class DanfseRepository {
         status: row.status,
         xmlGzip: row.xmlGzip,
         eventCodes: events.map((e) => e.code),
+        pendingSince: row.pendingSince,
       });
     }
     return due;
   }
 
-  markEnqueued(id: string, mark: DanfseMark, now: Date): void {
-    this.db
-      .update(invoices)
-      .set({ pdfMark: mark, pdfEnqueuedAt: now, ...touched(null) })
-      .where(eq(invoices.id, id))
-      .run();
+  // False when the invoice changed since `due` read it: the new change keeps the row pending.
+  markEnqueued(id: string, mark: DanfseMark, now: Date, pendingSince: Date | null): boolean {
+    return (
+      this.db
+        .update(invoices)
+        .set({ pdfMark: mark, pdfEnqueuedAt: now, ...touched(null) })
+        .where(
+          and(
+            eq(invoices.id, id),
+            eq(invoices.pdfStatus, 'pending'),
+            pendingSince
+              ? eq(invoices.pdfPendingSince, pendingSince)
+              : isNull(invoices.pdfPendingSince),
+            notDeleted(invoices),
+          ),
+        )
+        .run().changes > 0
+    );
   }
 
   // A write that changed the invoice clears the enqueue time, so a result of the older job misses.
@@ -96,7 +113,7 @@ export class DanfseRepository {
     return (
       this.db
         .update(invoices)
-        .set({ pdfStatus: 'pending', pdfEnqueuedAt: null, ...touched(null) })
+        .set({ ...pdfPending(), ...touched(null) })
         .where(and(eq(invoices.id, id), eq(invoices.pdfStatus, 'failed'), notDeleted(invoices)))
         .run().changes > 0
     );
@@ -104,7 +121,7 @@ export class DanfseRepository {
 
   oldestPendingAt(): Date | null {
     const row = this.db
-      .select({ at: min(invoices.pdfEnqueuedAt) })
+      .select({ at: min(invoices.pdfPendingSince) })
       .from(invoices)
       .where(and(eq(invoices.pdfStatus, 'pending'), notDeleted(invoices)))
       .get();

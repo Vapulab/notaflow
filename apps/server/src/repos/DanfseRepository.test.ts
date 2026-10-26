@@ -1,4 +1,5 @@
 import type { AccountContext } from '@notaflow/core';
+import type { DanfseMark } from '@notaflow/danfse-pdf';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { seedTenant } from '../../test/fixtures';
@@ -36,6 +37,8 @@ beforeEach(() => {
 afterEach(() => close());
 
 const row = (id: string) => db.select().from(invoices).where(eq(invoices.id, id)).get();
+const enqueue = (id: string, mark: DanfseMark, at: Date) =>
+  repo.markEnqueued(id, mark, at, row(id)?.pdfPendingSince ?? null);
 const syncEventKey = () => invoiceRepo.upsertSynced(a, emitterId, providerInvoice(), null).id;
 const sync = (n: number) =>
   invoiceRepo.upsertSynced(
@@ -77,7 +80,7 @@ describe('the invoice writers', () => {
 
   test('a cancellation sets the invoice back to pending', () => {
     const id = syncEventKey();
-    repo.markEnqueued(id, 'none', NOW);
+    enqueue(id, 'none', NOW);
     repo.markRendered(id, 'none', NOW);
     expect(row(id)?.pdfStatus).toBe('ready');
     invoiceRepo.recordEvent(a, emitterId, providerEvent());
@@ -86,7 +89,7 @@ describe('the invoice writers', () => {
       pdfStatus: 'pending',
       pdfEnqueuedAt: null,
     });
-    repo.markEnqueued(id, 'cancelada', NOW);
+    enqueue(id, 'cancelada', NOW);
     repo.markRendered(id, 'cancelada', NOW);
     expect(row(id)?.pdfStatus).toBe('ready');
     invoiceRepo.markCancelled(a, id);
@@ -97,8 +100,8 @@ describe('the invoice writers', () => {
 describe('DanfseRepository', () => {
   test('due returns pending rows, never-enqueued first, at most `limit`', () => {
     const [x, y, z] = [sync(1), sync(2), sync(3)];
-    repo.markEnqueued(x, 'none', minutesBefore(30));
-    repo.markEnqueued(y, 'none', minutesBefore(60));
+    enqueue(x, 'none', minutesBefore(30));
+    enqueue(y, 'none', minutesBefore(60));
     const due = repo.due(NOW, 10);
     expect(due.map((d) => d.id)).toEqual([z, y, x]);
     expect(due[0]).toMatchObject({ status: 'issued', eventCodes: [] });
@@ -109,8 +112,8 @@ describe('DanfseRepository', () => {
   test('due skips rows enqueued less than 10 minutes ago and ready rows', () => {
     const fresh = sync(1);
     const done = sync(2);
-    repo.markEnqueued(fresh, 'none', minutesBefore(5));
-    repo.markEnqueued(done, 'none', minutesBefore(60));
+    enqueue(fresh, 'none', minutesBefore(5));
+    enqueue(done, 'none', minutesBefore(60));
     repo.markRendered(done, 'none', NOW);
     expect(repo.due(NOW, 10)).toEqual([]);
   });
@@ -123,7 +126,7 @@ describe('DanfseRepository', () => {
 
   test('markRendered with an old mark keeps the row pending', () => {
     const id = sync(1);
-    repo.markEnqueued(id, 'none', NOW);
+    enqueue(id, 'none', NOW);
     invoiceRepo.markCancelled(a, id);
     expect(repo.markRendered(id, 'none', NOW)).toBe(false);
     expect(row(id)?.pdfStatus).toBe('pending');
@@ -131,14 +134,14 @@ describe('DanfseRepository', () => {
 
   test('markRendered with the current mark makes the row ready', () => {
     const id = sync(1);
-    repo.markEnqueued(id, 'none', NOW);
+    enqueue(id, 'none', NOW);
     expect(repo.markRendered(id, 'none', NOW)).toBe(true);
     expect(row(id)).toMatchObject({ pdfStatus: 'ready', pdfRenderedAt: NOW });
   });
 
   test('retry moves a failed row back to pending', () => {
     const id = sync(1);
-    repo.markEnqueued(id, 'none', NOW);
+    enqueue(id, 'none', NOW);
     expect(repo.markFailed(id, 'cancelada')).toBe(false);
     expect(repo.markFailed(id, 'none')).toBe(true);
     expect(row(id)?.pdfStatus).toBe('failed');
@@ -148,12 +151,76 @@ describe('DanfseRepository', () => {
     expect(repo.retry(id)).toBe(false);
   });
 
-  test('oldestPendingAt is the oldest enqueue time of a pending row, or null', () => {
+  test('oldestPendingAt counts a never enqueued row, and a re-enqueue does not reset the age', () => {
     expect(repo.oldestPendingAt()).toBeNull();
     const x = sync(1);
     const y = sync(2);
-    repo.markEnqueued(x, 'none', minutesBefore(5));
-    repo.markEnqueued(y, 'none', minutesBefore(50));
+    db.update(invoices)
+      .set({ pdfPendingSince: minutesBefore(50) })
+      .where(eq(invoices.id, x))
+      .run();
+    db.update(invoices)
+      .set({ pdfPendingSince: minutesBefore(5) })
+      .where(eq(invoices.id, y))
+      .run();
     expect(repo.oldestPendingAt()).toEqual(minutesBefore(50));
+    enqueue(x, 'none', NOW);
+    expect(repo.oldestPendingAt()).toEqual(minutesBefore(50));
+    repo.markRendered(x, 'none', NOW);
+    expect(repo.oldestPendingAt()).toEqual(minutesBefore(5));
+  });
+
+  test('markEnqueued misses when the invoice changed after due read it', () => {
+    const id = syncEventKey();
+    const [due] = repo.due(NOW, 10);
+    invoiceRepo.markCancelled(a, id);
+    expect(repo.markEnqueued(id, 'none', NOW, due?.pendingSince ?? null)).toBe(false);
+    expect(row(id)).toMatchObject({ pdfStatus: 'pending', pdfEnqueuedAt: null });
+    const [again] = repo.due(NOW, 10);
+    expect(repo.markEnqueued(id, 'cancelada', NOW, again?.pendingSince ?? null)).toBe(true);
+  });
+
+  test('retry stamps a new pending time', () => {
+    const id = sync(1);
+    enqueue(id, 'none', NOW);
+    repo.markFailed(id, 'none');
+    db.update(invoices)
+      .set({ pdfPendingSince: minutesBefore(99) })
+      .where(eq(invoices.id, id))
+      .run();
+    repo.retry(id);
+    expect(row(id)?.pdfPendingSince?.getTime()).toBeGreaterThan(minutesBefore(99).getTime());
+  });
+});
+
+describe('a re-sync', () => {
+  test('keeps a ready invoice ready when the XML and status did not change', () => {
+    const id = syncEventKey();
+    enqueue(id, 'none', NOW);
+    repo.markRendered(id, 'none', NOW);
+    syncEventKey();
+    expect(row(id)?.pdfStatus).toBe('ready');
+  });
+
+  test('makes a ready invoice pending when the XML changed', () => {
+    const id = syncEventKey();
+    enqueue(id, 'none', NOW);
+    repo.markRendered(id, 'none', NOW);
+    invoiceRepo.upsertSynced(a, emitterId, providerInvoice({ xml: '<NFSe>other</NFSe>' }), null);
+    expect(row(id)?.pdfStatus).toBe('pending');
+  });
+
+  test('makes a ready invoice pending when a cancelling event arrived first', () => {
+    const id = syncEventKey();
+    enqueue(id, 'none', NOW);
+    repo.markRendered(id, 'none', NOW);
+    db.update(invoices).set({ status: 'issued' }).where(eq(invoices.id, id)).run();
+    invoiceRepo.recordEvent(a, emitterId, providerEvent());
+    db.update(invoices)
+      .set({ status: 'issued', pdfStatus: 'ready' })
+      .where(eq(invoices.id, id))
+      .run();
+    syncEventKey();
+    expect(row(id)).toMatchObject({ status: 'cancelled', pdfStatus: 'pending' });
   });
 });

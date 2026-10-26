@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { AccountContext, Environment, ProviderEvent, ProviderInvoice } from '@notaflow/core';
-import { and, asc, count, desc, eq, gte, inArray, like, lte, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, like, lte, or, type SQL, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, invoiceEvents, invoices } from '../db/schema';
@@ -83,14 +83,13 @@ export class InvoiceRepository {
       .get();
     if (existing) {
       const status = existing.status === 'cancelled' || cancelled ? 'cancelled' : existing.status;
+      const stale =
+        status !== existing.status ||
+        !existing.xmlGzip ||
+        gunzipSync(existing.xmlGzip).toString('utf8') !== invoice.xml;
       this.db
         .update(invoices)
-        .set({
-          ...projection,
-          status,
-          ...(status === 'cancelled' ? PDF_PENDING : {}),
-          ...touched(ctx),
-        })
+        .set({ ...projection, status, ...(stale ? pdfPending() : {}), ...touched(ctx) })
         .where(eq(invoices.id, existing.id))
         .run();
       return { id: existing.id, created: false, fromApp: existing.origin === 'app' };
@@ -135,6 +134,8 @@ export class InvoiceRepository {
       .values({
         ...created(ctx),
         ...projection,
+        pdfStatus: 'pending',
+        pdfPendingSince: new Date(),
         id,
         emitterId,
         accessKey: invoice.accessKey,
@@ -173,7 +174,7 @@ export class InvoiceRepository {
     if (invoice && CANCELLING_EVENTS.includes(event.code)) {
       this.db
         .update(invoices)
-        .set({ status: 'cancelled', ...PDF_PENDING, ...touched(ctx) })
+        .set({ status: 'cancelled', ...pdfPending(), ...touched(ctx) })
         .where(eq(invoices.id, invoice.id))
         .run();
     }
@@ -403,7 +404,7 @@ export class InvoiceRepository {
     this.requireInvoice(ctx, invoiceId);
     this.db
       .update(invoices)
-      .set({ status: 'cancelled', ...PDF_PENDING, ...touched(ctx) })
+      .set({ status: 'cancelled', ...pdfPending(), ...touched(ctx) })
       .where(eq(invoices.id, invoiceId))
       .run();
   }
@@ -447,6 +448,7 @@ export class InvoiceRepository {
       .update(invoices)
       .set({
         ...projectionOf(invoice),
+        ...pdfPending(),
         accessKey: invoice.accessKey,
         status: cancelled ? 'cancelled' : 'issued',
         ...touched(ctx),
@@ -495,12 +497,17 @@ export class InvoiceRepository {
   }
 }
 
-// The stamp does not fit the new state: the sweep draws the PDF again.
-const PDF_PENDING = { pdfStatus: 'pending', pdfEnqueuedAt: null } as const;
+// The PDF no longer fits the invoice: the sweep draws it again. The stamp grows by at least 1 ms, so a read before and a write after never tie.
+export function pdfPending() {
+  return {
+    pdfStatus: 'pending',
+    pdfEnqueuedAt: null,
+    pdfPendingSince: sql<Date>`max(coalesce(${invoices.pdfPendingSince}, 0) + 1, ${Date.now()})`,
+  } as const;
+}
 
 function projectionOf(invoice: ProviderInvoice) {
   return {
-    ...PDF_PENDING,
     number: invoice.number,
     dpsId: invoice.dps.id,
     dpsSeries: invoice.dps.series,

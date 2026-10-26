@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8414c4a2-a1b7-4540-b95d-0de27f4f7011",
+  "id": "89ab8e9f-bfb4-4858-88b2-cc13525534a8",
   "prevId": "3e8822b9-2a00-4eb2-bfa0-e3e8f80ee3ac",
   "tables": {
     "account_documents": {
@@ -2089,6 +2089,13 @@
         },
         "pdf_rendered_at": {
           "name": "pdf_rendered_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pdf_pending_since": {
+          "name": "pdf_pending_since",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
