@@ -40,6 +40,13 @@ const get = async (email = 'admin@example.com') =>
     url: '/api/admin/danfse/failed',
     headers: await t.as(email),
   });
+const retryAll = async (email = 'admin@example.com') =>
+  t.app.inject({
+    method: 'POST',
+    url: '/api/admin/danfse/retry-all',
+    payload: {},
+    headers: await t.as(email),
+  });
 const retry = async (id: string, email = 'admin@example.com') =>
   t.app.inject({
     method: 'POST',
@@ -48,8 +55,9 @@ const retry = async (id: string, email = 'admin@example.com') =>
     headers: await t.as(email),
   });
 
-test('the admin lists the failed jobs with the account, without the XML or the customer', async () => {
+test('the admin lists the failed rows with the account, without the XML or the customer', async () => {
   queue.fail(`${invoiceId}:none`, 'Render crashed');
+  t.db.update(invoices).set({ pdfStatus: 'failed' }).where(eq(invoices.id, invoiceId)).run();
   const response = await get();
   expect(response.statusCode).toBe(200);
   const { items } = response.json<{ items: Record<string, unknown>[] }>();
@@ -78,7 +86,27 @@ test('retry answers 404 when the invoice is not failed', async () => {
   expect((await retry('missing')).statusCode).toBe(404);
 });
 
-test('a Redis failure answers 503 queue_unavailable', async () => {
+test('a failed row with no job in the queue is listed with a null reason', async () => {
+  const response = await get();
+  expect(response.statusCode).toBe(200);
+  expect(response.json<{ items: { invoiceId: string; failedReason: unknown }[] }>().items).toEqual([
+    expect.objectContaining({ invoiceId, failedReason: null }),
+  ]);
+});
+
+test('a row that is no longer failed, or is soft-deleted, is not listed', async () => {
+  queue.fail(`${invoiceId}:none`, 'Render crashed');
+  t.db.update(invoices).set({ pdfStatus: 'pending' }).where(eq(invoices.id, invoiceId)).run();
+  expect((await get()).json()).toEqual({ items: [] });
+  t.db
+    .update(invoices)
+    .set({ pdfStatus: 'failed', deletedAt: new Date() })
+    .where(eq(invoices.id, invoiceId))
+    .run();
+  expect((await get()).json()).toEqual({ items: [] });
+});
+
+test('a Redis failure still lists the rows, with a null reason', async () => {
   await t.close();
   await start({
     ...memoryQueue(),
@@ -87,15 +115,26 @@ test('a Redis failure answers 503 queue_unavailable', async () => {
     },
   });
   const response = await get();
-  expect(response.statusCode).toBe(503);
-  expect(response.json()).toEqual({ error: 'queue_unavailable' });
+  expect(response.statusCode).toBe(200);
+  expect(response.json<{ items: { failedReason: unknown }[] }>().items).toEqual([
+    expect.objectContaining({ failedReason: null }),
+  ]);
 });
 
-test('without a queue the list is empty and retry answers 404', async () => {
+test('without a queue retry answers 404', async () => {
   await t.close();
   await start(null);
-  expect((await get()).json()).toEqual({ items: [] });
   expect((await retry(invoiceId)).statusCode).toBe(404);
+  expect((await retryAll()).statusCode).toBe(404);
+});
+
+test('retry-all puts every failed row back to pending and answers the count', async () => {
+  const response = await retryAll();
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toEqual({ count: 1 });
+  const row = t.db.select().from(invoices).where(eq(invoices.id, invoiceId)).get();
+  expect(row?.pdfStatus).toBe('pending');
+  expect((await retryAll()).json()).toEqual({ count: 0 });
 });
 
 test('the admin routes refuse an anonymous request', async () => {
@@ -107,9 +146,16 @@ test('the admin routes refuse an anonymous request', async () => {
     payload: {},
   });
   expect(post.statusCode).toBe(401);
+  const all = await t.app.inject({
+    method: 'POST',
+    url: '/api/admin/danfse/retry-all',
+    payload: {},
+  });
+  expect(all.statusCode).toBe(401);
 });
 
 test('the admin routes refuse a non-admin', async () => {
   expect((await get('a@example.com')).statusCode).toBe(403);
   expect((await retry(invoiceId, 'a@example.com')).statusCode).toBe(403);
+  expect((await retryAll('a@example.com')).statusCode).toBe(403);
 });

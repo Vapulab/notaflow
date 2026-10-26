@@ -1,43 +1,40 @@
 import type { FastifyInstance } from 'fastify';
 import { adminContext } from '../auth/guards';
-import type { FailedJob } from '../danfse/queue';
 import { HttpError } from '../httpError';
 import { DanfseRepository } from '../repos/DanfseRepository';
 import type { Database } from '../db/openDatabase';
 
 const LIMIT = 50;
+// The queue keeps up to 30 days of failures; read enough to match the 50 newest rows.
+const QUEUE_LOOKUP = 500;
 
-// The DANFSe jobs that failed for good: what the platform admin sees and can draw again.
+// The invoices whose PDF failed for good: what the platform admin sees and can draw again.
 export function adminDanfseRoutes(app: FastifyInstance, deps: { db: Database }): void {
   const repo = new DanfseRepository(deps.db);
 
   app.get('/api/admin/danfse/failed', async (request) => {
     adminContext(request);
-    if (!app.danfse) return { items: [] };
-    let jobs: FailedJob[];
-    try {
-      jobs = await app.danfse.queue.failed(LIMIT);
-    } catch (error) {
-      request.log.warn({ module: 'danfse', error: String(error) }, 'DANFSe queue unavailable');
-      throw new HttpError(503, 'queue_unavailable');
+    const rows = repo.failedRows(LIMIT);
+    // The reason lives only in the queue; without it the row is still listed and can be retried.
+    const reasons = new Map<string, string>();
+    if (app.danfse && rows.length > 0) {
+      try {
+        for (const job of await app.danfse.queue.failed(QUEUE_LOOKUP)) {
+          reasons.set(job.invoiceId, job.failedReason);
+        }
+      } catch (error) {
+        request.log.warn({ module: 'danfse', error: String(error) }, 'DANFSe queue unavailable');
+      }
     }
-    const known = new Map(
-      repo.describe(jobs.map((j) => j.invoiceId)).map((row) => [row.invoiceId, row]),
-    );
-    const items = jobs.flatMap((job) => {
-      const row = known.get(job.invoiceId);
-      if (!row) return [];
-      return [
-        {
-          invoiceId: job.invoiceId,
-          accessKey: row.accessKey,
-          accountName: row.accountName,
-          failedReason: job.failedReason,
-          failedAt: job.failedAt,
-        },
-      ];
-    });
-    return { items };
+    return {
+      items: rows.map((row) => ({ ...row, failedReason: reasons.get(row.invoiceId) ?? null })),
+    };
+  });
+
+  app.post('/api/admin/danfse/retry-all', async (request) => {
+    adminContext(request);
+    if (!app.danfse) throw new HttpError(404, 'not_found');
+    return { count: await app.danfse.dispatcher.retryAll() };
   });
 
   app.post<{ Params: { invoiceId: string } }>(

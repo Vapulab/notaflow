@@ -4,7 +4,7 @@ import type { R2Client } from '@notaflow/r2';
 import { PDFDocument } from 'pdf-lib';
 import { expect, test } from 'vitest';
 import { readFixture } from '../../../packages/provider-nacional/test/fixtures';
-import { type DanfseJob, processJob } from './process';
+import { clip, type DanfseJob, processJob } from './process';
 
 const KEY = '35503082212345678000195000000000004226100000000420';
 
@@ -65,4 +65,24 @@ test('the job fields match the server queue', () => {
   const block = /export interface DanfseJob \{([^}]*)\}/.exec(server)?.[1] ?? '';
   const fields = [...block.matchAll(/(\w+):/g)].map((m) => m[1]).sort();
   expect(fields).toEqual(['accessKey', 'invoiceId', 'mark', 'xmlGzipBase64']);
+});
+
+test('a long error message is cut to 200 characters, and an unrecoverable one stays unrecoverable', async () => {
+  const long = 'x'.repeat(500);
+  const failing: R2Client = {
+    async put() {
+      throw new Error(long);
+    },
+    async get() {
+      return null;
+    },
+    async delete() {},
+  };
+  const error = await processJob(job(readFixture('NFSE_DOMESTIC.xml')), failing).catch(
+    (e: Error) => e,
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toHaveLength(200);
+  expect(clip(long)).toHaveLength(200);
+  expect(clip('short')).toBe('short');
 });

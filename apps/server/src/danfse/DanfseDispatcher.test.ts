@@ -87,6 +87,27 @@ describe('sweep', () => {
   });
 });
 
+describe('Redis state log', () => {
+  test('a Redis outage logs once, and the recovery logs once', async () => {
+    sync(1);
+    const add = queue.add.bind(queue);
+    queue.add = async () => {
+      throw new Error('Redis is not connected');
+    };
+    await dispatcher.sweep();
+    await dispatcher.sweep();
+    await dispatcher.sweep();
+    expect(log).toHaveBeenCalledTimes(1);
+    queue.add = add;
+    expect(await dispatcher.sweep()).toBe(1);
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(log.mock.calls[1]?.[0]).toMatch(/back/i);
+    sync(2);
+    await dispatcher.sweep();
+    expect(log).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('events', () => {
   test('a completed job marks the row ready', async () => {
     const id = sync(1);
@@ -128,6 +149,15 @@ describe('retry', () => {
 
   test('retry of a row that is not failed returns false', async () => {
     expect(await dispatcher.retry(sync(1))).toBe(false);
+  });
+
+  test('retryAll puts every failed row back, and the sweep paces them 100 at a time', async () => {
+    for (let n = 1; n <= 150; n++) sync(n);
+    await dispatcher.sweep();
+    await dispatcher.sweep();
+    for (const job of [...queue.jobs]) queue.fail(`${job.invoiceId}:${job.mark}`, 'boom');
+    expect(await dispatcher.retryAll()).toBe(150);
+    expect(await dispatcher.sweep()).toBe(100);
   });
 });
 

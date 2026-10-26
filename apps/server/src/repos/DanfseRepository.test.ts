@@ -193,13 +193,54 @@ describe('DanfseRepository', () => {
   });
 });
 
-describe('describe', () => {
-  test('names the account and the access key, and skips unknown ids', () => {
-    const id = sync(1);
-    expect(repo.describe([id, 'missing'])).toEqual([
-      { invoiceId: id, accessKey: KEY.replace('0042', '1001'), accountName: 'A' },
-    ]);
-    expect(repo.describe([])).toEqual([]);
+describe('failed rows', () => {
+  const fail = (id: string, at: Date) => {
+    enqueue(id, 'none', at);
+    repo.markFailed(id, 'none');
+    db.update(invoices).set({ updatedAt: at }).where(eq(invoices.id, id)).run();
+  };
+
+  test('failedRows lists not-deleted failed rows, newest failure first, with the limit', () => {
+    const [x, y, z, other] = [sync(1), sync(2), sync(3), sync(4)] as [
+      string,
+      string,
+      string,
+      string,
+    ];
+    fail(x, minutesBefore(30));
+    fail(y, minutesBefore(10));
+    fail(z, minutesBefore(20));
+    expect(repo.failedRows(10).map((r) => r.invoiceId)).toEqual([y, z, x]);
+    expect(repo.failedRows(2).map((r) => r.invoiceId)).toEqual([y, z]);
+    expect(repo.failedRows(10)[0]).toEqual({
+      invoiceId: y,
+      accessKey: KEY.replace('0042', '1002'),
+      accountName: 'A',
+      failedAt: minutesBefore(10),
+    });
+    expect(repo.failedRows(10).map((r) => r.invoiceId)).not.toContain(other);
+  });
+
+  test('a row that moved on or was soft-deleted is not counted or listed', () => {
+    const [x, y, z] = [sync(1), sync(2), sync(3)] as [string, string, string];
+    for (const id of [x, y, z]) fail(id, NOW);
+    expect(repo.failedCount()).toBe(3);
+    repo.retry(x);
+    db.update(invoices).set({ deletedAt: NOW }).where(eq(invoices.id, y)).run();
+    expect(repo.failedCount()).toBe(1);
+    expect(repo.failedRows(10).map((r) => r.invoiceId)).toEqual([z]);
+  });
+
+  test('retryAllFailed puts every not-deleted failed row back to pending and returns the count', () => {
+    const [x, y, z] = [sync(1), sync(2), sync(3)] as [string, string, string];
+    fail(x, NOW);
+    fail(y, NOW);
+    db.update(invoices).set({ deletedAt: NOW }).where(eq(invoices.id, y)).run();
+    expect(repo.retryAllFailed()).toBe(1);
+    expect(row(x)).toMatchObject({ pdfStatus: 'pending', pdfEnqueuedAt: null });
+    expect(row(y)?.pdfStatus).toBe('failed');
+    expect(row(z)?.pdfStatus).toBe('pending');
+    expect(repo.retryAllFailed()).toBe(0);
   });
 });
 

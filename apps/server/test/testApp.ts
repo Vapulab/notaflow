@@ -4,6 +4,7 @@ import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
 import type { DanfseQueue } from '../src/danfse/queue';
+import type { ErrorReporter } from '../src/observability/errors';
 import type { ExchangeRateSource } from '../src/exchange/ptax';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app';
@@ -38,6 +39,7 @@ export async function createTestApp(
     bugDispatcher?: Dispatcher;
     danfseR2?: Pick<R2Client, 'get'>;
     danfseQueue?: DanfseQueue;
+    errorReporter?: ErrorReporter;
     cnpjDispatcher?: Dispatcher;
     env?: Record<string, string>;
     googleUserInfo?: AuthDeps['googleUserInfo'];
@@ -86,6 +88,7 @@ export async function createTestApp(
     ...(options.bugDispatcher ? { bugDispatcher: options.bugDispatcher } : {}),
     ...(options.danfseR2 ? { danfseR2: options.danfseR2 } : {}),
     ...(options.danfseQueue ? { danfseQueue: options.danfseQueue } : {}),
+    ...(options.errorReporter ? { errorReporter: options.errorReporter } : {}),
     ...(options.cnpjDispatcher ? { cnpjDispatcher: options.cnpjDispatcher } : {}),
     // A fixed PTAX of 5.0000 unless a test brings its own; the real one is a network call.
     exchangeRate:

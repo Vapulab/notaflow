@@ -376,13 +376,17 @@ interface FailedDanfseRow {
   invoiceId: string;
   accessKey: string;
   accountName: string;
-  failedReason: string;
+  // Null when the queue did not answer.
+  failedReason: string | null;
   failedAt: string;
 }
 
 // The queue gave up on these PDFs; a retry puts the invoice back for the next sweep.
 function FailedDanfse() {
-  const failed = useAsync(() => api.get<{ items: FailedDanfseRow[] }>('/api/admin/danfse/failed'), []);
+  const failed = useAsync(
+    () => api.get<{ items: FailedDanfseRow[] }>('/api/admin/danfse/failed'),
+    [],
+  );
   const [message, setMessage] = useState<string | null>(null);
 
   async function retry(invoiceId: string) {
@@ -390,6 +394,18 @@ function FailedDanfse() {
     try {
       await api.post(`/api/admin/danfse/${encodeURIComponent(invoiceId)}/retry`, {});
       setMessage('A nota volta para a fila de PDFs.');
+      failed.reload();
+    } catch (error) {
+      setMessage(errorText(error));
+    }
+  }
+
+  async function retryAll() {
+    if (!window.confirm('Gerar de novo todos os PDFs que falharam?')) return;
+    setMessage(null);
+    try {
+      const { count } = await api.post<{ count: number }>('/api/admin/danfse/retry-all', {});
+      setMessage(`${count} nota(s) voltam para a fila de PDFs.`);
       failed.reload();
     } catch (error) {
       setMessage(errorText(error));
@@ -406,6 +422,13 @@ function FailedDanfse() {
         {failed.error && <Alert variant="error">{errorText(failed.error)}</Alert>}
         {failed.data?.items.length === 0 && (
           <p className="text-sm text-muted">Nenhum. Todos foram gerados.</p>
+        )}
+        {failed.data && failed.data.items.length > 0 && (
+          <div>
+            <Button variant="secondary" size="sm" onClick={() => void retryAll()}>
+              Gerar todos de novo
+            </Button>
+          </div>
         )}
         {failed.data && failed.data.items.length > 0 && (
           <Table>
@@ -425,7 +448,7 @@ function FailedDanfse() {
                   <TD>
                     <code className="font-mono text-xs break-all">{row.accessKey}</code>
                   </TD>
-                  <TD>{row.failedReason}</TD>
+                  <TD>{row.failedReason ?? '—'}</TD>
                   <TD className="whitespace-nowrap">{formatDateTime(row.failedAt)}</TD>
                   <TD>
                     <Button variant="secondary" size="sm" onClick={() => void retry(row.invoiceId)}>

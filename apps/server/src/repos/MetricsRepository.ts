@@ -46,6 +46,10 @@ export class MetricsRepository implements MetricSources {
     return new DanfseRepository(this.db).oldestPendingAt();
   }
 
+  danfseFailedCount(): number {
+    return new DanfseRepository(this.db).failedCount();
+  }
+
   accountCounts() {
     return this.db
       .select({ status: accounts.status, count: count() })

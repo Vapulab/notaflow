@@ -33,6 +33,8 @@ export interface Config {
   bugs: BugChannels;
   // The DANFSe PDF queue; null while REDIS_URL is unset, and the download then draws on demand.
   danfse: { redisUrl: string; r2: R2Settings } | null;
+  // Why the queue is off although a DANFSe variable is set; the app logs and reports it, and keeps running.
+  danfseWarnings: string[];
 }
 
 export interface BugChannels {
@@ -54,6 +56,7 @@ export class ConfigError extends Error {
 
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const problems: string[] = [];
+  const danfseWarnings: string[] = [];
   const required = (name: string): string => {
     const value = env[name];
     if (!value) problems.push(`${name} is required`);
@@ -195,15 +198,17 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // R2_ACCOUNT_ID is shared with the bug reports, so it alone does not turn the queue on.
   const danfseOn = danfseOwn.every(Boolean) && Boolean(r2AccountId);
   if (danfseOwn.some(Boolean) && !danfseOn) {
-    problems.push(
+    danfseWarnings.push(
       'REDIS_URL, R2_ACCOUNT_ID, R2_DANFSE_ACCESS_KEY_ID, R2_DANFSE_SECRET_ACCESS_KEY, and R2_DANFSE_BUCKET go together',
     );
   }
   if (redisUrl && (!URL.canParse(redisUrl) || new URL(redisUrl).protocol !== 'redis:')) {
-    problems.push('REDIS_URL must be a redis: URL');
+    danfseWarnings.push('REDIS_URL must be a redis: URL');
   }
   if (danfseBucket && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(danfseBucket)) {
-    problems.push('R2_DANFSE_BUCKET must be a bucket name: lowercase letters, digits, and hyphens');
+    danfseWarnings.push(
+      'R2_DANFSE_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
+    );
   }
 
   if (problems.length > 0) throw new ConfigError(problems);
@@ -252,17 +257,19 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
             }
           : null,
     },
-    danfse: danfseOn
-      ? {
-          redisUrl,
-          r2: {
-            accountId: r2AccountId,
-            accessKeyId: danfseKeyId,
-            secretAccessKey: danfseSecret,
-            bucket: danfseBucket,
-          },
-        }
-      : null,
+    danfseWarnings,
+    danfse:
+      danfseOn && danfseWarnings.length === 0
+        ? {
+            redisUrl,
+            r2: {
+              accountId: r2AccountId,
+              accessKeyId: danfseKeyId,
+              secretAccessKey: danfseSecret,
+              bucket: danfseBucket,
+            },
+          }
+        : null,
     ...(fake ? { nacionalUrls: { sefin: `${fake}/SefinNacional`, adn: `${fake}/adn` } } : {}),
   };
 }

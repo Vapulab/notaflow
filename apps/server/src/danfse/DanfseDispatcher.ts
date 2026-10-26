@@ -19,6 +19,7 @@ const SWEEP_LIMIT = 100;
 
 export class DanfseDispatcher {
   private readonly now: () => Date;
+  private redisDown = false;
 
   constructor(private readonly deps: DanfseDispatcherDeps) {
     this.now = deps.now ?? (() => new Date());
@@ -39,10 +40,17 @@ export class DanfseDispatcher {
         });
       } catch (error) {
         // Redis is down: stop the run and leave every row pending for the next one.
-        log('DANFSe sweep stopped, the queue refused a job', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        if (!this.redisDown) {
+          this.redisDown = true;
+          log('DANFSe sweep stopped, the queue refused a job', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         return enqueued;
+      }
+      if (this.redisDown) {
+        this.redisDown = false;
+        log('DANFSe queue is back, the sweep resumed');
       }
       // False means the invoice changed after the read; the next sweep handles it.
       if (repo.markEnqueued(row.id, mark, now, row.pendingSince)) enqueued += 1;
@@ -82,5 +90,10 @@ export class DanfseDispatcher {
   // The next sweep adds the job with the current XML; add replaces a failed job of the same id.
   async retry(invoiceId: string): Promise<boolean> {
     return this.deps.repo.retry(invoiceId);
+  }
+
+  // The sweep takes them 100 per run, so a mass failure does not flood Redis.
+  async retryAll(): Promise<number> {
+    return this.deps.repo.retryAllFailed();
   }
 }

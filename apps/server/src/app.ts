@@ -167,6 +167,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           environment: config.nodeEnv,
         })
       : noErrorReporter);
+  if (config.danfseWarnings.length > 0) {
+    // A bad DANFSe line turns only the queue off; the invoices must keep working.
+    const detail = config.danfseWarnings.join('; ');
+    app.log.error(
+      { module: 'danfse', problems: config.danfseWarnings },
+      `DANFSe queue is off: ${detail}`,
+    );
+    reporter.capture(new Error(`DANFSe queue is off: ${detail}`), { module: 'danfse' });
+  }
   // Only server faults: a 4xx is the client's mistake and would bury the real errors.
   app.addHook('onError', async (request, _reply, error) => {
     if (statusOf(error) >= 500) {

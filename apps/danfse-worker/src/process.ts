@@ -24,7 +24,29 @@ function assertJob(job: DanfseJob): void {
   if (!/^[0-9A-Za-z]+$/.test(accessKey)) throw new UnrecoverableError('Malformed access key');
 }
 
+const MAX_MESSAGE = 200;
+
+// Messages are logged and become the failed reason in Redis, so a library dump must not pass whole.
+export function clip(message: string): string {
+  return message.length > MAX_MESSAGE ? message.slice(0, MAX_MESSAGE) : message;
+}
+
 export async function processJob(
+  job: DanfseJob,
+  r2: R2Client,
+  now: () => number = Date.now,
+): Promise<{ renderMs: number; bytes: number }> {
+  try {
+    return await run(job, r2, now);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.length <= MAX_MESSAGE && error instanceof Error) throw error;
+    const Clipped = error instanceof UnrecoverableError ? UnrecoverableError : Error;
+    throw new Clipped(clip(message));
+  }
+}
+
+async function run(
   job: DanfseJob,
   r2: R2Client,
   now: () => number = Date.now,

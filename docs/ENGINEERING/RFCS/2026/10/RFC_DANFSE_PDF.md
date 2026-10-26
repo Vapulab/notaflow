@@ -177,10 +177,10 @@ The PDF document metadata (`Producer`, `Creator`) says "NotaFlow". This metadata
 | Payload | `{ invoiceId, accessKey, mark, xmlGzipBase64 }`. The app computes `mark` from the invoice status and its events, not from `invoices.status` alone. BullMQ does not allow `:` in a custom id, so the queue adapter maps it to `_` inside Redis; the port keeps `<invoiceId>:<mark>` |
 | Attempts | 5, exponential backoff from 30 s |
 | Completed jobs | Removed at once (`removeOnComplete: true`) |
-| DLQ | A job that fails 5 times stays in the BullMQ failed set for 30 days. This set is the DLQ. The admin "Gerar de novo" button only moves the row back to `pending`. The next sweep (within 10 s) adds the job again with the current XML. |
+| DLQ | A job that fails 5 times is recorded on its invoice row as `pdf_status = 'failed'`, and stays in the BullMQ failed set for 30 days. The DLQ is the set of failed rows, not the Redis set: only a row can be acted on. The admin "Gerar de novo" button only moves the row back to `pending`. The next sweep (within 10 s) adds the job again with the current XML. |
 | Worker concurrency | 2 (author's call; the VM has 4 vCPU) |
 
-A platform admin sees the DLQ on the section "PDFs não gerados" of `/admin`: the invoice, the last error, and a "Gerar de novo" button.
+A platform admin sees the DLQ on the section "PDFs não gerados" of `/admin`: the not-deleted failed rows (50 at most, newest failure first), each with the account, the access key, the time of the failure (the last write of the row), the last error, and a "Gerar de novo" button. The error comes from the queue; when the queue does not answer, the rows are still listed with no error. `GET /api/admin/danfse/failed` serves the list. The button "Gerar todos de novo" calls `POST /api/admin/danfse/retry-all`, which sets every not-deleted failed row to `pending` and answers `{ count }`. The sweep paces the renders at 100 per 10 s, so a mass failure (for example a wrong R2 token on the first deploy) recovers in one click.
 
 The on-demand path keeps the customer safe when a job is in the DLQ: the download still works.
 
@@ -272,7 +272,7 @@ Every query goes through a repository that takes the account context. The `/n/<t
 New containers in `deploy/compose.yaml`:
 
 - `redis`: `redis:7.4.7-alpine` (an exact tag), `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume `redis`, a read-only root, a `redis-cli ping` health check, no published port. It sits only on the internal network `danfse`, so nothing outside the stack reaches it. The VM has no swap, so the memory limit is required.
-- `danfse-worker`: the same image as the app (`${IMAGE}`) with another command. It gets only the five values it needs (`REDIS_URL`, `R2_ACCOUNT_ID`, and the three `R2_DANFSE_*`) through `environment`, not the whole `.env`, and has no database volume. It drops all capabilities and sets `no-new-privileges`. It waits for a healthy Redis (`depends_on` with `service_healthy`). It sits on `danfse` and on the Compose default network, which is not internal and gives it egress to R2. It does not join `northub` or `monitoring`.
+- `danfse-worker`: the same image as the app (`${IMAGE}`) with another command. It gets only the five values it needs (`REDIS_URL`, `R2_ACCOUNT_ID`, and the three `R2_DANFSE_*`) through `environment`, not the whole `.env`, and has no database volume. It drops all capabilities and sets `no-new-privileges`. It waits for a healthy Redis (`depends_on` with `service_healthy`). It turns the image health check off, because the worker listens on no port. It sits on `danfse` and on the Compose default network, which is not internal and gives it egress to R2. It does not join `northub` or `monitoring`.
 
 The `app` keeps `northub` and `monitoring` and joins `danfse`. It does not depend on Redis: without it, the queue is off and downloads draw on demand.
 
@@ -283,7 +283,7 @@ New environment variables. Before adding a name, grep the root `.env` for collis
 | `REDIS_URL` (`redis://redis:6379`) | app, worker |
 | `R2_DANFSE_ACCESS_KEY_ID`, `R2_DANFSE_SECRET_ACCESS_KEY`, `R2_DANFSE_BUCKET` | app, worker (with the existing `R2_ACCOUNT_ID`) |
 
-The four DANFSe values go together. With `REDIS_URL` unset, the queue is off: no sweep, and the download draws on demand (dev and tests). `R2_ACCOUNT_ID` alone does not count as a partial bug-report R2 setup, because both features share it.
+The four DANFSe values go together. With `REDIS_URL` unset, the queue is off: no sweep, the download draws on demand (dev and tests), and the invoice API reports `pdfStatus: null`, so the screens show no "Gerando PDF…" and do not poll. A partial or malformed DANFSe line (a half set, a `REDIS_URL` that is not `redis:`, a bad bucket name) does not stop the app: the config sets `danfse: null` and a warning list, and the app logs it at error level at start and reports it to Sentry. The worker keeps the strict check and exits. A bad `R2_ACCOUNT_ID` still stops the app, because the bug reports share it. `R2_ACCOUNT_ID` alone does not count as a partial bug-report R2 setup, because both features share it.
 
 The R2 client moved from `apps/server/src/bugs/r2.ts` to the package `packages/r2`, so the worker can use it.
 
@@ -298,14 +298,14 @@ Estimated cost on the current VM (4 vCPU, 16 GB, 1.5 GB in use on 2026-10-26): R
 | Metric | Type |
 | --- | --- |
 | `danfse_jobs_total{result="completed\|failed"}` | counter |
-| `danfse_dlq_size` | gauge |
+| `danfse_dlq_size` | gauge (not-deleted invoices with `pdf_status = 'failed'`, counted at each scrape) |
 | `danfse_render_seconds` | histogram |
 | `danfse_on_demand_total` | counter (downloads that had to draw on demand) |
 | `danfse_link_views_total` | counter (with the link page, not built yet) |
 | `danfse_workers` | gauge (workers connected to the queue) |
 | `danfse_pending_oldest_seconds` | gauge (age of the oldest pending row) |
 
-Job metrics count jobs, not rows. The queue gauges refresh lazily on a scrape, at most once per 30 s, so a value can be one scrape plus 30 s old.
+Job metrics count jobs, not rows. `danfse_workers` refreshes lazily on a scrape, at most once per 30 s, so a value can be one scrape plus 30 s old. `danfse_dlq_size` and `danfse_pending_oldest_seconds` read the database at each scrape.
 
 Alerts to Discord: `DanfseDeadLetters` (`danfse_dlq_size > 0`), `DanfseWorkerDown` (no worker connected, or Redis down), and `DanfsePendingStale` (the oldest pending PDF waits too long). The rules are in `deploy/monitoring/prometheus/rules.yml`.
 

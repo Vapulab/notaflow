@@ -28,6 +28,7 @@ export interface MetricSources {
   bugDeliveryCounts(): { channel: string; state: string; count: number }[];
   bugImageCounts(): { state: string; count: number }[];
   danfsePendingOldest(): Date | null;
+  danfseFailedCount(): number;
 }
 
 const QUEUE_CACHE_MS = 30_000;
@@ -43,8 +44,10 @@ export class Metrics {
   private readonly danfseRenderSeconds: Histogram;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
+  private readonly sources: MetricSources;
 
   constructor(sources: MetricSources) {
+    this.sources = sources;
     const registers = [this.registry];
     collectDefaultMetrics({ register: this.registry });
     this.httpRequests = new Counter({
@@ -270,8 +273,8 @@ export class Metrics {
 
   // Exports the queue gauges from a cache that a scrape never waits for; call it only when a queue exists.
   watchDanfseQueue(queue: { counts(): Promise<{ failed: number; workers: number }> }): void {
-    const cache: { failed: number | null; workers: number | null; at: number } = {
-      failed: null,
+    const sources = this.sources;
+    const cache: { workers: number | null; at: number } = {
       workers: null,
       at: Number.NEGATIVE_INFINITY,
     };
@@ -280,10 +283,9 @@ export class Metrics {
       cache.at = Date.now();
       queue.counts().then(
         (counts) => {
-          cache.failed = counts.failed;
           cache.workers = counts.workers;
         },
-        // Redis down means no worker is reachable; the dead letters keep their last value.
+        // Redis down means no worker is reachable.
         () => {
           cache.workers = 0;
         },
@@ -292,11 +294,10 @@ export class Metrics {
     const registers = [this.registry];
     new Gauge({
       name: 'danfse_dlq_size',
-      help: 'DANFSe jobs that failed for good and wait for a retry in /admin',
+      help: 'Invoices whose DANFSe PDF failed for good and wait for a retry in /admin',
       registers,
       collect() {
-        refresh();
-        if (cache.failed !== null) this.set(cache.failed);
+        this.set(sources.danfseFailedCount());
       },
     });
     new Gauge({

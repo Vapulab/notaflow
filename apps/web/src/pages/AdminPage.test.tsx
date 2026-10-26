@@ -164,7 +164,10 @@ test('the e-mails that failed for good can be resent, except login codes', async
 
 test('the waitlist shows the counts and the rows, and removing one asks first', async () => {
   const calls = stubApi({ ...routes, '/api/admin/waitlist/w-1': null });
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   render(<AdminPage />);
   const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
   expect(await section.findByText('maria@example.com')).toBeTruthy();
@@ -183,7 +186,10 @@ test('the waitlist shows the counts and the rows, and removing one asks first', 
 
 test('declining the confirm keeps the waitlist row', async () => {
   const calls = stubApi({ ...routes, '/api/admin/waitlist/w-1': null });
-  vi.stubGlobal('confirm', vi.fn(() => false));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => false),
+  );
   render(<AdminPage />);
   const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
   await userEvent.setup().click(await section.findByRole('button', { name: 'Remover' }));
@@ -196,7 +202,10 @@ test('a failed waitlist removal shows an error, and the next removal clears it',
     ...routes,
     '/api/admin/waitlist/w-1': () => (fail ? { error: 'not_found' } : null),
   });
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   render(<AdminPage />);
   const section = within(await screen.findByRole('region', { name: 'Lista de espera' }));
   const user = userEvent.setup();
@@ -236,18 +245,80 @@ test('admin lists failed DANFSe jobs and a retry calls the API', async () => {
   expect(within(section).getByText('Render crashed')).toBeTruthy();
   await user.click(within(section).getByRole('button', { name: 'Gerar de novo' }));
   await waitFor(() =>
-    expect(calls.some((c) => c.url === '/api/admin/danfse/inv-9/retry' && c.init?.method === 'POST')).toBe(
-      true,
-    ),
+    expect(
+      calls.some((c) => c.url === '/api/admin/danfse/inv-9/retry' && c.init?.method === 'POST'),
+    ).toBe(true),
   );
   expect(await within(section).findByText(/nenhum/i)).toBeTruthy();
 });
 
-test('a queue outage shows a short message, not a crash', async () => {
-  stubApi({ ...routes, '/api/admin/danfse/failed': { error: 'queue_unavailable' } });
+test('a failed row with no reason shows a dash', async () => {
+  stubApi({
+    ...routes,
+    '/api/admin/danfse/failed': {
+      items: [
+        {
+          invoiceId: 'inv-9',
+          accessKey: 'K'.repeat(50),
+          accountName: 'Conta Falha',
+          failedReason: null,
+          failedAt: '2026-10-26T12:00:00Z',
+        },
+      ],
+    },
+  });
   render(<AdminPage />);
   const section = (await screen.findByRole('heading', { name: /pdfs não gerados/i })).closest(
     'section',
   ) as HTMLElement;
-  expect(await within(section).findByText(/fila.*indispon/i)).toBeTruthy();
+  expect(await within(section).findByText('Conta Falha')).toBeTruthy();
+  expect(within(section).getByText('—')).toBeTruthy();
+});
+
+const failedRow = {
+  invoiceId: 'inv-9',
+  accessKey: 'K'.repeat(50),
+  accountName: 'Conta Falha',
+  failedReason: 'Render crashed',
+  failedAt: '2026-10-26T12:00:00Z',
+};
+
+async function retryAllSection(items: unknown[]) {
+  const calls = stubApi({
+    ...routes,
+    '/api/admin/danfse/failed': () => ({ items }),
+    '/api/admin/danfse/retry-all': () => ({ count: 1 }),
+  });
+  render(<AdminPage />);
+  const section = (await screen.findByRole('heading', { name: /pdfs não gerados/i })).closest(
+    'section',
+  ) as HTMLElement;
+  return { calls, section };
+}
+
+test('retry all asks for confirmation, then posts and reloads the list', async () => {
+  const items = [failedRow];
+  const { calls, section } = await retryAllSection(items);
+  const user = userEvent.setup();
+  await within(section).findByText('Conta Falha');
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  await user.click(within(section).getByRole('button', { name: 'Gerar todos de novo' }));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(calls.some((c) => c.url === '/api/admin/danfse/retry-all')).toBe(false);
+  confirm.mockReturnValue(true);
+  items.length = 0;
+  await user.click(within(section).getByRole('button', { name: 'Gerar todos de novo' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.url === '/api/admin/danfse/retry-all' && c.init?.method === 'POST'),
+    ).toBe(true),
+  );
+  expect(await within(section).findByText(/nenhum/i)).toBeTruthy();
+  confirm.mockRestore();
+});
+
+test('the retry all button is absent when nothing failed', async () => {
+  const { section } = await retryAllSection([]);
+  await within(section).findByText(/nenhum/i);
+  expect(within(section).queryByRole('button', { name: 'Gerar todos de novo' })).toBeNull();
 });

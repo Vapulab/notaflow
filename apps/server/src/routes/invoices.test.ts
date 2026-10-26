@@ -8,6 +8,7 @@ import { issueOnFake } from '../../test/fakeInvoices';
 import { seedTenant } from '../../test/fixtures';
 import { providerEvent } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
+import { memoryQueue } from '../danfse/queue';
 import { certificates, invoices } from '../db/schema';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
@@ -198,7 +199,9 @@ test('the route draws the DANFSe from the stored XML', async () => {
   const response = await danfseOf(a.accountId, first.id);
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toBe('application/pdf');
-  expect(response.headers['content-disposition']).toMatch(/^attachment; filename="DANFSe-\w+\.pdf"$/);
+  expect(response.headers['content-disposition']).toMatch(
+    /^attachment; filename="DANFSe-\w+\.pdf"$/,
+  );
   const pdf = await pdfOf(response);
   expect(pdf.pages).toBe(1);
   expect(pdf.text).not.toMatch(/CANCELADA|SUBSTITUÍDA/);
@@ -282,7 +285,9 @@ test('another account gets 404 on the DANFS-e route', async () => {
 
 const STORED = Buffer.from('%PDF-1.7 stored in r2');
 
-async function withR2(get: (key: string) => Promise<{ body: Readable; size: number | null } | null>) {
+async function withR2(
+  get: (key: string) => Promise<{ body: Readable; size: number | null } | null>,
+) {
   await t.close();
   t = await createTestApp({ danfseR2: { get } });
 }
@@ -306,7 +311,9 @@ test('a ready invoice streams the PDF from R2', async () => {
   const response = await danfseOf(a.accountId, first.id);
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toBe('application/pdf');
-  expect(response.headers['content-disposition']).toMatch(/^attachment; filename="DANFSe-\w+\.pdf"$/);
+  expect(response.headers['content-disposition']).toMatch(
+    /^attachment; filename="DANFSe-\w+\.pdf"$/,
+  );
   expect(response.rawPayload.equals(STORED)).toBe(true);
   expect(keys).toEqual([`danfse/${first.accessKey}.pdf`]);
   expect(await onDemand()).toContain('danfse_on_demand_total 0');
@@ -404,4 +411,44 @@ test('a ready invoice that is then cancelled is drawn on demand with CANCELADA',
   expect(response.statusCode).toBe(200);
   expect((await pdfOf(response)).text).toContain('CANCELADA');
   expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+async function pdfStates(accountId: string, id: string) {
+  const headers = await t.as('owner@example.com');
+  const list = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${accountId}/invoices`,
+    headers,
+  });
+  const detail = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${accountId}/invoices/${id}`,
+    headers,
+  });
+  return {
+    list: list
+      .json<{ items: { id: string; pdfStatus: string | null }[] }>()
+      .items.map((i) => i.pdfStatus),
+    detail: detail.json<{ pdfStatus: string | null }>().pdfStatus,
+  };
+}
+
+test('with the queue off, the list and the detail report no PDF state', async () => {
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  expect(await pdfStates(a.accountId, first.id)).toEqual({
+    list: [null, null, null],
+    detail: null,
+  });
+});
+
+test('with the queue on, the list and the detail report the PDF state', async () => {
+  await t.close();
+  t = await createTestApp({ danfseQueue: memoryQueue() });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const states = await pdfStates(a.accountId, first.id);
+  expect(states.detail).toBe('ready');
+  expect(states.list.sort()).toEqual(['pending', 'pending', 'ready']);
 });

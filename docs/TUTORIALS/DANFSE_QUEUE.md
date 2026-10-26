@@ -28,7 +28,7 @@ R2_DANFSE_SECRET_ACCESS_KEY=<the secret access key>
 R2_DANFSE_BUCKET=notaflow-danfse
 ```
 
-The four values go together. The server refuses to start with only some of them.
+The four values go together. With only some of them, or a malformed value, the app still starts but turns the queue off. It logs the problem at error level at start (and sends it to Sentry), so check the app log (`docker compose logs app`) if the queue does not start. The worker exits on a bad line.
 
 ## Deploy
 
@@ -51,12 +51,15 @@ docker compose logs --tail 50 danfse-worker
 
 ## Read the DLQ
 
-A job that fails 5 times stays 30 days in the failed set of Redis. This set is the DLQ.
+A job that fails 5 times marks its invoice as failed, and stays 30 days in the failed set of Redis. The DLQ is the set of failed invoices, and `danfse_dlq_size` counts them.
 
 1. Log in as a platform admin and open `/admin`.
 2. Find the section **PDFs não gerados**. It lists the account, the access key, the last error, and when the job failed.
 3. Click **Gerar de novo** on a row. The row goes back to pending, and the next sweep (within 10 s) adds a new job with the current XML.
 4. If the row fails again, read the error in the list and the worker log, and fix the cause before you retry.
+5. After a mass failure (for example a wrong R2 token), fix the cause, then click **Gerar todos de novo** and confirm. Every failed row goes back to pending, and the sweep renders them 100 every 10 s.
+
+The list shows the failed rows even when Redis is down. The error column is then empty.
 
 The customer is not blocked while a PDF is in the DLQ: the download draws the PDF on demand.
 
@@ -72,8 +75,10 @@ The alerts go to Discord. The rules are in `deploy/monitoring/prometheus/rules.y
 
 ## Turn the feature off
 
-Do not only remove the lines from `.env`. The next `docker compose up -d` (each deploy runs it) starts the worker again. Without its values, the worker exits at start, restarts in a loop, and `DanfseWorkerDown` fires.
+Do not only remove the lines from `.env`. The next `docker compose up -d` (each deploy runs it) starts the worker again. Without its values, the worker exits at start and restarts in a loop.
 
-1. Stop the worker and Redis: `docker compose stop danfse-worker redis`.
-2. Remove `REDIS_URL` and the three `R2_DANFSE_*` lines from `/opt/notaflow/.env`, so the app turns the queue off and draws every PDF on demand.
-3. Remove the `danfse-worker` and `redis` services from `/opt/notaflow/compose.yaml` before the next deploy copies the file back, or the deploy starts them again. To keep the feature off for good, remove them from `deploy/compose.yaml` in a PR.
+1. Remove `REDIS_URL` and the three `R2_DANFSE_*` lines from `/opt/notaflow/.env`, so the app turns the queue off, draws every PDF on demand, and the screens stop showing "Gerando PDF…".
+2. Stop the worker and Redis: `docker compose stop danfse-worker redis`.
+3. To keep them off, open a PR that removes the `danfse-worker` and `redis` services from `deploy/compose.yaml`. Do not edit `/opt/notaflow/compose.yaml`: the next deploy overwrites it.
+
+`DanfseWorkerDown` does not fire when the lines are gone. With no queue, the app does not export `danfse_workers`, so the alert has no data. Until the PR merges, a deploy starts the worker again, and it exits and restarts in a loop.

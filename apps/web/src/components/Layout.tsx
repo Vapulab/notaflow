@@ -15,7 +15,6 @@ export const ERROR_TEXT: Record<string, string> = {
   signup_limit: 'Muitos cadastros a partir desta rede hoje. Tente amanhã.',
   account_removed: 'Esta conta foi removida. Fale com o suporte.',
   internal_error: 'Não foi possível concluir agora. Tente de novo em alguns minutos.',
-  queue_unavailable: 'A fila de PDFs está indisponível agora. Tente de novo em alguns minutos.',
   rate_limited: 'Muitas tentativas. Espere um minuto e tente de novo.',
   band6_iss_required: 'Na faixa 6, informe se o ISS ainda é pago no DAS.',
   iss_rate_required: 'Informe a alíquota de ISS do município, até 5,00%.',

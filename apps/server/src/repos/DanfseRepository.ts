@@ -1,5 +1,5 @@
 import type { DanfseMark } from '@notaflow/danfse-pdf';
-import { and, asc, eq, inArray, isNotNull, isNull, lte, min, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, isNull, lte, min, or } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { accounts, emitters, invoiceEvents, invoices } from '../db/schema';
 import { pdfPending } from './InvoiceRepository';
@@ -119,15 +119,42 @@ export class DanfseRepository {
     );
   }
 
-  // For the admin list: no XML and no customer data leave this method.
-  describe(invoiceIds: string[]): { invoiceId: string; accessKey: string; accountName: string }[] {
-    if (invoiceIds.length === 0) return [];
+  // Every failed row goes back through the same writer as retry; the sweep paces the renders.
+  retryAllFailed(): number {
+    return this.db
+      .update(invoices)
+      .set({ ...pdfPending(), ...touched(null) })
+      .where(and(eq(invoices.pdfStatus, 'failed'), notDeleted(invoices)))
+      .run().changes;
+  }
+
+  failedCount(): number {
+    return (
+      this.db
+        .select({ n: count() })
+        .from(invoices)
+        .where(and(eq(invoices.pdfStatus, 'failed'), notDeleted(invoices)))
+        .get()?.n ?? 0
+    );
+  }
+
+  // For the admin list: no XML and no customer data leave this method; the failure time is the last write.
+  failedRows(
+    limit: number,
+  ): { invoiceId: string; accessKey: string; accountName: string; failedAt: Date }[] {
     const rows = this.db
-      .select({ invoiceId: invoices.id, accessKey: invoices.accessKey, accountName: accounts.name })
+      .select({
+        invoiceId: invoices.id,
+        accessKey: invoices.accessKey,
+        accountName: accounts.name,
+        failedAt: invoices.updatedAt,
+      })
       .from(invoices)
       .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
       .innerJoin(accounts, eq(accounts.id, emitters.accountId))
-      .where(and(inArray(invoices.id, invoiceIds), notDeleted(invoices)))
+      .where(and(eq(invoices.pdfStatus, 'failed'), notDeleted(invoices)))
+      .orderBy(desc(invoices.updatedAt), asc(invoices.id))
+      .limit(limit)
       .all();
     return rows.flatMap((r) => (r.accessKey ? [{ ...r, accessKey: r.accessKey }] : []));
   }

@@ -290,5 +290,11 @@ test('0022 marks every invoice with XML as pending and leaves the others without
     { id: 'with', s: 'pending', m: null },
     { id: 'without', s: null, m: null },
   ]);
+  expect(
+    client.prepare('SELECT id, pdf_pending_since AS p FROM invoices ORDER BY id').all(),
+  ).toEqual([
+    { id: 'with', p: expect.any(Number) },
+    { id: 'without', p: null },
+  ]);
   expect(() => run('DELETE FROM invoices')).toThrow();
 });

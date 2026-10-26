@@ -65,13 +65,18 @@ export function invoiceRoutes(
     deps.masterKey,
   );
 
+  // With the queue off no row ever leaves 'pending', so the screens must not show it.
+  const shownPdfState = <T extends { pdfStatus: string | null }>(invoice: T): T =>
+    app.danfse ? invoice : { ...invoice, pdfStatus: null };
+
   app.get<{ Params: { accountId: string }; Querystring: ListQuery }>(
     '/api/accounts/:accountId/invoices',
     { schema: listSchema },
     async (request) => {
       const ctx = accountContext(request, request.params.accountId);
       const { q, limit = 50, offset = 0, ...filters } = request.query;
-      return invoices.list(ctx, { ...filters, ...(q ? { search: q } : {}), limit, offset });
+      const page = invoices.list(ctx, { ...filters, ...(q ? { search: q } : {}), limit, offset });
+      return { ...page, items: page.items.map(shownPdfState) };
     },
   );
 
@@ -81,7 +86,7 @@ export function invoiceRoutes(
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
       if (!invoice) throw new HttpError(404, 'not_found');
-      return invoice;
+      return shownPdfState(invoice);
     },
   );
 
