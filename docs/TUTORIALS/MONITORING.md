@@ -12,7 +12,7 @@ The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [dep
 | Panel | Use it to |
 | --- | --- |
 | 1. Overview | See if each site and the host are up, the uptime, and the alerts that are firing now. |
-| 2. NotaFlow by module | See the requests, the 5xx rate, the p95 latency, and the warnings of each module. The **Business** row has the invoices, sync, mail outbox, certificates, and backups. |
+| 2. NotaFlow by module | See the requests, the 5xx rate, the p95 latency, and the warnings of each module. The **Business** row has the invoices, sync, mail outbox, certificates, and backups. The **DANFSe** row has the PDF jobs, render time, dead letters, oldest pending PDF, and downloads drawn on demand. |
 | 3. VPS and containers | See the CPU, memory, disk, and network of the host and of each container. |
 | 4. Logs | Search the logs. Filter by container and by NotaFlow module, and type a text in **Search**. |
 | 5. Negócio | See the accounts, users, companies in production, invoices issued by NotaFlow, cancellations, and imported invoices, and each of them per day. Test data (produção restrita) is in a closed row at the bottom. |
@@ -31,6 +31,9 @@ The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them wit
 | InvoicesFailing | Look at the invoice in the app. An `uncertain` result needs a reconcile. |
 | SyncStale | Look at the sync errors of the emitter in panel 4 (module `sync`). |
 | DeadLetters | Retry the e-mails in `/admin`. |
+| DanfseDeadLetters | Retry the failed DANFSe PDFs in `/admin`. The failed job and its reason stay in Redis for 30 days. |
+| DanfseWorkerDown | Check the logs of the DANFSe worker and of Redis on the VPS. Redis down also fires this alert. Customers still get the PDF, drawn on demand. |
+| DanfsePendingStale | Check the worker logs and panel 2 (row **DANFSe**). The sweep adds the waiting invoices again every run. |
 | BugDeliveriesFailed | Read `last_error` in `bug_report_deliveries` (see the [Bug Reports RFC](../ENGINEERING/RFCS/2026/10/RFC_BUG_REPORTS.md)). Fix the token or the URL, then set the row back to `pending` with `attempts` 0. |
 | CertificateExpiring | Ask the company for a new A1 certificate. |
 | BackupStale, BackupMissing | Run `systemctl status notaflow-backup.service notaflow-offsite-backup.service` on the VPS. |

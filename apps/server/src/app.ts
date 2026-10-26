@@ -321,12 +321,14 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   if (deps.webRoot) registerWeb(app, deps.webRoot, config.appOrigin);
   if (deps.danfseQueue) {
     const queue = deps.danfseQueue;
-    // Task 7 replaces this no-op with the real metrics.
-    const metrics = { job: () => undefined, render: () => undefined };
+    metrics.watchDanfseQueue(queue);
     const dispatcher = new DanfseDispatcher({
       repo: new DanfseRepository(db),
       queue,
-      metrics,
+      metrics: {
+        job: (result) => metrics.danfseJob(result),
+        render: (seconds) => metrics.danfseRender(seconds),
+      },
       log: (msg, data) => app.log.info({ module: 'danfse', ...data }, msg),
     });
     queue.listen(dispatcher.events());

@@ -27,7 +27,10 @@ export interface MetricSources {
   bugReportCounts(): { status: string; count: number }[];
   bugDeliveryCounts(): { channel: string; state: string; count: number }[];
   bugImageCounts(): { state: string; count: number }[];
+  danfsePendingOldest(): Date | null;
 }
+
+const QUEUE_CACHE_MS = 30_000;
 
 export class Metrics {
   readonly registry = new Registry();
@@ -36,6 +39,8 @@ export class Metrics {
   private readonly invoicesIssued: Counter<'result'>;
   private readonly invoicesCancelled: Counter<'result'>;
   private readonly danfseOnDemandTotal: Counter;
+  private readonly danfseJobs: Counter<'result'>;
+  private readonly danfseRenderSeconds: Histogram;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
 
@@ -71,6 +76,27 @@ export class Metrics {
       name: 'danfse_on_demand_total',
       help: 'DANFSe downloads drawn on demand, not served from R2',
       registers,
+    });
+    this.danfseJobs = new Counter({
+      name: 'danfse_jobs_total',
+      help: 'DANFSe queue jobs by result: completed, failed (after the last attempt)',
+      labelNames: ['result'],
+      registers,
+    });
+    this.danfseRenderSeconds = new Histogram({
+      name: 'danfse_render_seconds',
+      help: 'Time the worker took to draw one DANFSe PDF',
+      buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers,
+    });
+    new Gauge({
+      name: 'danfse_pending_oldest_seconds',
+      help: 'Age of the oldest invoice still waiting for its DANFSe PDF, 0 when none waits',
+      registers,
+      collect() {
+        const since = sources.danfsePendingOldest();
+        this.set(since ? Math.max(0, Math.floor((Date.now() - since.getTime()) / 1000)) : 0);
+      },
     });
     this.syncRuns = new Counter({
       name: 'sync_runs_total',
@@ -232,6 +258,57 @@ export class Metrics {
 
   danfseOnDemand(): void {
     this.danfseOnDemandTotal.inc();
+  }
+
+  danfseJob(result: 'completed' | 'failed'): void {
+    this.danfseJobs.inc({ result });
+  }
+
+  danfseRender(seconds: number): void {
+    this.danfseRenderSeconds.observe(seconds);
+  }
+
+  // Exports the queue gauges from a cache that a scrape never waits for; call it only when a queue exists.
+  watchDanfseQueue(queue: { counts(): Promise<{ failed: number; workers: number }> }): void {
+    const cache: { failed: number | null; workers: number | null; at: number } = {
+      failed: null,
+      workers: null,
+      at: Number.NEGATIVE_INFINITY,
+    };
+    const refresh = () => {
+      if (Date.now() - cache.at < QUEUE_CACHE_MS) return;
+      cache.at = Date.now();
+      queue.counts().then(
+        (counts) => {
+          cache.failed = counts.failed;
+          cache.workers = counts.workers;
+        },
+        // Redis down means no worker is reachable; the dead letters keep their last value.
+        () => {
+          cache.workers = 0;
+        },
+      );
+    };
+    const registers = [this.registry];
+    new Gauge({
+      name: 'danfse_dlq_size',
+      help: 'DANFSe jobs that failed for good and wait for a retry in /admin',
+      registers,
+      collect() {
+        refresh();
+        if (cache.failed !== null) this.set(cache.failed);
+      },
+    });
+    new Gauge({
+      name: 'danfse_workers',
+      help: 'DANFSe workers connected to the queue',
+      registers,
+      collect() {
+        refresh();
+        if (cache.workers !== null) this.set(cache.workers);
+      },
+    });
+    refresh();
   }
 
   syncRun(emitterId: string, error: string | null | undefined, at: Date): void {

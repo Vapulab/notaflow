@@ -15,6 +15,7 @@ import {
   users,
 } from '../db/schema';
 import { notDeleted } from '../db/stamps';
+import { DanfseRepository } from './DanfseRepository';
 import type { MetricSources } from '../metrics/metrics';
 
 // Platform scope: the metrics describe the whole service, so they read across accounts, never a name or document.
@@ -39,6 +40,10 @@ export class MetricsRepository implements MetricSources {
       .innerJoin(emitters, eq(emitters.id, certificates.emitterId))
       .where(and(eq(certificates.active, true), notDeleted(certificates), notDeleted(emitters)))
       .all();
+  }
+
+  danfsePendingOldest(): Date | null {
+    return new DanfseRepository(this.db).oldestPendingAt();
   }
 
   accountCounts() {
