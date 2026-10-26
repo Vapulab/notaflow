@@ -65,3 +65,30 @@ export function drawTextAt(
 ): void {
   page.drawText(text, { x: xPt, y: page.getHeight() - topPt - size, size, font, color });
 }
+
+export interface Fonts {
+  regular: PDFFont;
+  bold: PDFFont;
+}
+
+export interface FieldStyle {
+  labelSize: number;
+  upper: boolean;
+  fill: boolean;
+}
+
+// One boxed field: label on top, content below, cut to the box width.
+export function drawField(
+  page: PDFPage,
+  fonts: Fonts,
+  f: { label: string; x: number; y: number; width: number; height: number },
+  value: string,
+  style: FieldStyle,
+): void {
+  const pad = 2;
+  box(page, f.x, f.y, f.width, f.height, { fill: style.fill, lineWidth: 0.5 });
+  const label = style.upper ? f.label.toUpperCase() : f.label;
+  drawTextAt(page, label, fonts.bold, style.labelSize, cm(f.x) + pad, cm(f.y) + pad);
+  const content = fitText(fonts.regular, value, 7, cm(f.width) - 2 * pad);
+  drawTextAt(page, content, fonts.regular, 7, cm(f.x) + pad, cm(f.y) + pad + style.labelSize + 2);
+}

@@ -3,16 +3,22 @@ import { fileURLToPath } from 'node:url';
 import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import QRCode from 'qrcode';
-import { box, cm, drawTextAt, fitText, RED, wrapText } from './draw';
+import { box, cm, drawField, drawTextAt, fitText, RED, wrapText, type FieldStyle } from './draw';
 import { BLOCKS, FIELDS, type FieldKey, type LayoutField } from './layout';
 import { readDanfseData, type DanfseData } from './readDanfseData';
 
 export type DanfseMark = 'none' | 'cancelada' | 'substituida';
 
 const QR_URL = 'https://www.nfse.gov.br/ConsultaPublica/?tpc=1&chave=';
+
+export function qrUrl(accessKey: string): string {
+  return `${QR_URL}${accessKey}`;
+}
 const QR_CAPTION =
   'A autenticidade desta NFS-e pode ser verificada pela leitura deste código QR ou pela consulta da chave de acesso no portal nacional da NFS-e';
 const PAD = 2;
+const SHADED: ReadonlySet<FieldKey> = new Set(['issuerType']);
+const IDENTIFICATION_LABEL = { labelSize: 7, upper: true } as const;
 
 interface Ctx {
   page: PDFPage;
@@ -68,23 +74,16 @@ function drawHeader(ctx: Ctx): void {
   }
 }
 
-function drawIdentificationField(ctx: Ctx, key: FieldKey): void {
-  const f = field(key);
-  box(ctx.page, f.x, f.y, f.width, f.height, { fill: key === 'issuerType', lineWidth: 0.5 });
-  drawTextAt(ctx.page, f.label.toUpperCase(), ctx.bold, 7, cm(f.x) + PAD, cm(f.y) + PAD);
-  const text = key === 'accessKey' ? ctx.data.accessKey : ctx.data.fields[key];
-  const max = cm(f.width) - 2 * PAD;
-  drawTextAt(ctx.page, fitText(ctx.regular, text, 7, max), ctx.regular, 7, cm(f.x) + PAD, cm(f.y) + PAD + 9);
-}
-
 async function drawIdentification(ctx: Ctx, doc: PDFDocument): Promise<void> {
   const { page, regular, data } = ctx;
   for (const f of FIELDS) {
-    if (f.block === 'identification' && f.xmlPath !== '') drawIdentificationField(ctx, f.key);
+    if (f.block !== 'identification' || f.xmlPath === '') continue;
+    const style: FieldStyle = { ...IDENTIFICATION_LABEL, fill: SHADED.has(f.key) };
+    drawField(page, ctx, f, f.key === 'accessKey' ? data.accessKey : data.fields[f.key], style);
   }
 
   const qr = field('qrCode');
-  const png = await QRCode.toBuffer(`${QR_URL}${data.accessKey}`, { type: 'png', margin: 0 });
+  const png = await QRCode.toBuffer(qrUrl(data.accessKey), { type: 'png', margin: 0 });
   const image = await doc.embedPng(png);
   page.drawImage(image, {
     x: cm(qr.x),
