@@ -131,6 +131,19 @@ test('the invoice list links to Nova nota', async () => {
   expect(link.getAttribute('href')).toBe('/app/acc/notas/nova');
 });
 
+test('the competence filters have visible labels', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices': { items: [], total: 0 },
+    '/api/accounts/acc/emitters': [],
+  });
+  render(<InvoicesPage accountId="acc" />);
+  for (const name of ['Competência de', 'Competência até']) {
+    const input = await screen.findByLabelText(name);
+    expect(input.getAttribute('type')).toBe('date');
+    expect(screen.getByText(name).tagName).toBe('LABEL');
+  }
+});
+
 function stubPhone(matches: boolean) {
   vi.stubGlobal(
     'matchMedia',

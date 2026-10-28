@@ -188,7 +188,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
         </Button>
       </form>
       {lookupError && <Alert variant="error">{lookupError}</Alert>}
-      <Card className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <Card className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Select
           aria-label="Emitente"
           value={filters.emitterId}
@@ -213,18 +213,20 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
             </option>
           ))}
         </Select>
-        <Input
-          aria-label="Competência de"
-          type="date"
-          value={filters.competenceFrom}
-          onChange={(e) => set('competenceFrom')(e.target.value)}
-        />
-        <Input
-          aria-label="Competência até"
-          type="date"
-          value={filters.competenceTo}
-          onChange={(e) => set('competenceTo')(e.target.value)}
-        />
+        <Field label="Competência de">
+          <Input
+            type="date"
+            value={filters.competenceFrom}
+            onChange={(e) => set('competenceFrom')(e.target.value)}
+          />
+        </Field>
+        <Field label="Competência até">
+          <Input
+            type="date"
+            value={filters.competenceTo}
+            onChange={(e) => set('competenceTo')(e.target.value)}
+          />
+        </Field>
         <Input
           aria-label="Pesquisar"
           placeholder="Número ou tomador"
@@ -301,7 +303,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
                       <TD>{invoice.customerName}</TD>
                       <TD className="whitespace-nowrap">{formatCents(invoice.serviceCents)}</TD>
                       <TD>{statusBadges(invoice)}</TD>
-                      <TD>{actionsOf(invoice, 'flex flex-wrap items-center gap-1.5')}</TD>
+                      <TD>{actionsOf(invoice, 'flex flex-nowrap items-center gap-1.5')}</TD>
                     </tr>
                   );
                 })}
