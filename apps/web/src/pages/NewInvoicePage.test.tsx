@@ -735,3 +735,40 @@ test('the amounts fill like a cash register, with the currency inside the field'
   expect(screen.getByLabelText('Valor em USD')).toHaveProperty('value', '1.000,00');
   expect(screen.getByText('US$')).toBeTruthy();
 });
+
+test('Mais opções: export codes typed are dropped when a Brazil customer is picked', async () => {
+  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await pickCustomer(user, 'Foreign Customer Inc');
+  await user.selectOptions(screen.getByLabelText('Serviço'), 's1');
+  await openMore(user);
+  await user.type(screen.getByLabelText('CST do IBS/CBS'), '300');
+  await pickCustomer(user, 'Cliente Teste Ltda');
+  const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
+  expect(value('Indicador de operação (IBS/CBS)')).toBe('100301');
+  expect(value('CST do IBS/CBS')).toBe('000');
+  expect(value('Classificação tributária (IBS/CBS)')).toBe('000001');
+  await user.type(screen.getByLabelText('Valor em reais'), '1.234,00');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body).not.toHaveProperty('overrides');
+});
+
+test('Mais opções: Brazil codes typed are dropped when a customer abroad is picked', async () => {
+  stubApi(routes());
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  const classCode = screen.getByLabelText('Classificação tributária (IBS/CBS)');
+  await user.clear(classCode);
+  await user.type(classCode, '200003');
+  await pickCustomer(user, 'Foreign Customer Inc');
+  const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
+  expect(value('Indicador de operação (IBS/CBS)')).toBe('');
+  expect(value('CST do IBS/CBS')).toBe('');
+  expect(value('Classificação tributária (IBS/CBS)')).toBe('');
+});

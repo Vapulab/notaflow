@@ -64,6 +64,8 @@ import {
   ibsCbsShown,
   serviceFields,
   withCode,
+  isAbroad,
+  withCustomerMode,
 } from './completeMode';
 import { revenueIsStale } from '../components/simplesRates';
 
@@ -173,8 +175,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   }, [base, linked, send.restored]);
 
   const customer = form.customer;
-  const abroad =
-    customer !== null && customer.documentType !== 'CNPJ' && customer.documentType !== 'CPF';
+  const abroad = isAbroad(customer);
   const service = services.data?.find((s) => s.id === form.serviceId) ?? null;
   const brlCents = parseCents(form.brl);
   const foreignCents = abroad ? parseCents(form.foreign) : null;
@@ -473,12 +474,20 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 onQueryChange={setCustomerQuery}
                 options={found.filter((c) => !c.archived).map(customerOption)}
                 selected={customer ? customerOption(customer) : null}
-                onSelect={(option) =>
-                  set(
-                    'customer',
-                    option ? (found.find((c) => c.id === option.value) ?? null) : null,
-                  )
-                }
+                onSelect={(option) => {
+                  const next = option ? (found.find((c) => c.id === option.value) ?? null) : null;
+                  setForm((f) => ({
+                    ...f,
+                    customer: next,
+                    more:
+                      f.more && isAbroad(next) !== isAbroad(f.customer)
+                        ? withCustomerMode(
+                            f.more,
+                            services.data?.find((s) => s.id === f.serviceId) ?? null,
+                          )
+                        : f.more,
+                  }));
+                }}
                 placeholder="Nome ou documento"
               />
             </Field>

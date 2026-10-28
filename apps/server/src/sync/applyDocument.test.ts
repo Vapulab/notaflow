@@ -181,6 +181,19 @@ test('an imported Brazil service keeps codes that differ from the defaults', () 
   });
 });
 
+test('an imported Brazil service with an untaxed CST and no cIndOp saves the group with the default cIndOp', () => {
+  const { ctx, emitterId, repos, counts } = setup();
+  const xml = domesticXml('100302410410027').replace('<cIndOp>100302</cIndOp>', '');
+  const invoice = providerInvoice({
+    xml,
+    service: { nationalTaxCode: '010701', description: 'Suporte t�cnico' },
+  });
+  applyDocument(repos, ctx, emitterId, { kind: 'invoice', nsu: 1, invoice }, counts);
+  expect(repos.services.list(ctx, emitterId)[0]).toMatchObject({
+    ibsCbs: { operationCode: '050101', cst: '410', classCode: '410027' },
+  });
+});
+
 test('a hand edit of an imported service is kept on the next sync', () => {
   const { ctx, emitterId, repos, counts } = setup();
   const document = { kind: 'invoice' as const, nsu: 1, invoice: providerInvoice() };

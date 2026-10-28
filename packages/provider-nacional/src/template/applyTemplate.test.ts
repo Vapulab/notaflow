@@ -115,3 +115,16 @@ test('an NT 009 domestic template is issued again unchanged', () => {
     applyTemplate({ ...template, ibsCbs: group }, { ...request, serviceCents: 100000 }).ibsCbs,
   ).toEqual(group);
 });
+
+test('an export copy without comExt gets no domestic group under NT 009', () => {
+  const stored = readTemplate(readFixture('NFSE_EXPORT.xml'));
+  expect(stored.service.foreignTrade).toBeUndefined();
+  const input = applyTemplate(stored, { ...request, serviceCents: stored.serviceCents });
+  expect(input.ibsCbs).toBeUndefined();
+  const nt009 = buildDpsXml(input).xml;
+  expect(nt009).not.toContain('<IBSCBS>');
+  const base = buildDpsXml(
+    applyTemplate(stored, { ...nt004Now, serviceCents: stored.serviceCents }),
+  ).xml;
+  expect(base).not.toContain('IBSCBS');
+});

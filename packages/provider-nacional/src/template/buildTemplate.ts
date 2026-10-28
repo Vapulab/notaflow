@@ -1,5 +1,6 @@
 import type { NewInvoiceInput } from '@notaflow/core';
 import type { ForeignTrade } from '../dps/types';
+import { isDomestic } from '../dps/isDomestic';
 import { ibsCbsDefaults } from '../rules/ibsCbsDefaults';
 import { percentText } from '../rules/simplesBands';
 import { minimumIssRate, taxRules } from '../rules/taxRules';
@@ -56,12 +57,7 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ? percentText(input.issRate)
       : undefined;
 
-  // Codes saved with export details describe an export, so a domestic invoice of that service uses the defaults.
-  const ibsCbsCodes = abroad
-    ? service.ibsCbs
-    : ((service.export ? undefined : service.ibsCbs) ?? ibsCbsDefaults(service.nationalTaxCode));
-
-  return {
+  const template: DpsTemplate = {
     emitterMunicipality: emitter.municipality,
     provider: {
       cnpj: emitter.cnpj,
@@ -94,17 +90,20 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ...(inss !== undefined ? { cpRetainedCents: inss } : {}),
       simplesTotalPercent: percentText(input.simplesPercent),
     },
-    // An export keeps its optional group; a domestic invoice always has one (NT 009), the service's codes first.
-    ...(ibsCbsCodes
-      ? {
-          ibsCbs: {
-            purpose: '0',
-            finalConsumer: customer.document?.type === 'CPF' ? '1' : '0',
-            destination: '0',
-            ...ibsCbsCodes,
-          },
-        }
-      : {}),
+  };
+  // Codes saved with export details describe an export, so a domestic invoice of that service uses the defaults.
+  const ibsCbsCodes = isDomestic(template)
+    ? ((service.export ? undefined : service.ibsCbs) ?? ibsCbsDefaults(service.nationalTaxCode))
+    : service.ibsCbs;
+  if (!ibsCbsCodes) return template;
+  return {
+    ...template,
+    ibsCbs: {
+      purpose: '0',
+      finalConsumer: customer.document?.type === 'CPF' ? '1' : '0',
+      destination: '0',
+      ...ibsCbsCodes,
+    },
   };
 }
 

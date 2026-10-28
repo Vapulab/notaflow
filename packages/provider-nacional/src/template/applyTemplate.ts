@@ -1,3 +1,4 @@
+import { isDomestic } from '../dps/isDomestic';
 import { ibsCbsDefaults } from '../rules/ibsCbsDefaults';
 import { percentText } from '../rules/simplesBands';
 import type { InvoiceParty, IssueRequest, PartyAddress } from '@notaflow/core';
@@ -28,7 +29,7 @@ export function applyTemplate(
   };
   const customer = request.customer ? toDpsCustomer(request.customer) : copy.customer;
   // A domestic copy of an NT 004 invoice has no group yet; the final customer decides indFinal.
-  const domesticGroup = foreignTrade
+  const domesticGroup = !isDomestic({ service: copy.service, customer, tax })
     ? {}
     : {
         ibsCbs: {

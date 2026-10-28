@@ -38,9 +38,13 @@ function fiscalGroupsOf(xml: string): Partial<ServiceInput> {
   const ibsCbs = template.ibsCbs;
   const defaults = ibsCbsDefaults(template.service.nationalTaxCode);
   // A Brazil invoice with the default codes saves none, so the Anexo VIII keeps applying.
+  // NT 009 leaves cIndOp out for an untaxed CST; a service needs one, so a domestic group takes the item's.
+  const operationCode =
+    ibsCbs?.operationCode ?? (foreignTrade ? undefined : defaults.operationCode);
   const isDefault =
     !foreignTrade &&
-    ibsCbs?.operationCode === defaults.operationCode &&
+    ibsCbs !== undefined &&
+    operationCode === defaults.operationCode &&
     ibsCbs.cst === defaults.cst &&
     ibsCbs.classCode === defaults.classCode;
   return {
@@ -48,10 +52,10 @@ function fiscalGroupsOf(xml: string): Partial<ServiceInput> {
     ...(nbsCode ? { nbsCode } : {}),
     ...(cst ? { pisCofinsCst: cst } : {}),
     // An NT 009 export has no cIndOp, and a service needs one for the NT 004 layout: leave the group out.
-    ...(ibsCbs?.operationCode && !isDefault
+    ...(ibsCbs && operationCode && !isDefault
       ? {
           ibsCbs: {
-            operationCode: ibsCbs.operationCode,
+            operationCode,
             cst: ibsCbs.cst,
             classCode: ibsCbs.classCode,
           },

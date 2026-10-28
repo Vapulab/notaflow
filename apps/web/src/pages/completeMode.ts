@@ -1,5 +1,5 @@
 import { type IbsCbsDefaults, ibsCbsDefaults } from '@notaflow/provider-nacional/simples';
-import type { FiscalConfig, Service, ServiceCode, ServiceExport } from '../api';
+import type { Customer, FiscalConfig, Service, ServiceCode, ServiceExport } from '../api';
 import { centsInput, formatServiceCode, parseCents, parsePercent, percentInput } from '../format';
 
 export type ExportField = keyof ServiceExport;
@@ -67,6 +67,16 @@ export function ibsCbsShown(
     return { operationCode: more.operationCode, cst: more.cst, classCode: more.classCode };
   }
   return domesticIbsCbs(service, more.code?.code ?? service.nationalTaxCode);
+}
+
+export function isAbroad(customer: Customer | null): boolean {
+  return customer !== null && customer.documentType !== 'CNPJ' && customer.documentType !== 'CPF';
+}
+
+// A customer flip between Brazil and abroad drops the typed codes: the two modes do not share them.
+export function withCustomerMode(more: Complete, service: Service | null): Complete {
+  const { operationCode, cst, classCode, ibsCbsEdited } = serviceFields(service);
+  return { ...more, operationCode, cst, classCode, ibsCbsEdited };
 }
 
 export function completeFrom(service: Service | null, config: FiscalConfig): Complete {
