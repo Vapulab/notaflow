@@ -22,9 +22,7 @@ export function withCampaign(href: string, campaign: string | null): string {
 export function carryCampaign(root: ParentNode, search: string): void {
   const campaign = campaignOf(search);
   if (!campaign) return;
-  for (const link of root.querySelectorAll<HTMLAnchorElement>(
-    'a[href="/cadastro"], a[href="/entrar"]',
-  )) {
+  for (const link of root.querySelectorAll<HTMLAnchorElement>('a[href="/cadastro"], a[href="/entrar"]')) {
     link.setAttribute('href', withCampaign(link.getAttribute('href') ?? '', campaign));
   }
 }

@@ -211,19 +211,10 @@ test('only a platform admin switches the environment; an owner gets 403 admin_on
 
 test('a platform admin switches to produção restrita and back with the literal confirmation, audited', async () => {
   const { a, emitterId } = await onboarded('admin@example.com');
-  t.db
-    .update(users)
-    .set({ platformRole: 'admin' })
-    .where(eq(users.email, 'admin@example.com'))
-    .run();
+  t.db.update(users).set({ platformRole: 'admin' }).where(eq(users.email, 'admin@example.com')).run();
   const url = `/api/accounts/${a.accountId}/emitters/${emitterId}/environment`;
   const headers = await t.as('admin@example.com');
-  const toTest = await t.app.inject({
-    method: 'POST',
-    url,
-    headers,
-    payload: { environment: 'producao_restrita' },
-  });
+  const toTest = await t.app.inject({ method: 'POST', url, headers, payload: { environment: 'producao_restrita' } });
   expect(toTest.statusCode).toBe(204);
   const missing = await t.app.inject({
     method: 'POST',

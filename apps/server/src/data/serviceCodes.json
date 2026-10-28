@@ -1,877 +1,340 @@
 [
-  { "code": "010101", "description": "Análise e desenvolvimento de sistemas." },
-  { "code": "010201", "description": "Programação." },
-  {
-    "code": "010301",
-    "description": "Processamento de dados, textos, imagens, vídeos, páginas eletrônicas, aplicativos e sistemas de informação, entre outros formatos, e congêneres."
-  },
-  {
-    "code": "010302",
-    "description": "Armazenamento ou hospedagem de dados, textos, imagens, vídeos, páginas eletrônicas, aplicativos e sistemas de informação, entre outros formatos, e congêneres."
-  },
-  {
-    "code": "010401",
-    "description": "Elaboração de programas de computadores, inclusive de jogos eletrônicos, independentemente da arquitetura construtiva da máquina em que o programa será executado, incluindo tablets, smartphones e congêneres."
-  },
-  {
-    "code": "010501",
-    "description": "Licenciamento ou cessão de direito de uso de programas de computação."
-  },
-  { "code": "010601", "description": "Assessoria e consultoria em informática." },
-  {
-    "code": "010701",
-    "description": "Suporte técnico em informática, inclusive instalação, configuração e manutenção de programas de computação e bancos de dados."
-  },
-  {
-    "code": "010801",
-    "description": "Planejamento, confecção, manutenção e atualização de páginas eletrônicas."
-  },
-  {
-    "code": "010901",
-    "description": "Disponibilização, sem cessão definitiva, de conteúdos de áudio por meio da internet (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS)."
-  },
-  {
-    "code": "010902",
-    "description": "Disponibilização, sem cessão definitiva, de conteúdos de vídeo, imagem e texto por meio da internet, respeitada a imunidade de livros, jornais e periódicos (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS)."
-  },
-  {
-    "code": "020101",
-    "description": "Serviços de pesquisas e desenvolvimento de qualquer natureza."
-  },
-  {
-    "code": "030201",
-    "description": "Cessão de direito de uso de marcas e de sinais de propaganda."
-  },
-  {
-    "code": "030301",
-    "description": "Exploração de salões de festas, centro de convenções, stands e congêneres, para realização de eventos ou negócios de qualquer natureza."
-  },
-  {
-    "code": "030302",
-    "description": "Exploração de escritórios virtuais e congêneres, para realização de eventos ou negócios de qualquer natureza."
-  },
-  {
-    "code": "030303",
-    "description": "Exploração de quadras esportivas, estádios, ginásios, canchas e congêneres, para realização de eventos ou negócios de qualquer natureza."
-  },
-  {
-    "code": "030304",
-    "description": "Exploração de auditórios, casas de espetáculos e congêneres, para realização de eventos ou negócios de qualquer natureza."
-  },
-  {
-    "code": "030305",
-    "description": "Exploração de parques de diversões e congêneres, para realização de eventos ou negócios de qualquer natureza."
-  },
-  {
-    "code": "030401",
-    "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de ferrovia."
-  },
-  {
-    "code": "030402",
-    "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de rodovia."
-  },
-  {
-    "code": "030403",
-    "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de postes, cabos, dutos e condutos de qualquer natureza."
-  },
-  {
-    "code": "030501",
-    "description": "Cessão de andaimes, palcos, coberturas e outras estruturas de uso temporário."
-  },
-  { "code": "040101", "description": "Medicina." },
-  { "code": "040102", "description": "Biomedicina." },
-  { "code": "040201", "description": "Análises clínicas e congêneres." },
-  { "code": "040202", "description": "Patologia e congêneres." },
-  {
-    "code": "040203",
-    "description": "Eletricidade médica (eletroestimulação de nervos e musculos, cardioversão, etc) e congêneres."
-  },
-  { "code": "040204", "description": "Radioterapia, quimioterapia e congêneres." },
-  {
-    "code": "040205",
-    "description": "Ultra-sonografia, ressonância magnética, radiologia, tomografia e congêneres."
-  },
-  { "code": "040301", "description": "Hospitais e congêneres." },
-  { "code": "040302", "description": "Laboratórios e congêneres." },
-  {
-    "code": "040303",
-    "description": "Clínicas, sanatórios, manicômios, casas de saúde, prontos-socorros, ambulatórios e congêneres."
-  },
-  { "code": "040401", "description": "Instrumentação cirúrgica." },
-  { "code": "040501", "description": "Acupuntura." },
-  { "code": "040601", "description": "Enfermagem, inclusive serviços auxiliares." },
-  { "code": "040701", "description": "Serviços farmacêuticos." },
-  { "code": "040801", "description": "Terapia ocupacional." },
-  { "code": "040802", "description": "Fisioterapia." },
-  { "code": "040803", "description": "Fonoaudiologia." },
-  {
-    "code": "040901",
-    "description": "Terapias de qualquer espécie destinadas ao tratamento físico, orgânico e mental."
-  },
-  { "code": "041001", "description": "Nutrição." },
-  { "code": "041101", "description": "Obstetrícia." },
-  { "code": "041201", "description": "Odontologia." },
-  { "code": "041301", "description": "Ortóptica." },
-  { "code": "041401", "description": "Próteses sob encomenda." },
-  { "code": "041501", "description": "Psicanálise." },
-  { "code": "041601", "description": "Psicologia." },
-  { "code": "041701", "description": "Casas de repouso e congêneres." },
-  { "code": "041702", "description": "Casas de recuperação e congêneres." },
-  { "code": "041703", "description": "Creches e congêneres." },
-  { "code": "041704", "description": "Asilos e congêneres." },
-  {
-    "code": "041801",
-    "description": "Inseminação artificial, fertilização in vitro e congêneres."
-  },
-  {
-    "code": "041901",
-    "description": "Bancos de sangue, leite, pele, olhos, óvulos, sêmen e congêneres."
-  },
-  {
-    "code": "042001",
-    "description": "Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie."
-  },
-  {
-    "code": "042101",
-    "description": "Unidade de atendimento, assistência ou tratamento móvel e congêneres."
-  },
-  {
-    "code": "042201",
-    "description": "Planos de medicina de grupo ou individual e convênios para prestação de assistência médica, hospitalar, odontológica e congêneres."
-  },
-  {
-    "code": "042301",
-    "description": "Outros planos de saúde que se cumpram através de serviços de terceiros contratados, credenciados, cooperados ou apenas pagos pelo operador do plano mediante indicação do beneficiário."
-  },
-  { "code": "050101", "description": "Medicina veterinária" },
-  { "code": "050102", "description": "Zootecnia." },
-  { "code": "050201", "description": "Hospitais e congêneres, na área veterinária." },
-  {
-    "code": "050202",
-    "description": "Clínicas, ambulatórios, prontos-socorros e congêneres, na área veterinária."
-  },
-  { "code": "050301", "description": "Laboratórios de análise na área veterinária." },
-  {
-    "code": "050401",
-    "description": "Inseminação artificial, fertilização in vitro e congêneres."
-  },
-  { "code": "050501", "description": "Bancos de sangue e de órgãos e congêneres." },
-  {
-    "code": "050601",
-    "description": "Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie."
-  },
-  {
-    "code": "050701",
-    "description": "Unidade de atendimento, assistência ou tratamento móvel e congêneres."
-  },
-  {
-    "code": "050801",
-    "description": "Guarda, tratamento, amestramento, embelezamento, alojamento e congêneres."
-  },
-  { "code": "050901", "description": "Planos de atendimento e assistência médico-veterinária." },
-  {
-    "code": "060101",
-    "description": "Barbearia, cabeleireiros, manicuros, pedicuros e congêneres."
-  },
-  { "code": "060201", "description": "Esteticistas, tratamento de pele, depilação e congêneres." },
-  { "code": "060301", "description": "Banhos, duchas, sauna, massagens e congêneres." },
-  {
-    "code": "060401",
-    "description": "Ginástica, dança, esportes, natação, artes marciais e demais atividades físicas."
-  },
-  { "code": "060501", "description": "Centros de emagrecimento, spa e congêneres." },
-  { "code": "060601", "description": "Aplicação de tatuagens, piercings e congêneres." },
-  { "code": "070101", "description": "Engenharia e congêneres." },
-  { "code": "070102", "description": "Agronomia e congêneres." },
-  { "code": "070103", "description": "Agrimensura e congêneres." },
-  { "code": "070104", "description": "Arquitetura, urbanismo e congêneres." },
-  { "code": "070105", "description": "Geologia e congêneres." },
-  { "code": "070106", "description": "Paisagismo e congêneres." },
-  {
-    "code": "070201",
-    "description": "Execução, por administração, de obras de construção civil, hidráulica ou elétrica e de outras obras semelhantes, inclusive sondagem, perfuração de poços, escavação, drenagem e irrigação, terraplanagem, pavimentação, concretagem e a instalação e montagem de produtos, peças e equipamentos (exceto o fornecimento de mercadorias produzidas pelo prestador de serviços fora do local da prestação dos serviços, que fica sujeito ao ICMS)."
-  },
-  {
-    "code": "070202",
-    "description": "Execução, por empreitada ou subempreitada, de obras de construção civil, hidráulica ou elétrica e de outras obras semelhantes, inclusive sondagem, perfuração de poços, escavação, drenagem e irrigação, terraplanagem, pavimentação, concretagem e a instalação e montagem de produtos, peças e equipamentos (exceto o fornecimento de mercadorias produzidas pelo prestador de serviços fora do local da prestação dos serviços, que fica sujeito ao ICMS)."
-  },
-  {
-    "code": "070301",
-    "description": "Elaboração de planos diretores, estudos de viabilidade, estudos organizacionais e outros, relacionados com obras e serviços de engenharia."
-  },
-  {
-    "code": "070302",
-    "description": "Elaboração de anteprojetos, projetos básicos e projetos executivos para trabalhos de engenharia."
-  },
-  { "code": "070401", "description": "Demolição." },
-  {
-    "code": "070501",
-    "description": "Reparação, conservação e reforma de edifícios e congêneres (exceto o fornecimento de mercadorias produzidas pelo prestador dos serviços, fora do local da prestação dos serviços, que fica sujeito ao ICMS)."
-  },
-  {
-    "code": "070502",
-    "description": "Reparação, conservação e reforma de estradas, pontes, portos e congêneres (exceto o fornecimento de mercadorias produzidas pelo prestador dos serviços, fora do local da prestação dos serviços, que fica sujeito ao ICMS)."
-  },
-  {
-    "code": "070601",
-    "description": "Colocação e instalação de tapetes, carpetes, cortinas e congêneres, com material fornecido pelo tomador do serviço."
-  },
-  {
-    "code": "070602",
-    "description": "Colocação e instalação de assoalhos, revestimentos de parede, vidros, divisórias, placas de gesso e congêneres, com material fornecido pelo tomador do serviço."
-  },
-  {
-    "code": "070701",
-    "description": "Recuperação, raspagem, polimento e lustração de pisos e congêneres."
-  },
-  { "code": "070801", "description": "Calafetação." },
-  {
-    "code": "070901",
-    "description": "Varrição, coleta e remoção de lixo, rejeitos e outros resíduos quaisquer."
-  },
-  {
-    "code": "070902",
-    "description": "Incineração, tratamento, reciclagem, separação e destinação final de lixo, rejeitos e outros resíduos quaisquer."
-  },
-  {
-    "code": "071001",
-    "description": "Limpeza, manutenção e conservação de vias e logradouros públicos, parques, jardins e congêneres."
-  },
-  {
-    "code": "071002",
-    "description": "Limpeza, manutenção e conservação de imóveis, chaminés, piscinas e congêneres."
-  },
-  { "code": "071101", "description": "Decoração." },
-  { "code": "071102", "description": "Jardinagem, inclusive corte e poda de árvores." },
-  {
-    "code": "071201",
-    "description": "Controle e tratamento de efluentes de qualquer natureza e de agentes físicos, químicos e biológicos."
-  },
-  {
-    "code": "071301",
-    "description": "Dedetização, desinfecção, desinsetização, imunização, higienização, desratização, pulverização e congêneres."
-  },
-  {
-    "code": "071601",
-    "description": "Florestamento, reflorestamento, semeadura, adubação, reparação de solo, plantio, silagem, colheita, corte e descascamento de árvores, silvicultura, exploração florestal e dos serviços congêneres indissociáveis da formação, manutenção e colheita de florestas, para quaisquer fins e por quaisquer meios."
-  },
-  { "code": "071701", "description": "Escoramento, contenção de encostas e serviços congêneres." },
-  {
-    "code": "071801",
-    "description": "Limpeza e dragagem de rios, portos, canais, baías, lagos, lagoas, represas, açudes e congêneres."
-  },
-  {
-    "code": "071901",
-    "description": "Acompanhamento e fiscalização da execução de obras de engenharia, arquitetura e urbanismo."
-  },
-  {
-    "code": "072001",
-    "description": "Aerofotogrametria (inclusive interpretação), cartografia, mapeamento e congêneres."
-  },
-  {
-    "code": "072002",
-    "description": "Levantamentos batimétricos, geográficos, geodésicos, geológicos, geofísicos e congêneres."
-  },
-  { "code": "072003", "description": "Levantamentos topográficos e congêneres." },
-  {
-    "code": "072101",
-    "description": "Pesquisa, perfuração, cimentação, mergulho, perfilagem, concretação, testemunhagem, pescaria, estimulação e outros serviços relacionados com a exploração e explotação de petróleo, gás natural e de outros recursos minerais."
-  },
-  { "code": "072201", "description": "Nucleação e bombardeamento de nuvens e congêneres." },
-  { "code": "080101", "description": "Ensino regular pré-escolar, fundamental e médio." },
-  { "code": "080102", "description": "Ensino regular superior." },
-  {
-    "code": "080201",
-    "description": "Instrução, treinamento, orientação pedagógica e educacional, avaliação de conhecimentos de qualquer natureza."
-  },
-  {
-    "code": "090101",
-    "description": "Hospedagem em hotéis, hotelaria marítima e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."
-  },
-  {
-    "code": "090102",
-    "description": "Hospedagem em pensões, albergues, pousadas, hospedarias, ocupação por temporada com fornecimento de serviços e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."
-  },
-  {
-    "code": "090103",
-    "description": "Hospedagem em motéis e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."
-  },
-  {
-    "code": "090104",
-    "description": "Hospedagem em apart-service condominiais, flat, apart-hotéis, hotéis residência, residence-service, suite service e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."
-  },
-  {
-    "code": "090201",
-    "description": "Agenciamento e intermediação de programas de turismo, passeios, viagens, excursões, hospedagens e congêneres."
-  },
-  {
-    "code": "090202",
-    "description": "Organização, promoção e execução de programas de turismo, passeios, viagens, excursões, hospedagens e congêneres."
-  },
-  { "code": "090301", "description": "Guias de turismo." },
-  { "code": "100101", "description": "Agenciamento, corretagem ou intermediação de câmbio." },
-  { "code": "100102", "description": "Agenciamento, corretagem ou intermediação de seguros." },
-  {
-    "code": "100103",
-    "description": "Agenciamento, corretagem ou intermediação de cartões de crédito."
-  },
-  {
-    "code": "100104",
-    "description": "Agenciamento, corretagem ou intermediação de planos de saúde."
-  },
-  {
-    "code": "100105",
-    "description": "Agenciamento, corretagem ou intermediação de planos de previdência privada."
-  },
-  {
-    "code": "100201",
-    "description": "Agenciamento, corretagem ou intermediação de títulos em geral e valores mobiliários."
-  },
-  {
-    "code": "100202",
-    "description": "Agenciamento, corretagem ou intermediação de contratos quaisquer."
-  },
-  {
-    "code": "100301",
-    "description": "Agenciamento, corretagem ou intermediação de direitos de propriedade industrial, artística ou literária."
-  },
-  {
-    "code": "100401",
-    "description": "Agenciamento, corretagem ou intermediação de contratos de arrendamento mercantil (leasing)."
-  },
-  {
-    "code": "100402",
-    "description": "Agenciamento, corretagem ou intermediação de contratos de franquia (franchising)."
-  },
-  {
-    "code": "100403",
-    "description": "Agenciamento, corretagem ou intermediação de faturização (factoring)."
-  },
-  {
-    "code": "100501",
-    "description": "Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, por quaisquer meios."
-  },
-  {
-    "code": "100502",
-    "description": "Agenciamento, corretagem ou intermediação de bens móveis ou imóveis realizados no âmbito de Bolsas de Mercadorias e Futuros, por quaisquer meios."
-  },
-  { "code": "100601", "description": "Agenciamento marítimo." },
-  { "code": "100701", "description": "Agenciamento de notícias." },
-  {
-    "code": "100801",
-    "description": "Agenciamento de publicidade e propaganda, inclusive o agenciamento de veiculação por quaisquer meios."
-  },
-  { "code": "100901", "description": "Representação de qualquer natureza, inclusive comercial." },
-  { "code": "101001", "description": "Distribuição de bens de terceiros." },
-  {
-    "code": "110101",
-    "description": "Guarda e estacionamento de veículos terrestres automotores."
-  },
-  { "code": "110102", "description": "Guarda e estacionamento de aeronaves e de embarcações." },
-  {
-    "code": "110201",
-    "description": "Vigilância, segurança ou monitoramento de bens, pessoas e semoventes."
-  },
-  { "code": "110301", "description": "Escolta, inclusive de veículos e cargas." },
-  {
-    "code": "110401",
-    "description": "Armazenamento, depósito, guarda de bens de qualquer espécie."
-  },
-  { "code": "110402", "description": "Carga, descarga, arrumação de bens de qualquer espécie." },
-  {
-    "code": "110501",
-    "description": "Serviços relacionados ao monitoramento e rastreamento a distância, em qualquer via ou local, de veículos, cargas, pessoas e semoventes em circulação ou movimento, realizados por meio de telefonia móvel, transmissão de satélites, rádio ou qualquer outro meio, inclusive pelas empresas de Tecnologia da Informação Veicular, independentemente de o prestador de serviços ser proprietário ou não da infraestrutura de telecomunicações que utiliza."
-  },
-  { "code": "120101", "description": "Espetáculos teatrais." },
-  { "code": "120201", "description": "Exibições cinematográficas." },
-  { "code": "120301", "description": "Espetáculos circenses." },
-  { "code": "120401", "description": "Programas de auditório." },
-  { "code": "120501", "description": "Parques de diversões, centros de lazer e congêneres." },
-  { "code": "120601", "description": "Boates, taxi-dancing e congêneres." },
-  {
-    "code": "120701",
-    "description": "Shows, ballet, danças, desfiles, bailes, óperas, concertos, recitais, festivais e congêneres."
-  },
-  { "code": "120801", "description": "Feiras, exposições, congressos e congêneres." },
-  { "code": "120901", "description": "Bilhares." },
-  { "code": "120902", "description": "Boliches." },
-  { "code": "120903", "description": "Diversões eletrônicas ou não." },
-  { "code": "121001", "description": "Corridas e competições de animais." },
-  {
-    "code": "121101",
-    "description": "Competições esportivas ou de destreza física ou intelectual, com ou sem a participação do espectador."
-  },
-  { "code": "121201", "description": "Execução de música." },
-  {
-    "code": "121301",
-    "description": "Produção, mediante ou sem encomenda prévia, de eventos, espetáculos, entrevistas, shows, ballet, danças, desfiles, bailes, teatros, óperas, concertos, recitais, festivais e congêneres."
-  },
-  {
-    "code": "121401",
-    "description": "Fornecimento de música para ambientes fechados ou não, mediante transmissão por qualquer processo."
-  },
-  {
-    "code": "121501",
-    "description": "Desfiles de blocos carnavalescos ou folclóricos, trios elétricos e congêneres."
-  },
-  {
-    "code": "121601",
-    "description": "Exibição de filmes, entrevistas, musicais, espetáculos, shows, concertos, desfiles, óperas, competições esportivas, de destreza intelectual ou congêneres."
-  },
-  {
-    "code": "121701",
-    "description": "Recreação e animação, inclusive em festas e eventos de qualquer natureza."
-  },
-  {
-    "code": "130201",
-    "description": "Fonografia ou gravação de sons, inclusive trucagem, dublagem, mixagem e congêneres."
-  },
-  {
-    "code": "130301",
-    "description": "Fotografia e cinematografia, inclusive revelação, ampliação, cópia, reprodução, trucagem e congêneres."
-  },
-  { "code": "130401", "description": "Reprografia, microfilmagem e digitalização." },
-  {
-    "code": "130501",
-    "description": "Composição gráfica, inclusive confecção de impressos gráficos, fotocomposição, clicheria, zincografia, litografia e fotolitografia, exceto se destinados a posterior operação de comercialização ou industrialização, ainda que incorporados, de qualquer forma, a outra mercadoria que deva ser objeto de posterior circulação, tais como bulas, rótulos, etiquetas, caixas, cartuchos, embalagens e manuais técnicos e de instrução, quando ficarão sujeitos ao ICMS."
-  },
-  {
-    "code": "140101",
-    "description": "Lubrificação, limpeza, lustração, revisão, carga e recarga, conserto, restauração, blindagem, manutenção e conservação de máquinas, veículos, aparelhos, equipamentos, motores, elevadores ou de qualquer objeto (exceto peças e partes empregadas, que ficam sujeitas ao ICMS)."
-  },
-  { "code": "140201", "description": "Assistência técnica." },
-  {
-    "code": "140301",
-    "description": "Recondicionamento de motores (exceto peças e partes empregadas, que ficam sujeitas ao ICMS)."
-  },
-  { "code": "140401", "description": "Recauchutagem ou regeneração de pneus." },
-  {
-    "code": "140501",
-    "description": "Restauração, recondicionamento, acondicionamento, pintura, beneficiamento, lavagem, secagem, tingimento, galvanoplastia, anodização, corte, recorte, plastificação, costura, acabamento, polimento e congêneres de objetos quaisquer."
-  },
-  {
-    "code": "140601",
-    "description": "Instalação e montagem de aparelhos, máquinas e equipamentos, inclusive montagem industrial, prestados ao usuário final, exclusivamente com material por ele fornecido."
-  },
-  { "code": "140701", "description": "Colocação de molduras e congêneres." },
-  {
-    "code": "140801",
-    "description": "Encadernação, gravação e douração de livros, revistas e congêneres."
-  },
-  {
-    "code": "140901",
-    "description": "Alfaiataria e costura, quando o material for fornecido pelo usuário final, exceto aviamento."
-  },
-  { "code": "141001", "description": "Tinturaria e lavanderia." },
-  { "code": "141101", "description": "Tapeçaria e reforma de estofamentos em geral." },
-  { "code": "141201", "description": "Funilaria e lanternagem." },
-  { "code": "141301", "description": "Carpintaria." },
-  { "code": "141302", "description": "Serralheria." },
-  { "code": "141401", "description": "Guincho intramunicipal." },
-  { "code": "141402", "description": "Guindaste e içamento." },
-  { "code": "141403", "description": "Guincho intramunicipal em construção civil." },
-  { "code": "141404", "description": "Guindaste e içamento em construção civil." },
-  { "code": "150101", "description": "Administração de fundos quaisquer e congêneres." },
-  { "code": "150102", "description": "Administração de consórcio e congêneres." },
-  { "code": "150103", "description": "Administração de cartão de crédito ou débito e congêneres." },
-  { "code": "150104", "description": "Administração de carteira de clientes e congêneres." },
-  { "code": "150105", "description": "Administração de cheques pré-datados e congêneres." },
-  {
-    "code": "150201",
-    "description": "Abertura de conta-corrente no País, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150202",
-    "description": "Abertura de conta-corrente no exterior, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150203",
-    "description": "Abertura de conta de investimentos e aplicação no País, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150204",
-    "description": "Abertura de conta de investimentos e aplicação no exterior, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150205",
-    "description": "Abertura de caderneta de poupança no País, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150206",
-    "description": "Abertura de caderneta de poupança no exterior, bem como a manutenção da referida conta ativa e inativa."
-  },
-  {
-    "code": "150207",
-    "description": "Abertura de contas em geral no País, não abrangida em outro subitem, bem como a manutenção das referidas contas ativas e inativas."
-  },
-  {
-    "code": "150208",
-    "description": "Abertura de contas em geral no exterior, não abrangida em outro subitem, bem como a manutenção das referidas contas ativas e inativas."
-  },
-  { "code": "150301", "description": "Locação de cofres particulares." },
-  { "code": "150302", "description": "Manutenção de cofres particulares." },
-  { "code": "150303", "description": "Locação de terminais eletrônicos." },
-  { "code": "150304", "description": "Manutenção de terminais eletrônicos." },
-  { "code": "150305", "description": "Locação de terminais de atendimento." },
-  { "code": "150306", "description": "Manutenção de terminais de atendimento." },
-  { "code": "150307", "description": "Locação de bens e equipamentos em geral." },
-  { "code": "150308", "description": "Manutenção de bens e equipamentos em geral." },
-  {
-    "code": "150401",
-    "description": "Fornecimento ou emissão de atestados em geral, inclusive atestado de idoneidade, atestado de capacidade financeira e congêneres."
-  },
-  {
-    "code": "150501",
-    "description": "Cadastro, elaboração de ficha cadastral, renovação cadastral e congêneres."
-  },
-  {
-    "code": "150502",
-    "description": "Inclusão no Cadastro de Emitentes de Cheques sem Fundos - CCF."
-  },
-  {
-    "code": "150503",
-    "description": "Exclusão no Cadastro de Emitentes de Cheques sem Fundos - CCF."
-  },
-  { "code": "150504", "description": "Inclusão em quaisquer outros bancos cadastrais." },
-  { "code": "150505", "description": "Exclusão em quaisquer outros bancos cadastrais." },
-  {
-    "code": "150601",
-    "description": "Emissão, reemissão e fornecimento de avisos, comprovantes e documentos em geral"
-  },
-  { "code": "150602", "description": "Abono de firmas." },
-  { "code": "150603", "description": "Coleta e entrega de documentos, bens e valores." },
-  {
-    "code": "150604",
-    "description": "Comunicação com outra agência ou com a administração central."
-  },
-  { "code": "150605", "description": "Licenciamento eletrônico de veículos." },
-  { "code": "150606", "description": "Transferência de veículos." },
-  { "code": "150607", "description": "Agenciamento fiduciário ou depositário." },
-  { "code": "150608", "description": "Devolução de bens em custódia." },
-  {
-    "code": "150701",
-    "description": "Acesso, movimentação, atendimento e consulta a contas em geral, por qualquer meio ou processo, inclusive por telefone, fac-símile, internet e telex."
-  },
-  {
-    "code": "150702",
-    "description": "Acesso a terminais de atendimento, inclusive vinte e quatro horas."
-  },
-  { "code": "150703", "description": "Acesso a outro banco e à rede compartilhada." },
-  {
-    "code": "150704",
-    "description": "Fornecimento de saldo, extrato e demais informações relativas a contas em geral, por qualquer meio ou processo."
-  },
-  {
-    "code": "150801",
-    "description": "Emissão, reemissão, alteração, cessão, substituição, cancelamento e registro de contrato de crédito."
-  },
-  { "code": "150802", "description": "Estudo, análise e avaliação de operações de crédito." },
-  {
-    "code": "150803",
-    "description": "Emissão, concessão, alteração ou contratação de aval, fiança, anuência e congêneres."
-  },
-  {
-    "code": "150804",
-    "description": "Serviços relativos à abertura de crédito, para quaisquer fins."
-  },
-  {
-    "code": "150901",
-    "description": "Arrendamento mercantil (leasing) de quaisquer bens, inclusive cessão de direitos e obrigações, substituição de garantia, alteração, cancelamento e registro de contrato, e demais serviços relacionados ao arrendamento mercantil (leasing)."
-  },
-  {
-    "code": "151001",
-    "description": "Serviços relacionados a cobranças em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."
-  },
-  {
-    "code": "151002",
-    "description": "Serviços relacionados a recebimentos em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."
-  },
-  {
-    "code": "151003",
-    "description": "Serviços relacionados a pagamentos em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."
-  },
-  {
-    "code": "151004",
-    "description": "Serviços relacionados a fornecimento de posição de cobrança, recebimento ou pagamento."
-  },
-  {
-    "code": "151005",
-    "description": "Serviços relacionados a emissão de carnês, fichas de compensação, impressos e documentos em geral."
-  },
-  {
-    "code": "151101",
-    "description": "Devolução de títulos, protesto de títulos, sustação de protesto, manutenção de títulos, reapresentação de títulos, e demais serviços a eles relacionados."
-  },
-  {
-    "code": "151201",
-    "description": "Custódia em geral, inclusive de títulos e valores mobiliários."
-  },
-  {
-    "code": "151301",
-    "description": "Serviços relacionados a operações de câmbio em geral, edição, alteração, prorrogação, cancelamento e baixa de contrato de câmbio."
-  },
-  {
-    "code": "151302",
-    "description": "Serviços relacionados a emissão de registro de exportação ou de crédito."
-  },
-  { "code": "151303", "description": "Serviços relacionados a cobrança ou depósito no exterior." },
-  {
-    "code": "151304",
-    "description": "Serviços relacionados a emissão, fornecimento e cancelamento de cheques de viagem."
-  },
-  {
-    "code": "151305",
-    "description": "Serviços relacionados a fornecimento, transferência, cancelamento e demais serviços relativos a carta de crédito de importação, exportação e garantias recebidas."
-  },
-  {
-    "code": "151306",
-    "description": "Serviços relacionados a envio e recebimento de mensagens em geral relacionadas a operações de câmbio."
-  },
-  {
-    "code": "151401",
-    "description": "Fornecimento, emissão, reemissão de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."
-  },
-  {
-    "code": "151402",
-    "description": "Renovação de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."
-  },
-  {
-    "code": "151403",
-    "description": "Manutenção de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."
-  },
-  { "code": "151501", "description": "Compensação de cheques e títulos quaisquer." },
-  {
-    "code": "151502",
-    "description": "Serviços relacionados a depósito, inclusive depósito identificado, a saque de contas quaisquer, por qualquer meio ou processo, inclusive em terminais eletrônicos e de atendimento."
-  },
-  {
-    "code": "151601",
-    "description": "Emissão, reemissão, liquidação, alteração, cancelamento e baixa de ordens de pagamento, ordens de crédito e similares, por qualquer meio ou processo."
-  },
-  {
-    "code": "151602",
-    "description": "Serviços relacionados à transferência de valores, dados, fundos, pagamentos e similares, inclusive entre contas em geral."
-  },
-  {
-    "code": "151701",
-    "description": "Emissão e fornecimento de cheques quaisquer, avulso ou por talão."
-  },
-  { "code": "151702", "description": "Devolução de cheques quaisquer, avulso ou por talão." },
-  {
-    "code": "151703",
-    "description": "Sustação, cancelamento e oposição de cheques quaisquer, avulso ou por talão."
-  },
-  {
-    "code": "151801",
-    "description": "Serviços relacionados a crédito imobiliário, de avaliação e vistoria de imóvel ou obra."
-  },
-  {
-    "code": "151802",
-    "description": "Serviços relacionados a crédito imobiliário, de análise técnica e jurídica."
-  },
-  {
-    "code": "151803",
-    "description": "Serviços relacionados a crédito imobiliário, de emissão, reemissão, alteração, transferência e renegociação de contrato."
-  },
-  {
-    "code": "151804",
-    "description": "Serviços relacionados a crédito imobiliário, de emissão e reemissão do termo de quitação."
-  },
-  { "code": "151805", "description": "Demais serviços relacionados a crédito imobiliário." },
-  {
-    "code": "160101",
-    "description": "Serviços de transporte coletivo municipal rodoviário de passageiros."
-  },
-  {
-    "code": "160102",
-    "description": "Serviços de transporte coletivo municipal metroviário de passageiros."
-  },
-  {
-    "code": "160103",
-    "description": "Serviços de transporte coletivo municipal ferroviário de passageiros."
-  },
-  {
-    "code": "160104",
-    "description": "Serviços de transporte coletivo municipal aquaviário de passageiros."
-  },
-  { "code": "160201", "description": "Outros serviços de transporte de natureza municipal." },
-  {
-    "code": "170101",
-    "description": "Assessoria ou consultoria de qualquer natureza, não contida em outros itens desta lista."
-  },
-  {
-    "code": "170102",
-    "description": "Análise, exame, pesquisa, coleta, compilação e fornecimento de dados e informações de qualquer natureza, inclusive cadastro e similares."
-  },
-  { "code": "170201", "description": "Datilografia, digitação, estenografia e congêneres." },
-  {
-    "code": "170202",
-    "description": "Expediente, secretaria em geral, apoio e infra-estrutura administrativa e congêneres."
-  },
-  { "code": "170203", "description": "Resposta audível e congêneres." },
-  { "code": "170204", "description": "Redação, edição, revisão e congêneres." },
-  { "code": "170205", "description": "Interpretação, tradução e congêneres." },
-  {
-    "code": "170301",
-    "description": "Planejamento, coordenação, programação ou organização técnica."
-  },
-  {
-    "code": "170302",
-    "description": "Planejamento, coordenação, programação ou organização financeira."
-  },
-  {
-    "code": "170303",
-    "description": "Planejamento, coordenação, programação ou organização administrativa."
-  },
-  {
-    "code": "170401",
-    "description": "Recrutamento, agenciamento, seleção e colocação de mão-de-obra."
-  },
-  {
-    "code": "170501",
-    "description": "Fornecimento de mão-de-obra, mesmo em caráter temporário, inclusive de empregados ou trabalhadores, avulsos ou temporários, contratados pelo prestador de serviço."
-  },
-  {
-    "code": "170601",
-    "description": "Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários."
-  },
-  { "code": "170801", "description": "Franquia (franchising)." },
-  { "code": "170901", "description": "Perícias, laudos, exames técnicos e análises técnicas." },
-  {
-    "code": "171001",
-    "description": "Planejamento, organização e administração de feiras, exposições, e congêneres."
-  },
-  {
-    "code": "171002",
-    "description": "Planejamento, organização e administração de congressos e congêneres."
-  },
-  { "code": "171101", "description": "Organização de festas e recepções." },
-  {
-    "code": "171102",
-    "description": "Bufê (exceto o fornecimento de alimentação e bebidas, que fica sujeito ao ICMS)."
-  },
-  {
-    "code": "171201",
-    "description": "Administração em geral, inclusive de bens e negócios de terceiros."
-  },
-  { "code": "171301", "description": "Leilão e congêneres." },
-  { "code": "171401", "description": "Advocacia" },
-  { "code": "171501", "description": "Arbitragem de qualquer espécie, inclusive jurídica." },
-  { "code": "171601", "description": "Auditoria." },
-  { "code": "171701", "description": "Análise de Organização e Métodos." },
-  { "code": "171801", "description": "Atuária e cálculos técnicos de qualquer natureza." },
-  { "code": "171901", "description": "Contabilidade, inclusive serviços técnicos e auxiliares." },
-  { "code": "172001", "description": "Consultoria e assessoria econômica ou financeira." },
-  { "code": "172101", "description": "Estatística." },
-  { "code": "172201", "description": "Cobrança em geral." },
-  {
-    "code": "172301",
-    "description": "Assessoria, análise, avaliação, atendimento, consulta, cadastro, seleção, gerenciamento de informações, administração de contas a receber ou a pagar e em geral, relacionados a operações de faturização (factoring)."
-  },
-  {
-    "code": "172401",
-    "description": "Apresentação de palestras, conferências, seminários e congêneres."
-  },
-  {
-    "code": "172501",
-    "description": "Inserção de textos, desenhos e outros materiais de propaganda e publicidade, em qualquer meio (exceto em livros, jornais, periódicos e nas modalidades de serviços de radiodifusão sonora e de sons e imagens de recepção livre e gratuita)."
-  },
-  {
-    "code": "180101",
-    "description": "Serviços de regulação de sinistros vinculados a contratos de seguros e congêneres."
-  },
-  {
-    "code": "180102",
-    "description": "Serviços de inspeção e avaliação de riscos para cobertura de contratos de seguros e congêneres."
-  },
-  {
-    "code": "180103",
-    "description": "Serviços de prevenção e gerência de riscos seguráveis e congêneres."
-  },
-  {
-    "code": "190101",
-    "description": "Serviços de distribuição e venda de bilhetes e demais produtos de loteria, cartões, pules ou cupons de apostas, sorteios, prêmios, inclusive os decorrentes de títulos de capitalização e congêneres."
-  },
-  { "code": "190102", "description": "Serviços de distribuição e venda de bingos e congêneres." },
-  {
-    "code": "200101",
-    "description": "Serviços portuários, ferroportuários, utilização de porto, movimentação de passageiros, reboque de embarcações, rebocador escoteiro, atracação, desatracação, serviços de praticagem, capatazia, armazenagem de qualquer natureza, serviços acessórios, movimentação de mercadorias, serviços de apoio marítimo, de movimentação ao largo, serviços de armadores, estiva, conferência, logística e congêneres. (prestado em terra)"
-  },
-  {
-    "code": "200102",
-    "description": "Serviços portuários, ferroportuários, utilização de porto, movimentação de passageiros, reboque de embarcações, rebocador escoteiro, atracação, desatracação, serviços de praticagem, capatazia, armazenagem de qualquer natureza, serviços acessórios, movimentação de mercadorias, serviços de apoio marítimo, de movimentação ao largo, serviços de armadores, estiva, conferência, logística e congêneres. (prestado em águas marinhas)"
-  },
-  {
-    "code": "200201",
-    "description": "Serviços aeroportuários, utilização de aeroporto, movimentação de passageiros, armazenagem de qualquer natureza, capatazia, movimentação de aeronaves, serviços de apoio aeroportuários, serviços acessórios, movimentação de mercadorias, logística e congêneres."
-  },
-  {
-    "code": "200301",
-    "description": "Serviços de terminais rodoviários, ferroviários, metroviários, movimentação de passageiros, mercadorias, inclusive suas operações, logística e congêneres."
-  },
-  { "code": "210101", "description": "Serviços de registros públicos, cartorários e notariais." },
-  {
-    "code": "220101",
-    "description": "Serviços de exploração de rodovia mediante cobrança de preço ou pedágio dos usuários, envolvendo execução de serviços de conservação, manutenção, melhoramentos para adequação de capacidade e segurança de trânsito, operação, monitoração, assistência aos usuários e outros serviços definidos em contratos, atos de concessão ou de permissão ou em normas oficiais."
-  },
-  { "code": "230101", "description": "Serviços de programação e comunicação visual e congêneres." },
-  { "code": "230102", "description": "Serviços de desenho industrial e congêneres." },
-  { "code": "240101", "description": "Serviços de chaveiros, confecção de carimbos e congêneres." },
-  {
-    "code": "240102",
-    "description": "Serviços de placas, sinalização visual, banners, adesivos e congêneres."
-  },
-  {
-    "code": "250101",
-    "description": "Funerais, inclusive fornecimento de caixão, urna ou esquifes; aluguel de capela; transporte do corpo cadavérico; fornecimento de flores, coroas e outros paramentos; desembaraço de certidão de óbito; fornecimento de véu, essa e outros adornos; embalsamento, embelezamento, conservação ou restauração de cadáveres."
-  },
-  {
-    "code": "250201",
-    "description": "Translado intramunicipal de corpos e partes de corpos cadavéricos."
-  },
-  { "code": "250202", "description": "Cremação de corpos e partes de corpos cadavéricos." },
-  { "code": "250301", "description": "Planos ou convênio funerários." },
-  { "code": "250401", "description": "Manutenção e conservação de jazigos e cemitérios." },
-  { "code": "250501", "description": "Cessão de uso de espaços em cemitérios para sepultamento." },
-  {
-    "code": "260101",
-    "description": "Serviços de coleta, remessa ou entrega de correspondências, documentos, objetos, bens ou valores, inclusive pelos correios e suas agências franqueadas."
-  },
-  { "code": "260102", "description": "Serviços de courrier e congêneres." },
-  { "code": "270101", "description": "Serviços de assistência social." },
-  {
-    "code": "280101",
-    "description": "Serviços de avaliação de bens e serviços de qualquer natureza."
-  },
-  { "code": "290101", "description": "Serviços de biblioteconomia." },
-  { "code": "300101", "description": "Serviços de biologia e biotecnologia." },
-  { "code": "300102", "description": "Serviços de química." },
-  { "code": "310101", "description": "Serviços técnicos em edificações e congêneres." },
-  {
-    "code": "310102",
-    "description": "Serviços técnicos em eletrônica, eletrotécnica e congêneres."
-  },
-  { "code": "310103", "description": "Serviços técnicos em mecânica e congêneres." },
-  { "code": "310104", "description": "Serviços técnicos em telecomunicações e congêneres." },
-  { "code": "320101", "description": "Serviços de desenhos técnicos." },
-  {
-    "code": "330101",
-    "description": "Serviços de desembaraço aduaneiro, comissários, despachantes e congêneres."
-  },
-  {
-    "code": "340101",
-    "description": "Serviços de investigações particulares, detetives e congêneres."
-  },
-  { "code": "350101", "description": "Serviços de reportagem e jornalismo." },
-  { "code": "350102", "description": "Serviços de assessoria de imprensa." },
-  { "code": "350103", "description": "Serviços de relações públicas." },
-  { "code": "360101", "description": "Serviços de meteorologia." },
-  { "code": "370101", "description": "Serviços de artistas, atletas, modelos e manequins." },
-  { "code": "380101", "description": "Serviços de museologia." },
-  {
-    "code": "390101",
-    "description": "Serviços de ourivesaria e lapidação (quando o material for fornecido pelo tomador do serviço)."
-  },
-  { "code": "400101", "description": "Obras de arte sob encomenda." },
-  { "code": "990101", "description": "Serviços sem a incidência de ISSQN e ICMS" }
+  {"code": "010101", "description": "Análise e desenvolvimento de sistemas."},
+  {"code": "010201", "description": "Programação."},
+  {"code": "010301", "description": "Processamento de dados, textos, imagens, vídeos, páginas eletrônicas, aplicativos e sistemas de informação, entre outros formatos, e congêneres."},
+  {"code": "010302", "description": "Armazenamento ou hospedagem de dados, textos, imagens, vídeos, páginas eletrônicas, aplicativos e sistemas de informação, entre outros formatos, e congêneres."},
+  {"code": "010401", "description": "Elaboração de programas de computadores, inclusive de jogos eletrônicos, independentemente da arquitetura construtiva da máquina em que o programa será executado, incluindo tablets, smartphones e congêneres."},
+  {"code": "010501", "description": "Licenciamento ou cessão de direito de uso de programas de computação."},
+  {"code": "010601", "description": "Assessoria e consultoria em informática."},
+  {"code": "010701", "description": "Suporte técnico em informática, inclusive instalação, configuração e manutenção de programas de computação e bancos de dados."},
+  {"code": "010801", "description": "Planejamento, confecção, manutenção e atualização de páginas eletrônicas."},
+  {"code": "010901", "description": "Disponibilização, sem cessão definitiva, de conteúdos de áudio por meio da internet (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS)."},
+  {"code": "010902", "description": "Disponibilização, sem cessão definitiva, de conteúdos de vídeo, imagem e texto por meio da internet, respeitada a imunidade de livros, jornais e periódicos (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS)."},
+  {"code": "020101", "description": "Serviços de pesquisas e desenvolvimento de qualquer natureza."},
+  {"code": "030201", "description": "Cessão de direito de uso de marcas e de sinais de propaganda."},
+  {"code": "030301", "description": "Exploração de salões de festas, centro de convenções, stands e congêneres, para realização de eventos ou negócios de qualquer natureza."},
+  {"code": "030302", "description": "Exploração de escritórios virtuais e congêneres, para realização de eventos ou negócios de qualquer natureza."},
+  {"code": "030303", "description": "Exploração de quadras esportivas, estádios, ginásios, canchas e congêneres, para realização de eventos ou negócios de qualquer natureza."},
+  {"code": "030304", "description": "Exploração de auditórios, casas de espetáculos e congêneres, para realização de eventos ou negócios de qualquer natureza."},
+  {"code": "030305", "description": "Exploração de parques de diversões e congêneres, para realização de eventos ou negócios de qualquer natureza."},
+  {"code": "030401", "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de ferrovia."},
+  {"code": "030402", "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de rodovia."},
+  {"code": "030403", "description": "Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de postes, cabos, dutos e condutos de qualquer natureza."},
+  {"code": "030501", "description": "Cessão de andaimes, palcos, coberturas e outras estruturas de uso temporário."},
+  {"code": "040101", "description": "Medicina."},
+  {"code": "040102", "description": "Biomedicina."},
+  {"code": "040201", "description": "Análises clínicas e congêneres."},
+  {"code": "040202", "description": "Patologia e congêneres."},
+  {"code": "040203", "description": "Eletricidade médica (eletroestimulação de nervos e musculos, cardioversão, etc) e congêneres."},
+  {"code": "040204", "description": "Radioterapia, quimioterapia e congêneres."},
+  {"code": "040205", "description": "Ultra-sonografia, ressonância magnética, radiologia, tomografia e congêneres."},
+  {"code": "040301", "description": "Hospitais e congêneres."},
+  {"code": "040302", "description": "Laboratórios e congêneres."},
+  {"code": "040303", "description": "Clínicas, sanatórios, manicômios, casas de saúde, prontos-socorros, ambulatórios e congêneres."},
+  {"code": "040401", "description": "Instrumentação cirúrgica."},
+  {"code": "040501", "description": "Acupuntura."},
+  {"code": "040601", "description": "Enfermagem, inclusive serviços auxiliares."},
+  {"code": "040701", "description": "Serviços farmacêuticos."},
+  {"code": "040801", "description": "Terapia ocupacional."},
+  {"code": "040802", "description": "Fisioterapia."},
+  {"code": "040803", "description": "Fonoaudiologia."},
+  {"code": "040901", "description": "Terapias de qualquer espécie destinadas ao tratamento físico, orgânico e mental."},
+  {"code": "041001", "description": "Nutrição."},
+  {"code": "041101", "description": "Obstetrícia."},
+  {"code": "041201", "description": "Odontologia."},
+  {"code": "041301", "description": "Ortóptica."},
+  {"code": "041401", "description": "Próteses sob encomenda."},
+  {"code": "041501", "description": "Psicanálise."},
+  {"code": "041601", "description": "Psicologia."},
+  {"code": "041701", "description": "Casas de repouso e congêneres."},
+  {"code": "041702", "description": "Casas de recuperação e congêneres."},
+  {"code": "041703", "description": "Creches e congêneres."},
+  {"code": "041704", "description": "Asilos e congêneres."},
+  {"code": "041801", "description": "Inseminação artificial, fertilização in vitro e congêneres."},
+  {"code": "041901", "description": "Bancos de sangue, leite, pele, olhos, óvulos, sêmen e congêneres."},
+  {"code": "042001", "description": "Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie."},
+  {"code": "042101", "description": "Unidade de atendimento, assistência ou tratamento móvel e congêneres."},
+  {"code": "042201", "description": "Planos de medicina de grupo ou individual e convênios para prestação de assistência médica, hospitalar, odontológica e congêneres."},
+  {"code": "042301", "description": "Outros planos de saúde que se cumpram através de serviços de terceiros contratados, credenciados, cooperados ou apenas pagos pelo operador do plano mediante indicação do beneficiário."},
+  {"code": "050101", "description": "Medicina veterinária"},
+  {"code": "050102", "description": "Zootecnia."},
+  {"code": "050201", "description": "Hospitais e congêneres, na área veterinária."},
+  {"code": "050202", "description": "Clínicas, ambulatórios, prontos-socorros e congêneres, na área veterinária."},
+  {"code": "050301", "description": "Laboratórios de análise na área veterinária."},
+  {"code": "050401", "description": "Inseminação artificial, fertilização in vitro e congêneres."},
+  {"code": "050501", "description": "Bancos de sangue e de órgãos e congêneres."},
+  {"code": "050601", "description": "Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie."},
+  {"code": "050701", "description": "Unidade de atendimento, assistência ou tratamento móvel e congêneres."},
+  {"code": "050801", "description": "Guarda, tratamento, amestramento, embelezamento, alojamento e congêneres."},
+  {"code": "050901", "description": "Planos de atendimento e assistência médico-veterinária."},
+  {"code": "060101", "description": "Barbearia, cabeleireiros, manicuros, pedicuros e congêneres."},
+  {"code": "060201", "description": "Esteticistas, tratamento de pele, depilação e congêneres."},
+  {"code": "060301", "description": "Banhos, duchas, sauna, massagens e congêneres."},
+  {"code": "060401", "description": "Ginástica, dança, esportes, natação, artes marciais e demais atividades físicas."},
+  {"code": "060501", "description": "Centros de emagrecimento, spa e congêneres."},
+  {"code": "060601", "description": "Aplicação de tatuagens, piercings e congêneres."},
+  {"code": "070101", "description": "Engenharia e congêneres."},
+  {"code": "070102", "description": "Agronomia e congêneres."},
+  {"code": "070103", "description": "Agrimensura e congêneres."},
+  {"code": "070104", "description": "Arquitetura, urbanismo e congêneres."},
+  {"code": "070105", "description": "Geologia e congêneres."},
+  {"code": "070106", "description": "Paisagismo e congêneres."},
+  {"code": "070201", "description": "Execução, por administração, de obras de construção civil, hidráulica ou elétrica e de outras obras semelhantes, inclusive sondagem, perfuração de poços, escavação, drenagem e irrigação, terraplanagem, pavimentação, concretagem e a instalação e montagem de produtos, peças e equipamentos (exceto o fornecimento de mercadorias produzidas pelo prestador de serviços fora do local da prestação dos serviços, que fica sujeito ao ICMS)."},
+  {"code": "070202", "description": "Execução, por empreitada ou subempreitada, de obras de construção civil, hidráulica ou elétrica e de outras obras semelhantes, inclusive sondagem, perfuração de poços, escavação, drenagem e irrigação, terraplanagem, pavimentação, concretagem e a instalação e montagem de produtos, peças e equipamentos (exceto o fornecimento de mercadorias produzidas pelo prestador de serviços fora do local da prestação dos serviços, que fica sujeito ao ICMS)."},
+  {"code": "070301", "description": "Elaboração de planos diretores, estudos de viabilidade, estudos organizacionais e outros, relacionados com obras e serviços de engenharia."},
+  {"code": "070302", "description": "Elaboração de anteprojetos, projetos básicos e projetos executivos para trabalhos de engenharia."},
+  {"code": "070401", "description": "Demolição."},
+  {"code": "070501", "description": "Reparação, conservação e reforma de edifícios e congêneres (exceto o fornecimento de mercadorias produzidas pelo prestador dos serviços, fora do local da prestação dos serviços, que fica sujeito ao ICMS)."},
+  {"code": "070502", "description": "Reparação, conservação e reforma de estradas, pontes, portos e congêneres (exceto o fornecimento de mercadorias produzidas pelo prestador dos serviços, fora do local da prestação dos serviços, que fica sujeito ao ICMS)."},
+  {"code": "070601", "description": "Colocação e instalação de tapetes, carpetes, cortinas e congêneres, com material fornecido pelo tomador do serviço."},
+  {"code": "070602", "description": "Colocação e instalação de assoalhos, revestimentos de parede, vidros, divisórias, placas de gesso e congêneres, com material fornecido pelo tomador do serviço."},
+  {"code": "070701", "description": "Recuperação, raspagem, polimento e lustração de pisos e congêneres."},
+  {"code": "070801", "description": "Calafetação."},
+  {"code": "070901", "description": "Varrição, coleta e remoção de lixo, rejeitos e outros resíduos quaisquer."},
+  {"code": "070902", "description": "Incineração, tratamento, reciclagem, separação e destinação final de lixo, rejeitos e outros resíduos quaisquer."},
+  {"code": "071001", "description": "Limpeza, manutenção e conservação de vias e logradouros públicos, parques, jardins e congêneres."},
+  {"code": "071002", "description": "Limpeza, manutenção e conservação de imóveis, chaminés, piscinas e congêneres."},
+  {"code": "071101", "description": "Decoração."},
+  {"code": "071102", "description": "Jardinagem, inclusive corte e poda de árvores."},
+  {"code": "071201", "description": "Controle e tratamento de efluentes de qualquer natureza e de agentes físicos, químicos e biológicos."},
+  {"code": "071301", "description": "Dedetização, desinfecção, desinsetização, imunização, higienização, desratização, pulverização e congêneres."},
+  {"code": "071601", "description": "Florestamento, reflorestamento, semeadura, adubação, reparação de solo, plantio, silagem, colheita, corte e descascamento de árvores, silvicultura, exploração florestal e dos serviços congêneres indissociáveis da formação, manutenção e colheita de florestas, para quaisquer fins e por quaisquer meios."},
+  {"code": "071701", "description": "Escoramento, contenção de encostas e serviços congêneres."},
+  {"code": "071801", "description": "Limpeza e dragagem de rios, portos, canais, baías, lagos, lagoas, represas, açudes e congêneres."},
+  {"code": "071901", "description": "Acompanhamento e fiscalização da execução de obras de engenharia, arquitetura e urbanismo."},
+  {"code": "072001", "description": "Aerofotogrametria (inclusive interpretação), cartografia, mapeamento e congêneres."},
+  {"code": "072002", "description": "Levantamentos batimétricos, geográficos, geodésicos, geológicos, geofísicos e congêneres."},
+  {"code": "072003", "description": "Levantamentos topográficos e congêneres."},
+  {"code": "072101", "description": "Pesquisa, perfuração, cimentação, mergulho, perfilagem, concretação, testemunhagem, pescaria, estimulação e outros serviços relacionados com a exploração e explotação de petróleo, gás natural e de outros recursos minerais."},
+  {"code": "072201", "description": "Nucleação e bombardeamento de nuvens e congêneres."},
+  {"code": "080101", "description": "Ensino regular pré-escolar, fundamental e médio."},
+  {"code": "080102", "description": "Ensino regular superior."},
+  {"code": "080201", "description": "Instrução, treinamento, orientação pedagógica e educacional, avaliação de conhecimentos de qualquer natureza."},
+  {"code": "090101", "description": "Hospedagem em hotéis, hotelaria marítima e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."},
+  {"code": "090102", "description": "Hospedagem em pensões, albergues, pousadas, hospedarias, ocupação por temporada com fornecimento de serviços e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."},
+  {"code": "090103", "description": "Hospedagem em motéis e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."},
+  {"code": "090104", "description": "Hospedagem em apart-service condominiais, flat, apart-hotéis, hotéis residência, residence-service, suite service e congêneres (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços)."},
+  {"code": "090201", "description": "Agenciamento e intermediação de programas de turismo, passeios, viagens, excursões, hospedagens e congêneres."},
+  {"code": "090202", "description": "Organização, promoção e execução de programas de turismo, passeios, viagens, excursões, hospedagens e congêneres."},
+  {"code": "090301", "description": "Guias de turismo."},
+  {"code": "100101", "description": "Agenciamento, corretagem ou intermediação de câmbio."},
+  {"code": "100102", "description": "Agenciamento, corretagem ou intermediação de seguros."},
+  {"code": "100103", "description": "Agenciamento, corretagem ou intermediação de cartões de crédito."},
+  {"code": "100104", "description": "Agenciamento, corretagem ou intermediação de planos de saúde."},
+  {"code": "100105", "description": "Agenciamento, corretagem ou intermediação de planos de previdência privada."},
+  {"code": "100201", "description": "Agenciamento, corretagem ou intermediação de títulos em geral e valores mobiliários."},
+  {"code": "100202", "description": "Agenciamento, corretagem ou intermediação de contratos quaisquer."},
+  {"code": "100301", "description": "Agenciamento, corretagem ou intermediação de direitos de propriedade industrial, artística ou literária."},
+  {"code": "100401", "description": "Agenciamento, corretagem ou intermediação de contratos de arrendamento mercantil (leasing)."},
+  {"code": "100402", "description": "Agenciamento, corretagem ou intermediação de contratos de franquia (franchising)."},
+  {"code": "100403", "description": "Agenciamento, corretagem ou intermediação de faturização (factoring)."},
+  {"code": "100501", "description": "Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, por quaisquer meios."},
+  {"code": "100502", "description": "Agenciamento, corretagem ou intermediação de bens móveis ou imóveis realizados no âmbito de Bolsas de Mercadorias e Futuros, por quaisquer meios."},
+  {"code": "100601", "description": "Agenciamento marítimo."},
+  {"code": "100701", "description": "Agenciamento de notícias."},
+  {"code": "100801", "description": "Agenciamento de publicidade e propaganda, inclusive o agenciamento de veiculação por quaisquer meios."},
+  {"code": "100901", "description": "Representação de qualquer natureza, inclusive comercial."},
+  {"code": "101001", "description": "Distribuição de bens de terceiros."},
+  {"code": "110101", "description": "Guarda e estacionamento de veículos terrestres automotores."},
+  {"code": "110102", "description": "Guarda e estacionamento de aeronaves e de embarcações."},
+  {"code": "110201", "description": "Vigilância, segurança ou monitoramento de bens, pessoas e semoventes."},
+  {"code": "110301", "description": "Escolta, inclusive de veículos e cargas."},
+  {"code": "110401", "description": "Armazenamento, depósito, guarda de bens de qualquer espécie."},
+  {"code": "110402", "description": "Carga, descarga, arrumação de bens de qualquer espécie."},
+  {"code": "110501", "description": "Serviços relacionados ao monitoramento e rastreamento a distância, em qualquer via ou local, de veículos, cargas, pessoas e semoventes em circulação ou movimento, realizados por meio de telefonia móvel, transmissão de satélites, rádio ou qualquer outro meio, inclusive pelas empresas de Tecnologia da Informação Veicular, independentemente de o prestador de serviços ser proprietário ou não da infraestrutura de telecomunicações que utiliza."},
+  {"code": "120101", "description": "Espetáculos teatrais."},
+  {"code": "120201", "description": "Exibições cinematográficas."},
+  {"code": "120301", "description": "Espetáculos circenses."},
+  {"code": "120401", "description": "Programas de auditório."},
+  {"code": "120501", "description": "Parques de diversões, centros de lazer e congêneres."},
+  {"code": "120601", "description": "Boates, taxi-dancing e congêneres."},
+  {"code": "120701", "description": "Shows, ballet, danças, desfiles, bailes, óperas, concertos, recitais, festivais e congêneres."},
+  {"code": "120801", "description": "Feiras, exposições, congressos e congêneres."},
+  {"code": "120901", "description": "Bilhares."},
+  {"code": "120902", "description": "Boliches."},
+  {"code": "120903", "description": "Diversões eletrônicas ou não."},
+  {"code": "121001", "description": "Corridas e competições de animais."},
+  {"code": "121101", "description": "Competições esportivas ou de destreza física ou intelectual, com ou sem a participação do espectador."},
+  {"code": "121201", "description": "Execução de música."},
+  {"code": "121301", "description": "Produção, mediante ou sem encomenda prévia, de eventos, espetáculos, entrevistas, shows, ballet, danças, desfiles, bailes, teatros, óperas, concertos, recitais, festivais e congêneres."},
+  {"code": "121401", "description": "Fornecimento de música para ambientes fechados ou não, mediante transmissão por qualquer processo."},
+  {"code": "121501", "description": "Desfiles de blocos carnavalescos ou folclóricos, trios elétricos e congêneres."},
+  {"code": "121601", "description": "Exibição de filmes, entrevistas, musicais, espetáculos, shows, concertos, desfiles, óperas, competições esportivas, de destreza intelectual ou congêneres."},
+  {"code": "121701", "description": "Recreação e animação, inclusive em festas e eventos de qualquer natureza."},
+  {"code": "130201", "description": "Fonografia ou gravação de sons, inclusive trucagem, dublagem, mixagem e congêneres."},
+  {"code": "130301", "description": "Fotografia e cinematografia, inclusive revelação, ampliação, cópia, reprodução, trucagem e congêneres."},
+  {"code": "130401", "description": "Reprografia, microfilmagem e digitalização."},
+  {"code": "130501", "description": "Composição gráfica, inclusive confecção de impressos gráficos, fotocomposição, clicheria, zincografia, litografia e fotolitografia, exceto se destinados a posterior operação de comercialização ou industrialização, ainda que incorporados, de qualquer forma, a outra mercadoria que deva ser objeto de posterior circulação, tais como bulas, rótulos, etiquetas, caixas, cartuchos, embalagens e manuais técnicos e de instrução, quando ficarão sujeitos ao ICMS."},
+  {"code": "140101", "description": "Lubrificação, limpeza, lustração, revisão, carga e recarga, conserto, restauração, blindagem, manutenção e conservação de máquinas, veículos, aparelhos, equipamentos, motores, elevadores ou de qualquer objeto (exceto peças e partes empregadas, que ficam sujeitas ao ICMS)."},
+  {"code": "140201", "description": "Assistência técnica."},
+  {"code": "140301", "description": "Recondicionamento de motores (exceto peças e partes empregadas, que ficam sujeitas ao ICMS)."},
+  {"code": "140401", "description": "Recauchutagem ou regeneração de pneus."},
+  {"code": "140501", "description": "Restauração, recondicionamento, acondicionamento, pintura, beneficiamento, lavagem, secagem, tingimento, galvanoplastia, anodização, corte, recorte, plastificação, costura, acabamento, polimento e congêneres de objetos quaisquer."},
+  {"code": "140601", "description": "Instalação e montagem de aparelhos, máquinas e equipamentos, inclusive montagem industrial, prestados ao usuário final, exclusivamente com material por ele fornecido."},
+  {"code": "140701", "description": "Colocação de molduras e congêneres."},
+  {"code": "140801", "description": "Encadernação, gravação e douração de livros, revistas e congêneres."},
+  {"code": "140901", "description": "Alfaiataria e costura, quando o material for fornecido pelo usuário final, exceto aviamento."},
+  {"code": "141001", "description": "Tinturaria e lavanderia."},
+  {"code": "141101", "description": "Tapeçaria e reforma de estofamentos em geral."},
+  {"code": "141201", "description": "Funilaria e lanternagem."},
+  {"code": "141301", "description": "Carpintaria."},
+  {"code": "141302", "description": "Serralheria."},
+  {"code": "141401", "description": "Guincho intramunicipal."},
+  {"code": "141402", "description": "Guindaste e içamento."},
+  {"code": "141403", "description": "Guincho intramunicipal em construção civil."},
+  {"code": "141404", "description": "Guindaste e içamento em construção civil."},
+  {"code": "150101", "description": "Administração de fundos quaisquer e congêneres."},
+  {"code": "150102", "description": "Administração de consórcio e congêneres."},
+  {"code": "150103", "description": "Administração de cartão de crédito ou débito e congêneres."},
+  {"code": "150104", "description": "Administração de carteira de clientes e congêneres."},
+  {"code": "150105", "description": "Administração de cheques pré-datados e congêneres."},
+  {"code": "150201", "description": "Abertura de conta-corrente no País, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150202", "description": "Abertura de conta-corrente no exterior, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150203", "description": "Abertura de conta de investimentos e aplicação no País, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150204", "description": "Abertura de conta de investimentos e aplicação no exterior, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150205", "description": "Abertura de caderneta de poupança no País, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150206", "description": "Abertura de caderneta de poupança no exterior, bem como a manutenção da referida conta ativa e inativa."},
+  {"code": "150207", "description": "Abertura de contas em geral no País, não abrangida em outro subitem, bem como a manutenção das referidas contas ativas e inativas."},
+  {"code": "150208", "description": "Abertura de contas em geral no exterior, não abrangida em outro subitem, bem como a manutenção das referidas contas ativas e inativas."},
+  {"code": "150301", "description": "Locação de cofres particulares."},
+  {"code": "150302", "description": "Manutenção de cofres particulares."},
+  {"code": "150303", "description": "Locação de terminais eletrônicos."},
+  {"code": "150304", "description": "Manutenção de terminais eletrônicos."},
+  {"code": "150305", "description": "Locação de terminais de atendimento."},
+  {"code": "150306", "description": "Manutenção de terminais de atendimento."},
+  {"code": "150307", "description": "Locação de bens e equipamentos em geral."},
+  {"code": "150308", "description": "Manutenção de bens e equipamentos em geral."},
+  {"code": "150401", "description": "Fornecimento ou emissão de atestados em geral, inclusive atestado de idoneidade, atestado de capacidade financeira e congêneres."},
+  {"code": "150501", "description": "Cadastro, elaboração de ficha cadastral, renovação cadastral e congêneres."},
+  {"code": "150502", "description": "Inclusão no Cadastro de Emitentes de Cheques sem Fundos - CCF."},
+  {"code": "150503", "description": "Exclusão no Cadastro de Emitentes de Cheques sem Fundos - CCF."},
+  {"code": "150504", "description": "Inclusão em quaisquer outros bancos cadastrais."},
+  {"code": "150505", "description": "Exclusão em quaisquer outros bancos cadastrais."},
+  {"code": "150601", "description": "Emissão, reemissão e fornecimento de avisos, comprovantes e documentos em geral"},
+  {"code": "150602", "description": "Abono de firmas."},
+  {"code": "150603", "description": "Coleta e entrega de documentos, bens e valores."},
+  {"code": "150604", "description": "Comunicação com outra agência ou com a administração central."},
+  {"code": "150605", "description": "Licenciamento eletrônico de veículos."},
+  {"code": "150606", "description": "Transferência de veículos."},
+  {"code": "150607", "description": "Agenciamento fiduciário ou depositário."},
+  {"code": "150608", "description": "Devolução de bens em custódia."},
+  {"code": "150701", "description": "Acesso, movimentação, atendimento e consulta a contas em geral, por qualquer meio ou processo, inclusive por telefone, fac-símile, internet e telex."},
+  {"code": "150702", "description": "Acesso a terminais de atendimento, inclusive vinte e quatro horas."},
+  {"code": "150703", "description": "Acesso a outro banco e à rede compartilhada."},
+  {"code": "150704", "description": "Fornecimento de saldo, extrato e demais informações relativas a contas em geral, por qualquer meio ou processo."},
+  {"code": "150801", "description": "Emissão, reemissão, alteração, cessão, substituição, cancelamento e registro de contrato de crédito."},
+  {"code": "150802", "description": "Estudo, análise e avaliação de operações de crédito."},
+  {"code": "150803", "description": "Emissão, concessão, alteração ou contratação de aval, fiança, anuência e congêneres."},
+  {"code": "150804", "description": "Serviços relativos à abertura de crédito, para quaisquer fins."},
+  {"code": "150901", "description": "Arrendamento mercantil (leasing) de quaisquer bens, inclusive cessão de direitos e obrigações, substituição de garantia, alteração, cancelamento e registro de contrato, e demais serviços relacionados ao arrendamento mercantil (leasing)."},
+  {"code": "151001", "description": "Serviços relacionados a cobranças em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."},
+  {"code": "151002", "description": "Serviços relacionados a recebimentos em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."},
+  {"code": "151003", "description": "Serviços relacionados a pagamentos em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento."},
+  {"code": "151004", "description": "Serviços relacionados a fornecimento de posição de cobrança, recebimento ou pagamento."},
+  {"code": "151005", "description": "Serviços relacionados a emissão de carnês, fichas de compensação, impressos e documentos em geral."},
+  {"code": "151101", "description": "Devolução de títulos, protesto de títulos, sustação de protesto, manutenção de títulos, reapresentação de títulos, e demais serviços a eles relacionados."},
+  {"code": "151201", "description": "Custódia em geral, inclusive de títulos e valores mobiliários."},
+  {"code": "151301", "description": "Serviços relacionados a operações de câmbio em geral, edição, alteração, prorrogação, cancelamento e baixa de contrato de câmbio."},
+  {"code": "151302", "description": "Serviços relacionados a emissão de registro de exportação ou de crédito."},
+  {"code": "151303", "description": "Serviços relacionados a cobrança ou depósito no exterior."},
+  {"code": "151304", "description": "Serviços relacionados a emissão, fornecimento e cancelamento de cheques de viagem."},
+  {"code": "151305", "description": "Serviços relacionados a fornecimento, transferência, cancelamento e demais serviços relativos a carta de crédito de importação, exportação e garantias recebidas."},
+  {"code": "151306", "description": "Serviços relacionados a envio e recebimento de mensagens em geral relacionadas a operações de câmbio."},
+  {"code": "151401", "description": "Fornecimento, emissão, reemissão de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."},
+  {"code": "151402", "description": "Renovação de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."},
+  {"code": "151403", "description": "Manutenção de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres."},
+  {"code": "151501", "description": "Compensação de cheques e títulos quaisquer."},
+  {"code": "151502", "description": "Serviços relacionados a depósito, inclusive depósito identificado, a saque de contas quaisquer, por qualquer meio ou processo, inclusive em terminais eletrônicos e de atendimento."},
+  {"code": "151601", "description": "Emissão, reemissão, liquidação, alteração, cancelamento e baixa de ordens de pagamento, ordens de crédito e similares, por qualquer meio ou processo."},
+  {"code": "151602", "description": "Serviços relacionados à transferência de valores, dados, fundos, pagamentos e similares, inclusive entre contas em geral."},
+  {"code": "151701", "description": "Emissão e fornecimento de cheques quaisquer, avulso ou por talão."},
+  {"code": "151702", "description": "Devolução de cheques quaisquer, avulso ou por talão."},
+  {"code": "151703", "description": "Sustação, cancelamento e oposição de cheques quaisquer, avulso ou por talão."},
+  {"code": "151801", "description": "Serviços relacionados a crédito imobiliário, de avaliação e vistoria de imóvel ou obra."},
+  {"code": "151802", "description": "Serviços relacionados a crédito imobiliário, de análise técnica e jurídica."},
+  {"code": "151803", "description": "Serviços relacionados a crédito imobiliário, de emissão, reemissão, alteração, transferência e renegociação de contrato."},
+  {"code": "151804", "description": "Serviços relacionados a crédito imobiliário, de emissão e reemissão do termo de quitação."},
+  {"code": "151805", "description": "Demais serviços relacionados a crédito imobiliário."},
+  {"code": "160101", "description": "Serviços de transporte coletivo municipal rodoviário de passageiros."},
+  {"code": "160102", "description": "Serviços de transporte coletivo municipal metroviário de passageiros."},
+  {"code": "160103", "description": "Serviços de transporte coletivo municipal ferroviário de passageiros."},
+  {"code": "160104", "description": "Serviços de transporte coletivo municipal aquaviário de passageiros."},
+  {"code": "160201", "description": "Outros serviços de transporte de natureza municipal."},
+  {"code": "170101", "description": "Assessoria ou consultoria de qualquer natureza, não contida em outros itens desta lista."},
+  {"code": "170102", "description": "Análise, exame, pesquisa, coleta, compilação e fornecimento de dados e informações de qualquer natureza, inclusive cadastro e similares."},
+  {"code": "170201", "description": "Datilografia, digitação, estenografia e congêneres."},
+  {"code": "170202", "description": "Expediente, secretaria em geral, apoio e infra-estrutura administrativa e congêneres."},
+  {"code": "170203", "description": "Resposta audível e congêneres."},
+  {"code": "170204", "description": "Redação, edição, revisão e congêneres."},
+  {"code": "170205", "description": "Interpretação, tradução e congêneres."},
+  {"code": "170301", "description": "Planejamento, coordenação, programação ou organização técnica."},
+  {"code": "170302", "description": "Planejamento, coordenação, programação ou organização financeira."},
+  {"code": "170303", "description": "Planejamento, coordenação, programação ou organização administrativa."},
+  {"code": "170401", "description": "Recrutamento, agenciamento, seleção e colocação de mão-de-obra."},
+  {"code": "170501", "description": "Fornecimento de mão-de-obra, mesmo em caráter temporário, inclusive de empregados ou trabalhadores, avulsos ou temporários, contratados pelo prestador de serviço."},
+  {"code": "170601", "description": "Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários."},
+  {"code": "170801", "description": "Franquia (franchising)."},
+  {"code": "170901", "description": "Perícias, laudos, exames técnicos e análises técnicas."},
+  {"code": "171001", "description": "Planejamento, organização e administração de feiras, exposições, e congêneres."},
+  {"code": "171002", "description": "Planejamento, organização e administração de congressos e congêneres."},
+  {"code": "171101", "description": "Organização de festas e recepções."},
+  {"code": "171102", "description": "Bufê (exceto o fornecimento de alimentação e bebidas, que fica sujeito ao ICMS)."},
+  {"code": "171201", "description": "Administração em geral, inclusive de bens e negócios de terceiros."},
+  {"code": "171301", "description": "Leilão e congêneres."},
+  {"code": "171401", "description": "Advocacia"},
+  {"code": "171501", "description": "Arbitragem de qualquer espécie, inclusive jurídica."},
+  {"code": "171601", "description": "Auditoria."},
+  {"code": "171701", "description": "Análise de Organização e Métodos."},
+  {"code": "171801", "description": "Atuária e cálculos técnicos de qualquer natureza."},
+  {"code": "171901", "description": "Contabilidade, inclusive serviços técnicos e auxiliares."},
+  {"code": "172001", "description": "Consultoria e assessoria econômica ou financeira."},
+  {"code": "172101", "description": "Estatística."},
+  {"code": "172201", "description": "Cobrança em geral."},
+  {"code": "172301", "description": "Assessoria, análise, avaliação, atendimento, consulta, cadastro, seleção, gerenciamento de informações, administração de contas a receber ou a pagar e em geral, relacionados a operações de faturização (factoring)."},
+  {"code": "172401", "description": "Apresentação de palestras, conferências, seminários e congêneres."},
+  {"code": "172501", "description": "Inserção de textos, desenhos e outros materiais de propaganda e publicidade, em qualquer meio (exceto em livros, jornais, periódicos e nas modalidades de serviços de radiodifusão sonora e de sons e imagens de recepção livre e gratuita)."},
+  {"code": "180101", "description": "Serviços de regulação de sinistros vinculados a contratos de seguros e congêneres."},
+  {"code": "180102", "description": "Serviços de inspeção e avaliação de riscos para cobertura de contratos de seguros e congêneres."},
+  {"code": "180103", "description": "Serviços de prevenção e gerência de riscos seguráveis e congêneres."},
+  {"code": "190101", "description": "Serviços de distribuição e venda de bilhetes e demais produtos de loteria, cartões, pules ou cupons de apostas, sorteios, prêmios, inclusive os decorrentes de títulos de capitalização e congêneres."},
+  {"code": "190102", "description": "Serviços de distribuição e venda de bingos e congêneres."},
+  {"code": "200101", "description": "Serviços portuários, ferroportuários, utilização de porto, movimentação de passageiros, reboque de embarcações, rebocador escoteiro, atracação, desatracação, serviços de praticagem, capatazia, armazenagem de qualquer natureza, serviços acessórios, movimentação de mercadorias, serviços de apoio marítimo, de movimentação ao largo, serviços de armadores, estiva, conferência, logística e congêneres. (prestado em terra)"},
+  {"code": "200102", "description": "Serviços portuários, ferroportuários, utilização de porto, movimentação de passageiros, reboque de embarcações, rebocador escoteiro, atracação, desatracação, serviços de praticagem, capatazia, armazenagem de qualquer natureza, serviços acessórios, movimentação de mercadorias, serviços de apoio marítimo, de movimentação ao largo, serviços de armadores, estiva, conferência, logística e congêneres. (prestado em águas marinhas)"},
+  {"code": "200201", "description": "Serviços aeroportuários, utilização de aeroporto, movimentação de passageiros, armazenagem de qualquer natureza, capatazia, movimentação de aeronaves, serviços de apoio aeroportuários, serviços acessórios, movimentação de mercadorias, logística e congêneres."},
+  {"code": "200301", "description": "Serviços de terminais rodoviários, ferroviários, metroviários, movimentação de passageiros, mercadorias, inclusive suas operações, logística e congêneres."},
+  {"code": "210101", "description": "Serviços de registros públicos, cartorários e notariais."},
+  {"code": "220101", "description": "Serviços de exploração de rodovia mediante cobrança de preço ou pedágio dos usuários, envolvendo execução de serviços de conservação, manutenção, melhoramentos para adequação de capacidade e segurança de trânsito, operação, monitoração, assistência aos usuários e outros serviços definidos em contratos, atos de concessão ou de permissão ou em normas oficiais."},
+  {"code": "230101", "description": "Serviços de programação e comunicação visual e congêneres."},
+  {"code": "230102", "description": "Serviços de desenho industrial e congêneres."},
+  {"code": "240101", "description": "Serviços de chaveiros, confecção de carimbos e congêneres."},
+  {"code": "240102", "description": "Serviços de placas, sinalização visual, banners, adesivos e congêneres."},
+  {"code": "250101", "description": "Funerais, inclusive fornecimento de caixão, urna ou esquifes; aluguel de capela; transporte do corpo cadavérico; fornecimento de flores, coroas e outros paramentos; desembaraço de certidão de óbito; fornecimento de véu, essa e outros adornos; embalsamento, embelezamento, conservação ou restauração de cadáveres."},
+  {"code": "250201", "description": "Translado intramunicipal de corpos e partes de corpos cadavéricos."},
+  {"code": "250202", "description": "Cremação de corpos e partes de corpos cadavéricos."},
+  {"code": "250301", "description": "Planos ou convênio funerários."},
+  {"code": "250401", "description": "Manutenção e conservação de jazigos e cemitérios."},
+  {"code": "250501", "description": "Cessão de uso de espaços em cemitérios para sepultamento."},
+  {"code": "260101", "description": "Serviços de coleta, remessa ou entrega de correspondências, documentos, objetos, bens ou valores, inclusive pelos correios e suas agências franqueadas."},
+  {"code": "260102", "description": "Serviços de courrier e congêneres."},
+  {"code": "270101", "description": "Serviços de assistência social."},
+  {"code": "280101", "description": "Serviços de avaliação de bens e serviços de qualquer natureza."},
+  {"code": "290101", "description": "Serviços de biblioteconomia."},
+  {"code": "300101", "description": "Serviços de biologia e biotecnologia."},
+  {"code": "300102", "description": "Serviços de química."},
+  {"code": "310101", "description": "Serviços técnicos em edificações e congêneres."},
+  {"code": "310102", "description": "Serviços técnicos em eletrônica, eletrotécnica e congêneres."},
+  {"code": "310103", "description": "Serviços técnicos em mecânica e congêneres."},
+  {"code": "310104", "description": "Serviços técnicos em telecomunicações e congêneres."},
+  {"code": "320101", "description": "Serviços de desenhos técnicos."},
+  {"code": "330101", "description": "Serviços de desembaraço aduaneiro, comissários, despachantes e congêneres."},
+  {"code": "340101", "description": "Serviços de investigações particulares, detetives e congêneres."},
+  {"code": "350101", "description": "Serviços de reportagem e jornalismo."},
+  {"code": "350102", "description": "Serviços de assessoria de imprensa."},
+  {"code": "350103", "description": "Serviços de relações públicas."},
+  {"code": "360101", "description": "Serviços de meteorologia."},
+  {"code": "370101", "description": "Serviços de artistas, atletas, modelos e manequins."},
+  {"code": "380101", "description": "Serviços de museologia."},
+  {"code": "390101", "description": "Serviços de ourivesaria e lapidação (quando o material for fornecido pelo tomador do serviço)."},
+  {"code": "400101", "description": "Obras de arte sob encomenda."},
+  {"code": "990101", "description": "Serviços sem a incidência de ISSQN e ICMS"}
 ]

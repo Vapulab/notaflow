@@ -34,8 +34,5 @@ test('only the newest backups are kept', async () => {
   for (const hour of ['01', '02', '03']) {
     await backupDatabase(source, backups, new Date(`2026-10-09T${hour}:00:00Z`), 2);
   }
-  expect(readdirSync(backups).sort()).toEqual([
-    'notaflow-20261009-020000.db',
-    'notaflow-20261009-030000.db',
-  ]);
+  expect(readdirSync(backups).sort()).toEqual(['notaflow-20261009-020000.db', 'notaflow-20261009-030000.db']);
 });

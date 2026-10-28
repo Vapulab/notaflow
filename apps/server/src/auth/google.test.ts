@@ -104,9 +104,7 @@ test('a Google signup records the source that rode the OAuth state', async () =>
   expect(back.statusCode).toBe(302);
   expect(
     t.db.$client
-      .prepare(
-        'SELECT signup_source AS source, signup_campaign AS campaign FROM users WHERE email = ?',
-      )
+      .prepare('SELECT signup_source AS source, signup_campaign AS campaign FROM users WHERE email = ?')
       .get('pessoa@example.com'),
   ).toEqual({ source: 'instagram', campaign: 'lancamento' });
 });

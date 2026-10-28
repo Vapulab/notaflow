@@ -53,10 +53,7 @@ const sourceOf = (email: string) =>
 
 test.each([
   ['utm_source=instagram&utm_medium=bio', { source: 'instagram', medium: 'bio', campaign: null }],
-  [
-    'utm_source=WhatsApp&utm_campaign=grupo-sp_1',
-    { source: 'whatsapp', medium: null, campaign: 'grupo-sp_1' },
-  ],
+  ['utm_source=WhatsApp&utm_campaign=grupo-sp_1', { source: 'whatsapp', medium: null, campaign: 'grupo-sp_1' }],
   ['utm_medium=bio', null],
   ['', null],
   [null, null],
@@ -74,19 +71,12 @@ test('a password signup records the source of its header', async () => {
     { email: 'nova@example.com', password: PASSWORD, name: 'Nova' },
     { [SIGNUP_SOURCE_HEADER]: 'utm_source=instagram&utm_medium=bio' },
   );
-  expect(sourceOf('nova@example.com')).toEqual({
-    source: 'instagram',
-    medium: 'bio',
-    campaign: null,
-  });
+  expect(sourceOf('nova@example.com')).toEqual({ source: 'instagram', medium: 'bio', campaign: null });
 });
 
 test('a code login that creates the user records the source, and a later login does not change it', async () => {
   const login = async (source: string) => {
-    await post('/api/auth/email-otp/send-verification-otp', {
-      email: 'nova@example.com',
-      type: 'sign-in',
-    });
+    await post('/api/auth/email-otp/send-verification-otp', { email: 'nova@example.com', type: 'sign-in' });
     await post(
       '/api/auth/sign-in/email-otp',
       { email: 'nova@example.com', otp: lastCode() },
@@ -95,18 +85,10 @@ test('a code login that creates the user records the source, and a later login d
   };
   await login('utm_source=whatsapp');
   await login('utm_source=facebook');
-  expect(sourceOf('nova@example.com')).toEqual({
-    source: 'whatsapp',
-    medium: null,
-    campaign: null,
-  });
+  expect(sourceOf('nova@example.com')).toEqual({ source: 'whatsapp', medium: null, campaign: null });
 });
 
 test('a signup without a source leaves the columns empty', async () => {
-  await post('/api/auth/sign-up/email', {
-    email: 'nova@example.com',
-    password: PASSWORD,
-    name: 'Nova',
-  });
+  await post('/api/auth/sign-up/email', { email: 'nova@example.com', password: PASSWORD, name: 'Nova' });
   expect(sourceOf('nova@example.com')).toEqual({ source: null, medium: null, campaign: null });
 });

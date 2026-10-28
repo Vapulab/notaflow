@@ -27,9 +27,7 @@ test('Sentry starts with no personal data, no automatic instrumentation, and the
     defaultIntegrations: false,
   });
   expect(options.beforeBreadcrumb()).toBeNull();
-  expect(options.beforeSend({ user: { id: 'u1', email: 'a@b.co' } })).toEqual({
-    user: { id: 'u1' },
-  });
+  expect(options.beforeSend({ user: { id: 'u1', email: 'a@b.co' } })).toEqual({ user: { id: 'u1' } });
 
   const error = new Error('broken');
   reporter.capture(error, { module: 'issue', requestId: 'req-1' });

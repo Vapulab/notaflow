@@ -3,7 +3,11 @@ import { Button } from '../ui';
 export type PdfStatus = 'pending' | 'ready' | 'failed' | null;
 
 // A pending PDF stays clickable: the server draws it on demand.
-export function PdfButton(props: { status: PdfStatus; label: string; onDownload: () => void }) {
+export function PdfButton(props: {
+  status: PdfStatus;
+  label: string;
+  onDownload: () => void;
+}) {
   const pending = props.status === 'pending';
   return (
     <Button size="sm" variant="secondary" onClick={props.onDownload}>

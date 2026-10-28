@@ -80,7 +80,8 @@ export class InvoiceMailer {
     const { outbox } = this.deps;
     if (
       outbox.countInvoiceMail({ accountId: ctx.accountId }, new Date(now - HOUR_MS)) >= PER_HOUR ||
-      outbox.countInvoiceMail({ invoiceId }, new Date(now - DAY_MS)) >= PER_INVOICE_DAY
+      outbox.countInvoiceMail({ accountId: ctx.accountId, invoiceId }, new Date(now - DAY_MS)) >=
+        PER_INVOICE_DAY
     ) {
       throw new HttpError(429, 'too_many_requests');
     }
