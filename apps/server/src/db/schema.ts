@@ -163,6 +163,8 @@ export const certificates = sqliteTable('certificates', {
   pfxCiphertext: blob('pfx_ciphertext', { mode: 'buffer' }).notNull(),
   passwordCiphertext: blob('password_ciphertext', { mode: 'buffer' }).notNull(),
   wrappedKey: blob('wrapped_key', { mode: 'buffer' }).notNull(),
+  // 0: sealed before the AAD; 1: each part bound to its emitter (vault/envelope.ts).
+  sealVersion: integer('seal_version').notNull().default(0),
   cnpj: text('cnpj').notNull(),
   subject: text('subject').notNull(),
   validFrom: integer('valid_from', { mode: 'timestamp_ms' }).notNull(),

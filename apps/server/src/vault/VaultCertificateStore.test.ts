@@ -24,14 +24,19 @@ test('loads the active certificate as PEM material, only for its own account', a
   });
   const testCert = makeTestCertificate();
   const certificates = new CertificateRepository(db);
-  certificates.addActive(a, emitter.id, sealCertificate(testCert.pfx, testCert.password, master), {
-    cnpj: testCert.cnpj,
-    subject: 'x',
-    validFrom: new Date(),
-    validTo: new Date(Date.now() + 86_400_000),
-    fingerprintSha256: 'ab'.repeat(32),
-    uploadedBy: a.userId,
-  });
+  certificates.addActive(
+    a,
+    emitter.id,
+    sealCertificate(testCert.pfx, testCert.password, master, emitter.id),
+    {
+      cnpj: testCert.cnpj,
+      subject: 'x',
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 86_400_000),
+      fingerprintSha256: 'ab'.repeat(32),
+      uploadedBy: a.userId,
+    },
+  );
 
   const store = new VaultCertificateStore(certificates, master);
   expect((await store.loadActive(a, emitter.id))?.cnpj).toBe('12345678000195');
@@ -63,7 +68,7 @@ test('a replaced certificate loses the key that decrypts it, so no one can read 
     uploadedBy: a.userId,
   };
   const certificates = new CertificateRepository(db);
-  const seal = () => sealCertificate(testCert.pfx, testCert.password, master);
+  const seal = () => sealCertificate(testCert.pfx, testCert.password, master, emitter.id);
   const first = certificates.addActive(a, emitter.id, seal(), meta);
   certificates.addActive(a, emitter.id, seal(), meta);
   const rows = db.select().from(certificatesTable).all();
@@ -76,6 +81,8 @@ test('a replaced certificate loses the key that decrypts it, so no one can read 
         pfxCiphertext: old?.pfxCiphertext ?? Buffer.alloc(0),
         passwordCiphertext: old?.passwordCiphertext ?? Buffer.alloc(0),
         wrappedKey: old?.wrappedKey ?? Buffer.alloc(0),
+        sealVersion: 1,
+        emitterId: emitter.id,
       },
       master,
     ),

@@ -70,7 +70,9 @@ test('a new user gets the welcome e-mail', async () => {
     type: 'sign-in',
   });
   await post('/api/auth/sign-in/email-otp', { email: 'nova@example.com', otp: lastCode() });
-  await expect.poll(() => t.mail.map((m) => m.subject)).toContain('Boas-vindas ao NotaFlow: sua primeira nota em 4 passos');
+  await expect
+    .poll(() => t.mail.map((m) => m.subject))
+    .toContain('Boas-vindas ao NotaFlow: sua primeira nota em 4 passos');
 });
 
 test('with signup closed, password signup answers the same for a known and an unknown e-mail', async () => {
@@ -171,11 +173,17 @@ test('update-user refuses an image and a name over 200 characters', async () => 
   await start();
   seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
   const cookie = await t.cookieFor('pessoa@example.com');
-  const image = await post('/api/auth/update-user', { image: 'https://evil.example/x.png' }, { cookie });
+  const image = await post(
+    '/api/auth/update-user',
+    { image: 'https://evil.example/x.png' },
+    { cookie },
+  );
   expect((image.json() as { code: string }).code).toBe('image_not_supported');
   const long = await post('/api/auth/update-user', { name: 'x'.repeat(201) }, { cookie });
   expect((long.json() as { code: string }).code).toBe('name_too_long');
-  expect((await post('/api/auth/update-user', { name: 'Nome Bom' }, { cookie })).statusCode).toBe(200);
+  expect((await post('/api/auth/update-user', { name: 'Nome Bom' }, { cookie })).statusCode).toBe(
+    200,
+  );
 });
 
 test('signup refuses a name over 200 characters and keeps no image', async () => {

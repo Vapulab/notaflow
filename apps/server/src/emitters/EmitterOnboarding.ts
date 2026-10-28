@@ -129,7 +129,6 @@ export class EmitterOnboarding {
       throw new HttpError(502, 'connection_test_failed', detail);
     }
 
-    const sealed = sealCertificate(pfx, password, deps.masterKey);
     const create = () =>
       deps.db.transaction(() => {
         const created = emitters.create(ctx, {
@@ -139,6 +138,7 @@ export class EmitterOnboarding {
           companyName: companyNameOf(material),
           ...(cnaes && cnaes.length > 0 ? { cnaes: JSON.stringify(cnaes) } : {}),
         });
+        const sealed = sealCertificate(pfx, password, deps.masterKey, created.id);
         certificates.addActive(ctx, created.id, sealed, {
           cnpj: material.cnpj,
           subject: material.subject,

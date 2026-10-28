@@ -52,6 +52,40 @@ export class CertificateRepository {
     });
   }
 
+  // System-wide, for the startup reseal only: active certificates sealed before the AAD.
+  legacyActive() {
+    return this.db
+      .select({
+        id: certificates.id,
+        emitterId: certificates.emitterId,
+        emitterCnpj: emitters.cnpj,
+        pfxCiphertext: certificates.pfxCiphertext,
+        passwordCiphertext: certificates.passwordCiphertext,
+        wrappedKey: certificates.wrappedKey,
+        sealVersion: certificates.sealVersion,
+        validFrom: certificates.validFrom,
+      })
+      .from(certificates)
+      .innerJoin(emitters, eq(emitters.id, certificates.emitterId))
+      .where(
+        and(
+          eq(certificates.sealVersion, 0),
+          eq(certificates.active, true),
+          notDeleted(emitters),
+          notDeleted(certificates),
+        ),
+      )
+      .all();
+  }
+
+  reseal(id: string, sealed: SealedCertificate): void {
+    this.db
+      .update(certificates)
+      .set({ ...sealed, ...touched(null) })
+      .where(and(eq(certificates.id, id), eq(certificates.sealVersion, 0)))
+      .run();
+  }
+
   activeFor(ctx: AccountContext, emitterId: string): CertificateRow | null {
     const row = this.db
       .select({ certificate: certificates })

@@ -174,7 +174,7 @@ export function emitterRoutes(
       certificates.addActive(
         ctx,
         emitter.id,
-        sealCertificate(pfx, request.body.password, deps.masterKey),
+        sealCertificate(pfx, request.body.password, deps.masterKey, emitter.id),
         {
           cnpj: material.cnpj,
           subject: material.subject,

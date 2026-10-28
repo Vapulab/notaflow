@@ -53,6 +53,9 @@ test('every error code the server can send has a text', () => {
     'invalid_bug_report',
     'band6_iss_required',
     'iss_rate_required',
+    'too_many_certificate_attempts',
+    'too_many_invites',
+    'name_too_long',
   ]) {
     expect(ERROR_TEXT[code]).toBeTruthy();
   }
