@@ -98,7 +98,7 @@ jobs:
           EOF
 
       # The key runs only notaflow-deploy (deploy/notaflow-deploy.sh): it takes this commit's compose
-      # file and image from GitHub, after it checks that the commit is on production.
+      # file and image from GitHub, after it checks that the commit is the tip of production.
       - name: Start the new version
         if: steps.newest.outputs.deploy == 'true'
         env:

@@ -41,10 +41,10 @@ To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_K
 
 The workflow logs in as `notaflow-deploy`, not root. The key of that user runs one program, `/usr/local/bin/notaflow-deploy` ([deploy/notaflow-deploy.sh](../../deploy/notaflow-deploy.sh)), with two actions:
 
-- `up <commit sha>`: it checks on GitHub that `production` contains the commit. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>` with the token from stdin, writes `IMAGE=` into `.env`, and starts the stack.
+- `up <commit sha>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>` with the token from stdin, writes `IMAGE=` into `.env`, and starts the stack.
 - `health`: it polls `/api/health` for 90 seconds and prints the app log on a failure.
 
-The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy a commit that is already on `production`.
+The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the commit that is already the tip of `production`, never roll back to an older one. A rollback is done as root (see [Roll back](#roll-back)).
 
 To set it up, or to rotate the key:
 

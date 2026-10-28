@@ -1,6 +1,6 @@
 #!/bin/sh
 # The forced command of the CI deploy key (installed as /usr/local/bin/notaflow-deploy, owned by root).
-# The key can only deploy a commit that is on production: the compose file and the image both come from
+# The key can only deploy the tip of production: the compose file and the image both come from
 # that commit, so a stolen key cannot start a container of its own choice.
 #   notaflow-deploy up <commit sha>   (stdin: a GHCR token that can read the image)
 #   notaflow-deploy health
@@ -37,13 +37,10 @@ case "${1:-}" in
     sha=${2:-}
     printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$' || fail "usage: up <40-character commit sha>"
     [ $# -eq 2 ] || fail "usage: up <40-character commit sha>"
-    # "ahead" or "identical": production contains the commit. A fork's commit is "diverged" or not found.
-    status=$(fetch "https://api.github.com/repos/$REPO/compare/$sha...production" |
-      grep -o '"status": *"[a-z]*"' | head -n 1 | sed 's/.*"\([a-z]*\)"$/\1/')
-    case "$status" in
-      ahead | identical) ;;
-      *) fail "commit $sha is not on production (status: ${status:-unknown})" ;;
-    esac
+    # Only the tip: an older commit would roll back to code with fixed bugs. A rollback is a root task.
+    tip=$(fetch "https://api.github.com/repos/$REPO/commits/production" |
+      grep -o '"sha": *"[0-9a-f]\{40\}"' | head -n 1 | sed 's/.*"\([0-9a-f]*\)"$/\1/')
+    [ "$tip" = "$sha" ] || fail "commit $sha is not the tip of production (${tip:-unknown})"
 
     compose=$(mktemp "$DIR/compose.yaml.XXXXXX")
     config=$(mktemp -d)
