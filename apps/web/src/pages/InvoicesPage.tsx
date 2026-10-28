@@ -5,6 +5,7 @@ import { PdfButton } from '../components/PdfButton';
 import { SendInvoiceEmail } from '../components/SendInvoiceEmail';
 import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
+import { useIsPhone } from '../components/useMediaQuery';
 import { usePolling } from '../components/usePolling';
 import { formatCents, formatCompetence } from '../format';
 import { downloadFile } from '../download';
@@ -17,6 +18,7 @@ import {
   ButtonLink,
   Card,
   CARD_CLASSES,
+  CopyIcon,
   Field,
   Input,
   Select,
@@ -105,7 +107,60 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
     }
   }
 
+  const phone = useIsPhone();
   const emitterName = (id: string) => emitters.data?.find((e) => e.id === id)?.companyName;
+
+  function actionsOf(invoice: InvoiceSummary, className: string) {
+    if (invoice.status !== 'issued' && invoice.status !== 'cancelled') return null;
+    const emitter = emitterName(invoice.emitterId);
+    return (
+      // The actions act on their own; a click on them must not open the invoice.
+      <div
+        className={className}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <PdfButton
+          variant="icon"
+          status={invoice.pdfStatus}
+          label="Baixar PDF"
+          onDownload={() => void downloadPdf(invoice.id)}
+        />
+        {emitter && (
+          <ShareInvoice
+            variant="icon"
+            accountId={accountId}
+            invoiceId={invoice.id}
+            number={invoice.number}
+            emitterName={emitter}
+            onNotaflowEmail={() => setEmailing(invoice)}
+          />
+        )}
+        <a
+          href={routeHref({ name: 'issue', accountId, invoiceId: invoice.id })}
+          aria-label="Emitir parecida"
+          title="Emitir parecida"
+          className={`${buttonClasses({ variant: 'secondary', size: 'icon' })} ml-auto`}
+        >
+          <CopyIcon />
+        </a>
+      </div>
+    );
+  }
+
+  const statusBadges = (invoice: InvoiceSummary) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <Badge variant={STATUS_VARIANT[invoice.status]}>{STATUS_TEXT[invoice.status]}</Badge>
+      {invoice.environment === 'producao_restrita' && (
+        <Badge variant="warning" outline>
+          Teste
+        </Badge>
+      )}
+    </div>
+  );
+
+  const openInvoice = (invoice: InvoiceSummary) =>
+    navigate({ name: 'invoice', accountId, invoiceId: invoice.id });
 
   const set = (field: keyof Filters) => (value: string) => {
     setOffset(0);
@@ -181,87 +236,78 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
       {pdfError && <Alert variant="warning">{pdfError}</Alert>}
       {page.data && (
         <>
-          <Table>
-            <THead>
-              <tr>
-                <TH>Competência</TH>
-                <TH>Tomador</TH>
-                <TH>Valor</TH>
-                <TH>Situação</TH>
-                <TH>Ações</TH>
-              </tr>
-            </THead>
-            <TBody>
-              {page.data.items.map((invoice) => {
-                const open = () => {
-                  navigate({
-                    name: 'invoice',
-                    accountId,
-                    invoiceId: invoice.id,
-                  });
-                };
-                return (
-                  <tr
-                    key={invoice.id}
-                    tabIndex={0}
-                    aria-label={`Abrir a NFS-e ${invoice.number ?? ''} de ${invoice.customerName ?? ''}`}
-                    className="cursor-pointer hover:bg-muted/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                    onClick={open}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && event.target === event.currentTarget) open();
-                    }}
-                  >
-                    <TD>{formatCompetence(invoice.competence)}</TD>
-                    <TD>{invoice.customerName}</TD>
-                    <TD className="whitespace-nowrap">{formatCents(invoice.serviceCents)}</TD>
-                    <TD>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <Badge variant={STATUS_VARIANT[invoice.status]}>
-                          {STATUS_TEXT[invoice.status]}
-                        </Badge>
-                        {invoice.environment === 'producao_restrita' && (
-                          <Badge variant="warning" outline>
-                            Teste
-                          </Badge>
-                        )}
+          {phone ? (
+            <ul className="flex flex-col gap-3">
+              {page.data.items.map((invoice) => (
+                <li
+                  key={invoice.id}
+                  tabIndex={0}
+                  aria-label={`Abrir a NFS-e ${invoice.number ?? ''} de ${invoice.customerName ?? ''}`}
+                  className="cursor-pointer rounded border border-border bg-surface p-3 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  onClick={() => openInvoice(invoice)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && event.target === event.currentTarget)
+                      openInvoice(invoice);
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="break-words font-semibold text-fg">
+                        {invoice.customerName}
                       </div>
-                    </TD>
-                    <TD className="whitespace-nowrap">
-                      {(invoice.status === 'issued' || invoice.status === 'cancelled') && (
-                        // The actions act on their own; a click on them must not open the invoice.
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                        >
-                          <a
-                            href={routeHref({ name: 'issue', accountId, invoiceId: invoice.id })}
-                            className={buttonClasses({ variant: 'secondary', size: 'sm' })}
-                          >
-                            Emitir parecida
-                          </a>
-                          <PdfButton
-                            status={invoice.pdfStatus}
-                            label="PDF"
-                            onDownload={() => void downloadPdf(invoice.id)}
-                          />
-                          {emitterName(invoice.emitterId) && (
-                            <ShareInvoice
-                              accountId={accountId}
-                              invoiceId={invoice.id}
-                              number={invoice.number}
-                              emitterName={emitterName(invoice.emitterId) ?? ''}
-                              onNotaflowEmail={() => setEmailing(invoice)}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </TD>
-                  </tr>
-                );
-              })}
-            </TBody>
-          </Table>
+                      <div className="mt-0.5 text-xs text-muted">
+                        Nº {invoice.number ?? '-'} · Competência{' '}
+                        {formatCompetence(invoice.competence)}
+                      </div>
+                    </div>
+                    <div className="whitespace-nowrap font-semibold text-fg">
+                      {formatCents(invoice.serviceCents)}
+                    </div>
+                  </div>
+                  <div className="mt-2">{statusBadges(invoice)}</div>
+                  {actionsOf(
+                    invoice,
+                    'mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3',
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Table>
+              <THead>
+                <tr>
+                  <TH>Competência</TH>
+                  <TH>Tomador</TH>
+                  <TH>Valor</TH>
+                  <TH>Situação</TH>
+                  <TH>Ações</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {page.data.items.map((invoice) => {
+                  const open = () => openInvoice(invoice);
+                  return (
+                    <tr
+                      key={invoice.id}
+                      tabIndex={0}
+                      aria-label={`Abrir a NFS-e ${invoice.number ?? ''} de ${invoice.customerName ?? ''}`}
+                      className="cursor-pointer hover:bg-muted/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      onClick={open}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && event.target === event.currentTarget) open();
+                      }}
+                    >
+                      <TD>{formatCompetence(invoice.competence)}</TD>
+                      <TD>{invoice.customerName}</TD>
+                      <TD className="whitespace-nowrap">{formatCents(invoice.serviceCents)}</TD>
+                      <TD>{statusBadges(invoice)}</TD>
+                      <TD>{actionsOf(invoice, 'flex flex-wrap items-center gap-1.5')}</TD>
+                    </tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          )}
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
             <span>{page.data.total} notas.</span>
             {offset > 0 && (

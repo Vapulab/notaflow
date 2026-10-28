@@ -223,3 +223,26 @@ test('Tab from the trigger enters the portal panel, and Tab past the last item r
   expect(document.activeElement).toBe(trigger);
   expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
 });
+
+test('the icon variant has named icon buttons; copying shows a check for 2 s and announces it', async () => {
+  stubApi({ [LINK_PATH]: { url: LINK } });
+  render(
+    <ShareInvoice
+      variant="icon"
+      accountId="acc"
+      invoiceId="inv1"
+      number="7"
+      emitterName="Vapulab Ltda"
+    />,
+  );
+  const user = userEvent.setup();
+  vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  expect(screen.getByRole('button', { name: 'Compartilhar' }).textContent).toBe('');
+  await user.click(screen.getByRole('button', { name: 'Copiar link' }));
+  const done = await screen.findByRole('button', { name: 'Link copiado' });
+  expect(done.querySelector('svg.text-success')).toBeTruthy();
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Link copiado.');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Copiar link' })).toBeTruthy(), {
+    timeout: 3000,
+  });
+});

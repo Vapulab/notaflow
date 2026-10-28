@@ -176,12 +176,14 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
           <dd>{formatCents(data.netCents)}</dd>
         </dl>
       </Card>
-      <div className="flex flex-wrap items-center gap-4">
-        <Link href={`${url}/xml`}>Baixar XML</Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={`${url}/xml`} className="mr-2">
+          Baixar XML
+        </Link>
         {data.accessKey && (
           <PdfButton
             status={data.pdfStatus}
-            label="Baixar PDF (DANFS-e)"
+            label="Baixar PDF"
             onDownload={() => void downloadPdf()}
           />
         )}
@@ -196,14 +198,12 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             onNotaflowEmail={() => setEmailing(true)}
           />
         )}
-      </div>
-      {data.hasLink && (
-        <div>
+        {data.hasLink && (
           <Button variant="secondary" size="sm" onClick={() => setRevoking(true)}>
             Revogar link
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       {data.events.length > 0 && (
         <Card>
           <h2 className={SECTION_TITLE_CLASSES}>Eventos</h2>
