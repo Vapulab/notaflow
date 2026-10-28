@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as analytics from '../analytics/analytics';
@@ -70,37 +70,61 @@ test('a link error is shown to the user', async () => {
   expect(writeText).not.toHaveBeenCalled();
 });
 
-test('"Compartilhar" uses the native share sheet when present', async () => {
+test('the native share item calls navigator.share in the click tick, with the URL cached', async () => {
   stubApi({ [LINK_PATH]: { url: LINK } });
   const share = vi.fn(async () => {});
   Object.defineProperty(navigator, 'share', { value: share, configurable: true });
   renderShare();
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Compartilhar' }));
-  await waitFor(() => expect(share).toHaveBeenCalledWith({ text: TEXT }));
-  expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'native' });
-  expect(screen.queryByRole('menu')).toBeNull();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
+  const item = await screen.findByRole('button', { name: 'Compartilhar pelo celular' });
+  expect(share).not.toHaveBeenCalled();
+  fireEvent.click(item);
+  expect(share).toHaveBeenCalledWith({ text: TEXT });
+  await waitFor(() =>
+    expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'native' }),
+  );
 });
 
-test('without native share the menu offers WhatsApp and the e-mail app, and tracks each', async () => {
+test.each(['AbortError', 'NotAllowedError'])('%s from navigator.share is silent', async (name) => {
   stubApi({ [LINK_PATH]: { url: LINK } });
+  const share = vi.fn(async () => {
+    throw new DOMException('x', name);
+  });
+  Object.defineProperty(navigator, 'share', { value: share, configurable: true });
   renderShare();
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
-  const whatsapp = await screen.findByRole('menuitem', { name: 'WhatsApp' });
-  expect(whatsapp.getAttribute('href')).toBe(`https://wa.me/?text=${encodeURIComponent(TEXT)}`);
-  const mail = screen.getByRole('menuitem', { name: 'E-mail pelo seu app' });
-  expect(mail.getAttribute('href')).toBe(
-    `mailto:?subject=${encodeURIComponent('NFS-e nº 7 de Vapulab Ltda')}&body=${encodeURIComponent(TEXT)}`,
-  );
-  expect(screen.queryByRole('menuitem', { name: /NotaFlow/ })).toBeNull();
-  whatsapp.addEventListener('click', (e) => e.preventDefault());
-  await user.click(whatsapp);
-  expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'whatsapp' });
-  await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
-  const again = await screen.findByRole('menuitem', { name: 'E-mail pelo seu app' });
-  again.addEventListener('click', (e) => e.preventDefault());
-  await user.click(again);
-  expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'mailto' });
+  await user.click(await screen.findByRole('button', { name: 'Compartilhar pelo celular' }));
+  await waitFor(() => expect(share).toHaveBeenCalled());
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(analytics.track).not.toHaveBeenCalled();
+});
+
+test('desktop with navigator.share still lists WhatsApp and the e-mail app', async () => {
+  stubApi({ [LINK_PATH]: { url: LINK } });
+  Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true });
+  renderShare();
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Compartilhar' }));
+  expect(await screen.findByRole('link', { name: 'WhatsApp' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'E-mail pelo seu app' })).toBeTruthy();
+});
+
+test('a failed fetch shows the error with a retry, and Escape closes the panel', async () => {
+  let ok = false;
+  stubApi({ [LINK_PATH]: () => (ok ? { url: LINK } : { error: 'not_found' }) });
+  renderShare();
+  const user = userEvent.setup();
+  const trigger = screen.getByRole('button', { name: 'Compartilhar' });
+  await user.click(trigger);
+  expect(await screen.findByRole('alert')).toBeTruthy();
+  expect(screen.queryByText('Gerando o link…')).toBeNull();
+  ok = true;
+  await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+  expect(await screen.findByRole('link', { name: 'WhatsApp' })).toBeTruthy();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('link', { name: 'WhatsApp' })).toBeNull();
+  expect(document.activeElement).toBe(trigger);
 });
 
 test('the NotaFlow e-mail item shows only with a handler and calls it', async () => {
@@ -109,21 +133,8 @@ test('the NotaFlow e-mail item shows only with a handler and calls it', async ()
   renderShare({ onNotaflowEmail });
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
-  await user.click(await screen.findByRole('menuitem', { name: 'Enviar por e-mail (NotaFlow)' }));
+  await user.click(await screen.findByRole('button', { name: 'Enviar por e-mail (NotaFlow)' }));
   expect(onNotaflowEmail).toHaveBeenCalledTimes(1);
   expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'notaflow_email' });
-  expect(screen.queryByRole('menu')).toBeNull();
-});
-
-test('Escape closes the menu and returns focus to the button', async () => {
-  stubApi({ [LINK_PATH]: { url: LINK } });
-  renderShare();
-  const user = userEvent.setup();
-  const button = screen.getByRole('button', { name: 'Compartilhar' });
-  await user.click(button);
-  expect(button.getAttribute('aria-expanded')).toBe('true');
-  await screen.findByRole('menu');
-  await user.keyboard('{Escape}');
-  expect(screen.queryByRole('menu')).toBeNull();
-  expect(document.activeElement).toBe(button);
+  expect(screen.queryByRole('link', { name: 'WhatsApp' })).toBeNull();
 });

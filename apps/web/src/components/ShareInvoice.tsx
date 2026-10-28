@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { track } from '../analytics/analytics';
 import { api } from '../api';
 import { Button, Input } from '../ui';
@@ -25,6 +25,7 @@ export function ShareInvoice(props: {
   const [menuOpen, setMenuOpen] = useState(false);
   const pending = useRef<Promise<string> | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const panelId = useId();
 
   // One request per invoice per page view; a failure clears the cache so a retry asks again.
   function getUrl(): Promise<string> {
@@ -70,38 +71,47 @@ export function ShareInvoice(props: {
     });
   }
 
-  function share() {
-    if (typeof navigator.share !== 'function') {
-      const opening = !menuOpen;
-      setMenuOpen(opening);
-      if (opening) void withUrl(async () => {});
-      return;
-    }
-    void withUrl(async (link) => {
-      try {
-        await navigator.share({ text: shareText(link) });
-        track('danfse_shared', { channel: 'native' satisfies Channel });
-      } catch (failure) {
-        // The user closing the sheet is not an error.
-        if (!(failure instanceof DOMException && failure.name === 'AbortError')) throw failure;
-      }
-    });
+  function toggleMenu() {
+    const opening = !menuOpen;
+    setMenuOpen(opening);
+    if (opening) void withUrl(async () => {});
+  }
+
+  // Called straight from the click: an await before navigator.share breaks the user activation on iOS.
+  function nativeShare(link: string) {
+    navigator.share({ text: shareText(link) }).then(
+      () => track('danfse_shared', { channel: 'native' satisfies Channel }),
+      (failure: unknown) => {
+        const name = failure instanceof DOMException ? failure.name : '';
+        if (name !== 'AbortError' && name !== 'NotAllowedError') setError(errorText(failure));
+      },
+    );
+    setMenuOpen(false);
   }
 
   function closeMenu(returnFocus: boolean) {
     setMenuOpen(false);
-    if (returnFocus) root.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus();
+    if (returnFocus) root.current?.querySelector<HTMLElement>('[aria-controls]')?.focus();
   }
 
   useEffect(() => {
     if (!menuOpen) return;
-    const onPointer = (event: MouseEvent) => {
+    const onPointer = (event: Event) => {
       if (root.current && event.target instanceof Node && !root.current.contains(event.target)) {
         setMenuOpen(false);
       }
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu(true);
+    };
     document.addEventListener('mousedown', onPointer);
-    return () => document.removeEventListener('mousedown', onPointer);
+    document.addEventListener('focusin', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('focusin', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [menuOpen]);
 
   const picked = (channel: Channel) => {
@@ -110,16 +120,7 @@ export function ShareInvoice(props: {
   };
 
   return (
-    <div
-      ref={root}
-      className="relative flex flex-col gap-2"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && menuOpen) {
-          event.stopPropagation();
-          closeMenu(true);
-        }
-      }}
-    >
+    <div ref={root} className="relative flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="secondary" onClick={copy}>
           Copiar link
@@ -127,56 +128,75 @@ export function ShareInvoice(props: {
         <Button
           size="sm"
           variant="secondary"
-          aria-haspopup="menu"
           aria-expanded={menuOpen}
-          onClick={share}
+          aria-controls={panelId}
+          onClick={toggleMenu}
         >
           Compartilhar
         </Button>
       </div>
       {menuOpen && (
-        <div
-          role="menu"
+        <ul
+          id={panelId}
           className="absolute left-0 top-full z-10 mt-1 min-w-56 rounded border border-border bg-surface py-1 shadow-sm"
         >
-          {url ? (
+          {!url && error && (
+            <li className="flex flex-col gap-1 px-3 py-2">
+              <span role="alert" className="text-sm text-danger">
+                {error}
+              </span>
+              <Button size="sm" variant="secondary" onClick={() => void withUrl(async () => {})}>
+                Tentar de novo
+              </Button>
+            </li>
+          )}
+          {!url && !error && <li className="px-3 py-2 text-sm text-muted">Gerando o link…</li>}
+          {url && (
             <>
-              <a
-                role="menuitem"
-                className={ITEM_CLASSES}
-                href={`https://wa.me/?text=${encodeURIComponent(shareText(url))}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => picked('whatsapp')}
-              >
-                WhatsApp
-              </a>
-              <a
-                role="menuitem"
-                className={ITEM_CLASSES}
-                href={`mailto:?subject=${encodeURIComponent(label)}&body=${encodeURIComponent(shareText(url))}`}
-                onClick={() => picked('mailto')}
-              >
-                E-mail pelo seu app
-              </a>
-              {onNotaflowEmail && (
-                <button
-                  type="button"
-                  role="menuitem"
+              {typeof navigator.share === 'function' && (
+                <li>
+                  <button type="button" className={ITEM_CLASSES} onClick={() => nativeShare(url)}>
+                    Compartilhar pelo celular
+                  </button>
+                </li>
+              )}
+              <li>
+                <a
                   className={ITEM_CLASSES}
-                  onClick={() => {
-                    picked('notaflow_email');
-                    onNotaflowEmail();
-                  }}
+                  href={`https://wa.me/?text=${encodeURIComponent(shareText(url))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => picked('whatsapp')}
                 >
-                  Enviar por e-mail (NotaFlow)
-                </button>
+                  WhatsApp
+                </a>
+              </li>
+              <li>
+                <a
+                  className={ITEM_CLASSES}
+                  href={`mailto:?subject=${encodeURIComponent(label)}&body=${encodeURIComponent(shareText(url))}`}
+                  onClick={() => picked('mailto')}
+                >
+                  E-mail pelo seu app
+                </a>
+              </li>
+              {onNotaflowEmail && (
+                <li>
+                  <button
+                    type="button"
+                    className={ITEM_CLASSES}
+                    onClick={() => {
+                      picked('notaflow_email');
+                      onNotaflowEmail();
+                    }}
+                  >
+                    Enviar por e-mail (NotaFlow)
+                  </button>
+                </li>
               )}
             </>
-          ) : (
-            <span className="block px-3 py-2 text-sm text-muted">Gerando o link…</span>
           )}
-        </div>
+        </ul>
       )}
       <div aria-live="polite" className="text-sm text-muted">
         {copied && 'Link copiado.'}
@@ -189,7 +209,7 @@ export function ShareInvoice(props: {
           onFocus={(event) => event.currentTarget.select()}
         />
       )}
-      {error && (
+      {error && (url || !menuOpen) && (
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
