@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { type DanfseMark, renderDanfse } from '@notaflow/danfse-pdf';
+import { type DanfseMark, danfseKey, renderDanfse } from '@notaflow/danfse-pdf';
 import type { R2Client } from '@notaflow/r2';
 import { UnrecoverableError } from 'bullmq';
 
@@ -56,6 +56,6 @@ async function run(
   const xml = gunzipSync(Buffer.from(job.xmlGzipBase64, 'base64')).toString('utf8');
   const pdf = Buffer.from(await renderDanfse(xml, { mark: job.mark }));
   const renderMs = now() - start;
-  await r2.put(`danfse/${job.accessKey}.pdf`, pdf, 'application/pdf');
+  await r2.put(danfseKey(job.accessKey, job.mark), pdf, 'application/pdf');
   return { renderMs, bytes: pdf.length };
 }

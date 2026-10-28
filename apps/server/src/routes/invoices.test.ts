@@ -292,8 +292,12 @@ async function withR2(
   t = await createTestApp({ danfseR2: { get } });
 }
 
-function setPdfStatus(id: string, status: 'pending' | 'ready' | 'failed') {
-  t.db.update(invoices).set({ pdfStatus: status }).where(eq(invoices.id, id)).run();
+function setPdfStatus(
+  id: string,
+  status: 'pending' | 'ready' | 'failed',
+  pdfMark: 'none' | 'cancelada' | 'substituida' | null = status === 'ready' ? 'none' : null,
+) {
+  t.db.update(invoices).set({ pdfStatus: status, pdfMark }).where(eq(invoices.id, id)).run();
 }
 
 const onDemand = async () =>
@@ -315,8 +319,54 @@ test('a ready invoice streams the PDF from R2', async () => {
     /^attachment; filename="DANFSe-\w+\.pdf"$/,
   );
   expect(response.rawPayload.equals(STORED)).toBe(true);
-  expect(keys).toEqual([`danfse/${first.accessKey}.pdf`]);
+  expect(keys).toEqual([`danfse/${first.accessKey}-none.pdf`]);
   expect(await onDemand()).toContain('danfse_on_demand_total 0');
+});
+
+test('a ready invoice reads the R2 object of its own mark', async () => {
+  const keys: string[] = [];
+  await withR2(async (key) => {
+    keys.push(key);
+    return { body: Readable.from([STORED]), size: STORED.length };
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready', 'cancelada');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(keys).toEqual([`danfse/${first.accessKey}-cancelada.pdf`]);
+});
+
+test('a late none job cannot change what a cancelled invoice serves', async () => {
+  const none = Buffer.from('%PDF-1.7 none, no watermark');
+  const cancelada = Buffer.from('%PDF-1.7 cancelada, watermarked');
+  const objects = new Map<string, Buffer>();
+  await withR2(async (key) => {
+    const bytes = objects.get(key);
+    return bytes ? { body: Readable.from([bytes]), size: bytes.length } : null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  objects.set(`danfse/${first.accessKey}-none.pdf`, none);
+  objects.set(`danfse/${first.accessKey}-cancelada.pdf`, cancelada);
+  setPdfStatus(first.id, 'ready', 'cancelada');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.rawPayload.equals(cancelada)).toBe(true);
+});
+
+test('a ready invoice with no stored mark is drawn on demand', async () => {
+  let calls = 0;
+  await withR2(async () => {
+    calls += 1;
+    return null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready', null);
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(calls).toBe(0);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
 });
 
 test('a ready invoice whose R2 object is missing is drawn on demand', async () => {

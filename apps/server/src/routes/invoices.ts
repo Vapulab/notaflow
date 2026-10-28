@@ -1,4 +1,4 @@
-import { markFor, renderDanfse } from '@notaflow/danfse-pdf';
+import { danfseKey, markFor, renderDanfse } from '@notaflow/danfse-pdf';
 import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
 import { buffer } from 'node:stream/consumers';
@@ -121,9 +121,10 @@ export function invoiceRoutes(
           .header('content-disposition', `attachment; filename="DANFSe-${name}.pdf"`)
           .header('content-length', body.length)
           .send(body);
-      if (deps.danfseR2 && invoice.pdfStatus === 'ready' && invoice.accessKey) {
+      const storedMark = invoice.pdfStatus === 'ready' ? invoices.pdfMark(ctx, invoice.id) : null;
+      if (deps.danfseR2 && storedMark && invoice.accessKey) {
         try {
-          const stored = await deps.danfseR2.get(`danfse/${invoice.accessKey}.pdf`);
+          const stored = await deps.danfseR2.get(danfseKey(invoice.accessKey, storedMark));
           if (stored && (stored.size === null || stored.size <= MAX_STORED_BYTES)) {
             // Buffered so a stream error lands here, before the 200 is committed.
             return send(await buffer(stored.body));

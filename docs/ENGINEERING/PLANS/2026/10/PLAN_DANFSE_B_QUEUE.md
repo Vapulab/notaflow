@@ -15,7 +15,7 @@
 - Queue name `danfse`. Job id `<invoiceId>:<mark>` (mark is `none`, `cancelada`, `substituida`). Payload `{ invoiceId, accessKey, mark, xmlGzipBase64 }`.
 - Job options: `attempts: 5`, `backoff: { type: 'exponential', delay: 30_000 }`, `removeOnComplete: true`, `removeOnFail: { age: 30 * 24 * 3600 }` (30 days; the payload holds the customer's CPF).
 - Worker concurrency 2. The worker has no database access.
-- R2 key `danfse/<accessKey>.pdf`, content type `application/pdf`. A new render writes over the old object.
+- R2 key `danfse/<accessKey>-<mark>.pdf` (from `danfseKey` in `@notaflow/danfse-pdf`), content type `application/pdf`. Each mark has its own object, so a late job of an old mark cannot overwrite the watermarked PDF. A new render of the same mark writes over its object.
 - Env names (checked against the root `.env`, no collisions): `REDIS_URL`, `R2_DANFSE_ACCESS_KEY_ID`, `R2_DANFSE_SECRET_ACCESS_KEY`, `R2_DANFSE_BUCKET`, with the existing `R2_ACCOUNT_ID`. The four DANFSe values go together. With `REDIS_URL` unset, the queue is off: no sweep, the download draws on demand (dev and tests).
 - The customer never sees an error from the queue path: a Redis or R2 failure falls back to drawing on demand.
 - Redis: `appendonly yes`, `maxmemory 256mb`, `maxmemory-policy noeviction`, a named volume, no published port. The VM has no swap.

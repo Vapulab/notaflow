@@ -10,7 +10,7 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 - Login: Better Auth in `src/auth/betterAuth.ts`, mounted at `/api/auth/*` by `src/auth/authRoutes.ts`; `src/auth/authHook.ts` turns the session into an identity; e-mail in `src/mail/`
 - Tests: `test/testApp.ts` builds the app on an in-memory database, logs in with `t.as(email)` (a real session cookie), collects sent e-mail in `t.mail`, and starts the fake national system
 - Local run: copy `.env.example` to `.env.local`, then `pnpm fake:nacional`, `pnpm seed:admin <email> <name>`, and `pnpm dev:server`
-- DANFSe download: `GET .../invoices/:invoiceId/danfse` in `src/routes/invoices.ts` streams the PDF from R2 when `pdfStatus` is `ready`, else draws it from the stored XML with `@notaflow/danfse-pdf` (counted by `danfse_on_demand_total`); it never calls the ADN
+- DANFSe download: `GET .../invoices/:invoiceId/danfse` in `src/routes/invoices.ts` streams the PDF from R2 (the object of the row's `pdf_mark`) when `pdfStatus` is `ready`, else draws it from the stored XML with `@notaflow/danfse-pdf` (counted by `danfse_on_demand_total`); it never calls the ADN
 - DANFSe queue: `src/danfse/DanfseDispatcher.ts` sweeps `pending` rows every 10 s into the BullMQ queue `danfse` (`src/danfse/queue.ts`) and records the results. `REDIS_URL` is optional: unset, or set wrongly (the app logs the problem), the queue is off and downloads draw on demand, and the invoice API reports `pdfStatus: null`. The worker is `apps/danfse-worker`. Setup: [DANFSe Queue tutorial](../../docs/TUTORIALS/DANFSE_QUEUE.md)
 
 ## Documentation Index

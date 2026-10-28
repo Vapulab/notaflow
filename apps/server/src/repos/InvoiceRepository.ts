@@ -254,6 +254,25 @@ export class InvoiceRepository {
     return { ...row, events };
   }
 
+  // Server side only: the mark of the job that made the row ready picks its R2 object.
+  pdfMark(ctx: AccountContext, invoiceId: string) {
+    return (
+      this.db
+        .select({ pdfMark: invoices.pdfMark })
+        .from(invoices)
+        .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
+        .where(
+          and(
+            eq(invoices.id, invoiceId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+            notDeleted(invoices),
+          ),
+        )
+        .get()?.pdfMark ?? null
+    );
+  }
+
   findIdByAccessKey(ctx: AccountContext, accessKey: string): string | null {
     const row = this.db
       .select({ id: invoices.id })

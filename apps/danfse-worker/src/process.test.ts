@@ -30,7 +30,7 @@ const job = (xml: string, over: Partial<DanfseJob> = {}): DanfseJob => ({
   ...over,
 });
 
-test('puts one one-page PDF at danfse/<accessKey>.pdf', async () => {
+test('puts one one-page PDF at danfse/<accessKey>-<mark>.pdf', async () => {
   const { r2, puts } = fakeR2();
   const times = [1000, 1250];
   const result = await processJob(
@@ -39,10 +39,19 @@ test('puts one one-page PDF at danfse/<accessKey>.pdf', async () => {
     () => times.shift() ?? 0,
   );
   expect(puts).toHaveLength(1);
-  expect(puts[0]?.key).toBe(`danfse/${KEY}.pdf`);
+  expect(puts[0]?.key).toBe(`danfse/${KEY}-none.pdf`);
   expect(puts[0]?.contentType).toBe('application/pdf');
   expect((await PDFDocument.load(puts[0]?.body ?? Buffer.alloc(0))).getPageCount()).toBe(1);
   expect(result).toEqual({ renderMs: 250, bytes: puts[0]?.body.length });
+});
+
+test('each mark gets its own R2 key', async () => {
+  const xml = readFixture('NFSE_DOMESTIC.xml');
+  for (const mark of ['none', 'cancelada', 'substituida'] as const) {
+    const { r2, puts } = fakeR2();
+    await processJob(job(xml, { mark }), r2);
+    expect(puts.map((p) => p.key)).toEqual([`danfse/${KEY}-${mark}.pdf`]);
+  }
 });
 
 test('a bad XML throws so BullMQ retries', async () => {

@@ -139,7 +139,7 @@ flowchart LR
 
    `pdf_pending_since` records when the row became pending. A re-enqueue keeps it.
 2. **Sweep (outbox).** The app has no "enqueue after commit" step. A dispatcher in the app (`apps/server/src/danfse/DanfseDispatcher.ts`) runs every 10 s. It reads at most 100 `pending` rows and adds one job per row. A Redis outage cannot lose work: the row stays `pending` and the next sweep retries. When a job with the same id is in the failed set, the queue removes it and adds the fresh one. A waiting, active, or delayed job with the same id stays as it is.
-3. **Render.** The worker unzips the XML, calls `renderDanfse(xml, { status, environment })` from `packages/danfse-pdf`, and puts the result in R2 at `danfse/<accessKey>.pdf`. A new render of the same invoice writes over the old object.
+3. **Render.** The worker unzips the XML, calls `renderDanfse(xml, { status, environment })` from `packages/danfse-pdf`, and puts the result in R2 at `danfse/<accessKey>-<mark>.pdf` (`danfseKey` in `packages/danfse-pdf`). Each mark has its own object, so a late job of an old mark cannot overwrite the watermarked PDF. The download route reads the object of the row's `pdf_mark`, and draws on demand when the mark is null. A new render of the same mark writes over its object.
 4. **Record.** The app's `QueueEvents` listener gets `completed` or `failed` (final) and writes `pdf_status = 'ready'` or `'failed'`, with `pdf_rendered_at`.
 5. **Serve.** See [Download and Public Link](#download-and-public-link).
 
