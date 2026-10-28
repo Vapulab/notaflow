@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, lte, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, ne } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 
 // A transaction handle works too, so a caller can queue in the same transaction as its own rows.
@@ -23,7 +23,7 @@ export class MailOutbox {
 
   // True when delivered now; false when it waits for a retry.
   async send(message: MailMessage, kind: MailKind, now = new Date()): Promise<boolean> {
-    const { to, subject, html, text, replyTo, headers } = message;
+    const { to, subject, html, text, replyTo, headers, ref } = message;
     const row = this.db
       .insert(mailOutbox)
       .values({
@@ -33,6 +33,8 @@ export class MailOutbox {
         text,
         kind,
         replyTo: replyTo ?? null,
+        accountId: ref?.accountId ?? null,
+        invoiceId: ref?.invoiceId ?? null,
         headers: headers ?? null,
         status: 'sending',
         nextAttemptAt: now,
@@ -45,7 +47,7 @@ export class MailOutbox {
 
   // Stored as pending for the next deliverDue run; nothing is sent now.
   queue(message: MailMessage, kind: MailKind, now = new Date(), db: Writer = this.db): number {
-    const { to, subject, html, text, replyTo, headers } = message;
+    const { to, subject, html, text, replyTo, headers, ref } = message;
     return db
       .insert(mailOutbox)
       .values({
@@ -55,6 +57,8 @@ export class MailOutbox {
         text,
         kind,
         replyTo: replyTo ?? null,
+        accountId: ref?.accountId ?? null,
+        invoiceId: ref?.invoiceId ?? null,
         headers: headers ?? null,
         status: 'pending',
         nextAttemptAt: now,
@@ -62,6 +66,24 @@ export class MailOutbox {
       })
       .returning({ id: mailOutbox.id })
       .get().id;
+  }
+
+  // Invoice e-mail rows queued since a time; a cancelled row was never going out.
+  countInvoiceMail(where: { accountId?: string; invoiceId?: string }, since: Date): number {
+    const filters = [
+      eq(mailOutbox.kind, 'invoice'),
+      ne(mailOutbox.status, 'cancelled'),
+      gte(mailOutbox.createdAt, since),
+      ...(where.accountId ? [eq(mailOutbox.accountId, where.accountId)] : []),
+      ...(where.invoiceId ? [eq(mailOutbox.invoiceId, where.invoiceId)] : []),
+    ];
+    return (
+      this.db
+        .select({ value: count() })
+        .from(mailOutbox)
+        .where(and(...filters))
+        .get()?.value ?? 0
+    );
   }
 
   // An opt-out stops the reminders waiting or dead-lettered, so no retry sends them; they stay as cancelled rows.

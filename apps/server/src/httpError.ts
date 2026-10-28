@@ -18,13 +18,11 @@ export function handleError(
   reply: FastifyReply,
 ) {
   if (error instanceof HttpError) {
-    return reply
-      .status(error.status)
-      .send({
-        error: error.code,
-        ...(error.detail ? { detail: error.detail } : {}),
-        ...error.extra,
-      });
+    return reply.status(error.status).send({
+      error: error.code,
+      ...(error.detail ? { detail: error.detail } : {}),
+      ...error.extra,
+    });
   }
   const status =
     'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;

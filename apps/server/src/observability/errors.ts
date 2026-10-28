@@ -19,7 +19,8 @@ interface ScrubbableEvent {
 // The domain ends in letters, so a comma or period after the address stays in the text.
 const EMAIL = /[^\s@<>(),;]+@[^\s@<>(),;]+\.[A-Za-z]{2,}/g;
 // A CPF or CNPJ, with or without punctuation, numeric or alphanumeric.
-const DOCUMENT = /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
+const DOCUMENT =
+  /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
 
 function scrubText(text: string): string {
   return text.replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]');

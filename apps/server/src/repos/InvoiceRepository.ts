@@ -457,6 +457,7 @@ export class InvoiceRepository {
           customerId: invoices.customerId,
           customerEmailedAt: invoices.customerEmailedAt,
           accessKey: invoices.accessKey,
+          environment: invoices.environment,
         })
         .from(invoices)
         .innerJoin(emitters, eq(emitters.id, invoices.emitterId))

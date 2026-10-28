@@ -186,11 +186,17 @@ test('the detail shows when the customer was e-mailed', async () => {
     },
   });
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
-  expect(await screen.findByText('Enviada ao tomador em 02/10/2026 12:30')).toBeTruthy();
+  expect(await screen.findByText('E-mail enviado em 02/10/2026 12:30')).toBeTruthy();
 });
 
-test('the detail says the customer has no e-mail on the note when the setting is on', async () => {
-  stubApi({ '/api/accounts/acc/invoices/inv1': { ...issuedInvoice, autoEmailCustomer: true } });
+test('the detail says the customer has no e-mail on the note for an app invoice in production', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices/inv1': {
+      ...issuedInvoice,
+      environment: 'producao',
+      autoEmailCustomer: true,
+    },
+  });
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   expect(await screen.findByText('Tomador sem e-mail na nota')).toBeTruthy();
 });
@@ -200,4 +206,24 @@ test('with the setting off the detail says nothing about the e-mail', async () =
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   await screen.findByRole('link', { name: 'Emitir parecida' });
   expect(screen.queryByText('Tomador sem e-mail na nota')).toBeNull();
+});
+
+test('a synced invoice or a test invoice never shows the missing-address notice', async () => {
+  for (const change of [{ origin: 'synced' }, { environment: 'producao_restrita' }]) {
+    stubApi({
+      '/api/accounts/acc/invoices/inv1': {
+        ...issuedInvoice,
+        environment: 'producao',
+        autoEmailCustomer: true,
+        ...change,
+      },
+    });
+    const view = renderWithMe(
+      <InvoiceDetailPage accountId="acc" invoiceId="inv1" />,
+      meFor('admin'),
+    );
+    await screen.findByRole('link', { name: 'Emitir parecida' });
+    expect(screen.queryByText('Tomador sem e-mail na nota')).toBeNull();
+    view.unmount();
+  }
 });

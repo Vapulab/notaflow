@@ -9,6 +9,7 @@ export interface MailMessage {
   text: string;
   kind?: MailKind; // what the outbox may retry: a login code is never resent
   replyTo?: string;
+  ref?: { accountId: string; invoiceId: string }; // what the invoice e-mail caps count
   headers?: Record<string, string>;
 }
 

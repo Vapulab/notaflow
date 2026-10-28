@@ -19,7 +19,11 @@ const imported = {
 };
 
 function withCustomer(options: { role?: AccountRole; status?: 'active' | 'suspended' } = {}) {
-  const a: AccountContext = seedTenant(t.db, { accountName: 'A', email: 'a@example.com', ...options });
+  const a: AccountContext = seedTenant(t.db, {
+    accountName: 'A',
+    email: 'a@example.com',
+    ...options,
+  });
   const emitter = new EmitterRepository(t.db).create(a, {
     cnpj: '12345678000195',
     companyName: 'EMPRESA TESTE LTDA',
@@ -29,14 +33,22 @@ function withCustomer(options: { role?: AccountRole; status?: 'active' | 'suspen
     dpsSeries: '900',
   });
   const customerId = new CustomerRepository(t.db).upsertImported(a, emitter.id, imported) ?? '';
-  return { a, emitterId: emitter.id, customerId, url: `/api/accounts/${a.accountId}/customers/${customerId}` };
+  return {
+    a,
+    emitterId: emitter.id,
+    customerId,
+    url: `/api/accounts/${a.accountId}/customers/${customerId}`,
+  };
 }
 
 test('GET returns the customer without its manual field list', async () => {
   const { url } = withCustomer();
   const response = await t.app.inject({ method: 'GET', url, headers: await t.as('a@example.com') });
   expect(response.statusCode).toBe(200);
-  expect(response.json()).toMatchObject({ name: 'Cliente Exemplo Ltda', document: '98765432000110' });
+  expect(response.json()).toMatchObject({
+    name: 'Cliente Exemplo Ltda',
+    document: '98765432000110',
+  });
   expect(response.json()).not.toHaveProperty('manualFields');
 });
 
@@ -60,9 +72,16 @@ test('an edit sticks, is audited, and survives a re-sync of the same customer', 
   expect(response.statusCode).toBe(200);
   expect(response.json()).toMatchObject({ email: 'contas@example.com', address });
 
-  new CustomerRepository(t.db).upsertImported(a, emitterId, { ...imported, name: 'Novo Nome Ltda' });
+  new CustomerRepository(t.db).upsertImported(a, emitterId, {
+    ...imported,
+    name: 'Novo Nome Ltda',
+  });
   const after = await t.app.inject({ method: 'GET', url, headers });
-  expect(after.json()).toMatchObject({ name: 'Novo Nome Ltda', email: 'contas@example.com', address });
+  expect(after.json()).toMatchObject({
+    name: 'Novo Nome Ltda',
+    email: 'contas@example.com',
+    address,
+  });
   expect(new AuditLog(t.db).latest(1)[0]).toMatchObject({ action: 'customer.edit', result: 'ok' });
 });
 

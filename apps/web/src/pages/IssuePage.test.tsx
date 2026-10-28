@@ -242,7 +242,9 @@ test('the review says the customer gets an e-mail, with a link to the setting, o
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   const user = userEvent.setup();
   await clickReview(user);
-  expect(screen.getByText(/O tomador vai receber por e-mail/)).toBeTruthy();
+  expect(
+    screen.getByText(/O tomador vai receber por e-mail, se a nota tiver o e-mail dele/),
+  ).toBeTruthy();
   expect(screen.getByRole('link', { name: /configuração do emitente/ }).getAttribute('href')).toBe(
     '/app/acc/emitentes/em1',
   );
@@ -250,5 +252,7 @@ test('the review says the customer gets an e-mail, with a link to the setting, o
   stubApi(base);
   renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   await clickReview(user);
-  expect(screen.queryByText(/O tomador vai receber por e-mail/)).toBeNull();
+  expect(
+    screen.queryByText(/O tomador vai receber por e-mail, se a nota tiver o e-mail dele/),
+  ).toBeNull();
 });

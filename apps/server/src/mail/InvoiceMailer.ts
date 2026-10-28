@@ -6,6 +6,8 @@ import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 import { MemberRepository } from '../repos/MemberRepository';
+import { HttpError } from '../httpError';
+import { isEmailAddress } from './address';
 import type { MailOutbox } from './outbox';
 import { invoiceEmail, type RenderedMail } from './templates';
 
@@ -20,15 +22,21 @@ export function customerEmailOf(
   if (xml) {
     try {
       const fromXml = parseNfseXml(xml).customer?.email?.trim();
-      if (fromXml) return fromXml;
+      if (fromXml && isEmailAddress(fromXml)) return fromXml;
     } catch {
       // An unreadable XML falls back to the customer record.
     }
   }
   const customerId = invoices.emailState(ctx, invoiceId)?.customerId;
   const record = customerId ? new CustomerRepository(db).get(ctx, customerId) : null;
-  return record?.email?.trim() || null;
+  const fromRecord = record?.email?.trim();
+  return fromRecord && isEmailAddress(fromRecord) ? fromRecord : null;
 }
+
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+const PER_HOUR = 50; // per account
+const PER_INVOICE_DAY = 5;
 
 export class InvoiceMailer {
   private readonly invoices: InvoiceRepository;
@@ -54,6 +62,7 @@ export class InvoiceMailer {
       issuedAt: invoice.issuedAt,
       netCents: invoice.netCents,
       link: `${this.deps.appOrigin}/n/${this.links.linkFor(ctx, invoiceId)}`,
+      test: invoice.environment === 'producao_restrita',
     });
   }
 
@@ -66,7 +75,19 @@ export class InvoiceMailer {
   ): Promise<boolean> {
     const mail = this.render(ctx, invoiceId);
     if (!mail) return false;
-    await this.deps.outbox.send({ ...mail, to, replyTo }, 'invoice');
+    // Counted in the database, so a restart resets nothing; the count and the insert share one tick.
+    const now = Date.now();
+    const { outbox } = this.deps;
+    if (
+      outbox.countInvoiceMail({ accountId: ctx.accountId }, new Date(now - HOUR_MS)) >= PER_HOUR ||
+      outbox.countInvoiceMail({ invoiceId }, new Date(now - DAY_MS)) >= PER_INVOICE_DAY
+    ) {
+      throw new HttpError(429, 'too_many_requests');
+    }
+    await outbox.send(
+      { ...mail, to, replyTo, ref: { accountId: ctx.accountId, invoiceId } },
+      'invoice',
+    );
     this.invoices.markCustomerEmailed(ctx, invoiceId, new Date());
     return true;
   }
@@ -75,6 +96,8 @@ export class InvoiceMailer {
   sendAutomatic(ctx: AccountContext, invoiceId: string): boolean {
     const invoice = this.invoices.emailState(ctx, invoiceId);
     if (!invoice || invoice.origin !== 'app' || invoice.status !== 'issued') return false;
+    // A test invoice has no fiscal value: the customer must not hear about it.
+    if (invoice.environment !== 'producao') return false;
     if (invoice.customerEmailedAt) return false;
     if (!this.emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer) return false;
     const to = customerEmailOf(this.deps.db, ctx, invoiceId);
@@ -84,7 +107,12 @@ export class InvoiceMailer {
       if (!this.invoices.claimCustomerEmail(ctx, invoiceId, new Date())) return false;
       const mail = this.render(ctx, invoiceId);
       if (!mail) throw new Error('A claimed invoice must render.');
-      this.deps.outbox.queue({ ...mail, to, replyTo }, 'invoice', new Date(), this.deps.db);
+      this.deps.outbox.queue(
+        { ...mail, to, replyTo, ref: { accountId: ctx.accountId, invoiceId } },
+        'invoice',
+        new Date(),
+        this.deps.db,
+      );
       return true;
     });
   }

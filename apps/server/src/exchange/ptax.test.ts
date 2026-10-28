@@ -13,7 +13,9 @@ function reply(date: string, bulletins: { tipoBoletim: string; cotacaoVenda: num
   agent
     .get(HOST)
     .intercept({ path: (path) => path.includes(`dataCotacao=%27${date}%27`), method: 'GET' })
-    .reply(200, { value: bulletins.map((b) => ({ ...b, cotacaoCompra: b.cotacaoVenda - 0.0006 })) });
+    .reply(200, {
+      value: bulletins.map((b) => ({ ...b, cotacaoCompra: b.cotacaoVenda - 0.0006 })),
+    });
 }
 
 test('takes the sell rate of the closing bulletin on the date', async () => {
@@ -33,7 +35,9 @@ test('walks back to the last business day when the date has no closing bulletin'
   reply('08-30-2026', []);
   reply('08-29-2026', []);
   reply('08-28-2026', [{ tipoBoletim: 'Fechamento PTAX', cotacaoVenda: 5.2005 }]);
-  expect(await fetchPtaxSell({ currency: 'USD', date: '2026-08-30', dispatcher: agent })).toMatchObject({
+  expect(
+    await fetchPtaxSell({ currency: 'USD', date: '2026-08-30', dispatcher: agent }),
+  ).toMatchObject({
     date: '2026-08-28',
     rateE4: 52005,
   });
@@ -52,6 +56,11 @@ test('convertToCents: 1234.00 USD at 5.4321 is R$ 6703.21, rounded half up', () 
 });
 
 test('an error answer from the PTAX service fails instead of reading as no quote', async () => {
-  agent.get(HOST).intercept({ path: () => true, method: 'GET' }).reply(503, 'down');
-  await expect(fetchPtaxSell({ currency: 'USD', date: '2026-08-31', dispatcher: agent })).rejects.toThrow(/503/);
+  agent
+    .get(HOST)
+    .intercept({ path: () => true, method: 'GET' })
+    .reply(503, 'down');
+  await expect(
+    fetchPtaxSell({ currency: 'USD', date: '2026-08-31', dispatcher: agent }),
+  ).rejects.toThrow(/503/);
 });

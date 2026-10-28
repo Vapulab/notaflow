@@ -120,6 +120,7 @@ export interface InvoiceSummary {
   serviceCents: number;
   issCents: number | null;
   netCents: number;
+  origin: 'synced' | 'app';
   pdfStatus: 'pending' | 'ready' | 'failed' | null;
 }
 

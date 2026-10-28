@@ -10,7 +10,7 @@ export function CustomerEmailNote(props: {
   if (!props.enabled) return null;
   return (
     <p className="text-sm text-muted">
-      O tomador vai receber por e-mail.{' '}
+      O tomador vai receber por e-mail, se a nota tiver o e-mail dele.{' '}
       <Link
         href={routeHref({
           name: 'emitter',

@@ -4,7 +4,9 @@ import { issueExportOnFake } from '../../test/fakeInvoices';
 import { COMPETENCE, withNewInvoiceSetup } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { customers, emitters, invoices, mailOutbox } from '../db/schema';
+import type { HttpError } from '../httpError';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
+import { MailOutbox } from '../mail/outbox';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -13,6 +15,11 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 type Setup = Awaited<ReturnType<typeof withNewInvoiceSetup>>;
+
+// New emitters start in produção restrita, where nothing is e-mailed by itself.
+const production = () => t.db.update(emitters).set({ environment: 'producao' }).run();
+
+const restricted = () => t.db.update(emitters).set({ environment: 'producao_restrita' }).run();
 
 async function customerWithEmail(s: Setup, email: string): Promise<string> {
   const response = await s.call('POST', '/customers', {
@@ -86,8 +93,29 @@ const ownerCtx = (s: Setup) => ({
   accountStatus: 'active' as const,
 });
 
+function seedSent(accountId: string, invoiceId: string, count: number, at: Date) {
+  for (let i = 0; i < count; i += 1) {
+    t.db
+      .insert(mailOutbox)
+      .values({
+        kind: 'invoice',
+        to: `old${i}@example.com`,
+        subject: 's',
+        html: '',
+        text: '',
+        status: 'sent',
+        nextAttemptAt: at,
+        createdAt: at,
+        accountId,
+        invoiceId,
+      })
+      .run();
+  }
+}
+
 test('an app issue e-mails the customer once, with Reply-To the owner, and the detail shows when', async () => {
   const s = await withNewInvoiceSetup(t);
+  await production();
   const customerId = await customerWithEmail(s, 'cliente@example.com');
   const view = await issue(s, customerId);
   const rows = outbox();
@@ -96,6 +124,8 @@ test('an app issue e-mails the customer once, with Reply-To the owner, and the d
     to: 'cliente@example.com',
     replyTo: 'owner@example.com',
     status: 'pending',
+    accountId: s.a.accountId,
+    invoiceId: view.id,
   });
   expect(rows[0]?.subject).toMatch(/^NFS-e nº \S+ de /);
   expect(rows[0]?.html).toMatch(/\/n\/[A-Za-z0-9_-]{43}/);
@@ -106,8 +136,17 @@ test('an app issue e-mails the customer once, with Reply-To the owner, and the d
   expect(shown.customerEmail).toBe('cliente@example.com');
 });
 
+test('an invoice of produção restrita is never e-mailed by itself', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await restricted();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  await issue(s, customerId);
+  expect(outbox()).toHaveLength(0);
+});
+
 test('a retried issue and a second call send one e-mail', async () => {
   const s = await withNewInvoiceSetup(t);
+  await production();
   const customerId = await customerWithEmail(s, 'cliente@example.com');
   const first = await issue(s, customerId, 'retry-invoice-key-1');
   const again = await issue(s, customerId, 'retry-invoice-key-1');
@@ -118,6 +157,7 @@ test('a retried issue and a second call send one e-mail', async () => {
 
 test('nothing goes out with the setting off, without an address, or for a row that is not issued', async () => {
   const s = await withNewInvoiceSetup(t);
+  await production();
   const withEmail = await customerWithEmail(s, 'cliente@example.com');
   t.db.update(emitters).set({ autoEmailCustomer: false }).run();
   await issue(s, withEmail);
@@ -143,6 +183,7 @@ test('nothing goes out with the setting off, without an address, or for a row th
 
 test('a synced invoice never gets the automatic e-mail', async () => {
   const s = await withNewInvoiceSetup(t);
+  await production();
   await issueExportOnFake(t.fake);
   await s.call('POST', `/emitters/${s.emitterId}/sync`, {});
   const list = (await s.call('GET', '/invoices')).json<{
@@ -166,8 +207,22 @@ test('the address falls back to the customer record when the XML has none', asyn
   expect((await detail(s, view.id)).customerEmail).toBe('registro@example.com');
 });
 
+test('a bad address counts as no address', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  t.db
+    .update(customers)
+    .set({ email: 'a@x.com; b@y.com' })
+    .where(eq(customers.id, s.brazilId))
+    .run();
+  const view = await issue(s, s.brazilId);
+  expect(outbox()).toHaveLength(0);
+  expect((await detail(s, view.id)).customerEmail).toBeNull();
+});
+
 test('a member sends by hand: one e-mail to the typed address with Reply-To the sender', async () => {
   const s = await withNewInvoiceSetup(t);
+  await production();
   const view = await issue(s, s.brazilId);
   const response = await send(s, view.id, 'outra@example.com');
   expect(response.statusCode).toBe(200);
@@ -175,20 +230,67 @@ test('a member sends by hand: one e-mail to the typed address with Reply-To the 
   expect(sent).toHaveLength(1);
   expect(sent[0]?.replyTo).toBe('owner@example.com');
   expect(sent[0]?.text).toContain('/n/');
+  expect(sent[0]?.subject).not.toContain('[TESTE]');
   expect(outbox()).toHaveLength(1);
   expect((await detail(s, view.id)).customerEmailedAt).toEqual(expect.any(String));
   expect((await send(s, view.id, 'not an address')).statusCode).toBe(400);
+  expect((await send(s, view.id, 'a@x.com; b@y.com')).statusCode).toBe(400);
 });
 
-test('the 51st e-mail of an account in an hour answers 429', async () => {
+test('a hand send of a produção restrita invoice is marked as a test', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await restricted();
+  const view = await issue(s, s.brazilId);
+  expect((await send(s, view.id, 'outra@example.com')).statusCode).toBe(200);
+  const mail = t.mail.find((m) => m.to === 'outra@example.com');
+  expect(mail?.subject).toMatch(/^\[TESTE\] NFS-e nº /);
+  expect(mail?.text).toContain('Nota de teste (produção restrita), sem valor fiscal.');
+  expect(mail?.html).toContain('Nota de teste (produção restrita), sem valor fiscal.');
+});
+
+test('the 51st e-mail of an account in an hour answers 429, also on a fresh instance', async () => {
   const s = await withNewInvoiceSetup(t);
   const view = await issue(s, s.brazilId);
-  for (let i = 0; i < 50; i += 1) {
-    expect((await send(s, view.id, `p${i}@example.com`)).statusCode).toBe(200);
-  }
+  seedSent(s.a.accountId, 'other-invoice', 50, new Date());
   const blocked = await send(s, view.id, 'p51@example.com');
   expect(blocked.statusCode).toBe(429);
   expect(t.mail.filter((m) => m.to === 'p51@example.com')).toHaveLength(0);
+  const fresh = new InvoiceMailer({
+    db: t.db,
+    outbox: new MailOutbox(
+      t.db,
+      async () => undefined,
+      () => undefined,
+    ),
+    appOrigin: 'http://localhost:3000',
+  });
+  await expect(
+    fresh.sendByHand(ownerCtx(s), view.id, 'p52@example.com', 'owner@example.com'),
+  ).rejects.toMatchObject({ status: 429 } satisfies Partial<HttpError>);
+});
+
+test('mail older than an hour does not count against the account', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  seedSent(s.a.accountId, 'other-invoice', 50, new Date(Date.now() - 61 * 60_000));
+  expect((await send(s, view.id, 'p@example.com')).statusCode).toBe(200);
+});
+
+test('the 6th e-mail of one invoice in a day answers 429, and the automatic one counts', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  const view = await issue(s, customerId);
+  for (let i = 0; i < 4; i += 1) {
+    expect((await send(s, view.id, `p${i}@example.com`)).statusCode).toBe(200);
+  }
+  expect((await send(s, view.id, 'p5@example.com')).statusCode).toBe(429);
+  expect(outbox()).toHaveLength(5);
+  t.db
+    .update(mailOutbox)
+    .set({ createdAt: new Date(Date.now() - 25 * 3_600_000) })
+    .run();
+  expect((await send(s, view.id, 'p6@example.com')).statusCode).toBe(200);
 });
 
 test('the owner turns the automatic e-mail off and a member cannot', async () => {

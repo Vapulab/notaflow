@@ -32,9 +32,13 @@ const EVENT_TEXT: Record<string, string> = {
 
 function emailStatus(data: InvoiceDetail): string | null {
   if (data.customerEmailedAt) {
-    return `Enviada ao tomador em ${formatDateTime(data.customerEmailedAt)}`;
+    return `E-mail enviado em ${formatDateTime(data.customerEmailedAt)}`;
   }
-  return data.autoEmailCustomer && !data.customerEmail ? 'Tomador sem e-mail na nota' : null;
+  // Only an app invoice in production would have been e-mailed by itself.
+  const wouldSend = data.origin === 'app' && data.environment === 'producao';
+  return wouldSend && data.autoEmailCustomer && !data.customerEmail
+    ? 'Tomador sem e-mail na nota'
+    : null;
 }
 
 export function InvoiceDetailPage(props: { accountId: string; invoiceId: string }) {

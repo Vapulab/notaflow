@@ -117,3 +117,17 @@ test('the invoice e-mail has the summary, the link, and the UTM footer, and no c
   expect(mail.html).toContain('Acme &amp; Filhos Ltda');
   expect(mail.html).not.toContain('Cliente');
 });
+
+test('the invoice e-mail of a test invoice says so in the subject and the body', () => {
+  const mail = invoiceEmail({
+    emitterName: 'Acme',
+    number: '1',
+    issuedAt: null,
+    netCents: 100,
+    link: 'https://notaflow.vapulab.com/n/x',
+    test: true,
+  });
+  expect(mail.subject).toBe('[TESTE] NFS-e nº 1 de Acme');
+  expect(mail.text).toContain('Nota de teste (produção restrita), sem valor fiscal.');
+  expect(mail.html).toContain('Nota de teste (produção restrita), sem valor fiscal.');
+});

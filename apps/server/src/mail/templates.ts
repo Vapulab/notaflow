@@ -141,6 +141,7 @@ export function invoiceEmail(invoice: {
   issuedAt: Date | null;
   netCents: number;
   link: string;
+  test?: boolean; // an invoice of produção restrita
 }): RenderedMail {
   const number = invoice.number ?? '';
   const intro = `${invoice.emitterName} emitiu a NFS-e nº ${number}. Abra o link para ver e baixar o PDF da nota.`;
@@ -150,14 +151,15 @@ export function invoiceEmail(invoice: {
     ...(invoice.issuedAt ? [['Emitida em', brazilDate(invoice.issuedAt)] as [string, string]] : []),
     ['Valor líquido', brazilMoney(invoice.netCents)],
   ];
+  const testNote = 'Nota de teste (produção restrita), sem valor fiscal.';
   const why = `${invoice.emitterName} emitiu esta nota pelo NotaFlow e pediu que o link chegasse a você.`;
   const cta = `${APP}/?${INVOICE_UTM}`;
   const footer = `${why} Emita as suas notas de graça no NotaFlow: ${cta}`;
   return {
-    subject: `NFS-e nº ${number} de ${invoice.emitterName}`,
-    text: `${[intro, summary.map(([k, v]) => `${k}: ${v}`).join('\n'), `Ver a nota: ${invoice.link}`, footer].join('\n\n')}\n`,
+    subject: `${invoice.test ? '[TESTE] ' : ''}NFS-e nº ${number} de ${invoice.emitterName}`,
+    text: `${[...(invoice.test ? [testNote] : []), intro, summary.map(([k, v]) => `${k}: ${v}`).join('\n'), `Ver a nota: ${invoice.link}`, footer].join('\n\n')}\n`,
     html: layout(
-      `<p style="margin:0 0 16px">${escapeHtml(intro)}</p>
+      `${invoice.test ? `<p style="margin:0 0 16px;font-weight:600;color:${COLOR.primary}">${testNote}</p>` : ''}<p style="margin:0 0 16px">${escapeHtml(intro)}</p>
 <table style="margin:0 0 16px;border-collapse:collapse">${summary
         .map(
           ([k, v]) =>

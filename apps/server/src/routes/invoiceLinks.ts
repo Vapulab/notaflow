@@ -4,6 +4,7 @@ import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { danfsePdf, noticeOf } from '../danfse/danfsePdf';
 import { HttpError } from '../httpError';
+import { isEmailAddress } from '../mail/address';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
 import type { MailOutbox } from '../mail/outbox';
 import type { Metrics } from '../metrics/metrics';
@@ -25,7 +26,7 @@ const emailSchema = {
     required: ['to'],
     additionalProperties: false,
     properties: {
-      to: { type: 'string', maxLength: 254, pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$' },
+      to: { type: 'string', format: 'email', maxLength: 254 },
     },
   },
 } as const;
@@ -44,7 +45,6 @@ export function invoiceLinkRoutes(
   const invoices = new InvoiceRepository(deps.db);
   const limit = createRateLimiter({ windowMs: 60_000, max: 60 });
   const mailer = new InvoiceMailer({ db: deps.db, outbox: deps.outbox, appOrigin: deps.appOrigin });
-  const emailLimit = createRateLimiter({ windowMs: 3_600_000, max: 50 });
 
   app.post<{ Params: { accountId: string; invoiceId: string } }>(
     '/api/accounts/:accountId/invoices/:invoiceId/link',
@@ -64,8 +64,8 @@ export function invoiceLinkRoutes(
     async (request) => {
       const ctx = accountContext(request, request.params.accountId, { write: true });
       if (!invoices.get(ctx, request.params.invoiceId)) throw new HttpError(404, 'not_found');
-      if (!emailLimit(ctx.accountId)) throw new HttpError(429, 'too_many_requests');
       const to = request.body.to.trim();
+      if (!isEmailAddress(to)) throw new HttpError(400, 'invalid_email');
       const sent = await mailer.sendByHand(
         ctx,
         request.params.invoiceId,

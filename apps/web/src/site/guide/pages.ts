@@ -31,7 +31,8 @@ export const GUIDE_PAGES: GuidePage[] = [
     path: '/guia/rotina-do-mes',
     file: 'guia/rotina-do-mes.html',
     title: 'Rotina do mês no Simples',
-    description: 'O que fazer a cada mês no Simples Nacional: emitir, conferir a receita, declarar e pagar.',
+    description:
+      'O que fazer a cada mês no Simples Nacional: emitir, conferir a receita, declarar e pagar.',
   },
   {
     path: '/guia/lucro-presumido',

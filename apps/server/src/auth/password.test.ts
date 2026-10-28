@@ -110,7 +110,11 @@ test('signup with a password sends a code, and only the code opens the session',
 test('a password signup gets the welcome e-mail only after the code confirms the address, and once', async () => {
   const welcome = () =>
     t.mail.filter((m) => m.subject.startsWith('Boas-vindas ao NotaFlow')).length;
-  await post('/api/auth/sign-up/email', { email: 'nova@example.com', password: GOOD, name: 'Nova' });
+  await post('/api/auth/sign-up/email', {
+    email: 'nova@example.com',
+    password: GOOD,
+    name: 'Nova',
+  });
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(welcome()).toBe(0);
 
