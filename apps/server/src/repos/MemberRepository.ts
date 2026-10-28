@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AccountContext } from '@notaflow/core';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq, gte } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted } from '../db/stamps';
 import { memberships, users } from '../db/schema';
@@ -37,6 +37,23 @@ export class MemberRepository {
         .orderBy(memberships.createdAt)
         .limit(1)
         .get()?.email ?? null
+    );
+  }
+
+  invitesSince(ctx: AccountContext, since: Date): number {
+    return (
+      this.db
+        .select({ n: count() })
+        .from(memberships)
+        .where(
+          and(
+            eq(memberships.accountId, ctx.accountId),
+            eq(memberships.role, 'member'),
+            gte(memberships.createdAt, since),
+            notDeleted(memberships),
+          ),
+        )
+        .get()?.n ?? 0
     );
   }
 

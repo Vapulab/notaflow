@@ -18,7 +18,7 @@ test('an owner invites a member, who then sees the account', async () => {
     payload: { email: 'Contador@Example.com', name: 'Contador' },
   });
   expect(invite.statusCode).toBe(201);
-  expect(invite.json()).toMatchObject({ created: true });
+  expect(Object.keys(invite.json()).sort()).toEqual(['emailSent', 'userId']);
   const me = await t.app.inject({
     method: 'GET',
     url: '/api/me',
@@ -126,6 +126,18 @@ test('when the e-mail fails the member still exists, and the answer says the e-m
     payload: { email: 'novo@example.com', name: 'Novo' },
   });
   expect(invite.statusCode).toBe(201);
-  expect(invite.json()).toMatchObject({ created: true, emailSent: false });
+  expect(invite.json()).toMatchObject({ emailSent: false });
   await own.close();
+});
+
+test('the 11th invite of an account in a day is 429 too_many_invites', async () => {
+  const a = seedTenant(t.db, { accountName: 'A', email: 'owner@example.com' });
+  const headers = await t.as('owner@example.com');
+  const url = `/api/accounts/${a.accountId}/members`;
+  const codes: number[] = [];
+  for (let i = 0; i < 11; i += 1) {
+    const payload = { email: `m${i}@example.com`, name: `M${i}` };
+    codes.push((await t.app.inject({ method: 'POST', url, headers, payload })).statusCode);
+  }
+  expect(codes).toEqual([...Array<number>(10).fill(201), 429]);
 });

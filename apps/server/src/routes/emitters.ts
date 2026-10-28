@@ -158,7 +158,7 @@ export function emitterRoutes(
       const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
       const emitter = emitters.get(ctx, request.params.emitterId);
       if (!emitter) throw new HttpError(404, 'not_found');
-      const { pfx, material } = openPfx(request.body.pfxBase64, request.body.password);
+      const { pfx, material } = openPfx(ctx, request.body.pfxBase64, request.body.password);
       if (material.cnpj !== emitter.cnpj) throw new HttpError(400, 'cnpj_mismatch');
       try {
         await deps

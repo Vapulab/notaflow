@@ -3,6 +3,7 @@ import { CertificateError, loadCertificate } from '@notaflow/signer-node';
 import { municipality } from '../data/places';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
+import { createRateLimiter } from '../rateLimit';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { AuditLog } from '../repos/AuditLog';
 import { CertificateRepository } from '../repos/CertificateRepository';
@@ -28,10 +29,15 @@ export interface EmitterOnboardingDeps {
   onEmitterCreated: (ctx: AccountContext, emitterId: string) => void;
 }
 
+// Opening a file costs CPU on the event loop, and a wrong password is a guess.
+const openLimit = createRateLimiter({ windowMs: 10 * 60_000, max: 20 });
+
 export function openPfx(
+  ctx: AccountContext,
   pfxBase64: string,
   password: string,
 ): { pfx: Buffer; material: CertificateMaterial } {
+  if (!openLimit(ctx.accountId)) throw new HttpError(429, 'too_many_certificate_attempts');
   const pfx = Buffer.from(pfxBase64, 'base64');
   try {
     return { pfx, material: loadCertificate(pfx, password) };
@@ -63,7 +69,7 @@ export class EmitterOnboarding {
     const { emitters, certificates, audit, deps } = this;
     const { pfxBase64, password, cnaes, ...fiscal } = input;
     if (!municipality(fiscal.municipality)) throw new HttpError(400, 'unknown_municipality');
-    const { pfx, material } = openPfx(pfxBase64, password);
+    const { pfx, material } = openPfx(ctx, pfxBase64, password);
 
     // The certificate proves the company: it must be the one of the CNPJ card.
     if (options.expectedCnpj && material.cnpj !== options.expectedCnpj) {
