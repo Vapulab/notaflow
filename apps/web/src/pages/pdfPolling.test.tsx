@@ -88,22 +88,26 @@ test('the list stops polling when the page unmounts', async () => {
   expect(listCalls(calls)).toBe(1);
 });
 
+const detailCalls = (calls: { url: string }[]) =>
+  calls.filter((c) => c.url === '/api/accounts/acc/invoices/inv1').length;
+
 test('the detail polls its invoice while the PDF is pending and keeps the download', async () => {
   let status = 'pending';
   const calls = stubApi({
     '/api/accounts/acc/invoices/inv1': () => ({ ...invoice, pdfStatus: status }),
+    '/api/accounts/acc/emitters': [],
   });
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('user'));
   await settle();
   expect(screen.getByRole('button', { name: /gerando pdf…/i })).toBeTruthy();
   await tick(3000);
-  expect(calls).toHaveLength(2);
+  expect(detailCalls(calls)).toBe(2);
   status = 'ready';
   await tick(3000);
-  expect(calls).toHaveLength(3);
+  expect(detailCalls(calls)).toBe(3);
   expect(screen.getByRole('button', { name: 'Baixar PDF (DANFS-e)' })).toBeTruthy();
   await tick(10_000);
-  expect(calls).toHaveLength(3);
+  expect(detailCalls(calls)).toBe(3);
 });
 
 test('a slow fetch is never overlapped, and its answer still updates the row', async () => {

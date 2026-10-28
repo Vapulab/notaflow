@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { api, type Emitter, type InvoicePage, type InvoiceSummary } from '../api';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
 import { usePolling } from '../components/usePolling';
 import { formatCents, formatCompetence } from '../format';
@@ -101,6 +102,8 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
       setPdfError(errorText(error));
     }
   }
+
+  const emitterName = (id: string) => emitters.data?.find((e) => e.id === id)?.companyName;
 
   const set = (field: keyof Filters) => (value: string) => {
     setOffset(0);
@@ -240,6 +243,14 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
                             label="PDF"
                             onDownload={() => void downloadPdf(invoice.id)}
                           />
+                          {emitterName(invoice.emitterId) && (
+                            <ShareInvoice
+                              accountId={accountId}
+                              invoiceId={invoice.id}
+                              number={invoice.number}
+                              emitterName={emitterName(invoice.emitterId) ?? ''}
+                            />
+                          )}
                         </div>
                       )}
                     </TD>

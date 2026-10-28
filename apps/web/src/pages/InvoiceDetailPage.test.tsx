@@ -148,3 +148,27 @@ test('a customer cancels a production invoice with Cancelar nota, without the en
   expect(within(dialog).queryByText('PRODUÇÃO')).toBeNull();
   expect(within(dialog).getByRole('button', { name: 'Confirmar cancelamento' })).toBeTruthy();
 });
+
+test('the share buttons show for an issued or cancelled invoice, not a rejected one', async () => {
+  const emitters = [{ id: 'em1', companyName: 'Vapulab Ltda' }];
+  for (const [status, shown] of [
+    ['issued', true],
+    ['cancelled', true],
+    ['rejected', false],
+  ] as const) {
+    stubApi({
+      '/api/accounts/acc/emitters': emitters,
+      '/api/accounts/acc/invoices/inv1': { ...issuedInvoice, status },
+    });
+    const view = renderWithMe(
+      <InvoiceDetailPage accountId="acc" invoiceId="inv1" />,
+      meFor('admin'),
+    );
+    await screen.findByText(/NFS-e 7/);
+    await waitFor(() =>
+      expect(!!screen.queryByRole('button', { name: 'Copiar link' })).toBe(shown),
+    );
+    expect(!!screen.queryByRole('button', { name: 'Compartilhar' })).toBe(shown);
+    view.unmount();
+  }
+});

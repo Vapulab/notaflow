@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { api, type InvoiceDetail } from '../api';
+import { api, type Emitter, type InvoiceDetail } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
 import { usePolling } from '../components/usePolling';
 import { formatCents, formatCompetence, formatDate } from '../format';
@@ -32,6 +33,10 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
   const { accountId, invoiceId } = props;
   const url = `/api/accounts/${encodeURIComponent(accountId)}/invoices/${encodeURIComponent(invoiceId)}`;
   const invoice = useAsync(() => api.get<InvoiceDetail>(url), [url]);
+  const emitters = useAsync(
+    () => api.get<Emitter[]>(`/api/accounts/${encodeURIComponent(accountId)}/emitters`),
+    [accountId],
+  );
   const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +80,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
     );
   }
   const data = invoice.data;
+  const emitterName = emitters.data?.find((e) => e.id === data.emitterId)?.companyName;
   return (
     <Layout title={`NFS-e ${data.number ?? ''}`} accountId={accountId}>
       <div className="flex flex-wrap items-center gap-3">
@@ -154,6 +160,14 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             status={data.pdfStatus}
             label="Baixar PDF (DANFS-e)"
             onDownload={() => void downloadPdf()}
+          />
+        )}
+        {emitterName && (data.status === 'issued' || data.status === 'cancelled') && (
+          <ShareInvoice
+            accountId={accountId}
+            invoiceId={invoiceId}
+            number={data.number}
+            emitterName={emitterName}
           />
         )}
       </div>

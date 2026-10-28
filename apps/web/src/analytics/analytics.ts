@@ -141,7 +141,9 @@ export type AnalyticsEvent =
   | 'guide_calculator'
   | 'waitlist_signup'
   // The public DANFSe link page; the event has no properties, so no token.
-  | 'danfse_link_viewed';
+  | 'danfse_link_viewed'
+  // In the app: the member copied or shared the link; `channel` names how.
+  | 'danfse_shared';
 
 // For tests: forget the client between them.
 export function stopAnalytics(): void {
