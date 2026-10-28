@@ -118,12 +118,26 @@ describe('redactValue', () => {
     });
   });
 
-  test('an Error or a class instance is left for its serializer', () => {
+  test('the err key is left for its serializer; any other class instance logs only its type', () => {
     const error = new Error('x');
-    const buffer = Buffer.from('y');
-    const out = redactValue({ err: error, data: buffer }) as Record<string, unknown>;
+    const out = redactValue({ err: error, data: Buffer.from('y') }) as Record<string, unknown>;
     expect(out.err).toBe(error);
-    expect(out.data).toBe(buffer);
+    expect(out.data).toBe('[Object Buffer]');
+  });
+
+  test('a URL or a Map under any other key never logs its content', () => {
+    const out = redactValue({
+      url: new URL('https://x.example/n/secret-token?code=abc'),
+      map: new Map([['a', 'ana@example.com']]),
+    });
+    expect(out).toEqual({ url: '[Object URL]', map: '[Object Map]' });
+  });
+
+  test('an Error under another key is redacted as an error', () => {
+    const out = redactValue({ failure: new Error('to ana@example.com') }) as {
+      failure: { message: string };
+    };
+    expect(out.failure.message).toBe('to ***@example.com');
   });
 });
 

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { page } from '../lifecycle/unsubscribe';
 import type { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
+import type { MailOutbox } from './outbox';
 import { isEmailAddress } from './address';
 
 const PATH = '/nota/descadastrar';
@@ -35,7 +36,7 @@ const INVALID = page(
 // Outside /api: no login and no Origin check, so the link from the e-mail and the mail client's one-click POST both work.
 export function registerInvoiceUnsubscribe(
   app: FastifyInstance,
-  deps: { suppressions: MailSuppressionRepository; secret: string },
+  deps: { suppressions: MailSuppressionRepository; outbox: MailOutbox; secret: string },
 ): void {
   const addressOf = (request: FastifyRequest) => {
     const { a, t } = request.query as { a?: unknown; t?: unknown };
@@ -71,6 +72,7 @@ export function registerInvoiceUnsubscribe(
       const address = addressOf(request);
       if (!address) return answer(reply, 400, INVALID);
       deps.suppressions.add(address, 'invoice');
+      deps.outbox.cancelPendingInvoice(address);
       return answer(
         reply,
         200,

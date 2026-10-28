@@ -158,17 +158,31 @@ function isPlainObject(value: object): boolean {
   return proto === Object.prototype || proto === null;
 }
 
-// Strings anywhere in plain objects and arrays; an Error or a class instance (a request) goes to its serializer.
+// Keys whose value pino's own serializers read: a request, a response, an error.
+const SERIALIZED_KEY = new Set(['req', 'res', 'err']);
+
+// A class instance can hold fields the rules never read: only its type goes out.
+function instanceName(value: object): string {
+  const name = (value as { constructor?: { name?: unknown } }).constructor?.name;
+  return `[Object ${typeof name === 'string' && name ? name : 'Object'}]`;
+}
+
+// Strings anywhere in plain objects and arrays; under req, res, and err the serializer takes the value as it is.
 export function redactValue(value: unknown, options: RedactOptions = {}, depth = 0): unknown {
   if (typeof value === 'string') return redactText(value, options);
   if (value === null || typeof value !== 'object') return value;
   if (depth > 6) return REDACTED;
   if (Array.isArray(value)) return value.map((item) => redactValue(item, options, depth + 1));
-  if (!isPlainObject(value)) return value;
+  if (value instanceof Error) return redactKnownError(value, depth);
+  if (!isPlainObject(value)) return instanceName(value);
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [
       key,
-      SECRET_KEY.test(key) ? REDACTED : redactValue(item, options, depth + 1),
+      SECRET_KEY.test(key)
+        ? REDACTED
+        : SERIALIZED_KEY.has(key) && typeof item === 'object' && item !== null
+          ? item
+          : redactValue(item, options, depth + 1),
     ]),
   );
 }
@@ -183,14 +197,22 @@ export interface RedactedError {
 // A cause chain can loop back to its own error, so the depth stops it.
 function redactItem(item: unknown, depth: number): unknown {
   if (!(item instanceof Error)) return redactValue(item, {}, 1);
-  return depth < 3 ? redactError(item, depth + 1) : `[${item.name}]`;
+  return depth < 3 ? redactKnownError(item, depth + 1) : `[${item.name}]`;
 }
 
-export function redactError(error: Error, depth = 0): RedactedError {
+// The serializer of `err` gets any value a caller logs; only an Error has a message and a stack.
+export function redactError(error: Error, depth?: number): RedactedError;
+export function redactError(error: unknown, depth?: number): unknown;
+export function redactError(error: unknown, depth = 0): unknown {
+  if (!(error instanceof Error)) return redactValue(error);
+  return redactKnownError(error, depth);
+}
+
+function redactKnownError(error: Error, depth = 0): RedactedError {
   const out: RedactedError = {
-    type: error.name,
-    message: redactText(error.message),
-    stack: redactText(error.stack ?? '', { max: MAX_STACK }),
+    type: typeof error.name === 'string' ? error.name : 'Error',
+    message: typeof error.message === 'string' ? redactText(error.message) : '',
+    stack: typeof error.stack === 'string' ? redactText(error.stack, { max: MAX_STACK }) : '',
   };
   for (const [key, item] of Object.entries(error)) {
     if (key !== 'cause') out[key] = SECRET_KEY.test(key) ? REDACTED : redactItem(item, depth);

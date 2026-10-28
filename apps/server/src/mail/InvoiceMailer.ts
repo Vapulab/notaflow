@@ -5,6 +5,7 @@ import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
+import { AuditLog } from '../repos/AuditLog';
 import { MemberRepository } from '../repos/MemberRepository';
 import { HttpError } from '../httpError';
 import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
@@ -45,6 +46,7 @@ export class InvoiceMailer {
   private readonly emitters: EmitterRepository;
   private readonly links: InvoiceLinkRepository;
   private readonly suppressions: MailSuppressionRepository;
+  private readonly audit: AuditLog;
 
   constructor(
     private readonly deps: { db: Database; outbox: MailOutbox; appOrigin: string; secret: string },
@@ -53,6 +55,7 @@ export class InvoiceMailer {
     this.emitters = new EmitterRepository(deps.db);
     this.links = new InvoiceLinkRepository(deps.db);
     this.suppressions = new MailSuppressionRepository(deps.db);
+    this.audit = new AuditLog(deps.db);
   }
 
   // Null when the invoice cannot be shared yet.
@@ -114,6 +117,23 @@ export class InvoiceMailer {
     const replyTo = new MemberRepository(this.deps.db).ownerEmail(ctx);
     if (!to || !replyTo || this.suppressions.isSuppressed(to, 'invoice')) return false;
     return this.deps.db.transaction(() => {
+      // Skipped before the claim, so the invoice can still be sent by hand.
+      if (
+        this.deps.outbox.countInvoiceMail(
+          { accountId: ctx.accountId },
+          new Date(Date.now() - HOUR_MS),
+        ) >= PER_HOUR
+      ) {
+        this.audit.record({
+          userEmail: replyTo,
+          accountId: ctx.accountId,
+          action: 'invoice.email',
+          entity: invoiceId,
+          result: 'refused',
+          detail: `automatic skipped, hourly limit @${to.split('@')[1] ?? ''}`,
+        });
+        return false;
+      }
       if (!this.invoices.claimCustomerEmail(ctx, invoiceId, new Date())) return false;
       const mail = this.render(ctx, invoiceId, to);
       if (!mail) throw new Error('A claimed invoice must render.');

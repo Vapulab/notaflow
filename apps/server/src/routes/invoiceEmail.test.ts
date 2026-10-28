@@ -3,7 +3,14 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { issueExportOnFake } from '../../test/fakeInvoices';
 import { COMPETENCE, withNewInvoiceSetup } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
-import { auditLog, customers, emitters, invoices, mailOutbox, mailSuppressions } from '../db/schema';
+import {
+  auditLog,
+  customers,
+  emitters,
+  invoices,
+  mailOutbox,
+  mailSuppressions,
+} from '../db/schema';
 import { signInvoiceUnsubscribe } from '../mail/invoiceUnsubscribe';
 import type { HttpError } from '../httpError';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
@@ -374,7 +381,11 @@ test('a suppressed address gets no e-mail, and a manual send answers as a succes
   expect(blocked.json()).toEqual(fresh.json());
   // Only the real send is queued, so only it counts against the caps.
   expect(outbox().map((r) => r.to)).toEqual(['novo@example.com']);
-  const audited = t.db.select().from(auditLog).all().map((r) => r.detail);
+  const audited = t.db
+    .select()
+    .from(auditLog)
+    .all()
+    .map((r) => r.detail);
   expect(audited).toContain('manual suppressed @example.com');
   expect(t.mail.filter((m) => m.to.toLowerCase() === 'cliente@example.com')).toHaveLength(0);
   const customerId = await customerWithEmail(s, 'cliente@example.com');
@@ -386,7 +397,11 @@ test('a manual e-mail writes an audit row with the domain and never the address'
   const s = await withNewInvoiceSetup(t);
   const view = await issue(s, s.brazilId);
   await send(s, view.id, 'segredo@clientes.example.com');
-  const rows = t.db.select().from(auditLog).all().filter((r) => r.action === 'invoice.email');
+  const rows = t.db
+    .select()
+    .from(auditLog)
+    .all()
+    .filter((r) => r.action === 'invoice.email');
   expect(rows).toMatchObject([
     {
       userEmail: 'owner@example.com',
@@ -397,4 +412,50 @@ test('a manual e-mail writes an audit row with the domain and never the address'
     },
   ]);
   expect(JSON.stringify(rows)).not.toContain('segredo');
+});
+
+test('the 51st automatic e-mail of an account in an hour is skipped, the claim stays open, and an audit row has the domain', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  seedSent(s.a.accountId, 'other-invoice', 50, new Date(Date.now() - 60_000));
+  const view = await issue(s, customerId);
+  expect(outbox().filter((r) => r.invoiceId === view.id)).toHaveLength(0);
+  expect((await detail(s, view.id)).customerEmailedAt).toBeNull();
+  const rows = t.db
+    .select()
+    .from(auditLog)
+    .all()
+    .filter((r) => r.action === 'invoice.email');
+  expect(rows).toMatchObject([
+    { entity: view.id, result: 'refused', detail: 'automatic skipped, hourly limit @example.com' },
+  ]);
+  expect(JSON.stringify(rows)).not.toContain('cliente@');
+});
+
+test('an automatic e-mail still goes out at 49 sends in the hour', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  seedSent(s.a.accountId, 'other-invoice', 49, new Date(Date.now() - 60_000));
+  const view = await issue(s, customerId);
+  expect(outbox().filter((r) => r.invoiceId === view.id)).toHaveLength(1);
+});
+
+test('an unsubscribe cancels the invoice e-mail already queued to that address', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  await issue(s, customerId);
+  expect(outbox()[0]?.status).toBe('pending');
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/nota/descadastrar?a=cliente%40example.com&t=${signInvoiceUnsubscribe('cliente@example.com', SECRET)}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    payload: 'List-Unsubscribe=One-Click',
+  });
+  expect(response.statusCode).toBe(200);
+  expect(outbox()[0]).toMatchObject({ status: 'cancelled', html: '', text: '' });
+  await t.app.mailOutbox.deliverDue();
+  expect(t.mail.filter((m) => m.to === 'cliente@example.com')).toHaveLength(0);
 });

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { openDatabase } from '../db/openDatabase';
 import { mailOutbox } from '../db/schema';
 import type { MailMessage } from './mailer';
+import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import { MailOutbox } from './outbox';
 
 let opened: ReturnType<typeof openDatabase>;
@@ -163,4 +164,21 @@ test('an e-mail sent at once also keeps its reply-to and headers', async () => {
 test('the transport learns the kind of each message', async () => {
   await outbox.send(message, 'invoice', T0);
   expect(sent[0]?.kind).toBe('invoice');
+});
+
+test('cancelPendingInvoice cancels pending and failed invoice rows of that address only', async () => {
+  outbox.queue({ ...message, subject: 'a' }, 'invoice', T0);
+  outbox.queue({ ...message, subject: 'b' }, 'lifecycle', T0);
+  outbox.queue({ ...message, to: 'outra@example.com', subject: 'c' }, 'invoice', T0);
+  expect(outbox.cancelPendingInvoice('Pessoa@example.com')).toBe(1);
+  await outbox.deliverDue(T0);
+  expect(sent.map((m) => m.subject).sort()).toEqual(['b', 'c']);
+});
+
+test('delivery skips an invoice row whose address is suppressed', async () => {
+  const id = outbox.queue({ ...message, subject: 'nota' }, 'invoice', T0);
+  new MailSuppressionRepository(opened.db).add('pessoa@example.com', 'invoice');
+  await outbox.deliverDue(T0);
+  expect(sent).toHaveLength(0);
+  expect(rows().find((r) => r.id === id)).toMatchObject({ status: 'cancelled', html: '' });
 });

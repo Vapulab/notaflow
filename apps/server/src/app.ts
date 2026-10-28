@@ -198,6 +198,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   registerInvoiceUnsubscribe(app, {
     suppressions: new MailSuppressionRepository(db),
+    outbox,
     secret: config.authSecret,
   });
   const bugs = new BugReports({

@@ -31,12 +31,47 @@ export function redactLogArgs(args: unknown[]): unknown[] {
   return args.map((arg) => redactValue(arg));
 }
 
+const FALLBACK = '[log redaction failed]';
+
+// Logging must never throw: a rule that fails leaves a fixed text, not a raw value.
+function safe<A extends unknown[], R>(fn: (...args: A) => R, fallback: R): (...args: A) => R {
+  return (...args) => {
+    try {
+      return fn(...args);
+    } catch {
+      return fallback;
+    }
+  };
+}
+
 export const loggerOptions = {
-  serializers: { req: requestForLog, err: redactError },
+  serializers: {
+    req: safe(requestForLog, {
+      method: FALLBACK,
+      url: FALLBACK,
+      host: FALLBACK,
+      remoteAddress: FALLBACK,
+      remotePort: 0,
+    }),
+    // pino hands this serializer any value logged under `err`, whatever its type says.
+    err: safe((error: Error) => redactError(error), {
+      type: 'Error',
+      message: FALLBACK,
+      stack: '',
+    }),
+  },
   redact: { paths: REDACT_PATHS, censor: REDACTED },
   hooks: {
     logMethod(this: unknown, args: unknown[], method: (...args: unknown[]) => void) {
-      method.apply(this, redactLogArgs(args));
+      try {
+        method.apply(this, redactLogArgs(args));
+      } catch {
+        try {
+          method.call(this, FALLBACK);
+        } catch {
+          // Nothing left to try: the log line is lost, the caller goes on.
+        }
+      }
     },
   },
 };
