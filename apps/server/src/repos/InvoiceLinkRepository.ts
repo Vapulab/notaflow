@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import type { AccountContext } from '@notaflow/core';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
@@ -74,6 +75,35 @@ export class InvoiceLinkRepository {
       .orderBy(asc(invoiceEvents.registeredAt))
       .all();
     return { ...row, accessKey: row.accessKey, eventCodes: events.map((e) => e.code) };
+  }
+
+  // System read for the public PDF: what the DANFSe needs, only through a valid token.
+  publicPdfSource(token: string):
+    | (Pick<PublicInvoiceView, 'invoiceId' | 'accessKey'> & {
+        pdfStatus: 'pending' | 'ready' | 'failed' | null;
+        pdfMark: 'none' | 'cancelada' | 'substituida' | null;
+        xml: string;
+      })
+    | null {
+    const view = this.publicView(token);
+    if (!view) return null;
+    const row = this.db
+      .select({
+        pdfStatus: invoices.pdfStatus,
+        pdfMark: invoices.pdfMark,
+        xmlGzip: invoices.xmlGzip,
+      })
+      .from(invoices)
+      .where(eq(invoices.id, view.invoiceId))
+      .get();
+    if (!row?.xmlGzip) return null;
+    return {
+      invoiceId: view.invoiceId,
+      accessKey: view.accessKey,
+      pdfStatus: row.pdfStatus,
+      pdfMark: row.pdfMark,
+      xml: gunzipSync(row.xmlGzip).toString('utf8'),
+    };
   }
 
   countView(token: string): void {

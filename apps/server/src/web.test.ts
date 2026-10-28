@@ -129,7 +129,15 @@ test('robots.txt allows the site, keeps crawlers out of the app and the API, and
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toContain('text/plain');
   expect(response.body).toContain('User-agent: *\nAllow: /\n');
-  for (const path of ['/app', '/admin', '/api/', '/entrar', '/cadastro', '/recuperar-senha']) {
+  for (const path of [
+    '/app',
+    '/admin',
+    '/n/',
+    '/api/',
+    '/entrar',
+    '/cadastro',
+    '/recuperar-senha',
+  ]) {
     expect(response.body).toContain(`Disallow: ${path}\n`);
   }
   expect(response.body).toContain('Sitemap: http://localhost:3000/sitemap.xml');

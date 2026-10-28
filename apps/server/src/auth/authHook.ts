@@ -20,6 +20,8 @@ export function registerAuth(
     if (route === '/api/health' || route === '/api/public/config') return;
     // The guide's public routes check their own origin, content type, and rate.
     if (route === '/api/public/cnpj-regime/:cnpj' || route === '/api/public/waitlist') return;
+    // A shared DANFSe link is the credential; the routes rate-limit by IP.
+    if (route === '/api/public/n/:token' || route === '/api/public/n/:token/pdf') return;
     // Better Auth checks the origin of its own routes and needs no session to log in.
     if (route?.startsWith('/api/auth/')) return;
     if (route !== undefined ? !route.startsWith('/api/') : !isApiPath(request.url)) return;

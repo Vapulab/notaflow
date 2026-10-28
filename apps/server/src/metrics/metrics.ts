@@ -40,6 +40,7 @@ export class Metrics {
   private readonly invoicesIssued: Counter<'result'>;
   private readonly invoicesCancelled: Counter<'result'>;
   private readonly danfseOnDemandTotal: Counter;
+  private readonly danfseLinkViewsTotal: Counter;
   private readonly danfseJobs: Counter<'result'>;
   private readonly danfseRenderSeconds: Histogram;
   private readonly syncRuns: Counter<'result'>;
@@ -78,6 +79,11 @@ export class Metrics {
     this.danfseOnDemandTotal = new Counter({
       name: 'danfse_on_demand_total',
       help: 'DANFSe downloads drawn on demand, not served from R2',
+      registers,
+    });
+    this.danfseLinkViewsTotal = new Counter({
+      name: 'danfse_link_views_total',
+      help: 'Views of public DANFSe links',
       registers,
     });
     this.danfseJobs = new Counter({
@@ -261,6 +267,10 @@ export class Metrics {
 
   danfseOnDemand(): void {
     this.danfseOnDemandTotal.inc();
+  }
+
+  danfseLinkView(): void {
+    this.danfseLinkViewsTotal.inc();
   }
 
   danfseJob(result: 'completed' | 'failed'): void {

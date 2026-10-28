@@ -43,6 +43,7 @@ beforeAll(async () => {
     customerId: customerId ?? '',
     id: '1', // a mail outbox row, a bug report, or a waitlist signup that does not exist
     position: '1',
+    token: 'unknown-token',
   };
 });
 afterAll(() => t.close());
@@ -52,6 +53,8 @@ const PUBLIC = new Set([
   'GET /api/public/config',
   'GET /api/public/cnpj-regime/:cnpj',
   'POST /api/public/waitlist',
+  'GET /api/public/n/:token',
+  'GET /api/public/n/:token/pdf',
 ]);
 
 function fill(url: string): string {

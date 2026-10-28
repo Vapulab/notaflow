@@ -30,3 +30,6 @@ export function clientIp(
   if (behindTunnel && cfConnectingIp && isIP(cfConnectingIp)) return cfConnectingIp;
   return remote;
 }
+
+// Behind the tunnel request.ip is cloudflared's; the visitor's address is in the request context.
+export const visitorIp = (request: { ip: string }) => requestContext.getStore()?.ip ?? request.ip;

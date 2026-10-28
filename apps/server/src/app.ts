@@ -36,6 +36,7 @@ import { serviceRoutes } from './routes/services';
 import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
+import { invoiceLinkRoutes } from './routes/invoiceLinks';
 import { issueRoutes } from './routes/issue';
 import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
 import { LifecycleService } from './lifecycle/LifecycleService';
@@ -300,6 +301,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     db,
     masterKey: config.masterKey,
     providerFactory,
+    danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
+    metrics,
+  });
+  invoiceLinkRoutes(app, {
+    db,
+    appOrigin: config.appOrigin,
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });

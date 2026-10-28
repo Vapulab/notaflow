@@ -76,7 +76,7 @@ function isAppPath(url: string, appAtRoot: boolean): boolean {
 }
 
 function robotsTxt(origin: string): string {
-  const disallow = [...APP_PATHS, '/api/'].map((path) => `Disallow: ${path}\n`).join('');
+  const disallow = [...APP_PATHS, '/n/', '/api/'].map((path) => `Disallow: ${path}\n`).join('');
   return `User-agent: *\nAllow: /\n${disallow}\nSitemap: ${origin}/sitemap.xml\n`;
 }
 
