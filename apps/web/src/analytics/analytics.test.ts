@@ -85,6 +85,10 @@ test('the link page gets no pageview and no recording; other pages keep both', (
   expect(optionsFor(`/n/${TOKEN}`)).toMatchObject({
     capture_pageview: false,
     disable_session_recording: true,
+    capture_heatmaps: false,
+    capture_dead_clicks: false,
+    capture_exceptions: false,
+    capture_performance: false,
   });
   expect(optionsFor('/guia')).toMatchObject({
     capture_pageview: 'history_change',
@@ -108,4 +112,19 @@ test('before_send rewrites a link token in every URL property', () => {
     '/guia',
   );
   expect(optionsFor('/').before_send).toBe(redactEventUrls);
+});
+
+test('before_send rewrites the token in $set and $set_once, which sit beside properties', () => {
+  const url = `https://x.test/n/${TOKEN}`;
+  const out = redactEventUrls({
+    properties: { $current_url: url },
+    $set: { $current_url: url, plan: 'free' },
+    $set_once: { $initial_referrer: url, $initial_current_url: url, $initial_utm: 1 },
+  });
+  expect(out.$set).toEqual({ $current_url: 'https://x.test/n/:token', plan: 'free' });
+  expect(out.$set_once).toEqual({
+    $initial_referrer: 'https://x.test/n/:token',
+    $initial_current_url: 'https://x.test/n/:token',
+    $initial_utm: 1,
+  });
 });

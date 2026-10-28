@@ -40,24 +40,52 @@ const URL_PROPERTIES = [
   '$session_entry_url',
 ];
 
-// Defence in depth for every page: no event carries a link token in a URL property.
-export function redactEventUrls<T extends { properties?: Record<string, unknown> } | null>(
-  event: T,
-): T {
-  if (!event?.properties) return event;
-  const properties = { ...event.properties };
-  for (const key of URL_PROPERTIES) {
-    const value = properties[key];
-    if (typeof value === 'string') properties[key] = redactLinkToken(value);
+function redactStrings(fields: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? redactLinkToken(value) : value,
+    ]),
+  );
+}
+
+interface Capturable {
+  properties?: Record<string, unknown>;
+  $set?: Record<string, unknown>;
+  $set_once?: Record<string, unknown>;
+}
+
+// Defence in depth for every page: no event carries a link token in a URL, also in the person fields.
+export function redactEventUrls<T extends Capturable | null>(event: T): T {
+  if (!event) return event;
+  const clean: Capturable = { ...event };
+  if (event.properties) {
+    clean.properties = { ...event.properties };
+    for (const key of URL_PROPERTIES) {
+      const value = event.properties[key];
+      if (typeof value === 'string') clean.properties[key] = redactLinkToken(value);
+    }
   }
-  return { ...event, properties };
+  // $set and $set_once are top-level fields of the capture result, not part of its properties.
+  if (event.$set) clean.$set = redactStrings(event.$set);
+  if (event.$set_once) clean.$set_once = redactStrings(event.$set_once);
+  return clean as T;
 }
 
 // The link page's URL is the secret: it gets no pageview and no recording, only its own event.
 export function optionsFor(pathname: string): Partial<PostHogConfig> {
   const base = { ...POSTHOG_OPTIONS, before_send: redactEventUrls };
   return pathname.startsWith('/n/')
-    ? { ...base, capture_pageview: false, disable_session_recording: true }
+    ? {
+        ...base,
+        capture_pageview: false,
+        disable_session_recording: true,
+        // Remote config cannot turn on anything else that is keyed by the page URL.
+        capture_heatmaps: false,
+        capture_dead_clicks: false,
+        capture_exceptions: false,
+        capture_performance: false,
+      }
     : base;
 }
 
