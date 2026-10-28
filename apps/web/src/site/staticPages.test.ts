@@ -6,7 +6,7 @@ import { GUIDE_PAGES } from './guide/pages';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const GUIDE_FILES = GUIDE_PAGES.map((page) => page.file);
 const PARTIALS = ['partials/guide-header.html', 'partials/guide-footer.html'];
-const PAGES = ['landing.html', 'termos.html', 'privacidade.html', '404.html', ...GUIDE_FILES];
+const PAGES = ['landing.html', 'termos.html', 'privacidade.html', '404.html', 'n.html', ...GUIDE_FILES];
 // The paths the server answers outside the app (see apps/server/src/web.ts) and the public app pages.
 const ROUTES = new Set([
   '/',

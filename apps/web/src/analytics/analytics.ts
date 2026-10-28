@@ -77,7 +77,9 @@ export type AnalyticsEvent =
   | 'guide_path'
   | 'guide_cnpj_regime'
   | 'guide_calculator'
-  | 'waitlist_signup';
+  | 'waitlist_signup'
+  // The public DANFSe link page; never carries the token.
+  | 'danfse_link_viewed';
 
 // For tests: forget the client between them.
 export function stopAnalytics(): void {

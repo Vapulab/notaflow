@@ -46,6 +46,13 @@ export function registerWeb(app: FastifyInstance, webRoot: string, appOrigin: st
     if (existsSync(join(webRoot, file))) app.get(path, (_request, reply) => reply.sendFile(file));
   }
 
+  // The DANFSe link page: any token shape, since the page reads the 404 from the API; kept out of the sitemap.
+  if (existsSync(join(webRoot, 'n.html'))) {
+    app.get('/n/:token', (_request, reply) =>
+      reply.header('x-robots-tag', 'noindex').sendFile('n.html'),
+    );
+  }
+
   app.get('/robots.txt', (_request, reply) =>
     reply.type('text/plain; charset=utf-8').send(robotsTxt(appOrigin)),
   );
