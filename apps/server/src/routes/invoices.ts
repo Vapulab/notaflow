@@ -1,8 +1,11 @@
-import { markFor, renderDanfse } from '@notaflow/danfse-pdf';
+import { danfseKey, markFor, renderDanfse } from '@notaflow/danfse-pdf';
+import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
+import { buffer } from 'node:stream/consumers';
 import { accountContext } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
+import type { Metrics } from '../metrics/metrics';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { CertificateRepository } from '../repos/CertificateRepository';
 import { CustomerRepository } from '../repos/CustomerRepository';
@@ -12,6 +15,7 @@ import { ServiceRepository } from '../repos/ServiceRepository';
 import { applyDocument } from '../sync/applyDocument';
 import { VaultCertificateStore } from '../vault/VaultCertificateStore';
 
+const MAX_STORED_BYTES = 2 * 1024 * 1024;
 const ACCESS_KEY = /^[0-9A-Z]{50}$/;
 
 interface ListQuery {
@@ -44,7 +48,14 @@ const listSchema = {
 
 export function invoiceRoutes(
   app: FastifyInstance,
-  deps: { db: Database; masterKey: Buffer; providerFactory: ProviderFactory },
+  deps: {
+    db: Database;
+    masterKey: Buffer;
+    providerFactory: ProviderFactory;
+    // The DANFSe bucket; null while the queue is off.
+    danfseR2?: Pick<R2Client, 'get'> | null;
+    metrics?: Pick<Metrics, 'danfseOnDemand'>;
+  },
 ): void {
   const invoices = new InvoiceRepository(deps.db);
   const customers = new CustomerRepository(deps.db);
@@ -54,13 +65,18 @@ export function invoiceRoutes(
     deps.masterKey,
   );
 
+  // With the queue off no row ever leaves 'pending', so the screens must not show it.
+  const shownPdfState = <T extends { pdfStatus: string | null }>(invoice: T): T =>
+    app.danfse ? invoice : { ...invoice, pdfStatus: null };
+
   app.get<{ Params: { accountId: string }; Querystring: ListQuery }>(
     '/api/accounts/:accountId/invoices',
     { schema: listSchema },
     async (request) => {
       const ctx = accountContext(request, request.params.accountId);
       const { q, limit = 50, offset = 0, ...filters } = request.query;
-      return invoices.list(ctx, { ...filters, ...(q ? { search: q } : {}), limit, offset });
+      const page = invoices.list(ctx, { ...filters, ...(q ? { search: q } : {}), limit, offset });
+      return { ...page, items: page.items.map(shownPdfState) };
     },
   );
 
@@ -70,7 +86,7 @@ export function invoiceRoutes(
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
       if (!invoice) throw new HttpError(404, 'not_found');
-      return invoice;
+      return shownPdfState(invoice);
     },
   );
 
@@ -98,16 +114,35 @@ export function invoiceRoutes(
       const invoice = invoices.get(ctx, request.params.invoiceId);
       const xml = invoice ? invoices.xml(ctx, invoice.id) : null;
       if (!invoice || xml === null) throw new HttpError(404, 'not_found');
+      const name = (invoice.number ?? invoice.id).replace(/[^0-9A-Za-z-]/g, '');
+      const send = (body: Buffer) =>
+        reply
+          .header('content-type', 'application/pdf')
+          .header('content-disposition', `attachment; filename="DANFSe-${name}.pdf"`)
+          .header('content-length', body.length)
+          .send(body);
+      const storedMark = invoice.pdfStatus === 'ready' ? invoices.pdfMark(ctx, invoice.id) : null;
+      if (deps.danfseR2 && storedMark && invoice.accessKey) {
+        try {
+          const stored = await deps.danfseR2.get(danfseKey(invoice.accessKey, storedMark));
+          if (stored && (stored.size === null || stored.size <= MAX_STORED_BYTES)) {
+            // Buffered so a stream error lands here, before the 200 is committed.
+            return send(await buffer(stored.body));
+          }
+        } catch (error) {
+          request.log.warn(
+            { module: 'danfse', invoiceId: invoice.id, err: error },
+            'DANFSe read from R2 failed; drawing on demand',
+          );
+        }
+      }
       const mark = markFor(
         invoice.status,
         invoice.events.map((event) => event.code),
       );
       const pdf = await renderDanfse(xml, { mark });
-      const name = (invoice.number ?? invoice.id).replace(/[^0-9A-Za-z-]/g, '');
-      return reply
-        .header('content-type', 'application/pdf')
-        .header('content-disposition', `attachment; filename="DANFSe-${name}.pdf"`)
-        .send(Buffer.from(pdf));
+      deps.metrics?.danfseOnDemand();
+      return send(Buffer.from(pdf));
     },
   );
 

@@ -26,6 +26,8 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 | Server | [apps/server/AGENTS.md](apps/server/AGENTS.md) |
 | Web | [apps/web/AGENTS.md](apps/web/AGENTS.md) |
 | DANFSe PDF | [packages/danfse-pdf/AGENTS.md](packages/danfse-pdf/AGENTS.md) |
+| R2 client | [packages/r2/AGENTS.md](packages/r2/AGENTS.md) |
+| DANFSe worker | [apps/danfse-worker/AGENTS.md](apps/danfse-worker/AGENTS.md) |
 | Python signer | [services/signer-py/AGENTS.md](services/signer-py/AGENTS.md) |
 
 ## Docs
@@ -45,6 +47,7 @@ A change to the architecture (a new external system, container, server component
 | `pnpm dev:web` | Vite dev server for the UI, proxying `/api` to the local server |
 | `pnpm build:web` | Build the UI into `apps/web/dist`; the server serves it |
 | `pnpm dev:server` | Local server; needs `apps/server/.env.local` and `pnpm fake:nacional`. Without `RESEND_API_KEY`, it prints login codes to its log |
+| `pnpm dev:worker` | Local DANFSe queue worker; needs `apps/danfse-worker/.env.local` and a Redis |
 | `pnpm seed:admin <email> <name>` | Create or promote a platform admin |
 | `pnpm fake:nacional` | Local fake of the Sefin and the ADN on port 4010 |
 | `pnpm spike:sefin` | Stage 0 spike against produção restrita (needs `.env.local`) |

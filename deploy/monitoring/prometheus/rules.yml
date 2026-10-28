@@ -63,6 +63,27 @@ groups:
         annotations:
           summary: 'NotaFlow: {{ $value }} e-mails failed for good; retry them in /admin'
 
+      - alert: DanfseDeadLetters
+        expr: danfse_dlq_size > 0
+        for: 15m
+        labels: { severity: warning, service: notaflow, module: danfse }
+        annotations:
+          summary: 'NotaFlow: {{ $value }} DANFSe PDFs failed for good; retry them in /admin'
+
+      - alert: DanfseWorkerDown
+        expr: danfse_workers == 0
+        for: 5m
+        labels: { severity: critical, service: notaflow, module: danfse }
+        annotations:
+          summary: 'NotaFlow: no DANFSe worker is connected to the queue, or Redis is down'
+
+      - alert: DanfsePendingStale
+        expr: danfse_pending_oldest_seconds > 1800
+        for: 10m
+        labels: { severity: warning, service: notaflow, module: danfse }
+        annotations:
+          summary: 'NotaFlow: the oldest DANFSe PDF has waited {{ $value | humanizeDuration }}'
+
       - alert: BugDeliveriesFailed
         expr: notaflow_bug_report_deliveries{state="failed"} > 0
         labels: { severity: warning, service: notaflow, module: bugs }

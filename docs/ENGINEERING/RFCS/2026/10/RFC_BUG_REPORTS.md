@@ -181,7 +181,7 @@ Both routes need a platform admin (`adminContext`): any other user gets 403 `adm
 
 ### The R2 client
 
-`apps/server/src/bugs/r2.ts` calls the S3 API of R2 at `https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key>`, region `auto`: `PUT`, `GET`, and `DELETE`. It signs with AWS Signature Version 4 in about 40 lines of `node:crypto`, so it adds no dependency. `aws4fetch` was the other choice: it is small, but it signs a `fetch` `Request`, and the other clients here use undici `request` with an injectable dispatcher. A test checks the signature against the GET Object example of the AWS documentation. Each call has a timeout of 15 seconds.
+`packages/r2/src/r2.ts` calls the S3 API of R2 at `https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key>`, region `auto`: `PUT`, `GET`, and `DELETE`. It signs with AWS Signature Version 4 in about 40 lines of `node:crypto`, so it adds no dependency. `aws4fetch` was the other choice: it is small, but it signs a `fetch` `Request`, and the other clients here use undici `request` with an injectable dispatcher. A test checks the signature against the GET Object example of the AWS documentation. Each call has a timeout of 15 seconds.
 
 ### Privacy
 
@@ -259,7 +259,7 @@ A failed delivery has no retry button yet. To send it again, set its `status` to
 | `apps/server/src/bugs/mask.ts` | `maskPersonalData` and `maskPath` |
 | `apps/server/src/bugs/githubWebhook.ts` | `POST /webhooks/github` |
 | `apps/server/src/bugs/images.ts` | The image checks and the R2 key |
-| `apps/server/src/bugs/r2.ts` | The R2 client and the SigV4 signature |
+| `packages/r2/src/r2.ts` | The R2 client and the SigV4 signature |
 | `apps/server/src/routes/bugReports.ts` | `POST /api/accounts/:accountId/bug-reports` and the two admin routes |
 | `apps/server/src/repos/BugReportRepository.ts` | The queries on `bug_reports` and `bug_report_images` |
 | `apps/web/src/components/BugReportDialog.tsx` | The dialog behind "Reportar bug" |

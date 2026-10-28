@@ -321,3 +321,55 @@ test('a bug channel with half of its pair, a bad repo, or a plain-http webhook i
     );
   }
 });
+
+const DANFSE = {
+  REDIS_URL: 'redis://redis:6379',
+  R2_ACCOUNT_ID: R2.R2_ACCOUNT_ID,
+  R2_DANFSE_ACCESS_KEY_ID: 'danfse-key-id',
+  R2_DANFSE_SECRET_ACCESS_KEY: 'danfse-secret',
+  R2_DANFSE_BUCKET: 'notaflow-danfse',
+};
+
+test('the DANFSe queue is off without REDIS_URL and on with all five variables', () => {
+  expect(loadConfig(base).danfse).toBeNull();
+  expect(loadConfig({ ...base, ...DANFSE }).danfse).toEqual({
+    redisUrl: 'redis://redis:6379',
+    r2: {
+      accountId: R2.R2_ACCOUNT_ID,
+      accessKeyId: 'danfse-key-id',
+      secretAccessKey: 'danfse-secret',
+      bucket: 'notaflow-danfse',
+    },
+  });
+});
+
+test('a partial DANFSe setup, a bad Redis URL, or a bad bucket name only turns the queue off', () => {
+  const together =
+    'REDIS_URL, R2_ACCOUNT_ID, R2_DANFSE_ACCESS_KEY_ID, R2_DANFSE_SECRET_ACCESS_KEY, and R2_DANFSE_BUCKET go together';
+  const warningsOf = (env: Record<string, string | undefined>) => {
+    expect(problemsOf(env)).toEqual([]);
+    const config = loadConfig(env);
+    expect(config.danfse).toBeNull();
+    return config.danfseWarnings;
+  };
+  expect(warningsOf({ ...base, ...DANFSE, R2_DANFSE_SECRET_ACCESS_KEY: '' })).toContain(together);
+  expect(warningsOf({ ...base, REDIS_URL: 'redis://redis:6379' })).toContain(together);
+  expect(warningsOf({ ...base, R2_DANFSE_BUCKET: 'notaflow-danfse' })).toContain(together);
+  expect(warningsOf({ ...base, ...DANFSE, REDIS_URL: 'http://redis' })).toContain(
+    'REDIS_URL must be a redis: URL',
+  );
+  expect(warningsOf({ ...base, ...DANFSE, R2_DANFSE_BUCKET: 'Bad_Bucket' })).toContain(
+    'R2_DANFSE_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
+  );
+});
+
+test('a good or absent DANFSe setup has no warnings', () => {
+  expect(loadConfig(base).danfseWarnings).toEqual([]);
+  expect(loadConfig({ ...base, ...DANFSE }).danfseWarnings).toEqual([]);
+});
+
+test('a bad R2_ACCOUNT_ID still fails the config, because the bug reports share it', () => {
+  expect(problemsOf({ ...base, ...DANFSE, R2_ACCOUNT_ID: 'acc' })).toContain(
+    'R2_ACCOUNT_ID must be the 32-character Cloudflare account id',
+  );
+});

@@ -1,4 +1,6 @@
 import { makeTestCertificate } from '@notaflow/test-kit';
+import { Readable } from 'node:stream';
+import { eq } from 'drizzle-orm';
 import { PDFDocument } from 'pdf-lib';
 import { extractText } from 'unpdf';
 import { afterEach, beforeEach, expect, test } from 'vitest';
@@ -6,7 +8,8 @@ import { issueOnFake } from '../../test/fakeInvoices';
 import { seedTenant } from '../../test/fixtures';
 import { providerEvent } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
-import { certificates } from '../db/schema';
+import { memoryQueue } from '../danfse/queue';
+import { certificates, invoices } from '../db/schema';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
 let t: TestApp;
@@ -196,7 +199,9 @@ test('the route draws the DANFSe from the stored XML', async () => {
   const response = await danfseOf(a.accountId, first.id);
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toBe('application/pdf');
-  expect(response.headers['content-disposition']).toMatch(/^attachment; filename="DANFSe-\w+\.pdf"$/);
+  expect(response.headers['content-disposition']).toMatch(
+    /^attachment; filename="DANFSe-\w+\.pdf"$/,
+  );
   const pdf = await pdfOf(response);
   expect(pdf.pages).toBe(1);
   expect(pdf.text).not.toMatch(/CANCELADA|SUBSTITUÍDA/);
@@ -276,4 +281,224 @@ test('another account gets 404 on the DANFS-e route', async () => {
     headers: await t.as('b@example.com'),
   });
   expect(response.statusCode).toBe(404);
+});
+
+const STORED = Buffer.from('%PDF-1.7 stored in r2');
+
+async function withR2(
+  get: (key: string) => Promise<{ body: Readable; size: number | null } | null>,
+) {
+  await t.close();
+  t = await createTestApp({ danfseR2: { get } });
+}
+
+function setPdfStatus(
+  id: string,
+  status: 'pending' | 'ready' | 'failed',
+  pdfMark: 'none' | 'cancelada' | 'substituida' | null = status === 'ready' ? 'none' : null,
+) {
+  t.db.update(invoices).set({ pdfStatus: status, pdfMark }).where(eq(invoices.id, id)).run();
+}
+
+const onDemand = async () =>
+  (await t.app.metrics.registry.getSingleMetricAsString('danfse_on_demand_total')).split('\n');
+
+test('a ready invoice streams the PDF from R2', async () => {
+  const keys: string[] = [];
+  await withR2(async (key) => {
+    keys.push(key);
+    return { body: Readable.from([STORED]), size: STORED.length };
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['content-type']).toBe('application/pdf');
+  expect(response.headers['content-disposition']).toMatch(
+    /^attachment; filename="DANFSe-\w+\.pdf"$/,
+  );
+  expect(response.rawPayload.equals(STORED)).toBe(true);
+  expect(keys).toEqual([`danfse/${first.accessKey}-none.pdf`]);
+  expect(await onDemand()).toContain('danfse_on_demand_total 0');
+});
+
+test('a ready invoice reads the R2 object of its own mark', async () => {
+  const keys: string[] = [];
+  await withR2(async (key) => {
+    keys.push(key);
+    return { body: Readable.from([STORED]), size: STORED.length };
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready', 'cancelada');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(keys).toEqual([`danfse/${first.accessKey}-cancelada.pdf`]);
+});
+
+test('a late none job cannot change what a cancelled invoice serves', async () => {
+  const none = Buffer.from('%PDF-1.7 none, no watermark');
+  const cancelada = Buffer.from('%PDF-1.7 cancelada, watermarked');
+  const objects = new Map<string, Buffer>();
+  await withR2(async (key) => {
+    const bytes = objects.get(key);
+    return bytes ? { body: Readable.from([bytes]), size: bytes.length } : null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  objects.set(`danfse/${first.accessKey}-none.pdf`, none);
+  objects.set(`danfse/${first.accessKey}-cancelada.pdf`, cancelada);
+  setPdfStatus(first.id, 'ready', 'cancelada');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.rawPayload.equals(cancelada)).toBe(true);
+});
+
+test('a ready invoice with no stored mark is drawn on demand', async () => {
+  let calls = 0;
+  await withR2(async () => {
+    calls += 1;
+    return null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready', null);
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect(calls).toBe(0);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('a ready invoice whose R2 object is missing is drawn on demand', async () => {
+  await withR2(async () => null);
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('an R2 error falls back to drawing on demand', async () => {
+  await withR2(async () => {
+    throw new Error('R2 answered 503');
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('a pending invoice is drawn on demand and counted', async () => {
+  let calls = 0;
+  await withR2(async () => {
+    calls += 1;
+    return null;
+  });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'pending');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(calls).toBe(0);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('without the queue settings the route draws on demand', async () => {
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('an R2 body that errors mid-stream falls back to drawing on demand', async () => {
+  await withR2(async () => ({
+    body: new Readable({
+      read() {
+        this.destroy(new Error('connection reset'));
+      },
+    }),
+    size: 100,
+  }));
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).pages).toBe(1);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('an R2 object above 2 MB is not read and the PDF is drawn on demand', async () => {
+  await withR2(async () => ({ body: Readable.from([STORED]), size: 3 * 1024 * 1024 }));
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.rawPayload.equals(STORED)).toBe(false);
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+test('a ready invoice that is then cancelled is drawn on demand with CANCELADA', async () => {
+  await withR2(async () => ({ body: Readable.from([STORED]), size: STORED.length }));
+  const { a, emitterId } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  new InvoiceRepository(t.db).recordEvent(
+    a,
+    emitterId,
+    providerEvent({ accessKey: first.accessKey, code: '101101' }),
+  );
+  const response = await danfseOf(a.accountId, first.id);
+  expect(response.statusCode).toBe(200);
+  expect((await pdfOf(response)).text).toContain('CANCELADA');
+  expect(await onDemand()).toContain('danfse_on_demand_total 1');
+});
+
+async function pdfStates(accountId: string, id: string) {
+  const headers = await t.as('owner@example.com');
+  const list = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${accountId}/invoices`,
+    headers,
+  });
+  const detail = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${accountId}/invoices/${id}`,
+    headers,
+  });
+  return {
+    list: list
+      .json<{ items: { id: string; pdfStatus: string | null }[] }>()
+      .items.map((i) => i.pdfStatus),
+    detail: detail.json<{ pdfStatus: string | null }>().pdfStatus,
+  };
+}
+
+test('with the queue off, the list and the detail report no PDF state', async () => {
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  expect(await pdfStates(a.accountId, first.id)).toEqual({
+    list: [null, null, null],
+    detail: null,
+  });
+});
+
+test('with the queue on, the list and the detail report the PDF state', async () => {
+  await t.close();
+  t = await createTestApp({ danfseQueue: memoryQueue() });
+  const { a } = await synced();
+  const first = await firstInvoice(a.accountId);
+  setPdfStatus(first.id, 'ready');
+  const states = await pdfStates(a.accountId, first.id);
+  expect(states.detail).toBe('ready');
+  expect(states.list.sort()).toEqual(['pending', 'pending', 'ready']);
 });

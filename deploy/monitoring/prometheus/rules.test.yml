@@ -65,6 +65,40 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'danfse_dlq_size'
+        values: '0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+      - series: 'danfse_workers'
+        values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'danfse_pending_oldest_seconds'
+        values: '0 0 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 2000'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DanfseDeadLetters
+        exp_alerts: []
+      - eval_time: 17m
+        alertname: DanfseDeadLetters
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: danfse }
+            exp_annotations: { summary: 'NotaFlow: 2 DANFSe PDFs failed for good; retry them in /admin' }
+      - eval_time: 6m
+        alertname: DanfseWorkerDown
+        exp_alerts: []
+      - eval_time: 9m
+        alertname: DanfseWorkerDown
+        exp_alerts:
+          - exp_labels: { severity: critical, service: notaflow, module: danfse }
+            exp_annotations: { summary: 'NotaFlow: no DANFSe worker is connected to the queue, or Redis is down' }
+      - eval_time: 10m
+        alertname: DanfsePendingStale
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: DanfsePendingStale
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: danfse }
+            exp_annotations: { summary: 'NotaFlow: the oldest DANFSe PDF has waited 33m 20s' }
+
+  - interval: 1m
+    input_series:
       - series: 'notaflow_bug_report_deliveries{channel="github", state="failed"}'
         values: '0 0 1'
       - series: 'notaflow_bug_report_deliveries{channel="discord", state="pending"}'

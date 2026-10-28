@@ -6,6 +6,10 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4.7-alpine
+        ports: ['6379:6379']
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -19,6 +23,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+        env:
+          TEST_REDIS_URL: redis://localhost:6379
       - run: pytest services/signer-py
       # The gitleaks CLI, not gitleaks-action: the action needs a paid license in an org repo.
       - name: Gitleaks

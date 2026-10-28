@@ -1,7 +1,13 @@
 import { createHash, createHmac } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { type Dispatcher, request } from 'undici';
-import type { R2Settings } from '../config';
+
+export interface R2Settings {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+}
 
 const TIMEOUT_MS = 15_000;
 const REGION = 'auto';

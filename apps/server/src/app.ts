@@ -7,9 +7,11 @@ import { registerAuthRoutes } from './auth/authRoutes';
 import { BugReports } from './bugs/BugReports';
 import { bugChannelClients } from './bugs/channels';
 import { registerGithubWebhook } from './bugs/githubWebhook';
-import { r2Client } from './bugs/r2';
+import { type R2Client, r2Client } from '@notaflow/r2';
 import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
+import { DanfseDispatcher } from './danfse/DanfseDispatcher';
+import type { DanfseQueue } from './danfse/queue';
 import { MailOutbox } from './mail/outbox';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
@@ -44,6 +46,7 @@ import { LifecycleRepository } from './repos/LifecycleRepository';
 import { meRoutes } from './routes/me';
 import { guideRoutes } from './routes/guide';
 import { publicConfigRoutes } from './routes/publicConfig';
+import { adminDanfseRoutes } from './routes/adminDanfse';
 import { adminMailRoutes } from './routes/adminMail';
 import { memberRoutes } from './routes/members';
 import { onboardingRoutes } from './routes/onboarding';
@@ -58,6 +61,7 @@ import {
   sentryReporter,
   statusOf,
 } from './observability/errors';
+import { DanfseRepository } from './repos/DanfseRepository';
 import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
 import { isApiPath, registerWeb } from './web';
@@ -71,6 +75,7 @@ declare module 'fastify' {
     mailOutbox: MailOutbox;
     bugReports: BugReports;
     auth: Auth;
+    danfse: { dispatcher: DanfseDispatcher; queue: DanfseQueue } | null;
   }
 }
 
@@ -95,6 +100,10 @@ export interface AppDeps {
   mailer?: Mailer;
   auth?: Auth;
   errorReporter?: ErrorReporter;
+  // Set only when the DANFSe queue is configured; tests pass a memory queue.
+  danfseQueue?: DanfseQueue;
+  // Tests inject a fake DANFSe bucket; production builds it from config.danfse.
+  danfseR2?: Pick<R2Client, 'get'>;
 }
 
 // Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
@@ -158,6 +167,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           environment: config.nodeEnv,
         })
       : noErrorReporter);
+  if (config.danfseWarnings.length > 0) {
+    // A bad DANFSe line turns only the queue off; the invoices must keep working.
+    const detail = config.danfseWarnings.join('; ');
+    app.log.error(
+      { module: 'danfse', problems: config.danfseWarnings },
+      `DANFSe queue is off: ${detail}`,
+    );
+    reporter.capture(new Error(`DANFSe queue is off: ${detail}`), { module: 'danfse' });
+  }
   // Only server faults: a 4xx is the client's mistake and would bury the real errors.
   app.addHook('onError', async (request, _reply, error) => {
     if (statusOf(error) >= 500) {
@@ -265,6 +283,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   adminRoutes(app, db);
   memberRoutes(app, { db, outbox, appOrigin: config.appOrigin });
   adminMailRoutes(app, { db, outbox });
+  adminDanfseRoutes(app, { db });
   onboardingRoutes(app, {
     db,
     emitterOnboarding: new EmitterOnboarding({
@@ -277,7 +296,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   emitterRoutes(app, { db, masterKey: config.masterKey, providerFactory, onEmitterCreated });
   syncRoutes(app, { db, sync: syncService });
-  invoiceRoutes(app, { db, masterKey: config.masterKey, providerFactory });
+  invoiceRoutes(app, {
+    db,
+    masterKey: config.masterKey,
+    providerFactory,
+    danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
+    metrics,
+  });
   const issue = new IssueService({
     db,
     certificates,
@@ -305,6 +330,24 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     webRoot: deps.webRoot,
   });
   if (deps.webRoot) registerWeb(app, deps.webRoot, config.appOrigin);
+  if (deps.danfseQueue) {
+    const queue = deps.danfseQueue;
+    metrics.watchDanfseQueue(queue);
+    const dispatcher = new DanfseDispatcher({
+      repo: new DanfseRepository(db),
+      queue,
+      metrics: {
+        job: (result) => metrics.danfseJob(result),
+        render: (seconds) => metrics.danfseRender(seconds),
+      },
+      log: (msg, data) => app.log.info({ module: 'danfse', ...data }, msg),
+    });
+    queue.listen(dispatcher.events());
+    app.decorate('danfse', { dispatcher, queue });
+    app.addHook('onClose', () => queue.close());
+  } else {
+    app.decorate('danfse', null);
+  }
   return app;
 }
 

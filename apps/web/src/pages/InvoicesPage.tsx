@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from 'react';
 import { api, type Emitter, type InvoicePage, type InvoiceSummary } from '../api';
 import { Layout, errorText } from '../components/Layout';
+import { PdfButton } from '../components/PdfButton';
 import { useAsync } from '../components/useAsync';
+import { usePolling } from '../components/usePolling';
 import { formatCents, formatCompetence } from '../format';
 import { downloadFile } from '../download';
 import { navigate, routeHref } from '../router';
@@ -70,6 +72,13 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
     ),
   ).toString();
   const page = useAsync(() => api.get<InvoicePage>(`${base}/invoices?${query}`), [base, query]);
+
+  // Refetch the current page while a visible row waits for its PDF.
+  const waitingForPdf =
+    page.data?.items.some(
+      (i) => i.pdfStatus === 'pending' && (i.status === 'issued' || i.status === 'cancelled'),
+    ) ?? false;
+  usePolling(waitingForPdf, page.reload, page.loading);
 
   async function lookup(event: FormEvent) {
     event.preventDefault();
@@ -226,13 +235,11 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
                           >
                             Emitir parecida
                           </a>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void downloadPdf(invoice.id)}
-                          >
-                            PDF
-                          </Button>
+                          <PdfButton
+                            status={invoice.pdfStatus}
+                            label="PDF"
+                            onDownload={() => void downloadPdf(invoice.id)}
+                          />
                         </div>
                       )}
                     </TD>

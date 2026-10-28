@@ -11,6 +11,8 @@ flowchart LR
     direction TB
     subgraph compose["Docker Compose"]
       app["<b>notaflow-app-1</b><br/><i>[Container: the GHCR image of the commit]</i><br/>API server and web build. Its env comes from /opt/notaflow/.env."]
+      redis[("<b>notaflow-redis-1</b><br/><i>[Container: Redis 7, volume redis]</i><br/>Queue danfse. Network danfse is internal: no port, no route out.")]
+      worker["<b>notaflow-danfse-worker-1</b><br/><i>[Container: the same GHCR image, another command]</i><br/>Draws DANFSe PDFs. Networks danfse and the Compose default, for R2 egress."]
       vol[("<b>/data volume</b><br/><i>[SQLite]</i><br/>notaflow.db and backups/")]
     end
     cloudflared["<b>northub-tunnel-1</b><br/><i>[Container: cloudflared]</i><br/>One tunnel shared with vapulab.com and northub"]
@@ -27,6 +29,7 @@ flowchart LR
   channel["<b>Alert channel</b><br/><i>[Discord or Slack webhook]</i>"]
   hc["<b>Healthchecks.io</b><br/><i>[Outside check]</i><br/>Alerts when the Watchdog pings stop"]
   r2[("<b>Cloudflare R2</b><br/><i>[Bucket notaflow-backups]</i><br/>Encrypted copies, deleted after 30 days")]
+  r2d[("<b>Cloudflare R2</b><br/><i>[Bucket notaflow-danfse, private]</i><br/>DANFSe PDFs, key danfse/accessKey.pdf")]
 
   subgraph gh["GitHub"]
     actions["<b>GitHub Actions</b><br/><i>[CI and Deploy]</i>"]
@@ -37,6 +40,10 @@ flowchart LR
   edge -- "Tunnel" --> cloudflared
   cloudflared -- "HTTP, Docker network" --> app
   app --> vol
+  app -- "Queue, network danfse" --> redis
+  worker -- "Takes jobs, network danfse" --> redis
+  worker -- "HTTPS, SigV4" --> r2d
+  app -- "HTTPS, SigV4" --> r2d
   timer -- "docker exec" --> app
   offsite -- "docker cp the newest backup" --> app
   offsite -- "HTTPS, SigV4" --> r2
@@ -56,8 +63,8 @@ flowchart LR
 
   classDef node fill:#438dd5,stroke:#2e6295,color:#fff
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
-  class app,vol,cloudflared,timer,offsite,prom,logs,exporters,grafana node
-  class browser,edge,access,actions,ghcr,r2,channel,hc external
+  class app,vol,redis,worker,cloudflared,timer,offsite,prom,logs,exporters,grafana node
+  class browser,edge,access,actions,ghcr,r2,r2d,channel,hc external
   style vps fill:#f5f8fc,stroke:#1168bd,color:#0b4884
   style compose fill:#eaf2fb,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884
   style cf fill:#f7f7f7,stroke:#8a8a8a,color:#333

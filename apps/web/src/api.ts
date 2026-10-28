@@ -119,6 +119,7 @@ export interface InvoiceSummary {
   serviceCents: number;
   issCents: number | null;
   netCents: number;
+  pdfStatus: 'pending' | 'ready' | 'failed' | null;
 }
 
 export interface InvoiceDetail extends InvoiceSummary {

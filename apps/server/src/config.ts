@@ -1,3 +1,5 @@
+import type { R2Settings } from '@notaflow/r2';
+
 export type AuthConfig = { mode: 'session' } | { mode: 'dev'; email: string };
 
 // Development only: dev mode skips the session, but Better Auth still needs a secret to start.
@@ -29,6 +31,10 @@ export interface Config {
   nacionalUrls?: { sefin: string; adn: string };
   // Where a bug report goes; each channel is off while its variables are unset.
   bugs: BugChannels;
+  // The DANFSe PDF queue; null while REDIS_URL is unset, and the download then draws on demand.
+  danfse: { redisUrl: string; r2: R2Settings } | null;
+  // Why the queue is off although a DANFSe variable is set; the app logs and reports it, and keeps running.
+  danfseWarnings: string[];
 }
 
 export interface BugChannels {
@@ -41,13 +47,6 @@ export interface BugChannels {
   r2: R2Settings | null;
 }
 
-export interface R2Settings {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucket: string;
-}
-
 export class ConfigError extends Error {
   constructor(readonly problems: string[]) {
     super(`Invalid configuration:\n- ${problems.join('\n- ')}`);
@@ -57,6 +56,7 @@ export class ConfigError extends Error {
 
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const problems: string[] = [];
+  const danfseWarnings: string[] = [];
   const required = (name: string): string => {
     const value = env[name];
     if (!value) problems.push(`${name} is required`);
@@ -173,8 +173,10 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     'R2_BUG_REPORTS_BUCKET',
   ].map((name) => env[name] || '');
   const [r2AccountId = '', r2KeyId = '', r2Secret = '', r2Bucket = ''] = r2Values;
+  // R2_ACCOUNT_ID is shared with the DANFSe queue, so it alone does not count here.
   const r2Set = r2Values.filter(Boolean).length;
-  if (r2Set > 0 && r2Set < 4) {
+  const r2Own = r2Values.slice(1).filter(Boolean).length;
+  if (r2Own > 0 && r2Set < 4) {
     problems.push(
       'R2_ACCOUNT_ID, R2_BUG_REPORTS_ACCESS_KEY_ID, R2_BUG_REPORTS_SECRET_ACCESS_KEY, and R2_BUG_REPORTS_BUCKET go together',
     );
@@ -185,6 +187,27 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (r2Bucket && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(r2Bucket)) {
     problems.push(
       'R2_BUG_REPORTS_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
+    );
+  }
+
+  const redisUrl = env.REDIS_URL || '';
+  const danfseKeyId = env.R2_DANFSE_ACCESS_KEY_ID || '';
+  const danfseSecret = env.R2_DANFSE_SECRET_ACCESS_KEY || '';
+  const danfseBucket = env.R2_DANFSE_BUCKET || '';
+  const danfseOwn = [redisUrl, danfseKeyId, danfseSecret, danfseBucket];
+  // R2_ACCOUNT_ID is shared with the bug reports, so it alone does not turn the queue on.
+  const danfseOn = danfseOwn.every(Boolean) && Boolean(r2AccountId);
+  if (danfseOwn.some(Boolean) && !danfseOn) {
+    danfseWarnings.push(
+      'REDIS_URL, R2_ACCOUNT_ID, R2_DANFSE_ACCESS_KEY_ID, R2_DANFSE_SECRET_ACCESS_KEY, and R2_DANFSE_BUCKET go together',
+    );
+  }
+  if (redisUrl && (!URL.canParse(redisUrl) || new URL(redisUrl).protocol !== 'redis:')) {
+    danfseWarnings.push('REDIS_URL must be a redis: URL');
+  }
+  if (danfseBucket && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(danfseBucket)) {
+    danfseWarnings.push(
+      'R2_DANFSE_BUCKET must be a bucket name: lowercase letters, digits, and hyphens',
     );
   }
 
@@ -234,6 +257,19 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
             }
           : null,
     },
+    danfseWarnings,
+    danfse:
+      danfseOn && danfseWarnings.length === 0
+        ? {
+            redisUrl,
+            r2: {
+              accountId: r2AccountId,
+              accessKeyId: danfseKeyId,
+              secretAccessKey: danfseSecret,
+              bucket: danfseBucket,
+            },
+          }
+        : null,
     ...(fake ? { nacionalUrls: { sefin: `${fake}/SefinNacional`, adn: `${fake}/adn` } } : {}),
   };
 }
