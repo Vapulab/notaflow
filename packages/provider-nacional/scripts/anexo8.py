@@ -10,6 +10,7 @@ from pathlib import Path
 import openpyxl
 
 SHEET = "tabela geral"
+FALLBACK_CLASS = "000001"
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "src" / "rules" / "anexo8.json"
 
 
@@ -47,9 +48,14 @@ def main():
             entry["classCode"] = code6(row[class_i])
 
     # Keys that are not LC 116 items (e.g. 99.02.01) do not fit the 4-digit cTribNac prefix.
-    complete = {k: v for k, v in sorted(items.items()) if len(v) == 2 and len(k) == 4}
-    for key in sorted(set(items) - set(complete)):
-        print(f"skipped (incomplete, uses the fallback): {key} {items[key]}", file=sys.stderr)
+    complete = {}
+    for key, entry in sorted(items.items()):
+        if len(key) != 4 or "operationCode" not in entry:
+            print(f"skipped: {key} {entry}", file=sys.stderr)
+            continue
+        # The INDOP is the place-of-incidence rule, so it stays when the class is missing.
+        entry.setdefault("classCode", FALLBACK_CLASS)
+        complete[key] = {"operationCode": entry["operationCode"], "classCode": entry["classCode"]}
     out.write_text(json.dumps(complete, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{len(complete)} items written to {out}")
 

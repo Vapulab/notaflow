@@ -59,6 +59,86 @@
     "operationCode": "030101",
     "classCode": "200029"
   },
+  "0402": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0403": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0404": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0405": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0406": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0407": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0408": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0409": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0410": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0411": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0412": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0413": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0414": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0415": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0416": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0417": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0418": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0419": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0420": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0421": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
   "0422": {
     "operationCode": "100301",
     "classCode": "820001"

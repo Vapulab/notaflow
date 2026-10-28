@@ -31,9 +31,9 @@ describe('ibsCbsDefaults', () => {
     });
   });
 
-  test('an item with an INDOP but no class code gives the fallback', () => {
+  test('an item with an INDOP but no class code keeps its INDOP and gets class 000001', () => {
     expect(ibsCbsDefaults('040200')).toEqual({
-      operationCode: '100301',
+      operationCode: '030101',
       cst: '000',
       classCode: '000001',
     });

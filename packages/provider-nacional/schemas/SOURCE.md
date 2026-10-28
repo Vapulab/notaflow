@@ -18,7 +18,7 @@ The produção restrita schemas of NT 009 release 1 (still version 1.01, new lay
 
 ## Anexo VIII
 
-The table that maps each LC 116 item to `cIndOp` and `cClassTrib`, version 1.02.00 of 2026-10-26. `scripts/anexo8.py` turns sheet "tabela geral" into `src/rules/anexo8.json`. An item without both values is left out, and `ibsCbsDefaults` uses the fallback for it.
+The table that maps each LC 116 item to `cIndOp` and `cClassTrib`, version 1.02.00 of 2026-10-26. `scripts/anexo8.py` turns sheet "tabela geral" into `src/rules/anexo8.json`. An item with an INDOP but no cClassTrib gets class `000001`. An item without an INDOP is left out, and `ibsCbsDefaults` uses the fallback for it.
 
 - URL: https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc/anexo_viii-tabela-correlacao-v01-02-00-20261026.xlsx
 - Downloaded: 2026-10-28
