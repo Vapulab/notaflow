@@ -228,3 +228,26 @@ test('every public answer, also 404 and 429, is private and no-store', async () 
   expect(answers[5]?.statusCode).toBe(429);
   for (const response of answers) expect(response.headers['cache-control']).toBe('private, no-store');
 });
+
+test('the invoice detail says whether a link exists, and revoking clears it', async () => {
+  const { a, invoice } = await setup();
+  const headers = await t.as('owner@example.com');
+  const hasLink = async () =>
+    (
+      await t.app.inject({
+        method: 'GET',
+        url: `/api/accounts/${a.accountId}/invoices/${invoice.id}`,
+        headers,
+      })
+    ).json<{ hasLink: boolean }>().hasLink;
+  expect(await hasLink()).toBe(false);
+  await createLink(a.accountId, invoice.id);
+  expect(await hasLink()).toBe(true);
+  await t.app.inject({
+    method: 'DELETE',
+    url: `/api/accounts/${a.accountId}/invoices/${invoice.id}/link`,
+    headers,
+    payload: {},
+  });
+  expect(await hasLink()).toBe(false);
+});

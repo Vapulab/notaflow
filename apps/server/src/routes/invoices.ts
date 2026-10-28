@@ -10,6 +10,7 @@ import type { ProviderFactory } from '../providers/providerFactory';
 import { CertificateRepository } from '../repos/CertificateRepository';
 import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
+import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { type InvoiceFilter, InvoiceRepository } from '../repos/InvoiceRepository';
 import { ServiceRepository } from '../repos/ServiceRepository';
 import { applyDocument } from '../sync/applyDocument';
@@ -59,6 +60,7 @@ export function invoiceRoutes(
   const invoices = new InvoiceRepository(deps.db);
   const customers = new CustomerRepository(deps.db);
   const emitters = new EmitterRepository(deps.db);
+  const links = new InvoiceLinkRepository(deps.db);
   const certificates = new VaultCertificateStore(
     new CertificateRepository(deps.db),
     deps.masterKey,
@@ -89,6 +91,7 @@ export function invoiceRoutes(
         ...shownPdfState(invoice),
         customerEmail: customerEmailOf(deps.db, ctx, invoice.id),
         autoEmailCustomer: emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer ?? false,
+        hasLink: links.hasLink(ctx, invoice.id),
       };
     },
   );

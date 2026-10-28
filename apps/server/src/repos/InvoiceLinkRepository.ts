@@ -34,6 +34,10 @@ export class InvoiceLinkRepository {
     return token;
   }
 
+  hasLink(ctx: AccountContext, invoiceId: string): boolean {
+    return this.ownsInvoice(ctx, invoiceId) && !!this.activeLink(invoiceId);
+  }
+
   revoke(ctx: AccountContext, invoiceId: string): boolean {
     if (!this.ownsInvoice(ctx, invoiceId)) return false;
     const link = this.activeLink(invoiceId);
