@@ -23,6 +23,7 @@ import { AuditLog } from '../repos/AuditLog';
 import { IdentityRepository } from '../repos/IdentityRepository';
 import { authAuditHooks, recordGoogleLinked } from './authAudit';
 import { parseSignupSource, SIGNUP_SOURCE_HEADER, SIGNUP_SOURCE_STATE_KEY } from './signupSource';
+import { argForLog } from '../observability/logger';
 import { requestContext } from '../requestContext';
 
 // The server sets it from the request context on every call; a client's own value is dropped.
@@ -37,6 +38,8 @@ export interface AuthDeps {
   // Tests only: Google's profile, instead of reading it from the ID token.
   googleUserInfo?: GoogleOptions['getUserInfo'];
   log?: (message: string) => void;
+  // Better Auth's own logger; without it, Better Auth writes plain text to the console, past the redaction.
+  libraryLog?: (level: 'debug' | 'info' | 'warn' | 'error', message: string) => void;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -189,6 +192,17 @@ export function createAuth(deps: AuthDeps) {
       '/email-otp/request-email-change',
     ],
     rateLimit: { enabled: true, storage: 'memory' },
+    ...(deps.libraryLog
+      ? {
+          logger: {
+            log: (
+              level: 'debug' | 'info' | 'warn' | 'error',
+              message: string,
+              ...args: unknown[]
+            ) => deps.libraryLog?.(level, [message, ...args.map(argForLog)].join(' ')),
+          },
+        }
+      : {}),
     advanced: {
       cookiePrefix: 'notaflow',
       // Better Auth skips its origin check when NODE_ENV is test; tests must see production behavior.

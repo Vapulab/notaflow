@@ -10,6 +10,7 @@ import {
 } from '../api';
 import { AmountInput, currencySymbol } from '../components/AmountInput';
 import { DiscardPendingDialog } from '../components/DiscardPendingDialog';
+import { CustomerEmailNote } from '../components/CustomerEmailNote';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
 import { Layout, errorText } from '../components/Layout';
@@ -433,6 +434,10 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             </Button>
           )}
           {send.busy && <Spinner label="Emitindo" />}
+          <CustomerEmailNote
+            accountId={accountId}
+            emitter={emitter}
+          />
         </div>
       </>
     );

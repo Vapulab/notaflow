@@ -68,6 +68,15 @@ Invoices and their XML stay as tax records. Account documents (the CNPJ cards) a
 
 This is a decision to confirm in the legal review of stage 3d. If the review asks for a time limit, past entries need a migration that recreates the audit triggers around a scrub.
 
+## Account closure: DANFSe files
+
+The privacy policy says the DANFSe PDFs stay while the invoice exists. Nothing deletes them by itself. When you close and anonymize an account by hand, delete its PDFs from the R2 bucket in the same procedure:
+
+1. List the `access_key` of every invoice of the account, including soft-deleted rows.
+2. For each one, delete the objects `danfse/<accessKey>-<mark>.pdf`. The mark changes when the layout changes, so one invoice can have more than one object. Delete every object under the prefix `danfse/<accessKey>-`.
+3. Use the R2 client (`delete(key)`; a missing object counts as deleted, so you can repeat the run) or the Cloudflare dashboard (R2, the bucket, filter by the prefix).
+4. Record the step in the audit log of the closure.
+
 ## Exceptions
 
 The four Better Auth tables are credentials, not business rows, and are listed in `OTHER_TABLES`. Better Auth deletes their rows itself:

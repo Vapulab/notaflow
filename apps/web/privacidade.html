@@ -56,8 +56,9 @@
         Política de privacidade
       </h1>
       <p class="text-sm text-muted">
-        Versão 2026-10-12.2, de 12 de outubro de 2026. Atualizada em 21 de outubro de 2026: as
-        imagens anexadas a um relato de bug e a lista de aviso sobre novidades do guia.
+        Versão 2026-10-12.2, de 12 de outubro de 2026. Atualizada em 28 de outubro de 2026: o PDF
+        das notas, o link público da nota e o e-mail ao tomador. Atualizada em 21 de outubro de 2026:
+        as imagens anexadas a um relato de bug e a lista de aviso sobre novidades do guia.
       </p>
 
       <p>
@@ -171,6 +172,21 @@
             <td>Entender o uso, encontrar telas que confundem ou falham, e melhorar o produto</td>
             <td>Legítimo interesse (IX). Você pode se opor pelo privacidade@vapulab.com, e paramos de medir o seu uso.</td>
           </tr>
+          <tr>
+            <td>O PDF de cada nota (o DANFSe), que traz o nome, o CPF ou CNPJ e o endereço do tomador, como todo DANFSe, e o link público da nota, com a contagem de visualizações</td>
+            <td>Desenhar o PDF e guardá-lo em armazenamento privado; deixar a empresa compartilhar a nota por um link. Quem tem o link vê um resumo (nome do emitente, número, data e valor líquido) e baixa o PDF. A página não mostra dados do tomador, mas o PDF mostra</td>
+            <td>Como operadora, conforme as instruções da sua empresa, que cria o link e o revoga quando quiser</td>
+          </tr>
+          <tr>
+            <td>E-mail do tomador, tirado do XML da nota ou do cadastro do cliente, e o link da nota</td>
+            <td>Enviar o link da nota ao tomador, à mão (você digita ou confirma o endereço) ou, se a empresa ligar essa opção, automaticamente depois de cada nota emitida pelo NotaFlow em produção. O e-mail tem um rodapé curto sobre o NotaFlow, com um link de campanha</td>
+            <td>Como operadora, conforme as instruções da sua empresa; o envio automático só acontece se a empresa ligar a opção</td>
+          </tr>
+          <tr>
+            <td>E-mail de quem pediu para não receber mais e a data do pedido (lista de não envio)</td>
+            <td>Respeitar o pedido e não enviar de novo</td>
+            <td>Legítimo interesse (IX) em respeitar o pedido de quem não quer receber; exercício regular de direitos (VI) para provar que o pedido foi respeitado</td>
+          </tr>
         </tbody>
       </table>
       </div>
@@ -185,8 +201,9 @@
       <ul>
         <li><strong>Sistema nacional da NFS-e</strong> (governo federal): recebe as notas e os cancelamentos, e devolve as notas do emitente.</li>
         <li><strong>Hostinger, no Brasil</strong> (servidor virtual): guarda o banco de dados e as cópias de segurança, e executa o serviço.</li>
-        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile) e guarda uma cópia de segurança diária do banco de dados, cifrada antes de sair do nosso servidor, que ela não consegue ler. As imagens anexadas a um relato de bug ficam em um armazenamento privado dela (Cloudflare R2), sem acesso público.</li>
-        <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha, de convite, de boas-vindas e de lembretes.</li>
+        <li><strong>Cloudflare</strong> (EUA e rede mundial): todo o tráfego entre o seu navegador e o NotaFlow passa por ela, inclusive o envio do certificado e das senhas. Ela também faz a verificação contra robôs (Turnstile) e guarda uma cópia de segurança diária do banco de dados, cifrada antes de sair do nosso servidor, que ela não consegue ler. As imagens anexadas a um relato de bug e os PDFs das notas ficam em um armazenamento privado dela (Cloudflare R2), sem acesso público.</li>
+        <li><strong>Resend</strong> (EUA): envia os e-mails de código, de recuperação de senha, de convite, de boas-vindas e de lembretes, e os e-mails com o link da nota que a empresa envia aos tomadores.</li>
+        <li><strong>Quem recebe o link público de uma nota:</strong> qualquer pessoa com o link vê o PDF da nota, com os dados do tomador, até a empresa revogar o link na página da nota. Quem cria o link e o envia é a empresa.</li>
         <li><strong>Google</strong> (EUA): só se você escolher entrar com Google.</li>
         <li><strong>PostHog</strong> (EUA): medição de uso do produto e gravações da navegação com todo o texto mascarado, sem cookies, sem o seu e-mail e sem o seu IP.</li>
         <li><strong>Sentry</strong> (EUA): recebe os relatórios de erro técnicos do NotaFlow, para corrigirmos falhas. Antes de sair, o relatório perde e-mails, CPFs, CNPJs, cookies, cabeçalhos e parâmetros de busca; ele não leva o seu IP nem o seu nome, só o identificador interno do usuário.</li>
@@ -209,6 +226,9 @@
       <ul>
         <li><strong>Conta e cadastro:</strong> enquanto a conta estiver ativa. Depois do encerramento, anonimizamos os dados pessoais da conta em até 30 dias, salvo os registros dos itens abaixo.</li>
         <li><strong>Notas e dados dos tomadores:</strong> guardamos em nome da empresa emitente enquanto a conta estiver ativa. Depois do encerramento, mantemos por mais 90 dias para a empresa pedir uma cópia e então anonimizamos os dados pessoais, salvo instrução diferente da empresa. A guarda fiscal de 5 anos (arts. 173 e 195, parágrafo único, do Código Tributário Nacional) é obrigação da empresa, e a fonte oficial das notas é o sistema nacional.</li>
+        <li><strong>PDFs das notas:</strong> enquanto a nota existir no NotaFlow.</li>
+        <li><strong>Links públicos das notas:</strong> até a empresa revogar o link na página da nota.</li>
+        <li><strong>Lista de não envio:</strong> o e-mail e a data do pedido, indefinidamente enquanto o serviço funcionar, para que o pedido continue respeitado.</li>
         <li><strong>Registros de acesso (IP, data e hora):</strong> 6 meses, como exige o art. 15 do Marco Civil da Internet. Depois, anonimizamos o IP, salvo ordem judicial ou investigação em curso.</li>
         <li><strong>Trilha de auditoria e registro de aceite:</strong> até 5 anos depois do encerramento da conta, para a defesa da Vapulab e da empresa em processos (exercício regular de direitos).</li>
         <li><strong>Certificado digital:</strong> enquanto o emitente estiver ativo e o certificado for válido. Quando você troca o certificado, remove o emitente ou pede a eliminação, destruímos em até 5 dias úteis a chave que decifra o arquivo e a senha. A partir daí, o arquivo cifrado que fica no banco não pode mais ser lido por ninguém, nem por nós. As cópias de segurança que ainda o contêm são apagadas em até 30 dias.</li>
@@ -292,6 +312,15 @@
         Se você responder a um lembrete, a resposta chega ao contato@vapulab.com e é tratada como
         qualquer mensagem enviada a esse endereço. Guardamos o registro de cada lembrete enviado por
         5 anos depois do encerramento da conta, como prova de que o seu descadastro foi respeitado.
+      </p>
+
+      <p>
+        O NotaFlow também pode enviar ao tomador de uma nota um e-mail com o link da nota. A empresa
+        pede esse envio à mão ou liga o envio automático, e a Vapulab o executa como operadora. O
+        e-mail vai pelo Resend e tem um link para não receber mais: o endereço entra na lista de não
+        envio e nunca mais recebe e-mail de nota. Cada conta envia no máximo 50 e-mails por hora e
+        cada nota recebe no máximo 5 por dia. Os registros do servidor guardam só o domínio do
+        e-mail do tomador, e os relatórios de erro perdem o e-mail por inteiro.
       </p>
 
       <h2>11. Lista de aviso sobre novidades</h2>

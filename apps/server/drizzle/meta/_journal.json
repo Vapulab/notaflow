@@ -162,6 +162,34 @@
       "when": 1793047228070,
       "tag": "0022_danfse_pdf_state",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793195430560,
+      "tag": "0023_invoice_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793197733280,
+      "tag": "0024_customer_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1793198611749,
+      "tag": "0025_mail_outbox_invoice_ref",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793200084971,
+      "tag": "0026_mail_suppressions",
+      "breakpoints": true
     }
   ]
 }

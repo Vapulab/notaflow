@@ -1,6 +1,6 @@
 import { type Dispatcher, request } from 'undici';
 
-export type MailKind = 'code' | 'invite' | 'welcome' | 'notice' | 'lifecycle';
+export type MailKind = 'code' | 'invite' | 'welcome' | 'notice' | 'lifecycle' | 'invoice';
 
 export interface MailMessage {
   to: string;
@@ -9,6 +9,7 @@ export interface MailMessage {
   text: string;
   kind?: MailKind; // what the outbox may retry: a login code is never resent
   replyTo?: string;
+  ref?: { accountId: string; invoiceId: string }; // what the invoice e-mail caps count
   headers?: Record<string, string>;
 }
 
@@ -17,6 +18,8 @@ export type Mailer = (message: MailMessage) => Promise<void>;
 export function resendMailer(options: {
   apiKey: string;
   from: string;
+  // The sender of the invoice e-mail: a customer's mailbox judges it apart from the login codes.
+  invoiceFrom?: string | null;
   dispatcher?: Dispatcher;
 }): Mailer {
   return async (message) => {
@@ -24,7 +27,7 @@ export function resendMailer(options: {
       method: 'POST',
       headers: { authorization: `Bearer ${options.apiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        from: options.from,
+        from: message.kind === 'invoice' && options.invoiceFrom ? options.invoiceFrom : options.from,
         to: [message.to],
         subject: message.subject,
         html: message.html,

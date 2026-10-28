@@ -12,7 +12,10 @@ import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { DanfseDispatcher } from './danfse/DanfseDispatcher';
 import type { DanfseQueue } from './danfse/queue';
+import { InvoiceMailer } from './mail/InvoiceMailer';
+import { registerInvoiceUnsubscribe } from './mail/invoiceUnsubscribe';
 import { MailOutbox } from './mail/outbox';
+import { MailSuppressionRepository } from './repos/MailSuppressionRepository';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
 import { handleError } from './httpError';
@@ -36,6 +39,8 @@ import { serviceRoutes } from './routes/services';
 import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
+import { loggerOptions } from './observability/logger';
+import { invoiceLinkRoutes } from './routes/invoiceLinks';
 import { issueRoutes } from './routes/issue';
 import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
 import { LifecycleService } from './lifecycle/LifecycleService';
@@ -106,35 +111,14 @@ export interface AppDeps {
   danfseR2?: Pick<R2Client, 'get'>;
 }
 
-// Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
-function requestForLog(request: {
-  method: string;
-  url: string;
-  host: string;
-  ip: string;
-  socket: { remotePort?: number | undefined };
-}) {
-  const url = request.url.startsWith('/api/auth/callback/')
-    ? (request.url.split('?')[0] ?? '')
-    : request.url;
-  return {
-    method: request.method,
-    url,
-    host: request.host,
-    remoteAddress: request.ip,
-    remotePort: request.socket.remotePort ?? 0,
-  };
-}
-
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { config, db } = deps;
-  const serializers = { req: requestForLog };
   const app = Fastify({
     logger: deps.logStream
-      ? { stream: deps.logStream, serializers }
+      ? { stream: deps.logStream, ...loggerOptions }
       : config.nodeEnv === 'test'
         ? false
-        : { serializers },
+        : loggerOptions,
   });
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);
@@ -186,7 +170,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const transport =
     deps.mailer ??
     (config.mail.resendApiKey
-      ? resendMailer({ apiKey: config.mail.resendApiKey, from: config.mail.from })
+      ? resendMailer({
+          apiKey: config.mail.resendApiKey,
+          from: config.mail.from,
+          invoiceFrom: config.mail.invoiceFrom,
+        })
       : consoleMailer((line) => app.log.info(line)));
   // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
   const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
@@ -206,6 +194,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     repo: lifecycleRepo,
     outbox,
     audit: new AuditLog(db),
+    secret: config.authSecret,
+  });
+  registerInvoiceUnsubscribe(app, {
+    suppressions: new MailSuppressionRepository(db),
+    outbox,
     secret: config.authSecret,
   });
   const bugs = new BugReports({
@@ -230,7 +223,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     audit: new AuditLog(db),
   });
   const mailer = outbox.mailer();
-  const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
+  const auth =
+    deps.auth ??
+    createAuth({
+      config,
+      db,
+      mailer,
+      log: (line) => app.log.warn(line),
+      libraryLog: (level, line) => app.log[level](line),
+    });
   app.decorate('auth', auth);
   registerAuth(app, { config, identities: new IdentityRepository(db), auth });
   registerAuthRoutes(app, auth, config.appOrigin);
@@ -303,8 +304,22 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
+  invoiceLinkRoutes(app, {
+    db,
+    appOrigin: config.appOrigin,
+    secret: config.authSecret,
+    outbox,
+    danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
+    metrics,
+  });
   const issue = new IssueService({
     db,
+    customerMail: new InvoiceMailer({
+      db,
+      outbox,
+      appOrigin: config.appOrigin,
+      secret: config.authSecret,
+    }),
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
     exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),

@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, inArray, lte, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 
 // A transaction handle works too, so a caller can queue in the same transaction as its own rows.
 type Writer = Pick<Database, 'insert'>;
 import { mailOutbox } from '../db/schema';
+import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import type { MailKind, Mailer, MailMessage } from './mailer';
 
 // Minutes to wait after the 1st, 2nd, 3rd, and 4th failure; the 5th failure is final.
@@ -15,15 +16,19 @@ const STUCK_MS = 5 * 60_000;
 
 // Stores every e-mail before it goes out, so a Resend outage delays it instead of losing it.
 export class MailOutbox {
+  private readonly suppressions: MailSuppressionRepository;
+
   constructor(
     private readonly db: Database,
     private readonly transport: Mailer,
     private readonly logError: (line: string) => void,
-  ) {}
+  ) {
+    this.suppressions = new MailSuppressionRepository(db);
+  }
 
   // True when delivered now; false when it waits for a retry.
   async send(message: MailMessage, kind: MailKind, now = new Date()): Promise<boolean> {
-    const { to, subject, html, text, replyTo, headers } = message;
+    const { to, subject, html, text, replyTo, headers, ref } = message;
     const row = this.db
       .insert(mailOutbox)
       .values({
@@ -33,6 +38,8 @@ export class MailOutbox {
         text,
         kind,
         replyTo: replyTo ?? null,
+        accountId: ref?.accountId ?? null,
+        invoiceId: ref?.invoiceId ?? null,
         headers: headers ?? null,
         status: 'sending',
         nextAttemptAt: now,
@@ -45,7 +52,7 @@ export class MailOutbox {
 
   // Stored as pending for the next deliverDue run; nothing is sent now.
   queue(message: MailMessage, kind: MailKind, now = new Date(), db: Writer = this.db): number {
-    const { to, subject, html, text, replyTo, headers } = message;
+    const { to, subject, html, text, replyTo, headers, ref } = message;
     return db
       .insert(mailOutbox)
       .values({
@@ -55,6 +62,8 @@ export class MailOutbox {
         text,
         kind,
         replyTo: replyTo ?? null,
+        accountId: ref?.accountId ?? null,
+        invoiceId: ref?.invoiceId ?? null,
         headers: headers ?? null,
         status: 'pending',
         nextAttemptAt: now,
@@ -62,6 +71,24 @@ export class MailOutbox {
       })
       .returning({ id: mailOutbox.id })
       .get().id;
+  }
+
+  // Invoice e-mail rows queued since a time; a cancelled row was never going out.
+  countInvoiceMail(where: { accountId?: string; invoiceId?: string }, since: Date): number {
+    const filters = [
+      eq(mailOutbox.kind, 'invoice'),
+      ne(mailOutbox.status, 'cancelled'),
+      gte(mailOutbox.createdAt, since),
+      ...(where.accountId ? [eq(mailOutbox.accountId, where.accountId)] : []),
+      ...(where.invoiceId ? [eq(mailOutbox.invoiceId, where.invoiceId)] : []),
+    ];
+    return (
+      this.db
+        .select({ value: count() })
+        .from(mailOutbox)
+        .where(and(...filters))
+        .get()?.value ?? 0
+    );
   }
 
   // An opt-out stops the reminders waiting or dead-lettered, so no retry sends them; they stay as cancelled rows.
@@ -73,6 +100,21 @@ export class MailOutbox {
         and(
           eq(mailOutbox.to, to),
           eq(mailOutbox.kind, 'lifecycle'),
+          inArray(mailOutbox.status, ['pending', 'failed']),
+        ),
+      )
+      .run().changes;
+  }
+
+  // An unsubscribe stops the invoice e-mails still waiting or dead-lettered to that address.
+  cancelPendingInvoice(to: string): number {
+    return this.db
+      .update(mailOutbox)
+      .set({ status: 'cancelled', html: '', text: '' })
+      .where(
+        and(
+          sql`lower(${mailOutbox.to}) = ${to.trim().toLowerCase()}`,
+          eq(mailOutbox.kind, 'invoice'),
           inArray(mailOutbox.status, ['pending', 'failed']),
         ),
       )
@@ -152,6 +194,15 @@ export class MailOutbox {
       this.giveUp(id, row.to, row.attempts, row.lastError ?? 'code expired');
       return false;
     }
+    // Defence in depth for a row that an unsubscribe did not reach.
+    if (row.kind === 'invoice' && this.suppressions.isSuppressed(row.to, 'invoice')) {
+      this.db
+        .update(mailOutbox)
+        .set({ status: 'cancelled', html: '', text: '' })
+        .where(eq(mailOutbox.id, id))
+        .run();
+      return false;
+    }
     const attempts = row.attempts + 1;
     try {
       await this.transport({
@@ -159,6 +210,7 @@ export class MailOutbox {
         subject: row.subject,
         html: row.html,
         text: row.text,
+        kind: row.kind,
         ...(row.replyTo ? { replyTo: row.replyTo } : {}),
         ...(row.headers ? { headers: row.headers } : {}),
       });

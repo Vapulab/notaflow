@@ -373,3 +373,10 @@ test('a bad R2_ACCOUNT_ID still fails the config, because the bug reports share 
     'R2_ACCOUNT_ID must be the 32-character Cloudflare account id',
   );
 });
+
+test('MAIL_FROM_INVOICE is optional and null when unset', () => {
+  expect(loadConfig(base).mail.invoiceFrom).toBeNull();
+  expect(loadConfig({ ...base, MAIL_FROM_INVOICE: 'Notas <n@example.com>' }).mail.invoiceFrom).toBe(
+    'Notas <n@example.com>',
+  );
+});

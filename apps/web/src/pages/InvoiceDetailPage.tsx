@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { api, type InvoiceDetail } from '../api';
+import { api, type Emitter, type InvoiceDetail } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { RevokeLinkDialog } from '../components/RevokeLinkDialog';
+import { SendInvoiceEmail } from '../components/SendInvoiceEmail';
+import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
 import { usePolling } from '../components/usePolling';
-import { formatCents, formatCompetence, formatDate } from '../format';
+import { formatCents, formatCompetence, formatDate, formatDateTime } from '../format';
 import { downloadFile } from '../download';
 import { routeHref } from '../router';
 import {
@@ -28,11 +31,30 @@ const EVENT_TEXT: Record<string, string> = {
   '305101': 'Cancelamento de ofício',
 };
 
+function emailStatus(data: InvoiceDetail): string | null {
+  if (data.customerEmailedAt) {
+    return `E-mail enviado em ${formatDateTime(data.customerEmailedAt)}`;
+  }
+  // Only an app invoice in production would have been e-mailed by itself.
+  const wouldSend = data.origin === 'app' && data.environment === 'producao';
+  return wouldSend && data.autoEmailCustomer && !data.customerEmail
+    ? 'Tomador sem e-mail na nota'
+    : null;
+}
+
 export function InvoiceDetailPage(props: { accountId: string; invoiceId: string }) {
   const { accountId, invoiceId } = props;
   const url = `/api/accounts/${encodeURIComponent(accountId)}/invoices/${encodeURIComponent(invoiceId)}`;
   const invoice = useAsync(() => api.get<InvoiceDetail>(url), [url]);
+  const emitters = useAsync(
+    () => api.get<Emitter[]>(`/api/accounts/${encodeURIComponent(accountId)}/emitters`),
+    [accountId],
+  );
   const [cancelling, setCancelling] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  // A new key remounts the share menu, which drops the link it cached.
+  const [shareKey, setShareKey] = useState(0);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload, invoice.loading);
@@ -75,6 +97,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
     );
   }
   const data = invoice.data;
+  const emitterName = emitters.data?.find((e) => e.id === data.emitterId)?.companyName;
   return (
     <Layout title={`NFS-e ${data.number ?? ''}`} accountId={accountId}>
       <div className="flex flex-wrap items-center gap-3">
@@ -131,6 +154,12 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
           <dd>
             {data.customerName} {data.customerDocument && `(${data.customerDocument})`}
           </dd>
+          {(data.status === 'issued' || data.status === 'cancelled') && emailStatus(data) && (
+            <>
+              <dt>E-mail ao tomador</dt>
+              <dd>{emailStatus(data)}</dd>
+            </>
+          )}
           <dt>Serviço</dt>
           <dd>
             {data.serviceCode}: {data.description}
@@ -156,7 +185,25 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             onDownload={() => void downloadPdf()}
           />
         )}
+        {emitterName && (data.status === 'issued' || data.status === 'cancelled') && (
+          <ShareInvoice
+            key={shareKey}
+            onLinkCreated={invoice.reload}
+            accountId={accountId}
+            invoiceId={invoiceId}
+            number={data.number}
+            emitterName={emitterName}
+            onNotaflowEmail={() => setEmailing(true)}
+          />
+        )}
       </div>
+      {data.hasLink && (
+        <div>
+          <Button variant="secondary" size="sm" onClick={() => setRevoking(true)}>
+            Revogar link
+          </Button>
+        </div>
+      )}
       {data.events.length > 0 && (
         <Card>
           <h2 className={SECTION_TITLE_CLASSES}>Eventos</h2>
@@ -170,6 +217,29 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             ))}
           </ul>
         </Card>
+      )}
+      {revoking && (
+        <RevokeLinkDialog
+          accountId={accountId}
+          invoiceId={invoiceId}
+          onClose={() => setRevoking(false)}
+          onRevoked={() => {
+            setRevoking(false);
+            setShareKey((n) => n + 1);
+            setMessage({ variant: 'info', text: 'Link revogado.' });
+            invoice.reload();
+          }}
+        />
+      )}
+      {emailing && (
+        <SendInvoiceEmail
+          open
+          accountId={accountId}
+          invoiceId={invoiceId}
+          number={data.number}
+          onClose={() => setEmailing(false)}
+          onSent={invoice.reload}
+        />
       )}
       {cancelling && (
         <CancelDialog

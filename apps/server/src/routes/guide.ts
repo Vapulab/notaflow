@@ -6,7 +6,7 @@ import type { Database } from '../db/openDatabase';
 import { isValidCnpj } from '../domain/documents';
 import { HttpError } from '../httpError';
 import { LookupError, lookupCnpj } from '../onboarding/cnpjLookup';
-import { requestContext } from '../requestContext';
+import { visitorIp } from '../requestContext';
 import { createRateLimiter } from '../rateLimit';
 import {
   WAITLIST_INTERESTS,
@@ -15,9 +15,6 @@ import {
 } from '../repos/WaitlistRepository';
 
 const HOUR = 60 * 60 * 1000;
-
-// Behind the tunnel request.ip is cloudflared's; the visitor's address is in the request context.
-const visitorIp = (request: { ip: string }) => requestContext.getStore()?.ip ?? request.ip;
 
 const REGIME = { '1': 'other', '2': 'mei', '3': 'simples' } as const;
 

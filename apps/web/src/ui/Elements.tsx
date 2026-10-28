@@ -3,6 +3,7 @@ import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
   ReactNode,
+  Ref,
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
@@ -28,6 +29,7 @@ export function Button({
   type,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
+  ref?: Ref<HTMLButtonElement>;
   variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
 }) {

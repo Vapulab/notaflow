@@ -18,6 +18,7 @@ const emitter = (id: string, companyName: string): Emitter => ({
   environment: 'producao',
   municipality: '4113700',
   dpsSeries: '900',
+  autoEmailCustomer: false,
   certificate: null,
 });
 const created: Customer = {

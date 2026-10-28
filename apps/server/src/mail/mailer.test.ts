@@ -99,3 +99,31 @@ test('the welcome e-mail greets by name and escapes it', () => {
   expect(mail.html).toContain('Ana &lt;b&gt;');
   expect(mail.text.trim().endsWith(FOOTER)).toBe(true);
 });
+
+test('an invoice e-mail leaves from the invoice address, any other kind from the default', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  const froms: unknown[] = [];
+  agent
+    .get('https://api.resend.com')
+    .intercept({ path: '/emails', method: 'POST' })
+    .reply(200, (options) => {
+      froms.push((JSON.parse(String(options.body)) as { from: unknown }).from);
+      return { id: 'e1' };
+    })
+    .times(3);
+  const mailer = resendMailer({
+    apiKey: 're_key',
+    from: 'NotaFlow <n@example.com>',
+    invoiceFrom: 'NotaFlow Notas <notas@example.com>',
+    dispatcher: agent,
+  });
+  await mailer({ ...message, kind: 'invoice' });
+  await mailer({ ...message, kind: 'code' });
+  await mailer(message);
+  expect(froms).toEqual([
+    'NotaFlow Notas <notas@example.com>',
+    'NotaFlow <n@example.com>',
+    'NotaFlow <n@example.com>',
+  ]);
+});

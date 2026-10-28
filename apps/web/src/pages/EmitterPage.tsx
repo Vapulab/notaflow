@@ -47,8 +47,60 @@ export function EmitterPage(props: { accountId: string; emitterId: string }) {
       {fiscal.data && (
         <FiscalConfigForm url={`${emitterUrl}/fiscal`} config={fiscal.data} canEdit={canEdit} />
       )}
+      {emitter && (
+        <AutoEmailSetting
+          url={`${emitterUrl}/settings`}
+          enabled={emitter.autoEmailCustomer}
+          canEdit={canEdit}
+          onSaved={emitters.reload}
+        />
+      )}
       <Services accountId={accountId} emitterId={emitterId} canEdit={canEdit} />
     </Layout>
+  );
+}
+
+function AutoEmailSetting(props: {
+  url: string;
+  enabled: boolean;
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function change(value: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.put(props.url, { autoEmailCustomer: value });
+      props.onSaved();
+    } catch (failure) {
+      setError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-2">
+      <h2 className={SECTION_TITLE_CLASSES}>E-mail ao tomador</h2>
+      <label className="flex items-center gap-2 text-sm text-fg">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={props.enabled}
+          disabled={!props.canEdit || busy}
+          onChange={(event) => void change(event.target.checked)}
+        />
+        Enviar a nota por e-mail ao tomador após emitir
+      </label>
+      <p className="text-sm text-muted">
+        Vale para as notas emitidas pelo NotaFlow, quando o tomador tem e-mail. As respostas chegam
+        ao e-mail do dono da conta.
+      </p>
+      {error && <Alert variant="error">{error}</Alert>}
+    </Card>
   );
 }
 

@@ -25,6 +25,8 @@ const STATIC_PAGES: [string, string][] = [
 const APP_PATHS = ['/app', '/admin', '/entrar', '/cadastro', '/recuperar-senha'];
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+// The link page URL is a bearer credential: no browser or proxy cache keeps it.
+export const NO_STORE = 'private, no-store';
 
 const FALLBACK_404 =
   '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Página não encontrada | NotaFlow</title>' +
@@ -32,6 +34,7 @@ const FALLBACK_404 =
 
 export function registerWeb(app: FastifyInstance, webRoot: string, appOrigin: string): void {
   const assets = join(webRoot, 'assets') + sep;
+  const linkPage = join(webRoot, 'n.html');
   app.register(fastifyStatic, {
     root: webRoot,
     wildcard: false,
@@ -39,11 +42,23 @@ export function registerWeb(app: FastifyInstance, webRoot: string, appOrigin: st
     cacheControl: false,
     // Vite puts a content hash in every name under assets/, so a new build never reuses a cached file.
     setHeaders: (reply, path) => {
-      reply.header('cache-control', path.startsWith(assets) ? IMMUTABLE : 'no-cache');
+      const cache = path.startsWith(assets)
+        ? IMMUTABLE
+        : path === linkPage
+          ? NO_STORE
+          : 'no-cache';
+      reply.header('cache-control', cache);
     },
   });
   for (const [path, file] of STATIC_PAGES) {
     if (existsSync(join(webRoot, file))) app.get(path, (_request, reply) => reply.sendFile(file));
+  }
+
+  // The DANFSe link page: any token shape, since the page reads the 404 from the API; kept out of the sitemap.
+  if (existsSync(join(webRoot, 'n.html'))) {
+    app.get('/n/:token', (_request, reply) =>
+      reply.header('x-robots-tag', 'noindex').sendFile('n.html'),
+    );
   }
 
   app.get('/robots.txt', (_request, reply) =>
@@ -76,7 +91,7 @@ function isAppPath(url: string, appAtRoot: boolean): boolean {
 }
 
 function robotsTxt(origin: string): string {
-  const disallow = [...APP_PATHS, '/api/'].map((path) => `Disallow: ${path}\n`).join('');
+  const disallow = [...APP_PATHS, '/n/', '/api/'].map((path) => `Disallow: ${path}\n`).join('');
   return `User-agent: *\nAllow: /\n${disallow}\nSitemap: ${origin}/sitemap.xml\n`;
 }
 

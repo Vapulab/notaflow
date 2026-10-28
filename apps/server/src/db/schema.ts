@@ -145,6 +145,8 @@ export const emitters = sqliteTable(
       .notNull()
       .default('inside_das'),
     ibscbsRegimeFrom: text('ibscbs_regime_from'),
+    // The migration set it off for the emitters that existed before the feature; a new one starts on.
+    autoEmailCustomer: integer('auto_email_customer', { mode: 'boolean' }).notNull().default(true),
     createdAt: createdAt(),
     updatedAt: changedAt(),
     ...authors(),
@@ -210,23 +212,36 @@ export const legalAcceptances = sqliteTable(
 );
 
 // Every e-mail goes through here: sent at once, retried with backoff, and kept as failed (the dead letters).
-export const mailOutbox = sqliteTable('mail_outbox', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  kind: text('kind', { enum: ['code', 'invite', 'welcome', 'notice', 'lifecycle'] }).notNull(),
-  to: text('to').notNull(),
-  subject: text('subject').notNull(),
-  // Emptied once sent or given up: a login code is not kept.
-  html: text('html').notNull(),
-  text: text('text').notNull(),
-  status: text('status', { enum: ['pending', 'sending', 'sent', 'failed', 'cancelled'] }).notNull(),
-  replyTo: text('reply_to'),
-  headers: text('headers', { mode: 'json' }).$type<Record<string, string>>(),
-  attempts: integer('attempts').notNull().default(0),
-  nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
-  lastError: text('last_error'),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-  sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
-});
+export const mailOutbox = sqliteTable(
+  'mail_outbox',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    kind: text('kind', {
+      enum: ['code', 'invite', 'welcome', 'notice', 'lifecycle', 'invoice'],
+    }).notNull(),
+    to: text('to').notNull(),
+    subject: text('subject').notNull(),
+    // Emptied once sent or given up: a login code is not kept.
+    html: text('html').notNull(),
+    text: text('text').notNull(),
+    status: text('status', {
+      enum: ['pending', 'sending', 'sent', 'failed', 'cancelled'],
+    }).notNull(),
+    replyTo: text('reply_to'),
+    // Set on invoice e-mail only: what the sending caps count.
+    accountId: text('account_id'),
+    invoiceId: text('invoice_id'),
+    headers: text('headers', { mode: 'json' }).$type<Record<string, string>>(),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
+    lastError: text('last_error'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [
+    index('mail_outbox_account_invoice').on(table.accountId, table.invoiceId, table.createdAt),
+  ],
+);
 
 // One row per lifecycle e-mail sent; the unique index is what stops a second send.
 export const lifecycleEmails = sqliteTable(
@@ -376,6 +391,8 @@ export const invoices = sqliteTable(
     pdfRenderedAt: integer('pdf_rendered_at', { mode: 'timestamp_ms' }),
     // Set on every change that makes the PDF stale; the optimistic version of an enqueue and the age of the backlog.
     pdfPendingSince: integer('pdf_pending_since', { mode: 'timestamp_ms' }),
+    // Set once, in the transaction that queues the NotaFlow e-mail to the customer.
+    customerEmailedAt: integer('customer_emailed_at', { mode: 'timestamp_ms' }),
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -622,4 +639,37 @@ export const waitlistSignups = sqliteTable(
     ...removal(),
   },
   (t) => [uniqueIndex('waitlist_signups_email').on(t.email).where(active)],
+);
+
+// The public link of an invoice (/n/<token>): one active link per invoice; revoking soft-deletes it.
+export const invoiceLinks = sqliteTable(
+  'invoice_links',
+  {
+    id: id(),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id),
+    token: text('token').notNull().unique(),
+    views: integer('views').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('invoice_links_invoice').on(t.invoiceId).where(active)],
+);
+
+// An address that asked to stop one kind of e-mail from NotaFlow; unsubscribing again adds nothing.
+export const mailSuppressions = sqliteTable(
+  'mail_suppressions',
+  {
+    id: id(),
+    address: text('address').notNull(),
+    kind: text('kind', { enum: ['invoice'] }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('mail_suppressions_address_kind').on(t.address, t.kind).where(active)],
 );

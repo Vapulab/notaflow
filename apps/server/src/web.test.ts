@@ -24,6 +24,7 @@ beforeAll(async () => {
   for (const page of GUIDE_PAGES) {
     writeFileSync(join(root, page.file), `<!doctype html><main>guide ${page.path}</main>`);
   }
+  writeFileSync(join(root, 'n.html'), '<!doctype html><main>link-page</main>');
   writeFileSync(join(root, '404.html'), '<!doctype html><main>nao-encontrada</main>');
   writeFileSync(join(root, 'llms.txt'), '# NotaFlow');
   config = loadConfig({
@@ -118,6 +119,17 @@ test('serves the guide pages without authentication', async () => {
   expect(response.headers['x-robots-tag']).toBeUndefined();
 });
 
+test('serves the DANFSe link page for any token, noindex and outside the sitemap', async () => {
+  for (const url of [`/n/${'a'.repeat(43)}`, '/n/curto']) {
+    const response = await app.inject({ url });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('link-page');
+    expect(response.headers['x-robots-tag']).toBe('noindex');
+    expect(response.headers['cache-control']).toBe('private, no-store');
+  }
+  expect((await app.inject({ url: '/sitemap.xml' })).body).not.toContain('/n/');
+});
+
 test('the public pages may be indexed', async () => {
   for (const url of ['/', '/termos', '/privacidade']) {
     expect((await app.inject({ url })).headers['x-robots-tag']).toBeUndefined();
@@ -129,7 +141,15 @@ test('robots.txt allows the site, keeps crawlers out of the app and the API, and
   expect(response.statusCode).toBe(200);
   expect(response.headers['content-type']).toContain('text/plain');
   expect(response.body).toContain('User-agent: *\nAllow: /\n');
-  for (const path of ['/app', '/admin', '/api/', '/entrar', '/cadastro', '/recuperar-senha']) {
+  for (const path of [
+    '/app',
+    '/admin',
+    '/n/',
+    '/api/',
+    '/entrar',
+    '/cadastro',
+    '/recuperar-senha',
+  ]) {
     expect(response.body).toContain(`Disallow: ${path}\n`);
   }
   expect(response.body).toContain('Sitemap: http://localhost:3000/sitemap.xml');

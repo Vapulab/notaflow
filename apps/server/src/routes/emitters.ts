@@ -77,6 +77,7 @@ export function emitterRoutes(
           environment: emitter.environment,
           municipality: emitter.municipality,
           dpsSeries: emitter.dpsSeries,
+          autoEmailCustomer: emitter.autoEmailCustomer,
           certificate: certificate
             ? {
                 validTo: certificate.validTo.toISOString(),
@@ -85,6 +86,39 @@ export function emitterRoutes(
             : null,
         };
       });
+    },
+  );
+
+  app.put<{
+    Params: { accountId: string; emitterId: string };
+    Body: { autoEmailCustomer: boolean };
+  }>(
+    '/api/accounts/:accountId/emitters/:emitterId/settings',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['autoEmailCustomer'],
+          additionalProperties: false,
+          properties: { autoEmailCustomer: { type: 'boolean' } },
+        },
+      },
+    },
+    async (request) => {
+      const ctx = accountContext(request, request.params.accountId, { owner: true, write: true });
+      const { autoEmailCustomer } = request.body;
+      if (!emitters.setAutoEmailCustomer(ctx, request.params.emitterId, autoEmailCustomer)) {
+        throw new HttpError(404, 'not_found');
+      }
+      audit.record({
+        userEmail: identityOf(request).email,
+        accountId: ctx.accountId,
+        action: 'emitter.settings',
+        entity: request.params.emitterId,
+        result: 'ok',
+        detail: `autoEmailCustomer ${autoEmailCustomer}`,
+      });
+      return { autoEmailCustomer };
     },
   );
 

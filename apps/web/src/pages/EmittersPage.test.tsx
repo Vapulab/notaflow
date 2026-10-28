@@ -17,6 +17,7 @@ const emitter = {
   environment: 'producao',
   municipality: '4113700',
   dpsSeries: '900',
+  autoEmailCustomer: false,
   certificate: { validTo: '2030-01-01T00:00:00Z', expiresSoon: false },
 };
 const me = (platformRole: 'admin' | 'user') => ({

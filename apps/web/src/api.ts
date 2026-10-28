@@ -100,6 +100,7 @@ export interface Emitter {
   environment: Environment;
   municipality: string;
   dpsSeries: string;
+  autoEmailCustomer: boolean;
   certificate: { validTo: string; expiresSoon: boolean } | null;
 }
 
@@ -119,12 +120,19 @@ export interface InvoiceSummary {
   serviceCents: number;
   issCents: number | null;
   netCents: number;
+  origin: 'synced' | 'app';
   pdfStatus: 'pending' | 'ready' | 'failed' | null;
 }
 
 export interface InvoiceDetail extends InvoiceSummary {
   sefinMessages: { code: string; message: string }[] | null;
   templateOf: string | null;
+  // The address the NotaFlow e-mail would go to, and when one last went out.
+  customerEmail: string | null;
+  customerEmailedAt: string | null;
+  autoEmailCustomer: boolean;
+  // A public link exists, so it can be revoked.
+  hasLink: boolean;
   events: {
     code: string;
     reasonCode: string | null;

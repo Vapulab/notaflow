@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { api, type Customer, type Draft, type Emitter, type ExchangeRate } from '../api';
 import { AmountInput, currencySymbol } from '../components/AmountInput';
+import { CustomerEmailNote } from '../components/CustomerEmailNote';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { IssueResultView } from '../components/IssueResultView';
 import { Layout, errorText } from '../components/Layout';
@@ -256,6 +257,10 @@ function IssueFlow(props: {
             </Button>
           )}
           {send.busy && <Spinner label="Emitindo" />}
+          <CustomerEmailNote
+            accountId={accountId}
+            emitter={emitter}
+          />
         </div>
       </Layout>
     );

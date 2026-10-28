@@ -1,21 +1,21 @@
-import { danfseKey, markFor, renderDanfse } from '@notaflow/danfse-pdf';
 import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
-import { buffer } from 'node:stream/consumers';
 import { accountContext } from '../auth/guards';
+import { danfsePdf } from '../danfse/danfsePdf';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
+import { customerEmailOf } from '../mail/InvoiceMailer';
 import type { Metrics } from '../metrics/metrics';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { CertificateRepository } from '../repos/CertificateRepository';
 import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
+import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { type InvoiceFilter, InvoiceRepository } from '../repos/InvoiceRepository';
 import { ServiceRepository } from '../repos/ServiceRepository';
 import { applyDocument } from '../sync/applyDocument';
 import { VaultCertificateStore } from '../vault/VaultCertificateStore';
 
-const MAX_STORED_BYTES = 2 * 1024 * 1024;
 const ACCESS_KEY = /^[0-9A-Z]{50}$/;
 
 interface ListQuery {
@@ -60,6 +60,7 @@ export function invoiceRoutes(
   const invoices = new InvoiceRepository(deps.db);
   const customers = new CustomerRepository(deps.db);
   const emitters = new EmitterRepository(deps.db);
+  const links = new InvoiceLinkRepository(deps.db);
   const certificates = new VaultCertificateStore(
     new CertificateRepository(deps.db),
     deps.masterKey,
@@ -86,7 +87,12 @@ export function invoiceRoutes(
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
       if (!invoice) throw new HttpError(404, 'not_found');
-      return shownPdfState(invoice);
+      return {
+        ...shownPdfState(invoice),
+        customerEmail: customerEmailOf(deps.db, ctx, invoice.id),
+        autoEmailCustomer: emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer ?? false,
+        hasLink: links.hasLink(ctx, invoice.id),
+      };
     },
   );
 
@@ -121,28 +127,23 @@ export function invoiceRoutes(
           .header('content-disposition', `attachment; filename="DANFSe-${name}.pdf"`)
           .header('content-length', body.length)
           .send(body);
-      const storedMark = invoice.pdfStatus === 'ready' ? invoices.pdfMark(ctx, invoice.id) : null;
-      if (deps.danfseR2 && storedMark && invoice.accessKey) {
-        try {
-          const stored = await deps.danfseR2.get(danfseKey(invoice.accessKey, storedMark));
-          if (stored && (stored.size === null || stored.size <= MAX_STORED_BYTES)) {
-            // Buffered so a stream error lands here, before the 200 is committed.
-            return send(await buffer(stored.body));
-          }
-        } catch (error) {
-          request.log.warn(
-            { module: 'danfse', invoiceId: invoice.id, err: error },
-            'DANFSe read from R2 failed; drawing on demand',
-          );
-        }
-      }
-      const mark = markFor(
-        invoice.status,
-        invoice.events.map((event) => event.code),
+      const pdf = await danfsePdf(
+        {
+          invoiceId: invoice.id,
+          accessKey: invoice.accessKey,
+          pdfStatus: invoice.pdfStatus,
+          pdfMark: invoices.pdfMark(ctx, invoice.id),
+          xml,
+          status: invoice.status,
+          eventCodes: invoice.events.map((event) => event.code),
+        },
+        {
+          r2: deps.danfseR2 ?? null,
+          ...(deps.metrics ? { metrics: deps.metrics } : {}),
+          log: request.log,
+        },
       );
-      const pdf = await renderDanfse(xml, { mark });
-      deps.metrics?.danfseOnDemand();
-      return send(Buffer.from(pdf));
+      return send(pdf);
     },
   );
 

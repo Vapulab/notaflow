@@ -13,6 +13,7 @@ NotaFlow is a multi-tenant web app that issues, copies, and cancels Brazilian se
 7. Commits and PRs carry no AI attribution.
 8. Scripts must run on Windows and Linux. No `VAR=value cmd` prefixes.
 9. Never delete a business row: use `softDelete`, and every read uses `notDeleted`. See [Data](docs/ENGINEERING/CONVENTIONS/DATA.md).
+10. No log line, audit detail, or error report keeps a secret or personal data. Every rule lives in `apps/server/src/observability/redact.ts`. See [Logging](docs/ENGINEERING/CONVENTIONS/LOGGING.md).
 
 ## Package entrypoints
 

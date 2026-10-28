@@ -20,8 +20,11 @@ export default defineConfig({
         landing: resolve(root, 'landing.html'),
         termos: resolve(root, 'termos.html'),
         privacidade: resolve(root, 'privacidade.html'),
+        link: resolve(root, 'n.html'),
         notFound: resolve(root, '404.html'),
-        ...Object.fromEntries(GUIDE_PAGES.map((page) => [page.file.replace('.html', ''), resolve(root, page.file)])),
+        ...Object.fromEntries(
+          GUIDE_PAGES.map((page) => [page.file.replace('.html', ''), resolve(root, page.file)]),
+        ),
       },
     },
   },
