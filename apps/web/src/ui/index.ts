@@ -23,7 +23,6 @@ export {
   CheckIcon,
   CopyIcon,
   DownloadIcon,
-  LinkIcon,
   ShareAndroidIcon,
   ShareIcon,
   ShareIosIcon,

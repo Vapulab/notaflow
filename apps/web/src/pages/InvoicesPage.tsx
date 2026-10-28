@@ -18,7 +18,6 @@ import {
   ButtonLink,
   Card,
   CARD_CLASSES,
-  CopyIcon,
   Field,
   Input,
   Select,
@@ -138,11 +137,9 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
         )}
         <a
           href={routeHref({ name: 'issue', accountId, invoiceId: invoice.id })}
-          aria-label="Emitir parecida"
-          title="Emitir parecida"
-          className={`${buttonClasses({ variant: 'secondary', size: 'icon' })} ml-auto`}
+          className={`${buttonClasses({ variant: 'secondary', size: 'action' })} ml-auto`}
         >
-          <CopyIcon />
+          Emitir parecida
         </a>
       </div>
     );
