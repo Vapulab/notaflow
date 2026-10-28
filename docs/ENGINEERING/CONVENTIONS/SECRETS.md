@@ -24,6 +24,6 @@ A secret never enters git. The repository is public, so a committed secret is a 
 
 1. Never pass `--no-verify` to get past the hook. Remove the value instead.
 2. Tests use `@notaflow/test-kit` certificates and synthetic data with CNPJ `12345678000195`.
-3. Logs never contain a certificate, a password, the master key, or a full XML.
+3. Logs never contain a certificate, a password, the master key, or a full XML. See [Logging](LOGGING.md).
 4. To inspect a secret, check its length, its hash, or that it parses. Never print it.
 5. If a secret reaches git or a log, rotate it first, then clean up.
