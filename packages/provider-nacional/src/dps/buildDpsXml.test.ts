@@ -264,6 +264,41 @@ describe('buildDpsXml for a service exported to a foreign customer', () => {
       expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
     });
 
+    test('NT 004 writes no IBSCBS for a domestic DPS, and NT 009 does', () => {
+      const group = {
+        purpose: '0',
+        finalConsumer: '0' as const,
+        operationCode: '100301',
+        destination: '0',
+        cst: '000',
+        classCode: '000001',
+      };
+      const domestic = { ...base, ibsCbs: group };
+      expect(buildDpsXml({ ...domestic, ...production }).xml).not.toContain('IBSCBS');
+      const { xml } = buildDpsXml({ ...domestic, ...restrictedNow });
+      expect(xml).toContain('<IBSCBS>');
+      expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
+    });
+
+    test('NT 009 leaves out cIndOp and gIBSCBS for a domestic CST 410', () => {
+      const domestic = {
+        ...base,
+        ...restrictedNow,
+        ibsCbs: {
+          purpose: '0',
+          finalConsumer: '0' as const,
+          destination: '0',
+          cst: '410',
+          classCode: '410999',
+        },
+      };
+      const { xml } = buildDpsXml(domestic);
+      expect(xml).toContain(
+        '<IBSCBS><indFinal>0</indFinal><indDest>0</indDest><valores><trib><CST>410</CST><cClassTrib>410999</cClassTrib></trib></valores></IBSCBS>',
+      );
+      expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
+    });
+
     test('NT 004 keeps finNFSe and the classification inside IBSCBS, and xDescServ before cNBS', () => {
       const { xml } = buildDpsXml({ ...exportInput, ...production });
       expect(xml).toContain('<tpEmit>1</tpEmit><cLocEmi>');

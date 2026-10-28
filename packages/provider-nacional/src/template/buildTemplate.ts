@@ -1,5 +1,6 @@
 import type { NewInvoiceInput } from '@notaflow/core';
 import type { ForeignTrade } from '../dps/types';
+import { ibsCbsDefaults } from '../rules/ibsCbsDefaults';
 import { percentText } from '../rules/simplesBands';
 import { minimumIssRate, taxRules } from '../rules/taxRules';
 import { toDpsCustomer } from './applyTemplate';
@@ -55,6 +56,9 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ? percentText(input.issRate)
       : undefined;
 
+  const ibsCbsCodes =
+    service.ibsCbs ?? (abroad ? undefined : ibsCbsDefaults(service.nationalTaxCode));
+
   return {
     emitterMunicipality: emitter.municipality,
     provider: {
@@ -88,16 +92,14 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ...(inss !== undefined ? { cpRetainedCents: inss } : {}),
       simplesTotalPercent: percentText(input.simplesPercent),
     },
-    // 2026: the group is optional for the Simples; a service's codes describe its export.
-    ...(abroad && service.ibsCbs
+    // An export keeps its optional group; a domestic invoice always has one (NT 009), the service's codes first.
+    ...(ibsCbsCodes
       ? {
           ibsCbs: {
             purpose: '0',
             finalConsumer: customer.document?.type === 'CPF' ? '1' : '0',
-            operationCode: service.ibsCbs.operationCode,
             destination: '0',
-            cst: service.ibsCbs.cst,
-            classCode: service.ibsCbs.classCode,
+            ...ibsCbsCodes,
           },
         }
       : {}),

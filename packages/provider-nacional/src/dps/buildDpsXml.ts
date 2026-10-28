@@ -159,8 +159,9 @@ function amounts({ amounts: a, tax: t }: DpsInput): string {
   );
 }
 
-function ibsCbs({ ibsCbs: g }: DpsInput, layout: DpsLayout): string {
-  if (!g) return '';
+function ibsCbs({ ibsCbs: g, service }: DpsInput, layout: DpsLayout): string {
+  // NT 004 production output of a domestic invoice stays as it was: no group. Foreign trade marks an export.
+  if (!g || (layout === 'nt004' && !service.foreignTrade)) return '';
   const classification = tag('CST', g.cst) + tag('cClassTrib', g.classCode);
   // NT 009, 2.16: CST 400, 410, and 820 have no IBS/CBS due, so no cIndOp (E0859) and no gIBSCBS (E0961).
   const due = !UNTAXED_CST.has(g.cst);

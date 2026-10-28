@@ -102,7 +102,11 @@ function expectValidAndInverse(template: DpsTemplate) {
       [],
     );
   }
-  expect(roundTrip(template, 'nt004')).toEqual(template);
+  // Under NT 004 a domestic invoice carries no IBSCBS group, so a copy has none either.
+  const { ibsCbs: nt004Group, ...noGroup } = template;
+  expect(roundTrip(template, 'nt004')).toEqual(
+    template.service.foreignTrade || !nt004Group ? template : noGroup,
+  );
   // NT 009 has no cIndOp for an export (CST 410), so that copy keeps everything else.
   const { ibsCbs, ...rest } = template;
   const withoutOperation =
@@ -145,8 +149,52 @@ describe('buildTemplate', () => {
         pisCofins: { cst: '00', retention: '0' },
         simplesTotalPercent: '6.00',
       },
+      ibsCbs: {
+        purpose: '0',
+        finalConsumer: '0',
+        operationCode: '050101',
+        destination: '0',
+        cst: '000',
+        classCode: '000001',
+      },
     });
     expectValidAndInverse(template);
+  });
+
+  test('a domestic invoice takes the IBSCBS codes of its LC 116 item', () => {
+    const service = { ...domestic.service, nationalTaxCode: '010101' };
+    expect(buildTemplate({ ...domestic, service }).ibsCbs).toEqual({
+      purpose: '0',
+      finalConsumer: '0',
+      operationCode: '100301',
+      destination: '0',
+      cst: '000',
+      classCode: '000001',
+    });
+  });
+
+  test('a CPF customer is a final consumer', () => {
+    const customer = {
+      ...domestic.customer,
+      document: { type: 'CPF' as const, value: '11144477735' },
+    };
+    expect(buildTemplate({ ...domestic, customer }).ibsCbs?.finalConsumer).toBe('1');
+  });
+
+  test('the service codes win over the defaults on a domestic invoice', () => {
+    const service = {
+      ...domestic.service,
+      ibsCbs: { operationCode: '100302', cst: '200', classCode: '200003' },
+    };
+    expect(buildTemplate({ ...domestic, service }).ibsCbs).toMatchObject({
+      operationCode: '100302',
+      cst: '200',
+      classCode: '200003',
+    });
+  });
+
+  test('a domestic DPS in production before NT 009 is byte-identical to the one before the IBSCBS group', () => {
+    expect(dpsXml(buildTemplate(domestic), 'nt004')).toBe(readFixture('DPS_DOMESTIC_NT004.xml'));
   });
 
   test('a retained ISS writes tpRetISSQN 2 and the ISS rate', () => {
@@ -264,6 +312,11 @@ describe('buildTemplate', () => {
       mdic: '0',
     });
     expectValidAndInverse(template);
+  });
+
+  test('an export without service codes has no IBSCBS group, as before', () => {
+    const { ibsCbs: _codes, ...plain } = abroad.service;
+    expect(buildTemplate({ ...abroad, service: plain }).ibsCbs).toBeUndefined();
   });
 
   test('an export without the foreign amount is refused', () => {
