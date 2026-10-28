@@ -18,4 +18,6 @@ The national NFS-e system (Sefin Nacional and ADN): builds the DPS and the event
 ## Key Rules
 
 1. Every XML builder has a test that validates against the vendored XSD.
-2. Update `schemas/` only from the official gov.br zip, and record the URL and date in `schemas/SOURCE.md`.
+2. `src/rules/ibsCbsDefaults.ts` maps an LC 116 item to its IBS/CBS defaults. It reads `src/rules/anexo8.json`, made from the Anexo VIII v1.02.00. To regenerate: `python scripts/anexo8.py <anexo8.xlsx>` (needs `openpyxl`, not run in CI).
+3. `NT009_FROM` in `src/dps/layout.ts` sets when production switches from the NT 004 layout to NT 009.
+4. Update `schemas/` only from the official gov.br zip, and record the URL and date in `schemas/SOURCE.md`.

@@ -78,7 +78,7 @@ const domesticIbsCbs: DpsInput['ibsCbs'] = {
 };
 
 // Issue #84: the group the app now writes, from the Anexo VIII defaults of the service and indFinal by document.
-function defaultsGroup(finalConsumer: '0' | '1'): DpsInput['ibsCbs'] {
+function defaultsGroup(finalConsumer: '0' | '1'): NonNullable<DpsInput['ibsCbs']> {
   return {
     purpose: '0',
     finalConsumer,
