@@ -3,6 +3,7 @@ import { api, type Emitter, type InvoiceDetail } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { RevokeLinkDialog } from '../components/RevokeLinkDialog';
 import { SendInvoiceEmail } from '../components/SendInvoiceEmail';
 import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
@@ -51,6 +52,9 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
   );
   const [cancelling, setCancelling] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  // A new key remounts the share menu, which drops the link it cached.
+  const [shareKey, setShareKey] = useState(0);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload, invoice.loading);
@@ -183,6 +187,8 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
         )}
         {emitterName && (data.status === 'issued' || data.status === 'cancelled') && (
           <ShareInvoice
+            key={shareKey}
+            onLinkCreated={invoice.reload}
             accountId={accountId}
             invoiceId={invoiceId}
             number={data.number}
@@ -191,6 +197,13 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
           />
         )}
       </div>
+      {data.hasLink && (
+        <div>
+          <Button variant="secondary" size="sm" onClick={() => setRevoking(true)}>
+            Revogar link
+          </Button>
+        </div>
+      )}
       {data.events.length > 0 && (
         <Card>
           <h2 className={SECTION_TITLE_CLASSES}>Eventos</h2>
@@ -204,6 +217,19 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             ))}
           </ul>
         </Card>
+      )}
+      {revoking && (
+        <RevokeLinkDialog
+          accountId={accountId}
+          invoiceId={invoiceId}
+          onClose={() => setRevoking(false)}
+          onRevoked={() => {
+            setRevoking(false);
+            setShareKey((n) => n + 1);
+            setMessage({ variant: 'info', text: 'Link revogado.' });
+            invoice.reload();
+          }}
+        />
       )}
       {emailing && (
         <SendInvoiceEmail

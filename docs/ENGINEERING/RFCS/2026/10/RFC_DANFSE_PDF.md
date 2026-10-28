@@ -115,10 +115,13 @@ These are design calls by the author of this RFC, open to review:
 | One active link | A partial unique index allows one active token per invoice. Revoke is a soft delete, and a new link gets a new token. | The screens always get the same URL until a member revokes it. |
 | Analytics on `/n/` | The link page sends only the `danfse_link_viewed` event: no pageview, no session recording, no heatmaps or dead clicks. A PostHog `before_send` rewrites `/n/<token>` to `/n/:token` on every page, including in `$set` and `$set_once`. Sentry scrubs the token from the request URL and messages. `n.html` sets `no-referrer`. | The token is a credential. The cost: no pageviews for `/n/`; the custom event counts the views. |
 | Public API | `GET /api/public/n/:token` and `/pdf`, 60 per minute per IP, `noindex`, one uniform 404 for every bad or revoked token. The PDF route shares one R2-or-draw function (`danfse/danfsePdf.ts`) with the member download. | A guess must not tell a real token from a wrong one. |
-| Share panel | "Compartilhar" opens a disclosure, not a menu. Opening it fetches the link. The native share item shows only when `navigator.share` exists and runs synchronously from the click. `NotAllowedError` and `AbortError` are silent. A fetch error shows in the panel with a retry. | iOS refuses native share after an awaited fetch. The cost: one extra tap on phones. |
+| Share panel | "Compartilhar" opens a disclosure, not a menu. The panel is a portal with fixed position: it flips up when there is no room below and aligns right near the right edge, so a list row cannot clip it. WhatsApp and "E-mail pelo seu app" are buttons that build the URL in the click, because a session recording captures attributes, and the panel and the manual-copy field carry `ph-no-capture`. Opening it fetches the link. The native share item shows only when `navigator.share` exists and runs synchronously from the click. `NotAllowedError` and `AbortError` are silent. A fetch error shows in the panel with a retry. | iOS refuses native share after an awaited fetch. The cost: one extra tap on phones. |
 | Test invoices (produção restrita) | No automatic e-mail. A manual send is allowed, with "[TESTE]" in the subject and a line "Nota de teste (produção restrita), sem valor fiscal" in the body. | A test invoice has no fiscal value, and must not reach a real customer unmarked. |
 | E-mail caps | Counted from `mail_outbox` rows of kind `invoice`: 50 per hour per account and 5 per invoice per day. They survive a restart. The address is validated (format, 254 characters) on the manual and the automatic path. | This stops use of the feature to mail a third party in bulk. The cost: one count query per send. |
 | E-mail content | `MailKind` `invoice`. Reply-To is the sender or the account owner. The footer carries `utm_source=danfse_email`. | The customer's customer can answer the issuer. |
+| E-mail sender | `MAIL_FROM_INVOICE` (optional) is the From of `MailKind` `invoice`; without it, `MAIL_FROM` is used. | A separate sender keeps the reputation of the invoice e-mail apart from the login codes. |
+| Unsubscribe | Every invoice e-mail has an unsubscribe link and the headers `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. The URL is `/nota/descadastrar?a=<address>&t=<signature>`, signed with an HMAC of the address under a key derived from the auth secret. GET shows a confirmation page, and POST records the address in `mail_suppressions` (migration 0026). The automatic send skips a suppressed address. A manual send to one answers like a success, queues nothing, and audits "manual suppressed". | Mail providers expect a one-click unsubscribe. A 409 for a suppressed address would let any member test whether an address unsubscribed. The suppressed send is not counted in the caps, because the caps count outbox rows. |
+| Audit | A manual send writes an `invoice.email` audit row with the domain of the address only. | Who sent which invoice, with no personal data in the audit log. |
 | Automatic e-mail control | Only the account owner can change the setting. It sends once per invoice: the claim on `customer_emailed_at` happens in the outbox transaction. A manual send stores a neutral "E-mail enviado em". | Two issues of one invoice must not mail twice. |
 
 ---
@@ -209,7 +212,9 @@ The on-demand path keeps the customer safe when a job is in the DLQ: the downloa
 - `POST /api/accounts/:accountId/invoices/:invoiceId/email` sends the NotaFlow e-mail to an address in the body.
 - `GET /n/<token>` serves `n.html`, the link page: the emitter name, the invoice number, the issue date, the net amount, a "Baixar PDF" button, and the NotaFlow call to action with a QR code. The call to action points to the landing with `utm_source=danfse_link&utm_medium=referral`. The page has `noindex` and `no-referrer`. It reads `GET /api/public/n/:token`.
 - `GET /api/public/n/:token/pdf` serves the PDF, with the same R2-or-draw rule as the download (one shared function).
-- A revoked, unknown, or malformed token answers the same 404. Public responses are `private, no-store`.
+- A revoked or unknown token answers the same 404. A token longer than 100 characters never reaches the lookup: the router refuses it. The length and the character set are public, so this leaks nothing. Every answer of `/n/<token>`, `/api/public/n/<token>`, and its `/pdf`, also a 404 or a 429, carries `cache-control: private, no-store`.
+- The server never logs the token: the request log, Fastify's own "not found" line, and Sentry events replace `/n/<token>` with `/n/:token`. Audit rows hold no URL.
+- A member revokes the link with "Revogar link" on the invoice detail page (the detail API reports `hasLink`). A confirm step warns that people who got the link lose access to the PDF. After a revoke, the share panel drops its cached URL, and the next share creates a new link.
 - The page sends the PostHog event `danfse_link_viewed` per view, and the server counts `danfse_link_views_total`. See the analytics rules in [Decisions](#decisions).
 - Rate limit per IP on `/api/public/n/*`: 60 per minute.
 
@@ -238,7 +243,7 @@ The screen asks the server for the state every 3 s, and only while a visible row
 | E-mail pelo seu app | `mailto:` with the subject and the body filled in |
 | Enviar por e-mail (NotaFlow) | A small dialog with the address (prefilled with the customer e-mail from the XML when it exists). The server sends the e-mail through the existing mail outbox: the link, the invoice summary, and the NotaFlow footer with the UTM. Reply-To is the sender or the account owner. |
 
-Each share sends a PostHog event `danfse_share` with the channel. The NotaFlow e-mail uses the new `MailKind` `invoice` and the caps in [Decisions](#decisions). The panel opens as a disclosure, not a menu (see [Decisions](#decisions)).
+Each share sends a PostHog event `danfse_shared` with the channel. The NotaFlow e-mail uses the new `MailKind` `invoice` and the caps in [Decisions](#decisions). The panel opens as a disclosure, not a menu (see [Decisions](#decisions)).
 
 **Automatic e-mail after issue.** Each emitter has a setting "Enviar a nota por e-mail ao tomador após emitir". When it is on, the server sends the same NotaFlow e-mail right after an issue succeeds. Rules (author's calls):
 
@@ -263,6 +268,8 @@ New columns on `invoices`:
 Migration 0022 adds the columns and sets `pdf_status = 'pending'` on every invoice that has XML. This is the backfill (see [Backfill](#backfill)).
 
 Plan C adds `invoices.customer_emailed_at` (timestamp, null; the once-only claim for the customer e-mail), `emitters.auto_email_customer` (boolean; migration 0024 sets it off for existing emitters, and the default is on for new ones), and `mail_outbox.account_id` and `mail_outbox.invoice_id` with an index on both and `created_at` (migration 0025; the e-mail caps read them).
+
+New table `mail_suppressions` (migration 0026): `address` (lower case), `kind` (`invoice`), and the usual control and removal columns, with one active row per address and kind.
 
 New table `invoice_links` (migration 0023):
 
@@ -292,6 +299,7 @@ New environment variables. Before adding a name, grep the root `.env` for collis
 
 | Name | Used by |
 | --- | --- |
+| `MAIL_FROM_INVOICE` (optional) | app |
 | `REDIS_URL` (`redis://redis:6379`) | app, worker |
 | `R2_DANFSE_ACCESS_KEY_ID`, `R2_DANFSE_SECRET_ACCESS_KEY`, `R2_DANFSE_BUCKET` | app, worker (with the existing `R2_ACCOUNT_ID`) |
 
@@ -340,6 +348,7 @@ There is no backfill script. Migration 0022 marks every invoice that has XML as 
 
 ## Roadmap
 
+- A Resend webhook for bounces and complaints, to add those addresses to `mail_suppressions` by themselves. Today only the customer's own unsubscribe adds one. This is a known follow-up.
 - The DANFSe layout for the IBS/CBS "novos fatos geradores", when the specific NT comes out.
 - Issue a substitution from the app. The "SUBSTITUÍDA" watermark ships now for substitutions that sync imports.
 

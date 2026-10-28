@@ -131,6 +131,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   customerEmail: string | null;
   customerEmailedAt: string | null;
   autoEmailCustomer: boolean;
+  // A public link exists, so it can be revoked.
+  hasLink: boolean;
   events: {
     code: string;
     reasonCode: string | null;

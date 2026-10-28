@@ -36,6 +36,7 @@ const issuedInvoice = {
   customerEmail: null,
   customerEmailedAt: null,
   autoEmailCustomer: false,
+  hasLink: false,
 };
 
 test('an issued invoice links to issue similar', async () => {
@@ -226,4 +227,67 @@ test('a synced invoice or a test invoice never shows the missing-address notice'
     expect(screen.queryByText('Tomador sem e-mail na nota')).toBeNull();
     view.unmount();
   }
+});
+
+const LINK_PATH = '/api/accounts/acc/invoices/inv1/link';
+
+test('"Revogar link" shows only when a link exists, asks to confirm, and calls DELETE', async () => {
+  let hasLink = true;
+  const calls = stubApi({
+    [LINK_PATH]: (_url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') hasLink = false;
+      return { url: 'https://notaflow.vapulab.com/n/tok' };
+    },
+    '/api/accounts/acc/invoices/inv1': () => ({ ...issuedInvoice, hasLink }),
+    '/api/accounts/acc/emitters': [{ id: 'em1', companyName: 'Vapulab Ltda' }],
+  });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Revogar link' }));
+  const dialog = screen.getByRole('dialog');
+  expect(
+    within(dialog).getByText(
+      'Quem já recebeu o link perde o acesso ao PDF. Um novo link pode ser criado depois.',
+    ),
+  ).toBeTruthy();
+  expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false);
+  await user.click(within(dialog).getByRole('button', { name: 'Revogar' }));
+  await waitFor(() => expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(true));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Revogar link' })).toBeNull());
+});
+
+test('no "Revogar link" without a link', async () => {
+  stubApi({ '/api/accounts/acc/invoices/inv1': issuedInvoice });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  await screen.findByRole('link', { name: 'Emitir parecida' });
+  expect(screen.queryByRole('button', { name: 'Revogar link' })).toBeNull();
+});
+
+test('after a revoke the share panel asks for a new link instead of reusing the old one', async () => {
+  let n = 0;
+  let hasLink = false;
+  const calls = stubApi({
+    [LINK_PATH]: (_url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        hasLink = false;
+        return {};
+      }
+      hasLink = true;
+      n += 1;
+      return { url: `https://notaflow.vapulab.com/n/tok${n}` };
+    },
+    '/api/accounts/acc/invoices/inv1': () => ({ ...issuedInvoice, hasLink }),
+    '/api/accounts/acc/emitters': [{ id: 'em1', companyName: 'Vapulab Ltda' }],
+  });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const user = userEvent.setup();
+  vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await user.click(await screen.findByRole('button', { name: 'Copiar link' }));
+  await user.click(await screen.findByRole('button', { name: 'Revogar link' }));
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Revogar' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Revogar link' })).toBeNull());
+  await user.click(screen.getByRole('button', { name: 'Copiar link' }));
+  await waitFor(() =>
+    expect(calls.filter((c) => c.init?.method === 'POST' && c.url === LINK_PATH)).toHaveLength(2),
+  );
 });

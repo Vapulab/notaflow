@@ -25,8 +25,10 @@ export function ShareInvoice(props: {
   emitterName: string;
   // Opens the NotaFlow e-mail dialog; the menu item exists only when this is set.
   onNotaflowEmail?: () => void;
+  // The first link of this invoice was just created.
+  onLinkCreated?: () => void;
 }) {
-  const { accountId, invoiceId, number, emitterName, onNotaflowEmail } = props;
+  const { accountId, invoiceId, number, emitterName, onNotaflowEmail, onLinkCreated } = props;
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -46,6 +48,7 @@ export function ShareInvoice(props: {
       pending.current = api.post<{ url: string }>(path, {}).then(
         (answer) => {
           setUrl(answer.url);
+          onLinkCreated?.();
           return answer.url;
         },
         (failure: unknown) => {
