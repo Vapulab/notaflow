@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as analytics from '../analytics/analytics';
 import { stubApi } from '../test/stubApi';
-import { ShareInvoice } from './ShareInvoice';
+import { mailtoNavigation, ShareInvoice } from './ShareInvoice';
 
 vi.mock('../analytics/analytics');
 
@@ -106,8 +106,8 @@ test('desktop with navigator.share still lists WhatsApp and the e-mail app', asy
   Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true });
   renderShare();
   await userEvent.setup().click(screen.getByRole('button', { name: 'Compartilhar' }));
-  expect(await screen.findByRole('link', { name: 'WhatsApp' })).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'E-mail pelo seu app' })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'WhatsApp' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'E-mail pelo seu app' })).toBeTruthy();
 });
 
 test('a failed fetch shows the error with a retry, and Escape closes the panel', async () => {
@@ -121,9 +121,9 @@ test('a failed fetch shows the error with a retry, and Escape closes the panel',
   expect(screen.queryByText('Gerando o link…')).toBeNull();
   ok = true;
   await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
-  expect(await screen.findByRole('link', { name: 'WhatsApp' })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'WhatsApp' })).toBeTruthy();
   await user.keyboard('{Escape}');
-  expect(screen.queryByRole('link', { name: 'WhatsApp' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
   expect(document.activeElement).toBe(trigger);
 });
 
@@ -136,5 +136,90 @@ test('the NotaFlow e-mail item shows only with a handler and calls it', async ()
   await user.click(await screen.findByRole('button', { name: 'Enviar por e-mail (NotaFlow)' }));
   expect(onNotaflowEmail).toHaveBeenCalledTimes(1);
   expect(analytics.track).not.toHaveBeenCalled();
-  expect(screen.queryByRole('link', { name: 'WhatsApp' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
+});
+
+async function openPanel() {
+  stubApi({ [LINK_PATH]: { url: LINK } });
+  const view = renderShare();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
+  await screen.findByRole('button', { name: 'WhatsApp' });
+  return { user, view };
+}
+
+test('WhatsApp opens wa.me from the click, with noopener', async () => {
+  const { user } = await openPanel();
+  const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  await user.click(screen.getByRole('button', { name: 'WhatsApp' }));
+  expect(open).toHaveBeenCalledWith(
+    `https://wa.me/?text=${encodeURIComponent(TEXT)}`,
+    '_blank',
+    'noopener,noreferrer',
+  );
+  expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'whatsapp' });
+});
+
+test('the e-mail app item builds the mailto in the click', async () => {
+  const { user } = await openPanel();
+  const open = vi.spyOn(mailtoNavigation, 'open').mockImplementation(() => {});
+  await user.click(screen.getByRole('button', { name: 'E-mail pelo seu app' }));
+  expect(open).toHaveBeenCalledWith(
+    `mailto:?subject=${encodeURIComponent('NFS-e nº 7 de Vapulab Ltda')}&body=${encodeURIComponent(TEXT)}`,
+  );
+});
+
+test('no anchor carries the link, and every element holding it is out of session recordings', async () => {
+  const { user } = await openPanel();
+  expect(document.querySelectorAll('a')).toHaveLength(0);
+  vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+  await user.click(screen.getByRole('button', { name: 'Copiar link' }));
+  await screen.findByDisplayValue(LINK);
+  for (const element of document.body.querySelectorAll('*')) {
+    const holds = [...element.attributes].some((a) => a.value.includes('tok123'));
+    if (holds) expect(element.closest('.ph-no-capture'), element.outerHTML).not.toBeNull();
+  }
+  expect(screen.getByLabelText('Link da nota').closest('.ph-no-capture')).not.toBeNull();
+});
+
+test('the panel is a portal outside the row, so a clipping parent cannot cut it', async () => {
+  const { view } = await openPanel();
+  const item = screen.getByRole('button', { name: 'WhatsApp' });
+  expect(view.container.contains(item)).toBe(false);
+  expect(item.closest('ul')?.style.position).toBe('fixed');
+});
+
+test('Escape closes the panel inside a parent that stops keydown propagation', async () => {
+  stubApi({ [LINK_PATH]: { url: LINK } });
+  render(
+    <div onKeyDown={(event) => event.stopPropagation()}>
+      <ShareInvoice accountId="acc" invoiceId="inv1" number="7" emitterName="Vapulab Ltda" />
+    </div>,
+  );
+  const user = userEvent.setup();
+  const trigger = screen.getByRole('button', { name: 'Compartilhar' });
+  await user.click(trigger);
+  await screen.findByRole('button', { name: 'WhatsApp' });
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+});
+
+test('Escape from inside the panel closes it too', async () => {
+  const { user } = await openPanel();
+  screen.getByRole('button', { name: 'WhatsApp' }).focus();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
+});
+
+test('Tab from the trigger enters the portal panel, and Tab past the last item returns to the trigger', async () => {
+  const { user } = await openPanel();
+  const trigger = screen.getByRole('button', { name: 'Compartilhar' });
+  trigger.focus();
+  await user.tab();
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'WhatsApp' }));
+  await user.tab();
+  await user.tab();
+  expect(document.activeElement).toBe(trigger);
+  expect(screen.queryByRole('button', { name: 'WhatsApp' })).toBeNull();
 });

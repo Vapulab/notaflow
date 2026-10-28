@@ -436,8 +436,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           {send.busy && <Spinner label="Emitindo" />}
           <CustomerEmailNote
             accountId={accountId}
-            emitterId={emitter.id}
-            enabled={emitter.autoEmailCustomer}
+            emitter={emitter}
           />
         </div>
       </>

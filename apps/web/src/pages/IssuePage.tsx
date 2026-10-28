@@ -259,8 +259,7 @@ function IssueFlow(props: {
           {send.busy && <Spinner label="Emitindo" />}
           <CustomerEmailNote
             accountId={accountId}
-            emitterId={emitter.id}
-            enabled={emitter.autoEmailCustomer}
+            emitter={emitter}
           />
         </div>
       </Layout>
