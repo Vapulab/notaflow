@@ -368,3 +368,29 @@ describe('fix round 4', () => {
     }
   });
 });
+
+describe('secret material', () => {
+  test('a key that contains a secret word is redacted, at any depth', () => {
+    const value = {
+      pfxBase64: 'MIIK',
+      privateKeyPem: 'k',
+      material: { passwordCiphertext: 'c', wrappedKey: 'w', certificateId: 'id-1' },
+    };
+    expect(redactValue(value)).toEqual({
+      pfxBase64: REDACTED,
+      privateKeyPem: REDACTED,
+      material: { passwordCiphertext: REDACTED, wrappedKey: REDACTED, certificateId: 'id-1' },
+    });
+  });
+
+  test('a PEM private key in free text is redacted, also without its END line', () => {
+    // Synthetic, not a key.
+    const pem = '-----BEGIN RSA PRIVATE KEY-----\nMIIEow+/=\nAbC\n-----END RSA PRIVATE KEY-----'; // gitleaks:allow
+    expect(redactText(`key: ${pem} done`)).toBe(
+      `key: -----BEGIN RSA PRIVATE KEY-----${REDACTED} done`,
+    );
+    expect(redactText('-----BEGIN PRIVATE KEY-----\nMIIEow')).toBe(
+      `-----BEGIN PRIVATE KEY-----${REDACTED}`,
+    );
+  });
+});

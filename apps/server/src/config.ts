@@ -22,8 +22,12 @@ export interface Config {
   posthog: { token: string; host: string } | null;
   // Only behind the Cloudflare tunnel: then cf-connecting-ip is the real client IP.
   trustCloudflareIp: boolean;
+  // The tunnel container's name; set, only that peer may send cf-connecting-ip, not every private address.
+  trustedProxyHost: string | null;
   // The Prometheus listener, inside the container only; null turns it off.
   metricsPort: number | null;
+  // The Prometheus container's name; set, /metrics answers only that peer.
+  metricsAllowHost: string | null;
   // The first day the lifecycle reminders may go out; null keeps them off.
   lifecycleStartAt: Date | null;
   // The release is the tag of the running image, so an error points at its commit.
@@ -148,6 +152,19 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (trustCloudflareIp !== 'true' && trustCloudflareIp !== 'false') {
     problems.push('TRUST_CLOUDFLARE_IP must be true or false');
   }
+  const trustedProxyHost = env.TRUSTED_PROXY_HOST || null;
+  const metricsAllowHost = env.METRICS_ALLOW_HOST || null;
+  for (const [name, value] of [
+    ['TRUSTED_PROXY_HOST', trustedProxyHost],
+    ['METRICS_ALLOW_HOST', metricsAllowHost],
+  ] as const) {
+    if (value && !/^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$/.test(value)) {
+      problems.push(`${name} must be a host name, such as a container name`);
+    }
+  }
+  if (trustedProxyHost && trustCloudflareIp !== 'true') {
+    problems.push('TRUSTED_PROXY_HOST needs TRUST_CLOUDFLARE_IP=true');
+  }
 
   for (const name of ['SENTRY_DSN_SERVER', 'SENTRY_DSN_WEB']) {
     const dsn = env[name];
@@ -236,7 +253,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
         : { siteKey: turnstile[0], secretKey: turnstile[1] },
     signup: { open: signupOpen === 'true', limitPerIpPerDay },
     trustCloudflareIp: trustCloudflareIp === 'true',
+    trustedProxyHost,
     metricsPort: metricsPort === 0 ? null : metricsPort,
+    metricsAllowHost,
     lifecycleStartAt,
     sentry: {
       serverDsn: env.SENTRY_DSN_SERVER || null,

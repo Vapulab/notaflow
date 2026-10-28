@@ -187,6 +187,7 @@ test('a removed certificate is not the active one', () => {
       pfxCiphertext: Buffer.from('x'),
       passwordCiphertext: Buffer.from('x'),
       wrappedKey: Buffer.from('x'),
+      sealVersion: 1,
     },
     {
       cnpj: '12345678000195',

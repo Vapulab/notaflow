@@ -80,7 +80,7 @@ describe('EmitterRepository and CertificateRepository isolation', () => {
     const b = seedTenant(db, { accountName: 'B', email: 'b@example.com' });
     const emitter = new EmitterRepository(db).create(a, newEmitter);
     const certs = new CertificateRepository(db);
-    const sealed = sealCertificate(Buffer.from('pfx'), 'senha', Buffer.alloc(32, 1));
+    const sealed = sealCertificate(Buffer.from('pfx'), 'senha', Buffer.alloc(32, 1), emitter.id);
     const first = certs.addActive(a, emitter.id, sealed, { ...certMeta, uploadedBy: a.userId });
     const second = certs.addActive(a, emitter.id, sealed, { ...certMeta, uploadedBy: a.userId });
     expect(certs.activeFor(a, emitter.id)?.id).toBe(second);

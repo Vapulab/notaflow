@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from 'vitest';
 import { Metrics } from './metrics';
+import { trustedPeer } from '../trustedPeer';
 import { startMetricsServer } from './server';
 
 const sources = {
@@ -31,4 +32,21 @@ test('the metrics listener answers /metrics in the Prometheus format, and nothin
   expect(await metrics.text()).toContain('mail_outbox_messages');
   expect((await fetch(`http://127.0.0.1:${server.port}/`)).status).toBe(404);
   expect((await fetch(`http://127.0.0.1:${server.port}/api/me`)).status).toBe(404);
+});
+
+test('with an allowed peer, /metrics answers it and 404s every other address', async () => {
+  const listen = async (address: string) => {
+    const allow = trustedPeer('prometheus', { resolve: () => Promise.resolve([address]) });
+    const server = await startMetricsServer(new Metrics(sources), {
+      host: '127.0.0.1',
+      port: 0,
+      allow,
+    });
+    const status = (await fetch(`http://127.0.0.1:${server.port}/metrics`)).status;
+    allow.close();
+    await server.close();
+    return status;
+  };
+  expect(await listen('127.0.0.1')).toBe(200);
+  expect(await listen('172.18.0.9')).toBe(404);
 });

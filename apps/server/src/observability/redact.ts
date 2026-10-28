@@ -14,8 +14,9 @@ const SECRET_PATHS: [RegExp, string][] = [
 export const QUERY_ALLOW = new Set(['limit', 'offset', 'status', 'environment', 'archived']);
 
 // Object keys whose value never reaches a log line, at any depth.
+// The exact names, then the parts that mark a secret anywhere in a name (pfxBase64, passwordCiphertext).
 const SECRET_KEY =
-  /^(password|senha|passphrase|token|secret|pfx|p12|certificate|masterkey|master_key|apikey|api_key|authorization|cookie|set-cookie|x-hub-signature-256|otp)$/i;
+  /^(token|certificate|authorization|cookie|set-cookie|x-hub-signature-256|otp)$|password|passwd|senha|passphrase|secret|pfx|p12|privatekey|private_key|masterkey|master_key|apikey|api_key|ciphertext|wrappedkey|wrapped_key/i;
 
 // pino's own redaction, for the paths it can reach before the function rules run.
 export const REDACT_PATHS = [
@@ -41,6 +42,9 @@ const WORD = /[^\s"'<>]+/g;
 const SECRET_PAIR =
   /\b(token|secret|password|senha|key|signature|sig|apikey|api_key|access_token|refresh_token)=[^&\s"'<>]+/gi;
 const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g;
+// A private key in free text, also one the truncation cut before its END line.
+const PEM_KEY =
+  /-----BEGIN ([A-Z ]*)PRIVATE KEY-----[A-Za-z0-9+/=\s]*(?:-----END [A-Z ]*PRIVATE KEY-----)?/g;
 // Any <token>@<token> run; it starts only at a token boundary, so each run is read once.
 const EMAIL = /(?<![^\s@<>(),;:"'=&?/])[^\s@<>(),;:"'=&?/]+@([^\s@<>(),;:"'=&?/]+)/g;
 const HOST = /^(?:[A-Za-z0-9-]{1,63}\.){0,8}[A-Za-z0-9-]{1,63}$/;
@@ -148,6 +152,7 @@ export function redactText(text: string, options: RedactOptions = {}): string {
     redactPaths(dropQueries(truncate(text, options.max ?? MAX_TEXT)))
       .replace(SECRET_PAIR, `$1=${REDACTED}`)
       .replace(BEARER, `$1 ${REDACTED}`)
+      .replace(PEM_KEY, `-----BEGIN $1PRIVATE KEY-----${REDACTED}`)
       .replace(JSON_SECRET, `"$1":"${REDACTED}"`),
     options.personal ?? 'log',
   );
