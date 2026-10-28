@@ -2,7 +2,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 export type BadgeVariant = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
 
 export function buttonClasses(
-  p: { variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg' } = {},
+  p: { variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg' | 'icon' } = {},
 ): string {
   const base =
     'inline-flex items-center justify-center font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50';
@@ -11,9 +11,12 @@ export function buttonClasses(
     secondary: 'bg-surface text-fg border border-border hover:bg-muted/10',
     danger: 'bg-danger text-danger-fg hover:bg-danger/90',
   }[p.variant ?? 'primary'];
-  const size = { sm: 'h-8 px-3 text-sm', md: 'h-10 px-4 text-sm', lg: 'h-12 px-6 text-base' }[
-    p.size ?? 'md'
-  ];
+  const size = {
+    sm: 'h-8 px-3 text-sm',
+    md: 'h-10 px-4 text-sm',
+    lg: 'h-12 px-6 text-base',
+    icon: 'size-11 shrink-0 sm:size-9',
+  }[p.size ?? 'md'];
   return `${base} ${variant} ${size}`;
 }
 

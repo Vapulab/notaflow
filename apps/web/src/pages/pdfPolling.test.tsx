@@ -51,7 +51,7 @@ test('the list polls every 3 s only while a visible row is pending, and stops af
   });
   renderWithMe(<InvoicesPage accountId="acc" />, meFor('user'));
   await settle();
-  expect(screen.getByRole('button', { name: /gerando pdf…/i })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /gerando pdf/i })).toBeTruthy();
   expect(listCalls(calls)).toBe(1);
   await tick(3000);
   expect(listCalls(calls)).toBe(2);
@@ -60,7 +60,7 @@ test('the list polls every 3 s only while a visible row is pending, and stops af
   status = 'ready';
   await tick(3000);
   expect(listCalls(calls)).toBe(4);
-  expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
   await tick(10_000);
   expect(listCalls(calls)).toBe(4);
 });
@@ -105,7 +105,7 @@ test('the detail polls its invoice while the PDF is pending and keeps the downlo
   status = 'ready';
   await tick(3000);
   expect(detailCalls(calls)).toBe(3);
-  expect(screen.getByRole('button', { name: 'Baixar PDF (DANFS-e)' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
   await tick(10_000);
   expect(detailCalls(calls)).toBe(3);
 });
@@ -135,7 +135,7 @@ test('a slow fetch is never overlapped, and its answer still updates the row', a
   await tick(3000);
   expect(started).toBe(2);
   await tick(4000);
-  expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
   await tick(10_000);
   expect(started).toBe(2);
 });

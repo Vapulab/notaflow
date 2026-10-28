@@ -18,7 +18,22 @@ test('pending shows a spinner and "Gerando PDF…", and the button still downloa
 });
 
 test.each(['ready', 'failed', null] as const)('%s shows the label', (status) => {
-  render(<PdfButton status={status} label="Baixar PDF (DANFS-e)" onDownload={() => {}} />);
-  expect(screen.getByRole('button', { name: 'Baixar PDF (DANFS-e)' })).toBeTruthy();
+  render(<PdfButton status={status} label="Baixar PDF" onDownload={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
   expect(screen.queryByText(/gerando/i)).toBeNull();
+});
+
+test('the icon variant is a named button with a spinner while pending, still clickable', async () => {
+  const onDownload = vi.fn();
+  const { rerender } = render(
+    <PdfButton variant="icon" status="ready" label="Baixar PDF" onDownload={onDownload} />,
+  );
+  expect(screen.getByRole('button', { name: 'Baixar PDF' }).textContent).toBe('');
+  rerender(
+    <PdfButton variant="icon" status="pending" label="Baixar PDF" onDownload={onDownload} />,
+  );
+  const button = screen.getByRole('button', { name: 'Gerando PDF' });
+  expect(button.querySelector('.animate-spin')).toBeTruthy();
+  await userEvent.setup().click(button);
+  expect(onDownload).toHaveBeenCalledTimes(1);
 });

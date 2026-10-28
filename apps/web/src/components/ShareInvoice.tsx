@@ -2,7 +2,7 @@ import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState
 import { createPortal } from 'react-dom';
 import { track } from '../analytics/analytics';
 import { api } from '../api';
-import { Button, Input } from '../ui';
+import { Button, CheckIcon, IconButton, Input, LinkIcon, ShareIcon } from '../ui';
 import { errorText } from './Layout';
 import { placePanel } from './sharePlacement';
 
@@ -27,14 +27,18 @@ export function ShareInvoice(props: {
   onNotaflowEmail?: () => void;
   // The first link of this invoice was just created.
   onLinkCreated?: () => void;
+  // "icon" is the list look: two icon buttons; "text" adds the words.
+  variant?: 'text' | 'icon';
 }) {
   const { accountId, invoiceId, number, emitterName, onNotaflowEmail, onLinkCreated } = props;
+  const icon = props.variant === 'icon';
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pending = useRef<Promise<string> | null>(null);
+  const copiedTimer = useRef<number | undefined>(undefined);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLUListElement>(null);
@@ -79,6 +83,8 @@ export function ShareInvoice(props: {
       try {
         await navigator.clipboard.writeText(link);
         setCopied(true);
+        window.clearTimeout(copiedTimer.current);
+        copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
         track('danfse_shared', { channel: 'copy' satisfies Channel });
       } catch {
         setManual(true);
@@ -160,6 +166,8 @@ export function ShareInvoice(props: {
     }
   }
 
+  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+
   useEffect(() => {
     if (!menuOpen) return;
     const onPointer = (event: Event) => {
@@ -189,22 +197,49 @@ export function ShareInvoice(props: {
 
   // The link is a bearer credential: session recordings must not capture it, in text or in an attribute.
   return (
-    <div ref={root} className="ph-no-capture flex flex-col gap-2" onKeyDown={onKeyDown}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={copy}>
-          Copiar link
-        </Button>
-        <Button
-          ref={trigger}
-          size="sm"
-          variant="secondary"
-          aria-expanded={menuOpen}
-          aria-controls={panelId}
-          onClick={toggleMenu}
-        >
-          Compartilhar
-        </Button>
-      </div>
+    <div ref={root} className="ph-no-capture contents" onKeyDown={onKeyDown}>
+      {icon ? (
+        <>
+          <IconButton label={copied ? 'Link copiado' : 'Copiar link'} onClick={copy}>
+            {copied ? <CheckIcon className="size-5 text-success" /> : <LinkIcon />}
+          </IconButton>
+          <IconButton
+            ref={trigger}
+            label="Compartilhar"
+            aria-expanded={menuOpen}
+            aria-controls={panelId}
+            onClick={toggleMenu}
+          >
+            <ShareIcon />
+          </IconButton>
+        </>
+      ) : (
+        <>
+          <Button size="sm" variant="secondary" onClick={copy}>
+            <span className="inline-flex items-center gap-2">
+              {copied ? (
+                <CheckIcon className="size-4 text-success" />
+              ) : (
+                <LinkIcon className="size-4" />
+              )}
+              Copiar link
+            </span>
+          </Button>
+          <Button
+            ref={trigger}
+            size="sm"
+            variant="secondary"
+            aria-expanded={menuOpen}
+            aria-controls={panelId}
+            onClick={toggleMenu}
+          >
+            <span className="inline-flex items-center gap-2">
+              <ShareIcon className="size-4" />
+              Compartilhar
+            </span>
+          </Button>
+        </>
+      )}
       {menuOpen &&
         createPortal(
           <ul
@@ -288,11 +323,12 @@ export function ShareInvoice(props: {
           </ul>,
           document.body,
         )}
-      <div aria-live="polite" className="text-sm text-muted">
+      <div aria-live="polite" className={copied && !icon ? 'w-full text-sm text-muted' : 'sr-only'}>
         {copied && 'Link copiado.'}
       </div>
       {manual && url && (
         <Input
+          className="w-full"
           readOnly
           aria-label="Link da nota"
           value={url}
@@ -300,7 +336,7 @@ export function ShareInvoice(props: {
         />
       )}
       {error && (url || !menuOpen) && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="w-full text-sm text-danger">
           {error}
         </p>
       )}

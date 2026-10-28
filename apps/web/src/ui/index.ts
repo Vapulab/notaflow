@@ -18,3 +18,14 @@ export { Modal } from './Modal';
 export { Avatar, initialsOf, ThemeToggle } from './ThemeAvatar';
 export { Combobox, type ComboboxOption } from './Combobox';
 export { Logo, LogoMark } from './Logo';
+export { IconButton } from './IconButton';
+export {
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  LinkIcon,
+  ShareAndroidIcon,
+  ShareIcon,
+  ShareIosIcon,
+} from './icons';
+export { isApplePlatform } from './platform';

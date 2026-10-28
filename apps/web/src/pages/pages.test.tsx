@@ -66,7 +66,7 @@ test('each issued or cancelled invoice has Emitir parecida and PDF in the list',
   render(<InvoicesPage accountId="acc" />);
   const link = await screen.findByRole('link', { name: 'Emitir parecida' });
   expect(link.getAttribute('href')).toBe('/app/acc/notas/inv1/emitir');
-  expect(screen.getByRole('button', { name: 'PDF' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
 });
 
 test('a click on the row opens the invoice; the list has no number or environment column', async () => {
@@ -95,7 +95,7 @@ test('the row opens with Enter, and its buttons do not open it', async () => {
   });
   render(<InvoicesPage accountId="acc" />);
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: 'PDF' }));
+  await user.click(await screen.findByRole('button', { name: 'Baixar PDF' }));
   expect(window.location.pathname + window.location.search).toBe('/');
   const row = screen.getByText('Foreign Customer Inc').closest('tr') as HTMLElement;
   row.focus();
@@ -129,4 +129,58 @@ test('the invoice list links to Nova nota', async () => {
   render(<InvoicesPage accountId="acc" />);
   const link = await screen.findByRole('link', { name: 'Nova nota' });
   expect(link.getAttribute('href')).toBe('/app/acc/notas/nova');
+});
+
+function stubPhone(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })),
+  );
+}
+
+const withEmitter = {
+  '/api/accounts/acc/invoices': {
+    items: [{ ...invoice, status: 'issued', pdfStatus: 'ready', environment: 'producao_restrita' }],
+    total: 1,
+  },
+  '/api/accounts/acc/emitters': [{ id: 'em1', companyName: 'Vapulab Ltda' }],
+};
+
+test('on a phone the list is cards with number, competence, amount, badges and icon actions', async () => {
+  stubPhone(true);
+  stubApi(withEmitter);
+  render(<InvoicesPage accountId="acc" />);
+  const card = (await screen.findByText('Foreign Customer Inc')).closest('li') as HTMLElement;
+  expect(screen.queryByRole('table')).toBeNull();
+  expect(within(card).getByText('Nº 3 · Competência 08/2026')).toBeTruthy();
+  expect(within(card).getByText(/6\.703,21/)).toBeTruthy();
+  expect(within(card).getByText('Emitida')).toBeTruthy();
+  expect(within(card).getByText('Teste')).toBeTruthy();
+  for (const name of ['Baixar PDF', 'Copiar link', 'Compartilhar', 'Emitir parecida']) {
+    const control = within(card).getByRole(name === 'Emitir parecida' ? 'link' : 'button', {
+      name,
+    });
+    expect(control.textContent).toBe('');
+  }
+  const user = userEvent.setup();
+  await user.click(within(card).getByRole('button', { name: 'Compartilhar' }));
+  expect(window.location.pathname).toBe('/');
+  await user.click(card);
+  expect(window.location.pathname).toBe('/app/acc/notas/inv1');
+});
+
+test('from sm up the list is a table with the same named icon buttons', async () => {
+  stubPhone(false);
+  stubApi(withEmitter);
+  render(<InvoicesPage accountId="acc" />);
+  const row = (await screen.findByText('Foreign Customer Inc')).closest('tr') as HTMLElement;
+  expect(screen.getByRole('table')).toBeTruthy();
+  for (const button of within(row).getAllByRole('button')) {
+    expect(button.getAttribute('aria-label')).toBeTruthy();
+  }
+  expect(within(row).getByRole('link', { name: 'Emitir parecida' })).toBeTruthy();
 });
