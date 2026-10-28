@@ -169,6 +169,7 @@ test('the privacy policy says it keeps the campaign link of the signup, why, and
 test('the privacy policy explains the screenshots of a bug report: what, why, where, who, and how long', () => {
   const policy = read('privacidade.html');
   expect(policy).toContain('Atualizada em 21 de outubro de 2026');
+  expect(policy).toContain('Atualizada em 28 de outubro de 2026');
   const data = section(policy, 'Que dados tratamos, para quê e com que base legal');
   expect(data).toContain('relato de bug');
   expect(data).toContain('dados dos clientes da sua empresa');
@@ -253,4 +254,16 @@ test('llms.txt points to the guide', () => {
   const text = read('public/llms.txt');
   expect(text).toContain('https://notaflow.vapulab.com/guia');
   expect(text).toContain('https://notaflow.vapulab.com/guia/certificado-digital');
+});
+
+test('the privacy policy covers the invoice PDF, the public link, the e-mail to the customer, and the do-not-send list', () => {
+  const policy = read('privacidade.html');
+  const data = section(policy, 'Que dados tratamos, para quê e com que base legal');
+  for (const words of ['DANFSe', 'link público', 'lista de não envio'])
+    expect(data, words).toContain(words);
+  expect(section(policy, 'Com quem compartilhamos')).toContain('revogar o link');
+  const keep = section(policy, 'Por quanto tempo guardamos');
+  for (const words of ['PDFs das notas', 'revogar o link', 'Lista de não envio'])
+    expect(keep, words).toContain(words);
+  expect(section(policy, 'E-mails sobre o uso do NotaFlow')).toContain('tomador');
 });
