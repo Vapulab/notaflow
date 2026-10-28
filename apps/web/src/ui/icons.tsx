@@ -29,13 +29,6 @@ export const DownloadIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const LinkIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
-    <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-  </Icon>
-);
-
 export const CheckIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M20 6 9 17l-5-5" />

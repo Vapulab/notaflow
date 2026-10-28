@@ -131,6 +131,19 @@ test('the invoice list links to Nova nota', async () => {
   expect(link.getAttribute('href')).toBe('/app/acc/notas/nova');
 });
 
+test('the competence filters have visible labels', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices': { items: [], total: 0 },
+    '/api/accounts/acc/emitters': [],
+  });
+  render(<InvoicesPage accountId="acc" />);
+  for (const name of ['Competência de', 'Competência até']) {
+    const input = await screen.findByLabelText(name);
+    expect(input.getAttribute('type')).toBe('date');
+    expect(screen.getByText(name).tagName).toBe('LABEL');
+  }
+});
+
 function stubPhone(matches: boolean) {
   vi.stubGlobal(
     'matchMedia',
@@ -160,12 +173,13 @@ test('on a phone the list is cards with number, competence, amount, badges and i
   expect(within(card).getByText(/6\.703,21/)).toBeTruthy();
   expect(within(card).getByText('Emitida')).toBeTruthy();
   expect(within(card).getByText('Teste')).toBeTruthy();
-  for (const name of ['Baixar PDF', 'Copiar link', 'Compartilhar', 'Emitir parecida']) {
-    const control = within(card).getByRole(name === 'Emitir parecida' ? 'link' : 'button', {
-      name,
-    });
-    expect(control.textContent).toBe('');
+  for (const name of ['Baixar PDF', 'Copiar link', 'Compartilhar']) {
+    expect(within(card).getByRole('button', { name }).textContent).toBe('');
   }
+  // A new invoice is not a one-glyph action: it keeps its words.
+  expect(within(card).getByRole('link', { name: 'Emitir parecida' }).textContent).toBe(
+    'Emitir parecida',
+  );
   const user = userEvent.setup();
   await user.click(within(card).getByRole('button', { name: 'Compartilhar' }));
   expect(window.location.pathname).toBe('/');
@@ -182,5 +196,7 @@ test('from sm up the list is a table with the same named icon buttons', async ()
   for (const button of within(row).getAllByRole('button')) {
     expect(button.getAttribute('aria-label')).toBeTruthy();
   }
-  expect(within(row).getByRole('link', { name: 'Emitir parecida' })).toBeTruthy();
+  expect(within(row).getByRole('link', { name: 'Emitir parecida' }).textContent).toBe(
+    'Emitir parecida',
+  );
 });

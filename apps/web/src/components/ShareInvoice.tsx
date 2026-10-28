@@ -2,7 +2,7 @@ import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState
 import { createPortal } from 'react-dom';
 import { track } from '../analytics/analytics';
 import { api } from '../api';
-import { Button, CheckIcon, IconButton, Input, LinkIcon, ShareIcon } from '../ui';
+import { Button, CheckIcon, CopyIcon, IconButton, Input, ShareIcon } from '../ui';
 import { errorText } from './Layout';
 import { placePanel } from './sharePlacement';
 
@@ -201,7 +201,7 @@ export function ShareInvoice(props: {
       {icon ? (
         <>
           <IconButton label={copied ? 'Link copiado' : 'Copiar link'} onClick={copy}>
-            {copied ? <CheckIcon className="size-5 text-success" /> : <LinkIcon />}
+            {copied ? <CheckIcon className="size-5 text-success" /> : <CopyIcon />}
           </IconButton>
           <IconButton
             ref={trigger}
@@ -220,7 +220,7 @@ export function ShareInvoice(props: {
               {copied ? (
                 <CheckIcon className="size-4 text-success" />
               ) : (
-                <LinkIcon className="size-4" />
+                <CopyIcon className="size-4" />
               )}
               Copiar link
             </span>
