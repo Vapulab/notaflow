@@ -42,6 +42,7 @@ import {
   Card,
   Combobox,
   type ComboboxOption,
+  DateInput,
   Field,
   FORM_CLASSES,
   Input,
@@ -434,10 +435,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             </Button>
           )}
           {send.busy && <Spinner label="Emitindo" />}
-          <CustomerEmailNote
-            accountId={accountId}
-            emitter={emitter}
-          />
+          <CustomerEmailNote accountId={accountId} emitter={emitter} />
         </div>
       </>
     );
@@ -531,8 +529,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
           </p>
         )}
         <Field label="Competência">
-          <Input
-            type="date"
+          <DateInput
             required
             max={brasiliaToday()}
             value={form.competence}

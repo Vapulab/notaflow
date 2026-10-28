@@ -18,6 +18,7 @@ import {
   ButtonLink,
   Card,
   CARD_CLASSES,
+  DateInput,
   Field,
   Input,
   Select,
@@ -211,15 +212,13 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
           ))}
         </Select>
         <Field label="Competência de">
-          <Input
-            type="date"
+          <DateInput
             value={filters.competenceFrom}
             onChange={(e) => set('competenceFrom')(e.target.value)}
           />
         </Field>
         <Field label="Competência até">
-          <Input
-            type="date"
+          <DateInput
             value={filters.competenceTo}
             onChange={(e) => set('competenceTo')(e.target.value)}
           />
