@@ -9,6 +9,7 @@ import {
   buttonClasses,
   ButtonLink,
   Combobox,
+  DateInput,
   Field,
   FileInput,
   Input,
@@ -117,4 +118,25 @@ test('a ButtonLink looks like the button only, without the link color that hides
   const link = screen.getByRole('link', { name: 'Nova nota' });
   expect(link.className).toBe(buttonClasses({ variant: 'primary' }));
   expect(link.className).not.toContain('hover:text-primary');
+});
+
+test('an empty DateInput shows the dd/mm/aaaa hint on touch screens; a filled one does not', () => {
+  function Harness() {
+    const [value, setValue] = useState('');
+    return (
+      <Field label="Competência de">
+        <DateInput value={value} onChange={(e) => setValue(e.target.value)} />
+      </Field>
+    );
+  }
+  render(<Harness />);
+  const input = screen.getByLabelText('Competência de');
+  expect(input.getAttribute('type')).toBe('date');
+  const hint = screen.getByText('dd/mm/aaaa');
+  expect(hint.getAttribute('aria-hidden')).toBe('true');
+  expect(hint.className).toContain('[@media(pointer:coarse)]:block');
+  expect(input.className).toContain('[@media(pointer:coarse)]:text-transparent');
+  fireEvent.change(input, { target: { value: '2026-10-01' } });
+  expect(screen.queryByText('dd/mm/aaaa')).toBeNull();
+  expect(input.className).not.toContain('text-transparent');
 });

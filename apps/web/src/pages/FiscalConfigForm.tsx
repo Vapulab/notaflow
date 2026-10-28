@@ -18,9 +18,9 @@ import {
   Alert,
   Button,
   CARD_CLASSES,
+  DateInput,
   Field,
   FORM_CLASSES,
-  Input,
   SECTION_TITLE_CLASSES,
   Select,
 } from '../ui';
@@ -169,7 +169,7 @@ export function FiscalConfigForm(props: { url: string; config: FiscalConfig; can
             </Select>
           </Field>
           <Field label="Desde">
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput value={from} onChange={(e) => setFrom(e.target.value)} />
           </Field>
         </div>
       </fieldset>

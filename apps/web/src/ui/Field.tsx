@@ -40,6 +40,28 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${INPUT_CLASSES} ${props.className ?? ''}`} />;
 }
 
+// Phones draw an empty date input blank, or with text of their own; on touch the hint replaces both.
+export function DateInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const empty = !props.value;
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        type="date"
+        className={`w-full ${empty ? '[@media(pointer:coarse)]:text-transparent' : ''} ${props.className ?? ''}`}
+      />
+      {empty && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 text-sm text-muted [@media(pointer:coarse)]:block"
+        >
+          dd/mm/aaaa
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function FileInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
   return (
     <input {...props} type="file" className={`${FILE_INPUT_CLASSES} ${props.className ?? ''}`} />

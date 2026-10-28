@@ -22,9 +22,9 @@ import {
   Button,
   CARD_CLASSES,
   Card,
+  DateInput,
   Field,
   FORM_CLASSES,
-  Input,
   SECTION_TITLE_CLASSES,
   Select,
   Spinner,
@@ -257,10 +257,7 @@ function IssueFlow(props: {
             </Button>
           )}
           {send.busy && <Spinner label="Emitindo" />}
-          <CustomerEmailNote
-            accountId={accountId}
-            emitter={emitter}
-          />
+          <CustomerEmailNote accountId={accountId} emitter={emitter} />
         </div>
       </Layout>
     );
@@ -272,8 +269,7 @@ function IssueFlow(props: {
       <form onSubmit={review} className={`${CARD_CLASSES} ${FORM_CLASSES}`}>
         <h2 className={SECTION_TITLE_CLASSES}>Nova nota a partir da nota-modelo</h2>
         <Field label="Competência">
-          <Input
-            type="date"
+          <DateInput
             required
             max={brasiliaToday()}
             value={form.competence}
