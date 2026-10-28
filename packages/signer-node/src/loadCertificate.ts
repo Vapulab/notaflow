@@ -8,6 +8,37 @@ const KEY_BAG = '1.2.840.113549.1.12.10.1.1';
 const SHROUDED_KEY_BAG = '1.2.840.113549.1.12.10.1.2';
 const CERT_BAG = '1.2.840.113549.1.12.10.1.3';
 
+// Real files use 2048 or fewer; forge takes the count from the file and runs it on the event loop.
+const MAX_ITERATIONS = 100_000;
+
+type Kdf = (...args: unknown[]) => unknown;
+// Each key derivation forge calls while it opens a file, with the position of its iteration count.
+const KDFS: [Record<string, Kdf>, string, number][] = [
+  [forge.pkcs12 as unknown as Record<string, Kdf>, 'generateKey', 3],
+  [(forge.pki as unknown as { pbe: Record<string, Kdf> }).pbe, 'generatePkcs12Key', 3],
+  [forge.pkcs5 as unknown as Record<string, Kdf>, 'pbkdf2', 2],
+];
+
+function withIterationCap<T>(run: () => T): T {
+  const originals = KDFS.map(([owner, name]) => owner[name]);
+  KDFS.forEach(([owner, name, at], i) => {
+    const original = originals[i];
+    if (!original) return;
+    owner[name] = (...args: unknown[]) => {
+      if (Number(args[at]) > MAX_ITERATIONS) throw new Error('Iteration count too high.');
+      return original(...args);
+    };
+  });
+  try {
+    return run();
+  } finally {
+    KDFS.forEach(([owner, name], i) => {
+      const original = originals[i];
+      if (original) owner[name] = original;
+    });
+  }
+}
+
 // ICP-Brasil e-CNPJ certificates put "COMPANY NAME:CNPJ" in the CN.
 const CN_CNPJ = /:([0-9A-Z]{14})$/;
 
@@ -79,7 +110,7 @@ function openPkcs12(pfx: Buffer, password: string): forge.pkcs12.Pkcs12Pfx {
     );
   }
   try {
-    return forge.pkcs12.pkcs12FromAsn1(asn1, password);
+    return withIterationCap(() => forge.pkcs12.pkcs12FromAsn1(asn1, password));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/MAC could not be verified|Invalid password/i.test(message)) {

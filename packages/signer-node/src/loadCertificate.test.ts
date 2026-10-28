@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeTestCertificate } from '@notaflow/test-kit';
+import forge from 'node-forge';
 import { describe, expect, test } from 'vitest';
 import { CertificateError, type CertificateErrorCode } from './CertificateError';
 import { loadCertificate } from './loadCertificate';
@@ -107,5 +108,25 @@ describe('loadCertificate', () => {
   test('rejects a CN without a CNPJ with CNPJ_NOT_FOUND', () => {
     const cert = makeTestCertificate({ cnpj: 'short' });
     expect(codeOf(() => loadCertificate(cert.pfx, cert.password))).toBe('CNPJ_NOT_FOUND');
+  });
+  // Without the cap, forge would run 2^31 rounds before it even checks the password.
+  test('rejects a MAC iteration count above the cap with INVALID_FILE, fast', () => {
+    const cert = makeTestCertificate();
+    const pfx = forge.asn1.fromDer(forge.util.createBuffer(cert.pfx.toString('binary')));
+    const macData = (pfx.value as forge.asn1.Asn1[])[2];
+    const iterations = macData && (macData.value as forge.asn1.Asn1[])[2];
+    if (!iterations) throw new Error('The test file has no MAC iteration count.');
+    const withCount = (count: number) => {
+      iterations.value = forge.asn1.integerToDer(count).getBytes();
+      return Buffer.from(forge.asn1.toDer(pfx).getBytes(), 'binary');
+    };
+    // A changed count under the cap breaks only the MAC.
+    expect(codeOf(() => loadCertificate(withCount(3000), cert.password))).toBe('WRONG_PASSWORD');
+    const started = Date.now();
+    expect(codeOf(() => loadCertificate(withCount(0x7fffffff), cert.password))).toBe(
+      'INVALID_FILE',
+    );
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(loadCertificate(cert.pfx, cert.password).cnpj).toBeTruthy();
   });
 });

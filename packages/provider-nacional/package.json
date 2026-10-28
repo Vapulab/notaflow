@@ -14,7 +14,7 @@
     "@notaflow/core": "workspace:*",
     "@notaflow/signer-node": "workspace:*",
     "@xmldom/xmldom": "^0.9.12",
-    "undici": "^7.2.0"
+    "undici": "^7.30.1"
   },
   "devDependencies": {
     "@notaflow/test-kit": "workspace:*"

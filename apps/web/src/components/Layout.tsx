@@ -129,6 +129,10 @@ export const ERROR_TEXT: Record<string, string> = {
   bug_images_unavailable:
     'O envio de imagens está desligado agora. Remova as imagens e envie só o texto.',
   bug_images_failed: 'Não conseguimos guardar as imagens. Tente de novo em alguns minutos.',
+  too_many_certificate_attempts:
+    'Muitas tentativas de enviar o certificado. Espere 10 minutos e tente de novo.',
+  too_many_invites: 'Esta conta já convidou 10 pessoas hoje. Tente de novo amanhã.',
+  name_too_long: 'O nome pode ter até 200 caracteres.',
 };
 
 export function errorText(error: unknown): string {

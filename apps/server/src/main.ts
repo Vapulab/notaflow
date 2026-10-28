@@ -8,6 +8,8 @@ import { openDatabase } from './db/openDatabase';
 import { startMetricsServer } from './metrics/server';
 import { SyncTargetRepository } from './repos/SyncTargetRepository';
 import { runAllOnce, startScheduler } from './sync/scheduler';
+import { trustedPeer } from './trustedPeer';
+import { resealCertificates } from './vault/resealCertificates';
 
 const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
@@ -27,9 +29,20 @@ try {
     ...(config.danfse ? { danfseQueue: bullmqQueue(config.danfse.redisUrl) } : {}),
     ...(existsSync(join(webRoot, 'index.html')) ? { webRoot } : {}),
   });
+  const vault = resealCertificates(db, config.masterKey);
+  if (vault.resealed > 0)
+    app.log.info({ module: 'vault', resealed: vault.resealed }, 'certificates resealed');
+  // A refused row cannot sign: either it was moved into another emitter's row, or it is damaged.
+  if (vault.refused.length > 0) {
+    app.log.error({ module: 'vault', certificateIds: vault.refused }, 'certificates not resealed');
+  }
   await app.listen({ host: config.host, port: config.port });
   if (config.metricsPort) {
-    await startMetricsServer(app.metrics, { host: config.host, port: config.metricsPort });
+    await startMetricsServer(app.metrics, {
+      host: config.host,
+      port: config.metricsPort,
+      ...(config.metricsAllowHost ? { allow: trustedPeer(config.metricsAllowHost) } : {}),
+    });
   }
   const targets = new SyncTargetRepository(db);
   startScheduler(

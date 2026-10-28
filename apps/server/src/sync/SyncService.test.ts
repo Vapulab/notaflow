@@ -36,14 +36,19 @@ beforeEach(async () => {
   }).id;
   const cert = makeTestCertificate();
   const certificates = new CertificateRepository(db);
-  certificates.addActive(ctx, emitterId, sealCertificate(cert.pfx, cert.password, MASTER), {
-    cnpj: cert.cnpj,
-    subject: 'x',
-    validFrom: new Date(),
-    validTo: new Date(Date.now() + 86_400_000),
-    fingerprintSha256: 'ab'.repeat(32),
-    uploadedBy: ctx.userId,
-  });
+  certificates.addActive(
+    ctx,
+    emitterId,
+    sealCertificate(cert.pfx, cert.password, MASTER, emitterId),
+    {
+      cnpj: cert.cnpj,
+      subject: 'x',
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 86_400_000),
+      fingerprintSha256: 'ab'.repeat(32),
+      uploadedBy: ctx.userId,
+    },
+  );
   service = new SyncService({
     db,
     certificates: new VaultCertificateStore(certificates, MASTER),

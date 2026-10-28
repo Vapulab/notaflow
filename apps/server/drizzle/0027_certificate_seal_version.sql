@@ -1,0 +1,1 @@
+ALTER TABLE `certificates` ADD `seal_version` integer DEFAULT 0 NOT NULL;

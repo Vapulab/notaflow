@@ -26,6 +26,8 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `/opt/notaflow/.env` | Google Cloud project `NotaFlow`, client `NotaFlow web` |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | `/opt/notaflow/.env` | The Turnstile widget of `notaflow.vapulab.com` |
 | `TRUST_CLOUDFLARE_IP` | `/opt/notaflow/.env` | `true` in production: the client IP is Cloudflare's `cf-connecting-ip`, so the per-IP limits see each visitor. Elsewhere `false`, so no one can pick an IP |
+| `TRUSTED_PROXY_HOST` | `/opt/notaflow/.env` | `northub-tunnel-1` in production: only the tunnel may send `cf-connecting-ip`. Unset, any private address may, so a neighbour container on `northub_default` can pick an IP |
+| `METRICS_ALLOW_HOST` | `/opt/notaflow/.env` | `prometheus` in production: `/metrics` answers only the Prometheus container. Unset, any container on a shared network can read it |
 | `POSTHOG_TOKEN`, `POSTHOG_HOST` | `/opt/notaflow/.env` | The PostHog project key (public by design) and host; the host defaults to `https://us.i.posthog.com`. Without the key, the app sends no analytics |
 | `SENTRY_DSN_SERVER`, `SENTRY_DSN_WEB` | `/opt/notaflow/.env` | The DSNs of the Sentry projects `notaflow-server` and `notaflow-web`. The release is the image tag. Without a DSN, that side reports no errors. In each project, turn on "Prevent Storing of IP Addresses" |
 | `GITHUB_BUG_TOKEN`, `GITHUB_BUG_REPO` | `/opt/notaflow/.env` | A fine-grained token with Issues read and write on `Vapulab/notaflow` only. It opens one issue of type Bug per report. Without it, reports skip GitHub |

@@ -14,6 +14,9 @@ services:
     restart: unless-stopped
     env_file: .env
     read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
     volumes:
@@ -32,6 +35,9 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     read_only: true
+    # No cap_drop: the image entrypoint needs chown and setuid to drop to the redis user.
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - redis:/data
     healthcheck:
