@@ -5,6 +5,7 @@ import type { Database } from '../db/openDatabase';
 import { danfsePdf, noticeOf } from '../danfse/danfsePdf';
 import { HttpError } from '../httpError';
 import { isEmailAddress } from '../mail/address';
+import { AuditLog } from '../repos/AuditLog';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
 import type { MailOutbox } from '../mail/outbox';
 import type { Metrics } from '../metrics/metrics';
@@ -42,15 +43,19 @@ export function invoiceLinkRoutes(
   deps: {
     db: Database;
     appOrigin: string;
+    secret: string;
     outbox: MailOutbox;
     danfseR2?: Pick<R2Client, 'get'> | null;
     metrics?: Pick<Metrics, 'danfseOnDemand' | 'danfseLinkView'>;
   },
 ): void {
+  const audit = new AuditLog(deps.db);
   const links = new InvoiceLinkRepository(deps.db);
   const invoices = new InvoiceRepository(deps.db);
   const limit = createRateLimiter({ windowMs: 60_000, max: 60 });
-  const mailer = new InvoiceMailer({ db: deps.db, outbox: deps.outbox, appOrigin: deps.appOrigin });
+  const mailer = new InvoiceMailer({ db: deps.db, outbox: deps.outbox, appOrigin: deps.appOrigin,
+    secret: deps.secret,
+  });
 
   app.post<{ Params: { accountId: string; invoiceId: string } }>(
     '/api/accounts/:accountId/invoices/:invoiceId/link',
@@ -79,6 +84,15 @@ export function invoiceLinkRoutes(
         identityOf(request).email,
       );
       if (!sent) throw new HttpError(409, 'invoice_not_shareable');
+      // Only the domain: the address belongs to the customer.
+      audit.record({
+        userEmail: identityOf(request).email,
+        accountId: ctx.accountId,
+        action: 'invoice.email',
+        entity: request.params.invoiceId,
+        result: 'ok',
+        detail: `manual @${to.split('@')[1] ?? ''}`,
+      });
       return { sent: true };
     },
   );

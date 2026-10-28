@@ -183,6 +183,13 @@
       "when": 1793198611749,
       "tag": "0025_mail_outbox_invoice_ref",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793200084971,
+      "tag": "0026_mail_suppressions",
+      "breakpoints": true
     }
   ]
 }

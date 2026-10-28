@@ -25,7 +25,7 @@ function valid(userId: string, token: string, secret: string): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-function page(title: string, body: string): string {
+export function page(title: string, body: string): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} | NotaFlow</title></head>
 <body style="margin:0;padding:24px;background:#fafaf9;color:#090d14;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.5">
 <main style="max-width:480px;margin:40px auto;background:#fff;border:1px solid #e2e4e8;border-radius:8px;padding:24px">

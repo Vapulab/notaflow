@@ -13,7 +13,9 @@ import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { DanfseDispatcher } from './danfse/DanfseDispatcher';
 import type { DanfseQueue } from './danfse/queue';
 import { InvoiceMailer } from './mail/InvoiceMailer';
+import { registerInvoiceUnsubscribe } from './mail/invoiceUnsubscribe';
 import { MailOutbox } from './mail/outbox';
+import { MailSuppressionRepository } from './repos/MailSuppressionRepository';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
 import { handleError } from './httpError';
@@ -118,7 +120,7 @@ function requestForLog(request: {
   socket: { remotePort?: number | undefined };
 }) {
   const url = redactLinkToken(
-    request.url.startsWith('/api/auth/callback/')
+    request.url.startsWith('/api/auth/callback/') || request.url.startsWith('/nota/descadastrar')
       ? (request.url.split('?')[0] ?? '')
       : request.url,
   );
@@ -200,7 +202,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const transport =
     deps.mailer ??
     (config.mail.resendApiKey
-      ? resendMailer({ apiKey: config.mail.resendApiKey, from: config.mail.from })
+      ? resendMailer({
+          apiKey: config.mail.resendApiKey,
+          from: config.mail.from,
+          invoiceFrom: config.mail.invoiceFrom,
+        })
       : consoleMailer((line) => app.log.info(line)));
   // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
   const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
@@ -220,6 +226,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     repo: lifecycleRepo,
     outbox,
     audit: new AuditLog(db),
+    secret: config.authSecret,
+  });
+  registerInvoiceUnsubscribe(app, {
+    suppressions: new MailSuppressionRepository(db),
     secret: config.authSecret,
   });
   const bugs = new BugReports({
@@ -320,13 +330,14 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   invoiceLinkRoutes(app, {
     db,
     appOrigin: config.appOrigin,
+    secret: config.authSecret,
     outbox,
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
   const issue = new IssueService({
     db,
-    customerMail: new InvoiceMailer({ db, outbox, appOrigin: config.appOrigin }),
+    customerMail: new InvoiceMailer({ db, outbox, appOrigin: config.appOrigin, secret: config.authSecret }),
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
     exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),

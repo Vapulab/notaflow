@@ -3,7 +3,8 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { issueExportOnFake } from '../../test/fakeInvoices';
 import { COMPETENCE, withNewInvoiceSetup } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
-import { customers, emitters, invoices, mailOutbox } from '../db/schema';
+import { auditLog, customers, emitters, invoices, mailOutbox, mailSuppressions } from '../db/schema';
+import { signInvoiceUnsubscribe } from '../mail/invoiceUnsubscribe';
 import type { HttpError } from '../httpError';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
 import { MailOutbox } from '../mail/outbox';
@@ -58,6 +59,7 @@ async function issue(s: Setup, customerId: string, key?: string) {
   return response.json<{ id: string; status: string }>();
 }
 
+const SECRET = 'test-secret-'.repeat(4);
 const outbox = () => t.db.select().from(mailOutbox).where(eq(mailOutbox.kind, 'invoice')).all();
 
 async function detail(s: Setup, id: string) {
@@ -86,6 +88,7 @@ const mailerOf = () =>
     db: t.db,
     outbox: t.app.mailOutbox,
     appOrigin: 'http://localhost:3000',
+    secret: SECRET,
   });
 const ownerCtx = (s: Setup) => ({
   ...s.a,
@@ -263,6 +266,7 @@ test('the 51st e-mail of an account in an hour answers 429, also on a fresh inst
       () => undefined,
     ),
     appOrigin: 'http://localhost:3000',
+    secret: SECRET,
   });
   await expect(
     fresh.sendByHand(ownerCtx(s), view.id, 'p52@example.com', 'owner@example.com'),
@@ -310,4 +314,82 @@ test('the owner turns the automatic e-mail off and a member cannot', async () =>
     payload: { autoEmailCustomer: true },
   });
   expect(denied.statusCode).toBe(403);
+});
+
+const unsub = (address: string, token = signInvoiceUnsubscribe(address, SECRET)) =>
+  `/nota/descadastrar?a=${encodeURIComponent(address)}&t=${token}`;
+
+test('the invoice e-mail carries a signed unsubscribe link and the one-click headers', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  expect((await send(s, view.id, 'Cliente@Example.com')).statusCode).toBe(200);
+  const mail = t.mail.find((m) => m.to === 'Cliente@Example.com');
+  const url = `http://localhost:3000${unsub('cliente@example.com')}`;
+  expect(mail?.headers).toEqual({
+    'List-Unsubscribe': `<${url}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  });
+  expect(mail?.text).toContain(url);
+  expect(mail?.html).toContain(url.replace(/&/g, '&amp;'));
+});
+
+test('the unsubscribe page changes nothing; the POST records the address once', async () => {
+  const path = unsub('cliente@example.com');
+  const page = await t.app.inject({ url: path });
+  expect(page.statusCode).toBe(200);
+  expect(page.body).toContain('<form method="post"');
+  expect(page.headers['x-robots-tag']).toBe('noindex');
+  expect(t.db.select().from(mailSuppressions).all()).toHaveLength(0);
+  for (let i = 0; i < 2; i += 1) {
+    const post = await t.app.inject({
+      method: 'POST',
+      url: path,
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'List-Unsubscribe=One-Click',
+    });
+    expect(post.statusCode).toBe(200);
+  }
+  expect(t.db.select().from(mailSuppressions).all()).toMatchObject([
+    { address: 'cliente@example.com', kind: 'invoice' },
+  ]);
+});
+
+test('a bad signature, or a signature of another address, answers 400 and records nothing', async () => {
+  const forged = unsub('cliente@example.com', signInvoiceUnsubscribe('outra@example.com', SECRET));
+  for (const method of ['GET', 'POST'] as const) {
+    expect((await t.app.inject({ method, url: forged })).statusCode).toBe(400);
+    expect((await t.app.inject({ method, url: '/nota/descadastrar' })).statusCode).toBe(400);
+  }
+  expect(t.db.select().from(mailSuppressions).all()).toHaveLength(0);
+});
+
+test('a suppressed address gets no manual e-mail (409) and no automatic one', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  await t.app.inject({ method: 'POST', url: unsub('cliente@example.com') });
+  const manual = await issue(s, s.brazilId);
+  const blocked = await send(s, manual.id, 'CLIENTE@example.com');
+  expect(blocked.statusCode).toBe(409);
+  expect(blocked.json()).toMatchObject({ error: 'address_suppressed' });
+  expect(t.mail.filter((m) => m.to.toLowerCase() === 'cliente@example.com')).toHaveLength(0);
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  await issue(s, customerId);
+  expect(outbox()).toHaveLength(0);
+});
+
+test('a manual e-mail writes an audit row with the domain and never the address', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  await send(s, view.id, 'segredo@clientes.example.com');
+  const rows = t.db.select().from(auditLog).all().filter((r) => r.action === 'invoice.email');
+  expect(rows).toMatchObject([
+    {
+      userEmail: 'owner@example.com',
+      accountId: s.a.accountId,
+      entity: view.id,
+      result: 'ok',
+      detail: 'manual @clientes.example.com',
+    },
+  ]);
+  expect(JSON.stringify(rows)).not.toContain('segredo');
 });

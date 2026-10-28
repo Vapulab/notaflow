@@ -658,3 +658,18 @@ export const invoiceLinks = sqliteTable(
   },
   (t) => [uniqueIndex('invoice_links_invoice').on(t.invoiceId).where(active)],
 );
+
+// An address that asked to stop one kind of e-mail from NotaFlow; unsubscribing again adds nothing.
+export const mailSuppressions = sqliteTable(
+  'mail_suppressions',
+  {
+    id: id(),
+    address: text('address').notNull(),
+    kind: text('kind', { enum: ['invoice'] }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('mail_suppressions_address_kind').on(t.address, t.kind).where(active)],
+);

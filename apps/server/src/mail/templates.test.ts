@@ -105,6 +105,7 @@ test('the invoice e-mail has the summary, the link, and the UTM footer, and no c
     issuedAt: new Date('2026-10-20T15:00:00Z'),
     netCents: 123456,
     link: 'https://notaflow.vapulab.com/n/abc_DEF-123',
+    unsubscribeUrl: 'https://notaflow.vapulab.com/nota/descadastrar?a=x&t=y',
   });
   expect(mail.subject).toBe('NFS-e nº 42 de Acme & Filhos Ltda');
   for (const body of [mail.html, mail.text]) {
@@ -125,6 +126,7 @@ test('the invoice e-mail of a test invoice says so in the subject and the body',
     issuedAt: null,
     netCents: 100,
     link: 'https://notaflow.vapulab.com/n/x',
+    unsubscribeUrl: 'https://notaflow.vapulab.com/nota/descadastrar?a=x&t=y',
     test: true,
   });
   expect(mail.subject).toBe('[TESTE] NFS-e nº 1 de Acme');

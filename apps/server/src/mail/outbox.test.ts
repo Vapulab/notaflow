@@ -33,7 +33,7 @@ const rows = () => opened.db.select().from(mailOutbox).all();
 
 test('a message is stored, sent at once, and its body is erased once sent', async () => {
   expect(await outbox.send(message, 'invite', T0)).toBe(true);
-  expect(sent).toEqual([message]);
+  expect(sent).toEqual([{ ...message, kind: 'invite' }]);
   expect(rows()).toMatchObject([
     { status: 'sent', attempts: 1, html: '', text: '', to: 'pessoa@example.com', kind: 'invite' },
   ]);
@@ -76,7 +76,7 @@ test('an admin retry sends a failed message again now', async () => {
   const id = rows()[0]?.id ?? 0;
   expect(await outbox.retry(id, minutes(200))).toBe(true);
   expect(rows()[0]).toMatchObject({ status: 'sent' });
-  expect(sent).toEqual([message]);
+  expect(sent).toEqual([{ ...message, kind: 'invite' }]);
 });
 
 test('a login code is useless after 10 minutes: it is not retried later, its body is erased, and it cannot be resent', async () => {
@@ -106,7 +106,7 @@ test('a message left as sending by a crash is picked up again after 5 minutes', 
   await outbox.deliverDue(minutes(2));
   expect(sent).toEqual([]);
   await outbox.deliverDue(minutes(6));
-  expect(sent).toEqual([message]);
+  expect(sent).toEqual([{ ...message, kind: 'invite' }]);
 });
 
 test('a queued lifecycle e-mail goes out with its reply-to and unsubscribe headers', async () => {
@@ -158,4 +158,9 @@ test('an e-mail sent at once also keeps its reply-to and headers', async () => {
     replyTo: 'contato@vapulab.com',
     headers: { 'List-Unsubscribe': '<https://x/u>' },
   });
+});
+
+test('the transport learns the kind of each message', async () => {
+  await outbox.send(message, 'invoice', T0);
+  expect(sent[0]?.kind).toBe('invoice');
 });

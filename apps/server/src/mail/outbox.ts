@@ -181,6 +181,7 @@ export class MailOutbox {
         subject: row.subject,
         html: row.html,
         text: row.text,
+        kind: row.kind,
         ...(row.replyTo ? { replyTo: row.replyTo } : {}),
         ...(row.headers ? { headers: row.headers } : {}),
       });

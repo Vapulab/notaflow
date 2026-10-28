@@ -7,9 +7,11 @@ import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 import { MemberRepository } from '../repos/MemberRepository';
 import { HttpError } from '../httpError';
+import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import { isEmailAddress } from './address';
+import { invoiceUnsubscribeUrl } from './invoiceUnsubscribe';
 import type { MailOutbox } from './outbox';
-import { invoiceEmail, type RenderedMail } from './templates';
+import { invoiceEmail } from './templates';
 
 // The address of the customer: the XML first, since it is what the Sefin recorded, then the customer record.
 export function customerEmailOf(
@@ -42,15 +44,19 @@ export class InvoiceMailer {
   private readonly invoices: InvoiceRepository;
   private readonly emitters: EmitterRepository;
   private readonly links: InvoiceLinkRepository;
+  private readonly suppressions: MailSuppressionRepository;
 
-  constructor(private readonly deps: { db: Database; outbox: MailOutbox; appOrigin: string }) {
+  constructor(
+    private readonly deps: { db: Database; outbox: MailOutbox; appOrigin: string; secret: string },
+  ) {
     this.invoices = new InvoiceRepository(deps.db);
     this.emitters = new EmitterRepository(deps.db);
     this.links = new InvoiceLinkRepository(deps.db);
+    this.suppressions = new MailSuppressionRepository(deps.db);
   }
 
   // Null when the invoice cannot be shared yet.
-  private render(ctx: AccountContext, invoiceId: string): RenderedMail | null {
+  private render(ctx: AccountContext, invoiceId: string, to: string) {
     const invoice = this.invoices.emailState(ctx, invoiceId);
     const emitter = invoice ? this.emitters.get(ctx, invoice.emitterId) : null;
     if (!invoice || !emitter) return null;
@@ -62,6 +68,7 @@ export class InvoiceMailer {
       issuedAt: invoice.issuedAt,
       netCents: invoice.netCents,
       link: `${this.deps.appOrigin}/n/${this.links.linkFor(ctx, invoiceId)}`,
+      unsubscribeUrl: invoiceUnsubscribeUrl(this.deps.appOrigin, to, this.deps.secret),
       test: invoice.environment === 'producao_restrita',
     });
   }
@@ -73,8 +80,11 @@ export class InvoiceMailer {
     to: string,
     replyTo: string,
   ): Promise<boolean> {
-    const mail = this.render(ctx, invoiceId);
+    const mail = this.render(ctx, invoiceId, to);
     if (!mail) return false;
+    if (this.suppressions.isSuppressed(to, 'invoice')) {
+      throw new HttpError(409, 'address_suppressed');
+    }
     // Counted in the database, so a restart resets nothing; the count and the insert share one tick.
     const now = Date.now();
     const { outbox } = this.deps;
@@ -103,10 +113,10 @@ export class InvoiceMailer {
     if (!this.emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer) return false;
     const to = customerEmailOf(this.deps.db, ctx, invoiceId);
     const replyTo = new MemberRepository(this.deps.db).ownerEmail(ctx);
-    if (!to || !replyTo) return false;
+    if (!to || !replyTo || this.suppressions.isSuppressed(to, 'invoice')) return false;
     return this.deps.db.transaction(() => {
       if (!this.invoices.claimCustomerEmail(ctx, invoiceId, new Date())) return false;
-      const mail = this.render(ctx, invoiceId);
+      const mail = this.render(ctx, invoiceId, to);
       if (!mail) throw new Error('A claimed invoice must render.');
       this.deps.outbox.queue(
         { ...mail, to, replyTo, ref: { accountId: ctx.accountId, invoiceId } },

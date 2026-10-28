@@ -18,6 +18,8 @@ export type Mailer = (message: MailMessage) => Promise<void>;
 export function resendMailer(options: {
   apiKey: string;
   from: string;
+  // The sender of the invoice e-mail: a customer's mailbox judges it apart from the login codes.
+  invoiceFrom?: string | null;
   dispatcher?: Dispatcher;
 }): Mailer {
   return async (message) => {
@@ -25,7 +27,7 @@ export function resendMailer(options: {
       method: 'POST',
       headers: { authorization: `Bearer ${options.apiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        from: options.from,
+        from: message.kind === 'invoice' && options.invoiceFrom ? options.invoiceFrom : options.from,
         to: [message.to],
         subject: message.subject,
         html: message.html,

@@ -14,7 +14,7 @@ export interface Config {
   masterKey: Buffer;
   auth: AuthConfig;
   authSecret: string;
-  mail: { from: string; resendApiKey: string | null };
+  mail: { from: string; invoiceFrom: string | null; resendApiKey: string | null };
   google: { clientId: string; clientSecret: string } | null;
   turnstile: { siteKey: string; secretKey: string } | null;
   signup: { open: boolean; limitPerIpPerDay: number };
@@ -221,7 +221,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     masterKey,
     auth,
     authSecret,
-    mail: { from: env.MAIL_FROM || 'NotaFlow <nao-responda@notaflow.vapulab.com>', resendApiKey },
+    mail: {
+      from: env.MAIL_FROM || 'NotaFlow <nao-responda@notaflow.vapulab.com>',
+      invoiceFrom: env.MAIL_FROM_INVOICE || null,
+      resendApiKey,
+    },
     google:
       google === null || google === 'half'
         ? null

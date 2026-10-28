@@ -110,6 +110,12 @@ function migratedFromPre3a(): BetterSqlite3.Database {
        VALUES ('l1', 'i1', 'tok', ${T0})`,
     )
     .run();
+  client
+    .prepare(
+      `INSERT INTO mail_suppressions (id, address, kind, updated_at)
+       VALUES ('m1', 'c@example.com', 'invoice', ${T0})`,
+    )
+    .run();
   return client;
 }
 
