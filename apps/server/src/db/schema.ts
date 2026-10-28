@@ -623,3 +623,21 @@ export const waitlistSignups = sqliteTable(
   },
   (t) => [uniqueIndex('waitlist_signups_email').on(t.email).where(active)],
 );
+
+// The public link of an invoice (/n/<token>): one active link per invoice; revoking soft-deletes it.
+export const invoiceLinks = sqliteTable(
+  'invoice_links',
+  {
+    id: id(),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id),
+    token: text('token').notNull().unique(),
+    views: integer('views').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [uniqueIndex('invoice_links_invoice').on(t.invoiceId).where(active)],
+);

@@ -162,6 +162,13 @@
       "when": 1793047228070,
       "tag": "0022_danfse_pdf_state",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793195430560,
+      "tag": "0023_invoice_links",
+      "breakpoints": true
     }
   ]
 }
