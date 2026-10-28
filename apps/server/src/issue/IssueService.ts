@@ -348,7 +348,10 @@ export class IssueService {
         description,
         ...(service.pisCofinsCst ? { pisCofinsCst: service.pisCofinsCst } : {}),
         ...(service.ibsCbs ? { ibsCbs: service.ibsCbs } : {}),
-        ...(service.export ? { export: service.export } : {}),
+        // Typed IBS/CBS codes on a Brazil invoice win over the service's export details, which only describe an export.
+        ...(service.export && (abroad || !input.overrides?.ibsCbs)
+          ? { export: service.export }
+          : {}),
       },
       customer,
       serviceCents: input.serviceCents,

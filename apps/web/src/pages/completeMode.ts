@@ -31,6 +31,20 @@ export interface Complete {
   export: Record<ExportField, string>;
 }
 
+// The patch for a change of national code: typed IBS/CBS codes that still equal the defaults of the
+// old item go back to following the defaults, so they move to the new item.
+export function withCode(
+  more: Complete,
+  service: Service | null,
+  abroad: boolean,
+  code: ServiceCode | null,
+): Partial<Complete> {
+  if (!more.ibsCbsEdited || abroad || !service) return { code };
+  const old = domesticIbsCbs(service, more.code?.code ?? service.nationalTaxCode);
+  const same = JSON.stringify(ibsCbsShown(more, service, abroad)) === JSON.stringify(old);
+  return same ? { code, ibsCbsEdited: false } : { code };
+}
+
 const IBS_CBS_PATTERN = [
   ['operationCode', /^\d{6}$/],
   ['cst', /^\d{3}$/],

@@ -500,6 +500,39 @@ test('Mais opções: the IBS/CBS defaults follow another national code', async (
   expect(body.overrides).toEqual({ nationalTaxCode: '010701' });
 });
 
+test('Mais opções: edited codes that still equal the old defaults follow a new code; others stay', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+      [`${base}/service-codes`]: [
+        { code: '010701', description: 'Suporte técnico em informática.' },
+      ],
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  const operation = screen.getByLabelText('Indicador de operação (IBS/CBS)');
+  await user.clear(operation);
+  await user.type(operation, '100301');
+  await user.type(screen.getByRole('combobox', { name: 'Código nacional' }), 'suporte');
+  await user.click(
+    await screen.findByRole('option', { name: '01.07.01 – Suporte técnico em informática.' }),
+  );
+  expect((operation as HTMLInputElement).value).toBe('050101');
+  await user.clear(operation);
+  await user.type(operation, '100302');
+  await user.click(screen.getByRole('combobox', { name: 'Código nacional' }));
+  await user.click(
+    await screen.findByRole('option', { name: '01.07.01 – Suporte técnico em informática.' }),
+  );
+  expect((operation as HTMLInputElement).value).toBe('100302');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+});
+
 test('Mais opções: a Brazil invoice with a half-cleared IBS/CBS group blocks the review', async () => {
   stubApi(routes());
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));

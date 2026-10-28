@@ -63,6 +63,7 @@ import {
   EXPORT_FIELDS,
   ibsCbsShown,
   serviceFields,
+  withCode,
 } from './completeMode';
 import { revenueIsStale } from '../components/simplesRates';
 
@@ -688,13 +689,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                     : null
                 }
                 onSelect={(option) =>
-                  setMore({
-                    code: option
-                      ? ([...foundCodes, ...suggestedCodes.codes].find(
-                          (c) => c.code === option.value,
-                        ) ?? null)
-                      : null,
-                  })
+                  setMore(
+                    withCode(
+                      more,
+                      service,
+                      abroad,
+                      option
+                        ? ([...foundCodes, ...suggestedCodes.codes].find(
+                            (c) => c.code === option.value,
+                          ) ?? null)
+                        : null,
+                    ),
+                  )
                 }
                 placeholder="Busque pelo nome ou pelo código"
               />

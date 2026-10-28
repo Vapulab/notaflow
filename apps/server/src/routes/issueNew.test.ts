@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { invoices } from '../db/schema';
+import { emitters, invoices } from '../db/schema';
 import { COMPETENCE, withNewInvoiceSetup, xmlOf } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { AuditLog } from '../repos/AuditLog';
@@ -338,4 +338,51 @@ test('a local save failure after the Sefin issued answers unknown, not an error'
   expect(new AuditLog(t.db).list().at(-1)).toMatchObject({ entity: id, result: 'error' });
   const reconciled = await s.call('POST', `/invoices/${id}/reconcile`, {});
   expect(reconciled.json()).toMatchObject({ status: 'issued' });
+});
+
+const EXPORT_DETAILS = {
+  mode: '1',
+  providerLink: '0',
+  providerSupport: '01',
+  customerSupport: '01',
+  temporaryGoods: '0',
+  mdic: '0',
+};
+
+async function brazilInvoiceOfExportService(overrides?: object) {
+  const s = await withNewInvoiceSetup(t);
+  const edited = await s.call('PUT', `/services/${s.serviceId}`, {
+    name: 'Desenvolvimento',
+    nationalTaxCode: '010101',
+    description: 'Desenvolvimento de software',
+    ibsCbs: { operationCode: '100302', cst: '410', classCode: '410027' },
+    export: EXPORT_DETAILS,
+  });
+  expect(edited.statusCode).toBe(200);
+  // Produção restrita writes the NT 009 layout from 2026-10-20.
+  t.db.update(emitters).set({ environment: 'producao_restrita' }).run();
+  const response = await s.call('POST', '/invoices/new', {
+    emitterId: s.emitterId,
+    customerId: s.brazilId,
+    serviceId: s.serviceId,
+    competence: COMPETENCE,
+    serviceCents: 123400,
+    ...(overrides ? { overrides } : {}),
+  });
+  expect(response.statusCode).toBe(201);
+  return xmlOf(t, s.a, response.json<{ id: string }>().id);
+}
+
+test('a Brazil invoice of a service with export details uses the Anexo VIII defaults', async () => {
+  const xml = await brazilInvoiceOfExportService();
+  expect(xml).toContain('<cIndOp>100301</cIndOp>');
+  expect(xml).toContain('<cClassTrib>000001</cClassTrib>');
+});
+
+test('typed IBS/CBS codes apply to a Brazil invoice of a service with export details', async () => {
+  const xml = await brazilInvoiceOfExportService({
+    ibsCbs: { operationCode: '100301', cst: '200', classCode: '200003' },
+  });
+  expect(xml).toContain('<cIndOp>100301</cIndOp>');
+  expect(xml).toContain('<CST>200</CST><cClassTrib>200003</cClassTrib>');
 });

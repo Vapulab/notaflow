@@ -36,7 +36,12 @@ test('a changed IBS/CBS code is stored as a group', () => {
   expect(body.ibsCbs).toEqual({ operationCode: '050101', cst: '000', classCode: '200003' });
 });
 
-test('a service with export details stores its codes even when they equal the defaults', () => {
+test('the codes of a service that already stores them stay, even when they equal the defaults', () => {
+  const codes = { operationCode: '050101', cst: '000', classCode: '000001' };
+  expect(serviceBody('010701', text(codes), noExport, codes).ibsCbs).toEqual(codes);
+});
+
+test('a new service with export details does not store the Brazil defaults as export codes', () => {
   const exp = {
     mode: '1',
     providerLink: '0',
@@ -50,5 +55,6 @@ test('a service with export details stores its codes even when they equal the de
     text({ operationCode: '050101', cst: '000', classCode: '000001' }),
     exp,
   );
-  expect(body.ibsCbs).toEqual({ operationCode: '050101', cst: '000', classCode: '000001' });
+  expect(body).not.toHaveProperty('ibsCbs');
+  expect(body.export).toEqual(exp);
 });
