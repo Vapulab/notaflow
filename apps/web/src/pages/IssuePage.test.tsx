@@ -39,6 +39,7 @@ const emitter = {
   environment: 'producao',
   municipality: '4113700',
   dpsSeries: '900',
+  autoEmailCustomer: false,
   certificate: null,
 };
 const rate = (date: string, rateE4: number) => ({
@@ -233,4 +234,21 @@ test('a PTAX mismatch on send shows the expected amount and the rate', async () 
   await user.click(screen.getByRole('button', { name: /emitir em produção/i }));
   expect(await screen.findByText(/6\.703,21.*5,4321 de 30\/09\/2026/)).toBeTruthy();
   expect(screen.getByRole('button', { name: /voltar e editar/i })).toBeTruthy();
+});
+
+test('the review says the customer gets an e-mail, with a link to the setting, only when it is on', async () => {
+  const on = { ...emitter, autoEmailCustomer: true };
+  stubApi({ ...base, '/api/accounts/acc/emitters': [on] });
+  renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const user = userEvent.setup();
+  await clickReview(user);
+  expect(screen.getByText(/O tomador vai receber por e-mail/)).toBeTruthy();
+  expect(screen.getByRole('link', { name: /configuração do emitente/ }).getAttribute('href')).toBe(
+    '/app/acc/emitentes/em1',
+  );
+  cleanup();
+  stubApi(base);
+  renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  await clickReview(user);
+  expect(screen.queryByText(/O tomador vai receber por e-mail/)).toBeNull();
 });

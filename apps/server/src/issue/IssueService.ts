@@ -23,6 +23,7 @@ import type { Database } from '../db/openDatabase';
 import { isCalendarDate, xsdDescription } from '../domain/xmlText';
 import { BACEN_CURRENCY, convertToCents, type ExchangeRateSource } from '../exchange/ptax';
 import { HttpError } from '../httpError';
+import type { InvoiceMailer } from '../mail/InvoiceMailer';
 import type { IssuerFactory } from '../providers/providerFactory';
 import { AuditLog } from '../repos/AuditLog';
 import { CustomerRepository, type CustomerRow } from '../repos/CustomerRepository';
@@ -86,6 +87,7 @@ export class IssueService {
       certificates: VaultCertificateStore;
       issuerFactory: IssuerFactory;
       exchangeRate: ExchangeRateSource;
+      customerMail?: Pick<InvoiceMailer, 'sendAutomatic'>;
       now?: () => Date;
     },
   ) {
@@ -663,6 +665,7 @@ export class IssueService {
         return { id: invoiceId, status: 'unknown' };
       }
       audit('ok', `issued ${invoice.accessKey}`);
+      this.mailCustomer(ctx, invoiceId, audit);
       return {
         id: invoiceId,
         status: 'issued',
@@ -678,6 +681,27 @@ export class IssueService {
     this.invoices.markUnknown(ctx, invoiceId, outcome.reason);
     audit('error', `uncertain: ${outcome.reason}`);
     return { id: invoiceId, status: 'unknown' };
+  }
+
+  // The invoice is issued either way: a failed e-mail never turns it into an error.
+  private mailCustomer(
+    ctx: AccountContext,
+    invoiceId: string,
+    audit: (result: 'ok' | 'refused' | 'error', detail: string) => void,
+  ): void {
+    try {
+      if (this.deps.customerMail?.sendAutomatic(ctx, invoiceId))
+        audit('ok', 'customer e-mail queued');
+    } catch (error) {
+      try {
+        audit(
+          'error',
+          `customer e-mail failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      } catch {
+        // The database is failing; the invoice is still issued.
+      }
+    }
   }
 
   private loadTemplate(ctx: AccountContext, invoiceId: string) {

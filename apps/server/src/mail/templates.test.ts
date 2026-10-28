@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { legalChangeEmail, lifecycleEmail, welcomeEmail } from './templates';
+import { invoiceEmail, legalChangeEmail, lifecycleEmail, welcomeEmail } from './templates';
 
 test('the legal change e-mail names the start date of the reminders and links both texts', () => {
   const mail = legalChangeEmail('2026-10-28');
@@ -96,4 +96,24 @@ test('the welcome e-mail is a guide to the first invoice, with no opt-out link',
     expect(mail.text).toContain(step);
   expect(mail.html).toContain('https://notaflow.vapulab.com/app');
   expect(mail.text).not.toContain('descadastr');
+});
+
+test('the invoice e-mail has the summary, the link, and the UTM footer, and no customer data', () => {
+  const mail = invoiceEmail({
+    emitterName: 'Acme & Filhos Ltda',
+    number: '42',
+    issuedAt: new Date('2026-10-20T15:00:00Z'),
+    netCents: 123456,
+    link: 'https://notaflow.vapulab.com/n/abc_DEF-123',
+  });
+  expect(mail.subject).toBe('NFS-e nº 42 de Acme & Filhos Ltda');
+  for (const body of [mail.html, mail.text]) {
+    expect(body).toContain('https://notaflow.vapulab.com/n/abc_DEF-123');
+    expect(body).toContain('20/10/2026');
+    expect(body).toMatch(/R\$\s?1\.234,56/);
+    expect(body).toContain('utm_source=danfse_email&');
+    expect(body).toContain('emitiu esta nota pelo NotaFlow');
+  }
+  expect(mail.html).toContain('Acme &amp; Filhos Ltda');
+  expect(mail.html).not.toContain('Cliente');
 });

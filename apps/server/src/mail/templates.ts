@@ -132,6 +132,52 @@ export function legalChangeEmail(startDate: string): RenderedMail {
   };
 }
 
+const INVOICE_UTM = 'utm_source=danfse_email&utm_medium=email&utm_campaign=nota';
+
+// The e-mail goes to a third party: it names who issued the note and why the person receives it, and nothing about the customer.
+export function invoiceEmail(invoice: {
+  emitterName: string;
+  number: string | null;
+  issuedAt: Date | null;
+  netCents: number;
+  link: string;
+}): RenderedMail {
+  const number = invoice.number ?? '';
+  const intro = `${invoice.emitterName} emitiu a NFS-e nº ${number}. Abra o link para ver e baixar o PDF da nota.`;
+  const summary: [string, string][] = [
+    ['Emitente', invoice.emitterName],
+    ['Nota', `nº ${number}`],
+    ...(invoice.issuedAt ? [['Emitida em', brazilDate(invoice.issuedAt)] as [string, string]] : []),
+    ['Valor líquido', brazilMoney(invoice.netCents)],
+  ];
+  const why = `${invoice.emitterName} emitiu esta nota pelo NotaFlow e pediu que o link chegasse a você.`;
+  const cta = `${APP}/?${INVOICE_UTM}`;
+  const footer = `${why} Emita as suas notas de graça no NotaFlow: ${cta}`;
+  return {
+    subject: `NFS-e nº ${number} de ${invoice.emitterName}`,
+    text: `${[intro, summary.map(([k, v]) => `${k}: ${v}`).join('\n'), `Ver a nota: ${invoice.link}`, footer].join('\n\n')}\n`,
+    html: layout(
+      `<p style="margin:0 0 16px">${escapeHtml(intro)}</p>
+<table style="margin:0 0 16px;border-collapse:collapse">${summary
+        .map(
+          ([k, v]) =>
+            `<tr><td style="padding:2px 16px 2px 0;color:${COLOR.muted}">${escapeHtml(k)}</td><td style="padding:2px 0">${escapeHtml(v)}</td></tr>`,
+        )
+        .join('')}</table>
+${buttonHtml({ label: 'Ver a nota', href: invoice.link })}`,
+      `${escapeHtml(why)} Emita as suas notas de graça no <a href="${escapeHtml(cta)}" style="color:${COLOR.primary}">NotaFlow</a>.`,
+    ),
+  };
+}
+
+function brazilDate(date: Date): string {
+  return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+function brazilMoney(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 function layout(content: string, footerHtml: string = FOOTER): string {
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:24px;background:${COLOR.surface};color:${COLOR.fg};font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.5">
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid ${COLOR.border};border-radius:8px;padding:24px">

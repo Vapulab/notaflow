@@ -1,6 +1,6 @@
 import { type Dispatcher, request } from 'undici';
 
-export type MailKind = 'code' | 'invite' | 'welcome' | 'notice' | 'lifecycle';
+export type MailKind = 'code' | 'invite' | 'welcome' | 'notice' | 'lifecycle' | 'invoice';
 
 export interface MailMessage {
   to: string;

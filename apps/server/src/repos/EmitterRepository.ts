@@ -166,6 +166,22 @@ export class EmitterRepository {
     );
   }
 
+  setAutoEmailCustomer(ctx: AccountContext, emitterId: string, value: boolean): boolean {
+    return (
+      this.db
+        .update(emitters)
+        .set({ autoEmailCustomer: value, ...touched(ctx) })
+        .where(
+          and(
+            eq(emitters.id, emitterId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+          ),
+        )
+        .run().changes > 0
+    );
+  }
+
   fiscalConfig(ctx: AccountContext, emitterId: string): FiscalConfig | null {
     return (
       this.db

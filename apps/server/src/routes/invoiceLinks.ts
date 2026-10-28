@@ -1,9 +1,11 @@
 import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
-import { accountContext } from '../auth/guards';
+import { accountContext, identityOf } from '../auth/guards';
 import type { Database } from '../db/openDatabase';
 import { danfsePdf, noticeOf } from '../danfse/danfsePdf';
 import { HttpError } from '../httpError';
+import { InvoiceMailer } from '../mail/InvoiceMailer';
+import type { MailOutbox } from '../mail/outbox';
 import type { Metrics } from '../metrics/metrics';
 import { createRateLimiter } from '../rateLimit';
 import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
@@ -17,11 +19,23 @@ const tokenParams = {
   properties: { token: TOKEN },
 } as const;
 
+const emailSchema = {
+  body: {
+    type: 'object',
+    required: ['to'],
+    additionalProperties: false,
+    properties: {
+      to: { type: 'string', maxLength: 254, pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$' },
+    },
+  },
+} as const;
+
 export function invoiceLinkRoutes(
   app: FastifyInstance,
   deps: {
     db: Database;
     appOrigin: string;
+    outbox: MailOutbox;
     danfseR2?: Pick<R2Client, 'get'> | null;
     metrics?: Pick<Metrics, 'danfseOnDemand' | 'danfseLinkView'>;
   },
@@ -29,6 +43,8 @@ export function invoiceLinkRoutes(
   const links = new InvoiceLinkRepository(deps.db);
   const invoices = new InvoiceRepository(deps.db);
   const limit = createRateLimiter({ windowMs: 60_000, max: 60 });
+  const mailer = new InvoiceMailer({ db: deps.db, outbox: deps.outbox, appOrigin: deps.appOrigin });
+  const emailLimit = createRateLimiter({ windowMs: 3_600_000, max: 50 });
 
   app.post<{ Params: { accountId: string; invoiceId: string } }>(
     '/api/accounts/:accountId/invoices/:invoiceId/link',
@@ -39,6 +55,25 @@ export function invoiceLinkRoutes(
       const shareable = invoice.status === 'issued' || invoice.status === 'cancelled';
       if (!shareable || !invoice.accessKey) throw new HttpError(409, 'invoice_not_shareable');
       return { url: `${deps.appOrigin}/n/${links.linkFor(ctx, invoice.id)}` };
+    },
+  );
+
+  app.post<{ Params: { accountId: string; invoiceId: string }; Body: { to: string } }>(
+    '/api/accounts/:accountId/invoices/:invoiceId/email',
+    { schema: emailSchema },
+    async (request) => {
+      const ctx = accountContext(request, request.params.accountId, { write: true });
+      if (!invoices.get(ctx, request.params.invoiceId)) throw new HttpError(404, 'not_found');
+      if (!emailLimit(ctx.accountId)) throw new HttpError(429, 'too_many_requests');
+      const to = request.body.to.trim();
+      const sent = await mailer.sendByHand(
+        ctx,
+        request.params.invoiceId,
+        to,
+        identityOf(request).email,
+      );
+      if (!sent) throw new HttpError(409, 'invoice_not_shareable');
+      return { sent: true };
     },
   );
 

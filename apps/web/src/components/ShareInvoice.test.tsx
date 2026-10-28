@@ -135,6 +135,6 @@ test('the NotaFlow e-mail item shows only with a handler and calls it', async ()
   await user.click(screen.getByRole('button', { name: 'Compartilhar' }));
   await user.click(await screen.findByRole('button', { name: 'Enviar por e-mail (NotaFlow)' }));
   expect(onNotaflowEmail).toHaveBeenCalledTimes(1);
-  expect(analytics.track).toHaveBeenCalledWith('danfse_shared', { channel: 'notaflow_email' });
+  expect(analytics.track).not.toHaveBeenCalled();
   expect(screen.queryByRole('link', { name: 'WhatsApp' })).toBeNull();
 });

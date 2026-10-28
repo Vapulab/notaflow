@@ -20,6 +20,7 @@ const emitter = {
   environment: 'producao',
   municipality: '4113700',
   dpsSeries: '900',
+  autoEmailCustomer: false,
   certificate: null,
 };
 const fiscal = {
@@ -363,4 +364,28 @@ test('a band 6 configuration saved before the question asks for the answer', asy
   expect(
     await screen.findByText(/o ISS continua no DAS enquanto a receita deste ano/),
   ).toBeTruthy();
+});
+
+test('the owner turns the e-mail to the customer on', async () => {
+  const calls = stubApi(routes({ [`${base}/emitters/em1/settings`]: { autoEmailCustomer: true } }));
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user'));
+  const user = userEvent.setup();
+  const toggle = await screen.findByRole('switch', {
+    name: 'Enviar a nota por e-mail ao tomador após emitir',
+  });
+  expect((toggle as HTMLInputElement).checked).toBe(false);
+  await user.click(toggle);
+  await waitFor(() =>
+    expect(calls.some((c) => c.url === `${base}/emitters/em1/settings`)).toBe(true),
+  );
+  expect(bodyOf(calls, 'PUT')).toEqual({ autoEmailCustomer: true });
+});
+
+test('a member sees the e-mail switch but cannot change it', async () => {
+  stubApi(routes());
+  renderWithMe(<EmitterPage accountId="acc" emitterId="em1" />, meFor('user', 'member'));
+  const toggle = await screen.findByRole('switch', {
+    name: 'Enviar a nota por e-mail ao tomador após emitir',
+  });
+  expect((toggle as HTMLInputElement).disabled).toBe(true);
 });

@@ -33,6 +33,9 @@ const issuedInvoice = {
   events: [],
   sefinMessages: null,
   templateOf: null,
+  customerEmail: null,
+  customerEmailedAt: null,
+  autoEmailCustomer: false,
 };
 
 test('an issued invoice links to issue similar', async () => {
@@ -171,4 +174,30 @@ test('the share buttons show for an issued or cancelled invoice, not a rejected 
     expect(!!screen.queryByRole('button', { name: 'Compartilhar' })).toBe(shown);
     view.unmount();
   }
+});
+
+test('the detail shows when the customer was e-mailed', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices/inv1': {
+      ...issuedInvoice,
+      customerEmail: 'cliente@example.com',
+      customerEmailedAt: '2026-10-02T15:30:00.000Z',
+      autoEmailCustomer: true,
+    },
+  });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  expect(await screen.findByText('Enviada ao tomador em 02/10/2026 12:30')).toBeTruthy();
+});
+
+test('the detail says the customer has no e-mail on the note when the setting is on', async () => {
+  stubApi({ '/api/accounts/acc/invoices/inv1': { ...issuedInvoice, autoEmailCustomer: true } });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  expect(await screen.findByText('Tomador sem e-mail na nota')).toBeTruthy();
+});
+
+test('with the setting off the detail says nothing about the e-mail', async () => {
+  stubApi({ '/api/accounts/acc/invoices/inv1': issuedInvoice });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  await screen.findByRole('link', { name: 'Emitir parecida' });
+  expect(screen.queryByText('Tomador sem e-mail na nota')).toBeNull();
 });

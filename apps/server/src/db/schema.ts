@@ -145,6 +145,8 @@ export const emitters = sqliteTable(
       .notNull()
       .default('inside_das'),
     ibscbsRegimeFrom: text('ibscbs_regime_from'),
+    // The migration set it off for the emitters that existed before the feature; a new one starts on.
+    autoEmailCustomer: integer('auto_email_customer', { mode: 'boolean' }).notNull().default(true),
     createdAt: createdAt(),
     updatedAt: changedAt(),
     ...authors(),
@@ -212,7 +214,9 @@ export const legalAcceptances = sqliteTable(
 // Every e-mail goes through here: sent at once, retried with backoff, and kept as failed (the dead letters).
 export const mailOutbox = sqliteTable('mail_outbox', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  kind: text('kind', { enum: ['code', 'invite', 'welcome', 'notice', 'lifecycle'] }).notNull(),
+  kind: text('kind', {
+    enum: ['code', 'invite', 'welcome', 'notice', 'lifecycle', 'invoice'],
+  }).notNull(),
   to: text('to').notNull(),
   subject: text('subject').notNull(),
   // Emptied once sent or given up: a login code is not kept.
@@ -376,6 +380,8 @@ export const invoices = sqliteTable(
     pdfRenderedAt: integer('pdf_rendered_at', { mode: 'timestamp_ms' }),
     // Set on every change that makes the PDF stale; the optimistic version of an enqueue and the age of the backlog.
     pdfPendingSince: integer('pdf_pending_since', { mode: 'timestamp_ms' }),
+    // Set once, in the transaction that queues the NotaFlow e-mail to the customer.
+    customerEmailedAt: integer('customer_emailed_at', { mode: 'timestamp_ms' }),
     createdBy: text('created_by').references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

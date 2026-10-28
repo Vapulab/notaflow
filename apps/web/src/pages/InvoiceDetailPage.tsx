@@ -3,10 +3,11 @@ import { api, type Emitter, type InvoiceDetail } from '../api';
 import { EnvironmentBadge } from '../components/EnvironmentBadge';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { SendInvoiceEmail } from '../components/SendInvoiceEmail';
 import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
 import { usePolling } from '../components/usePolling';
-import { formatCents, formatCompetence, formatDate } from '../format';
+import { formatCents, formatCompetence, formatDate, formatDateTime } from '../format';
 import { downloadFile } from '../download';
 import { routeHref } from '../router';
 import {
@@ -29,6 +30,13 @@ const EVENT_TEXT: Record<string, string> = {
   '305101': 'Cancelamento de ofício',
 };
 
+function emailStatus(data: InvoiceDetail): string | null {
+  if (data.customerEmailedAt) {
+    return `Enviada ao tomador em ${formatDateTime(data.customerEmailedAt)}`;
+  }
+  return data.autoEmailCustomer && !data.customerEmail ? 'Tomador sem e-mail na nota' : null;
+}
+
 export function InvoiceDetailPage(props: { accountId: string; invoiceId: string }) {
   const { accountId, invoiceId } = props;
   const url = `/api/accounts/${encodeURIComponent(accountId)}/invoices/${encodeURIComponent(invoiceId)}`;
@@ -38,6 +46,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
     [accountId],
   );
   const [cancelling, setCancelling] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [message, setMessage] = useState<{ variant: 'info' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   usePolling(invoice.data?.pdfStatus === 'pending', invoice.reload, invoice.loading);
@@ -137,6 +146,12 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
           <dd>
             {data.customerName} {data.customerDocument && `(${data.customerDocument})`}
           </dd>
+          {(data.status === 'issued' || data.status === 'cancelled') && emailStatus(data) && (
+            <>
+              <dt>E-mail ao tomador</dt>
+              <dd>{emailStatus(data)}</dd>
+            </>
+          )}
           <dt>Serviço</dt>
           <dd>
             {data.serviceCode}: {data.description}
@@ -168,6 +183,7 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             invoiceId={invoiceId}
             number={data.number}
             emitterName={emitterName}
+            onNotaflowEmail={() => setEmailing(true)}
           />
         )}
       </div>
@@ -184,6 +200,16 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
             ))}
           </ul>
         </Card>
+      )}
+      {emailing && (
+        <SendInvoiceEmail
+          open
+          accountId={accountId}
+          invoiceId={invoiceId}
+          number={data.number}
+          onClose={() => setEmailing(false)}
+          onSent={invoice.reload}
+        />
       )}
       {cancelling && (
         <CancelDialog

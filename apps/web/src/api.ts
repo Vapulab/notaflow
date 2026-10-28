@@ -100,6 +100,7 @@ export interface Emitter {
   environment: Environment;
   municipality: string;
   dpsSeries: string;
+  autoEmailCustomer: boolean;
   certificate: { validTo: string; expiresSoon: boolean } | null;
 }
 
@@ -125,6 +126,10 @@ export interface InvoiceSummary {
 export interface InvoiceDetail extends InvoiceSummary {
   sefinMessages: { code: string; message: string }[] | null;
   templateOf: string | null;
+  // The address the NotaFlow e-mail would go to, and when one last went out.
+  customerEmail: string | null;
+  customerEmailedAt: string | null;
+  autoEmailCustomer: boolean;
   events: {
     code: string;
     reasonCode: string | null;

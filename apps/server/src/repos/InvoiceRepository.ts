@@ -1,7 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { AccountContext, Environment, ProviderEvent, ProviderInvoice } from '@notaflow/core';
-import { and, asc, count, desc, eq, gte, inArray, like, lte, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lte,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { created, notDeleted, touched } from '../db/stamps';
 import { emitters, invoiceEvents, invoices } from '../db/schema';
@@ -227,6 +241,7 @@ export class InvoiceRepository {
         ...summary,
         sefinMessages: invoices.sefinMessages,
         templateOf: invoices.templateOf,
+        customerEmailedAt: invoices.customerEmailedAt,
       })
       .from(invoices)
       .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
@@ -424,6 +439,57 @@ export class InvoiceRepository {
     this.db
       .update(invoices)
       .set({ status: 'cancelled', ...pdfPending(), ...touched(ctx) })
+      .where(eq(invoices.id, invoiceId))
+      .run();
+  }
+
+  // What the NotaFlow e-mail to the customer needs; one account-scoped read.
+  emailState(ctx: AccountContext, invoiceId: string) {
+    return (
+      this.db
+        .select({
+          status: invoices.status,
+          origin: invoices.origin,
+          number: invoices.number,
+          issuedAt: invoices.issuedAt,
+          netCents: invoices.netCents,
+          emitterId: invoices.emitterId,
+          customerId: invoices.customerId,
+          customerEmailedAt: invoices.customerEmailedAt,
+          accessKey: invoices.accessKey,
+        })
+        .from(invoices)
+        .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
+        .where(
+          and(
+            eq(invoices.id, invoiceId),
+            eq(emitters.accountId, ctx.accountId),
+            notDeleted(emitters),
+            notDeleted(invoices),
+          ),
+        )
+        .get() ?? null
+    );
+  }
+
+  // True for the one caller that wins; a second call or an earlier e-mail finds the column set.
+  claimCustomerEmail(ctx: AccountContext, invoiceId: string, at: Date): boolean {
+    if (!this.emailState(ctx, invoiceId)) return false;
+    return (
+      this.db
+        .update(invoices)
+        .set({ customerEmailedAt: at, ...touched(ctx) })
+        .where(and(eq(invoices.id, invoiceId), isNull(invoices.customerEmailedAt)))
+        .run().changes > 0
+    );
+  }
+
+  // A hand-sent e-mail replaces the time of the last one.
+  markCustomerEmailed(ctx: AccountContext, invoiceId: string, at: Date): void {
+    if (!this.emailState(ctx, invoiceId)) return;
+    this.db
+      .update(invoices)
+      .set({ customerEmailedAt: at, ...touched(ctx) })
       .where(eq(invoices.id, invoiceId))
       .run();
   }

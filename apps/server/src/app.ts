@@ -12,6 +12,7 @@ import { type Auth, createAuth } from './auth/betterAuth';
 import { consoleMailer, type Mailer, resendMailer } from './mail/mailer';
 import { DanfseDispatcher } from './danfse/DanfseDispatcher';
 import type { DanfseQueue } from './danfse/queue';
+import { InvoiceMailer } from './mail/InvoiceMailer';
 import { MailOutbox } from './mail/outbox';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
@@ -307,11 +308,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   invoiceLinkRoutes(app, {
     db,
     appOrigin: config.appOrigin,
+    outbox,
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
   const issue = new IssueService({
     db,
+    customerMail: new InvoiceMailer({ db, outbox, appOrigin: config.appOrigin }),
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
     exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),

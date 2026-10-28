@@ -20,6 +20,26 @@ export class MemberRepository {
       .all();
   }
 
+  ownerEmail(ctx: AccountContext): string | null {
+    return (
+      this.db
+        .select({ email: users.email })
+        .from(memberships)
+        .innerJoin(users, eq(users.id, memberships.userId))
+        .where(
+          and(
+            eq(memberships.accountId, ctx.accountId),
+            eq(memberships.role, 'owner'),
+            notDeleted(memberships),
+            notDeleted(users),
+          ),
+        )
+        .orderBy(memberships.createdAt)
+        .limit(1)
+        .get()?.email ?? null
+    );
+  }
+
   invite(
     ctx: AccountContext,
     email: string,

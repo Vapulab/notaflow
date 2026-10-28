@@ -186,7 +186,8 @@ export function ShareInvoice(props: {
                     type="button"
                     className={ITEM_CLASSES}
                     onClick={() => {
-                      picked('notaflow_email');
+                      // Close the panel first, so one Escape never closes it and the dialog.
+                      closeMenu(false);
                       onNotaflowEmail();
                     }}
                   >

@@ -4,6 +4,7 @@ import { accountContext } from '../auth/guards';
 import { danfsePdf } from '../danfse/danfsePdf';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
+import { customerEmailOf } from '../mail/InvoiceMailer';
 import type { Metrics } from '../metrics/metrics';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { CertificateRepository } from '../repos/CertificateRepository';
@@ -84,7 +85,11 @@ export function invoiceRoutes(
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
       if (!invoice) throw new HttpError(404, 'not_found');
-      return shownPdfState(invoice);
+      return {
+        ...shownPdfState(invoice),
+        customerEmail: customerEmailOf(deps.db, ctx, invoice.id),
+        autoEmailCustomer: emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer ?? false,
+      };
     },
   );
 

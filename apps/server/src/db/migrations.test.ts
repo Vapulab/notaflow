@@ -304,3 +304,26 @@ test('0022 marks every invoice with XML as pending and leaves the others without
   ]);
   expect(() => run('DELETE FROM invoices')).toThrow();
 });
+
+test('the customer e-mail migration turns the setting off for existing emitters and on for new ones', () => {
+  const client = new BetterSqlite3(':memory:');
+  const db = drizzle(client);
+  migrate(db, { migrationsFolder: migrationsUpTo(23) });
+  const run = (sql: string) => client.prepare(sql).run();
+  run(`INSERT INTO accounts (id, name, created_at) VALUES ('a1', 'Conta', ${T0})`);
+  const emitter = (id: string, cnpj: string) =>
+    run(`INSERT INTO emitters (id, account_id, cnpj, company_name, municipality, simples_nacional, special_regime, dps_series, created_at)
+       VALUES ('${id}', 'a1', '${cnpj}', 'EMPRESA', '4113700', '3', '0', '900', ${T0})`);
+  emitter('old', '12345678000195');
+  migrate(db, { migrationsFolder: MIGRATIONS });
+  emitter('new', '11222333000181');
+  const flag = (id: string) =>
+    (
+      client.prepare('SELECT auto_email_customer AS v FROM emitters WHERE id = ?').get(id) as {
+        v: number;
+      }
+    ).v;
+  expect(flag('old')).toBe(0);
+  expect(flag('new')).toBe(1);
+  expect(() => run(`DELETE FROM emitters WHERE id = 'new'`)).toThrow(/soft delete only/);
+});

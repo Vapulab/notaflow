@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { api, type Emitter, type InvoicePage, type InvoiceSummary } from '../api';
 import { Layout, errorText } from '../components/Layout';
 import { PdfButton } from '../components/PdfButton';
+import { SendInvoiceEmail } from '../components/SendInvoiceEmail';
 import { ShareInvoice } from '../components/ShareInvoice';
 import { useAsync } from '../components/useAsync';
 import { usePolling } from '../components/usePolling';
@@ -66,6 +67,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
   const [accessKey, setAccessKey] = useState('');
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [emailing, setEmailing] = useState<InvoiceSummary | null>(null);
   const emitters = useAsync(() => api.get<Emitter[]>(`${base}/emitters`), [base]);
   const query = new URLSearchParams(
     Object.entries({ ...filters, limit: String(PAGE), offset: String(offset) }).filter(
@@ -249,6 +251,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
                               invoiceId={invoice.id}
                               number={invoice.number}
                               emitterName={emitterName(invoice.emitterId) ?? ''}
+                              onNotaflowEmail={() => setEmailing(invoice)}
                             />
                           )}
                         </div>
@@ -273,6 +276,15 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
             )}
           </div>
         </>
+      )}
+      {emailing && (
+        <SendInvoiceEmail
+          open
+          accountId={accountId}
+          invoiceId={emailing.id}
+          number={emailing.number}
+          onClose={() => setEmailing(null)}
+        />
       )}
     </Layout>
   );
