@@ -275,3 +275,49 @@ describe('fix round 2', () => {
     expect(argForLog([{ to: 'ana@example.com' }])).toBe('[{"to":"***@example.com"}]');
   });
 });
+
+describe('fix round 3', () => {
+  test('argForLog survives an error with a circular cause or a throwing getter', () => {
+    const error = new Error('send to ana@example.com failed');
+    (error as { cause?: unknown }).cause = error;
+    expect(argForLog(error)).toContain('***@example.com');
+    const throwing = new Error('x');
+    Object.defineProperty(throwing, 'bad', {
+      enumerable: true,
+      get() {
+        throw new Error('getter');
+      },
+    });
+    expect(argForLog(throwing)).toBe('[unserializable]');
+  });
+
+  test('an address with digits or a hyphen in the last label, or a bare host, is masked', () => {
+    expect(redactText('user@host.co1, user@my-host.internal-1 and user@localhost.')).toBe(
+      '***@host.co1, ***@my-host.internal-1 and ***@localhost.',
+    );
+    expect(redactText('user@intra_net!')).toBe('***@***!');
+    expect(redactText('user@localhost', { personal: 'sentry' })).toBe('[e-mail]');
+  });
+
+  test('a package version in a stack path stays', () => {
+    expect(redactText('at /app/node_modules/.pnpm/fastify@5.12.5/node_modules/x.js')).toBe(
+      'at /app/node_modules/.pnpm/fastify@5.12.5/node_modules/x.js',
+    );
+  });
+
+  test('a JSON secret key is masked for a string, a number, or a boolean', () => {
+    expect(
+      redactText(
+        '{"access_token":"a","id_token":"b","privateKey":"c","master_key":12345,"pfx":true,"certificate":{"x":1},"id":"i1"}',
+      ),
+    ).toBe(
+      '{"access_token":"***","id_token":"***","privateKey":"***","master_key":"***","pfx":"***","certificate":{"x":1},"id":"i1"}',
+    );
+  });
+
+  test('a long run of punctuation after an @ stays linear', () => {
+    const started = performance.now();
+    redactText(`a@${'!'.repeat(2000)}a ${'b@'.repeat(1000)}`);
+    expect(performance.now() - started).toBeLessThan(20);
+  });
+});

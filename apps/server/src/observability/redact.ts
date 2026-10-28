@@ -41,11 +41,13 @@ const WORD = /[^\s"'<>]+/g;
 const SECRET_PAIR =
   /\b(token|secret|password|senha|key|signature|sig|apikey|api_key|access_token|refresh_token)=[^&\s"'<>]+/gi;
 const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g;
-// Starts only at a token boundary, so each run is read once; the domain is bounded like RFC 5321.
-const EMAIL =
-  /(?<![^\s@<>(),;:"'=&?/])[^\s@<>(),;:"'=&?/]+@((?:[^\s@<>(),;:"'&?/.]{1,63}\.){1,8}[A-Za-z]{2,24})(?![A-Za-z0-9-])/g;
+// Any <token>@<token> run; it starts only at a token boundary, so each run is read once.
+const EMAIL = /(?<![^\s@<>(),;:"'=&?/])[^\s@<>(),;:"'=&?/]+@([^\s@<>(),;:"'=&?/]+)/g;
+const HOST = /^(?:[A-Za-z0-9-]{1,63}\.){0,8}[A-Za-z0-9-]{1,63}$/;
+// A package path in a stack (".pnpm/fastify@5.12.5_x/") is not an address.
+const VERSION = /^\d+\.\d+\.\d+/;
 const JSON_SECRET =
-  /"(token|secret|password|passwd|apiKey|api_key|key|signature|authorization|cookie)"\s*:\s*"[^"]*"/gi;
+  /"(token|secret|password|passwd|apiKey|api_key|key|signature|authorization|cookie|access_token|refresh_token|id_token|pfx|masterKey|master_key|certificate|privateKey|private_key)"\s*:\s*("[^"]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)/gi;
 // A CPF (11 digits) or a CNPJ (14 characters [0-9A-Z] that end in two digits), with or without punctuation.
 const DOCUMENT =
   /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
@@ -78,10 +80,20 @@ function redactPaths(text: string): string {
   );
 }
 
+function maskEmail(match: string, domain: string, mode: PersonalMode): string {
+  if (VERSION.test(domain)) return match;
+  // The run takes the punctuation after the address ("a@b.com!"); it stays in the text.
+  let end = domain.length;
+  while (end > 0 && !/[A-Za-z0-9]/.test(domain.charAt(end - 1))) end -= 1;
+  const host = domain.slice(0, end);
+  const suffix = domain.slice(end);
+  if (mode === 'sentry') return `[e-mail]${suffix}`;
+  return `${REDACTED}@${host.length <= 253 && HOST.test(host) ? host : REDACTED}${suffix}`;
+}
+
 function redactPersonal(text: string, mode: PersonalMode): string {
-  return mode === 'sentry'
-    ? text.replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]')
-    : text.replace(EMAIL, `${REDACTED}@$1`).replace(DOCUMENT, REDACTED);
+  const masked = text.replace(EMAIL, (match, domain: string) => maskEmail(match, domain, mode));
+  return masked.replace(DOCUMENT, mode === 'sentry' ? '[documento]' : REDACTED);
 }
 
 function paramName(pair: string): string {
@@ -166,8 +178,10 @@ export interface RedactedError {
   stack: string;
 }
 
+// A cause chain can loop back to its own error, so the depth stops it.
 function redactItem(item: unknown, depth: number): unknown {
-  return item instanceof Error ? redactError(item, depth + 1) : redactValue(item, {}, 1);
+  if (!(item instanceof Error)) return redactValue(item, {}, 1);
+  return depth < 3 ? redactError(item, depth + 1) : `[${item.name}]`;
 }
 
 export function redactError(error: Error, depth = 0): RedactedError {
@@ -177,8 +191,8 @@ export function redactError(error: Error, depth = 0): RedactedError {
     stack: redactText(error.stack ?? '', { max: MAX_STACK }),
   };
   for (const [key, item] of Object.entries(error)) {
-    out[key] = SECRET_KEY.test(key) ? REDACTED : redactItem(item, depth);
+    if (key !== 'cause') out[key] = SECRET_KEY.test(key) ? REDACTED : redactItem(item, depth);
   }
-  if (error.cause !== undefined && depth < 3) out.cause = redactItem(error.cause, depth);
+  if (error.cause !== undefined) out.cause = redactItem(error.cause, depth);
   return out;
 }

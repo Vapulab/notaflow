@@ -12,7 +12,7 @@ The server writes pino JSON to stdout. Alloy sends it to Loki (14 days), and Doc
 | The CNPJ of the public regime lookup (`/api/public/cnpj-regime/<cnpj>`) | `/cnpj-regime/:cnpj` |
 | A Discord webhook token in a URL | `/api/webhooks/<id>/:token` |
 | A query string | Only the parameters in `QUERY_ALLOW` (`limit`, `offset`, `status`, `environment`, `archived`). Sentry keeps none. |
-| An e-mail address | Logs and audit details: `***@domain`. Sentry: `[e-mail]`, as the privacy policy promises. |
+| An e-mail address (any `<word>@<word>` run, except a package version in a stack path) | Logs and audit details: `***@domain`, or `***@***` when the host is not a domain name. Sentry: `[e-mail]`, as the privacy policy promises. |
 | A CPF (11 digits) or a CNPJ (14 characters `[0-9A-Z]`), with or without punctuation | Logs and audit details: `***`. Sentry: `[documento]`. |
 | `token=`, `secret=`, `password=`, `key=`, `signature=` and similar pairs in text | `token=***` |
 | `Bearer <value>` or `Basic <value>` | `Bearer ***` |
