@@ -58,7 +58,6 @@ jobs:
       contents: read
       packages: read
     env:
-      IMAGE: ${{ needs.build.outputs.image }}
       TAG: ${{ needs.build.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -93,35 +92,19 @@ jobs:
           cat >> ~/.ssh/config <<EOF
           Host vm
             HostName $VM_HOST
-            User root
+            User notaflow-deploy
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
           EOF
 
-      - name: Copy the compose file
-        if: steps.newest.outputs.deploy == 'true'
-        run: scp deploy/compose.yaml vm:/opt/notaflow/compose.yaml
-
-      # The job token logs in for the pull only, in a Docker config of its own: the VPS also deploys
-      # Vapulab, and a shared /root/.docker login would race with it. IMAGE goes into .env only after
-      # a good pull, so a manual docker compose on the VPS always uses the running version.
+      # The key runs only notaflow-deploy (deploy/notaflow-deploy.sh): it takes this commit's compose
+      # file and image from GitHub, after it checks that the commit is the tip of production.
       - name: Start the new version
         if: steps.newest.outputs.deploy == 'true'
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "$TOKEN" | ssh vm "cd /opt/notaflow && export DOCKER_CONFIG=\$(mktemp -d) \
-            && docker login ghcr.io -u ${{ github.actor }} --password-stdin \
-            && IMAGE=${IMAGE}:${TAG} docker compose pull app \
-            ; status=\$?; rm -rf \"\$DOCKER_CONFIG\"; unset DOCKER_CONFIG; [ \$status -eq 0 ] || exit \$status; \
-            sed -i '/^IMAGE=/d' .env && echo IMAGE=${IMAGE}:${TAG} >> .env \
-            && docker compose up -d --remove-orphans && docker image prune -f"
+        run: echo "$TOKEN" | ssh vm notaflow-deploy up "$TAG"
 
       - name: Health check
         if: steps.newest.outputs.deploy == 'true'
-        run: |
-          ssh vm 'for i in $(seq 1 45); do
-            docker run --rm --network northub_default curlimages/curl:8.10.1 -fsS http://notaflow:3000/api/health && exit 0
-            sleep 2
-          done
-          cd /opt/notaflow && docker compose logs --tail 80 app; exit 1'
+        run: ssh vm notaflow-deploy health

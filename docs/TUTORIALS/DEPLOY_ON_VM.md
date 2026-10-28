@@ -8,7 +8,7 @@ Deploys run one at a time, and only the commit at the tip of `production` goes l
 
 | Path | What |
 | --- | --- |
-| `/opt/notaflow/compose.yaml` | Copied by the workflow from `deploy/compose.yaml` |
+| `/opt/notaflow/compose.yaml` | `deploy/compose.yaml` of the deployed commit, which `notaflow-deploy` downloads from GitHub |
 | `/opt/notaflow/.env` | Secrets and settings, mode 600 (see `deploy/.env.example`). `IMAGE=` is written by the workflow |
 | Docker volume `notaflow_data` | `/data` in the container: `notaflow.db` and `backups/` |
 | `/opt/northub/cloudflared/config.yml` | The tunnel ingress, shared with northub and Vapulab. NotaFlow is `notaflow.vapulab.com → http://notaflow:3000` |
@@ -27,7 +27,7 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | `/opt/notaflow/.env` | The Turnstile widget of `notaflow.vapulab.com` |
 | `TRUST_CLOUDFLARE_IP` | `/opt/notaflow/.env` | `true` in production: the client IP is Cloudflare's `cf-connecting-ip`, so the per-IP limits see each visitor. Elsewhere `false`, so no one can pick an IP |
 | `TRUSTED_PROXY_HOST` | `/opt/notaflow/.env` | `northub-tunnel-1` in production: only the tunnel may send `cf-connecting-ip`. Unset, any private address may, so a neighbour container on `northub_default` can pick an IP |
-| `METRICS_ALLOW_HOST` | `/opt/notaflow/.env` | `prometheus` in production: `/metrics` answers only the Prometheus container. Unset, any container on a shared network can read it |
+| `METRICS_ALLOW_HOST` | `/opt/notaflow/.env` | `monitoring-prometheus-1` in production: `/metrics` answers only the Prometheus container. Use the container name, not the service name `prometheus`: another project on a shared network could have that alias. Unset, any container on a shared network can read it |
 | `POSTHOG_TOKEN`, `POSTHOG_HOST` | `/opt/notaflow/.env` | The PostHog project key (public by design) and host; the host defaults to `https://us.i.posthog.com`. Without the key, the app sends no analytics |
 | `SENTRY_DSN_SERVER`, `SENTRY_DSN_WEB` | `/opt/notaflow/.env` | The DSNs of the Sentry projects `notaflow-server` and `notaflow-web`. The release is the image tag. Without a DSN, that side reports no errors. In each project, turn on "Prevent Storing of IP Addresses" |
 | `GITHUB_BUG_TOKEN`, `GITHUB_BUG_REPO` | `/opt/notaflow/.env` | A fine-grained token with Issues read and write on `Vapulab/notaflow` only. It opens one issue of type Bug per report. Without it, reports skip GitHub |
@@ -35,9 +35,27 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `DISCORD_BUG_WEBHOOK_URL` | `/opt/notaflow/.env` | The webhook of the private Discord bugs channel. The URL is the credential: anyone with it can post |
 | `NOTION_TOKEN`, `NOTION_BUGS_DATABASE_ID` | `/opt/notaflow/.env` | The Notion integration token and the id of the bugs database. Share the database with the integration |
 | `R2_ACCOUNT_ID`, `R2_BUG_REPORTS_ACCESS_KEY_ID`, `R2_BUG_REPORTS_SECRET_ACCESS_KEY`, `R2_BUG_REPORTS_BUCKET` | `/opt/notaflow/.env` | The private bucket of the bug report screenshots and a token with Object Read and Write on it only. All four or none. Without them, the dialog hides the image picker. See [Bug report screenshots](#bug-report-screenshots) |
-| `VM_SSH_KEY`, `VM_KNOWN_HOSTS`, `VM_HOST` | Secrets of the GitHub environment `production`, which only the `production` branch can use | The deploy key (`notaflow-deploy` in `/root/.ssh/authorized_keys`, with `restrict`: no forwarding, no terminal) |
+| `VM_SSH_KEY`, `VM_KNOWN_HOSTS`, `VM_HOST` | Secrets of the GitHub environment `production`, which only the `production` branch can use | The deploy key of the user `notaflow-deploy`. Its only command is `/usr/local/bin/notaflow-deploy` (`command=...,restrict`). See [Deploy user](#deploy-user) |
 
 To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_KEY /opt/notaflow/.env"` in your own terminal.
+
+## Deploy user
+
+The workflow logs in as `notaflow-deploy`, not root. The key of that user runs one program, `/usr/local/bin/notaflow-deploy` ([deploy/notaflow-deploy.sh](../../deploy/notaflow-deploy.sh)), with two actions:
+
+- `up <commit sha>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>` with the token from stdin, writes `IMAGE=` into `.env`, and starts the stack.
+- `health`: it polls `/api/health` for 90 seconds and prints the app log on a failure.
+
+The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the commit that is already the tip of `production`, never roll back to an older one. A rollback is done as root (see [Roll back](#roll-back)).
+
+To set it up, or to rotate the key:
+
+1. Make a key pair on your machine: `ssh-keygen -t ed25519 -N "" -C notaflow-deploy -f notaflow-deploy`.
+2. Copy `deploy/notaflow-deploy.sh` and `deploy/setup-deploy-user.sh` to the VPS. Run `sh setup-deploy-user.sh "$(cat notaflow-deploy.pub)"` as root.
+3. Put the private key in the `VM_SSH_KEY` secret of the `production` environment, and delete both files on your machine.
+4. After the first good deploy, remove the old CI key line from `/root/.ssh/authorized_keys`.
+
+A change to `notaflow-deploy.sh` reaches the VPS only through step 2. The deploy never updates it.
 
 ## Everyday commands
 
