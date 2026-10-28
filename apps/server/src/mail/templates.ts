@@ -33,7 +33,8 @@ const CODE_COPY: Record<CodeKind, { subject: string; intro: string }> = {
 
 export function codeEmail(kind: CodeKind, code: string): RenderedMail {
   const copy = CODE_COPY[kind];
-  const after = 'O código vale por 10 minutos. Se você não pediu este código, ignore este e-mail.';
+  const after =
+    'O código vale por 10 minutos. Não passe este código a ninguém: o NotaFlow nunca pede. Se você não pediu este código, ignore este e-mail.';
   return {
     subject: copy.subject,
     text: `${copy.intro}\n\n${code}\n\n${after}\n\n${FOOTER}\n`,

@@ -156,3 +156,24 @@ test('the request log never holds a DANFSe link token', async () => {
   expect(log).toContain('/n/:token');
   expect(log).not.toContain(token);
 });
+
+test('the daily signup limit counts a whole IPv6 /64, so rotating addresses does not pass it', async () => {
+  await start({ SIGNUP_LIMIT_PER_IP_DAY: '1' });
+  const signup = (email: string, from: string) =>
+    post('/api/auth/sign-up/email', { email, password: PASSWORD, name: 'X' }, {}, from);
+  expect((await signup('um@example.com', '2001:db8:4:1::a')).statusCode).toBe(200);
+  const again = await signup('dois@example.com', '2001:db8:4:1:ffff::b');
+  expect((again.json() as { code: string }).code).toBe('signup_limit');
+  expect((await signup('tres@example.com', '2001:db8:4:2::a')).statusCode).toBe(200);
+});
+
+test('update-user refuses an image and a name over 200 characters', async () => {
+  await start();
+  seedTenant(t.db, { accountName: 'A', email: 'pessoa@example.com' });
+  const cookie = await t.cookieFor('pessoa@example.com');
+  const image = await post('/api/auth/update-user', { image: 'https://evil.example/x.png' }, { cookie });
+  expect((image.json() as { code: string }).code).toBe('image_not_supported');
+  const long = await post('/api/auth/update-user', { name: 'x'.repeat(201) }, { cookie });
+  expect((long.json() as { code: string }).code).toBe('name_too_long');
+  expect((await post('/api/auth/update-user', { name: 'Nome Bom' }, { cookie })).statusCode).toBe(200);
+});

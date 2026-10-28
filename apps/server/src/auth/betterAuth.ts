@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { BlockList, isIPv6 } from 'node:net';
 import { passkey } from '@better-auth/passkey';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { GoogleOptions } from 'better-auth/social-providers';
 import { APIError, getOAuthState } from 'better-auth/api';
 import { captcha, emailOTP, haveIBeenPwned, testUtils } from 'better-auth/plugins';
-import { and, count, eq, gte, isNotNull } from 'drizzle-orm';
+import { and, eq, gte, isNotNull } from 'drizzle-orm';
 import type { Config } from '../config';
 import type { Database } from '../db/openDatabase';
 import {
@@ -44,8 +45,16 @@ export interface AuthDeps {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function refuse(status: 'FORBIDDEN' | 'TOO_MANY_REQUESTS', code: string): APIError {
+function refuse(status: 'BAD_REQUEST' | 'FORBIDDEN' | 'TOO_MANY_REQUESTS', code: string): APIError {
   return new APIError(status, { code, message: code });
+}
+
+// One IPv6 host usually holds a whole /64, so the signup cap counts the /64, as Better Auth's limiter does.
+export function sameSignupSource(ip: string): (other: string | null) => boolean {
+  if (!isIPv6(ip)) return (other) => other === ip;
+  const net = new BlockList();
+  net.addSubnet(ip, 64, 'ipv6');
+  return (other) => other !== null && isIPv6(other) && net.check(other, 'ipv6');
 }
 
 export function createAuth(deps: AuthDeps) {
@@ -65,8 +74,10 @@ export function createAuth(deps: AuthDeps) {
   // Signups in flight per IP: the audit row is written after the user, so parallel requests reserve first.
   const reserved = new Map<string, number[]>();
   const reservationsOf = (ip: string) => {
-    const live = (reserved.get(ip) ?? []).filter((at) => at > Date.now() - 60_000);
-    reserved.set(ip, live);
+    const same = sameSignupSource(ip);
+    const key = [...reserved.keys()].find(same) ?? ip;
+    const live = (reserved.get(key) ?? []).filter((at) => at > Date.now() - 60_000);
+    reserved.set(key, live);
     return live;
   };
 
@@ -76,19 +87,20 @@ export function createAuth(deps: AuthDeps) {
     const ip = requestContext.getStore()?.ip;
     if (!ip) return;
     const inFlight = reservationsOf(ip);
-    const row = db
-      .select({ n: count() })
+    const same = sameSignupSource(ip);
+    const today = db
+      .select({ ip: auditLog.ip })
       .from(auditLog)
       .where(
         and(
           eq(auditLog.action, 'auth.signup'),
           eq(auditLog.result, 'ok'),
-          eq(auditLog.ip, ip),
           gte(auditLog.at, new Date(Date.now() - DAY_MS)),
         ),
       )
-      .get();
-    if ((row?.n ?? 0) + inFlight.length >= config.signup.limitPerIpPerDay) {
+      .all()
+      .filter((row) => same(row.ip)).length;
+    if (today + inFlight.length >= config.signup.limitPerIpPerDay) {
       throw refuse('TOO_MANY_REQUESTS', 'signup_limit');
     }
     inFlight.push(Date.now());
@@ -235,7 +247,14 @@ export function createAuth(deps: AuthDeps) {
           },
         },
         update: {
-          before: async (data) => {
+          before: async (data, context) => {
+            // The web sends only the name; Better Auth would store any length and any image URL.
+            if (context?.path === '/update-user') {
+              if (typeof data.image === 'string') throw refuse('BAD_REQUEST', 'image_not_supported');
+              if (typeof data.name === 'string' && data.name.length > 200) {
+                throw refuse('BAD_REQUEST', 'name_too_long');
+              }
+            }
             const store = requestContext.getStore();
             if (store && data.emailVerified === true) verifying.add(store);
           },
