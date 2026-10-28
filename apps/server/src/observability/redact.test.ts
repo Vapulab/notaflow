@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { redactLogArgs, requestForLog } from './logger';
-import { REDACTED, redactError, redactText, redactUrl, redactValue } from './redact';
+import { argForLog, redactLogArgs, requestForLog } from './logger';
+import { MAX_TEXT, REDACTED, redactError, redactText, redactUrl, redactValue } from './redact';
 
 const TOKEN = 'Zx9_-'.repeat(8) + 'abc';
 
@@ -163,5 +163,57 @@ describe('logger', () => {
     ).toEqual([{ invoiceId: 'i1', to: '***@example.com' }, 'sent to %s', '***@ex.com']);
     const error = new Error('CPF 11144477735 refused');
     expect(redactLogArgs([error])).toEqual([{ err: error }, 'CPF *** refused']);
+  });
+});
+
+describe('Sentry mode', () => {
+  test('an e-mail and a document leave no part', () => {
+    expect(redactText('ana@example.com, CPF 111.444.777-35', { personal: 'sentry' })).toBe(
+      '[e-mail], CPF [documento]',
+    );
+    expect(redactValue({ to: 'ana@example.com' }, { personal: 'sentry' })).toEqual({
+      to: '[e-mail]',
+    });
+  });
+});
+
+describe('limits', () => {
+  test('an object deeper than the limit is replaced, not passed through', () => {
+    let deep: Record<string, unknown> = { to: 'ana@example.com' };
+    for (let i = 0; i < 10; i += 1) deep = { next: deep };
+    expect(JSON.stringify(redactValue(deep))).not.toContain('ana@example.com');
+    expect(JSON.stringify(redactValue(deep))).toContain(REDACTED);
+  });
+
+  test('a 16 KB path is truncated and redacted in linear time', () => {
+    const inputs = [
+      `/${'a'.repeat(16_384)}`,
+      '/a'.repeat(8192) + '?x',
+      `${'a.'.repeat(8192)}@`,
+      'a'.repeat(16_384),
+    ];
+    for (const input of inputs) {
+      const started = performance.now();
+      const text = redactText(`Route GET:${input} not found`);
+      const url = redactUrl(input);
+      expect(performance.now() - started).toBeLessThan(20);
+      expect(text.length).toBeLessThan(MAX_TEXT + 40);
+      expect(text).toContain('…[truncado]');
+      expect(url.length).toBeLessThan(MAX_TEXT + 40);
+    }
+  });
+});
+
+describe('argForLog', () => {
+  test('an object becomes redacted JSON, and an error keeps its message and stack', () => {
+    expect(argForLog({ to: 'ana@example.com', token: 'abc' })).toBe(
+      '{"to":"***@example.com","token":"***"}',
+    );
+    const parsed = JSON.parse(argForLog(new Error('send to ana@example.com failed'))) as {
+      message: string;
+      stack: string;
+    };
+    expect(parsed.message).toBe('send to ***@example.com failed');
+    expect(parsed.stack).toContain('send to ***@example.com failed');
   });
 });

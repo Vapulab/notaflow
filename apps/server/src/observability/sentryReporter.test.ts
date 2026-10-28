@@ -58,9 +58,9 @@ test("Sentry's beforeSend runs the shared redaction rules on every text field", 
     extra: { to: 'ana@example.com', token: 'abc' },
   });
   expect(event).toEqual({
-    message: 'GET /n/:token for ***@example.com',
+    message: 'GET /n/:token for [e-mail]',
     request: { url: 'https://notaflow.vapulab.com/api/public/n/:token/pdf' },
-    exception: { values: [{ type: 'Error', value: 'CPF ***, CNPJ ***' }] },
-    extra: { to: '***@example.com', token: '***' },
+    exception: { values: [{ type: 'Error', value: 'CPF [documento], CNPJ [documento]' }] },
+    extra: { to: '[e-mail]', token: '***' },
   });
 });

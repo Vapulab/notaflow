@@ -23,6 +23,7 @@ import { AuditLog } from '../repos/AuditLog';
 import { IdentityRepository } from '../repos/IdentityRepository';
 import { authAuditHooks, recordGoogleLinked } from './authAudit';
 import { parseSignupSource, SIGNUP_SOURCE_HEADER, SIGNUP_SOURCE_STATE_KEY } from './signupSource';
+import { argForLog } from '../observability/logger';
 import { requestContext } from '../requestContext';
 
 // The server sets it from the request context on every call; a client's own value is dropped.
@@ -198,7 +199,7 @@ export function createAuth(deps: AuthDeps) {
               level: 'debug' | 'info' | 'warn' | 'error',
               message: string,
               ...args: unknown[]
-            ) => deps.libraryLog?.(level, [message, ...args.map(String)].join(' ')),
+            ) => deps.libraryLog?.(level, [message, ...args.map(argForLog)].join(' ')),
           },
         }
       : {}),

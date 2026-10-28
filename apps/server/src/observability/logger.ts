@@ -40,3 +40,15 @@ export const loggerOptions = {
     },
   },
 };
+
+// A library's extra log argument as one line: an Error keeps its message and stack, an object its JSON.
+export function argForLog(arg: unknown): string {
+  if (typeof arg === 'string') return arg;
+  try {
+    return (
+      JSON.stringify(arg instanceof Error ? redactError(arg) : redactValue(arg)) ?? String(arg)
+    );
+  } catch {
+    return '[unserializable]';
+  }
+}

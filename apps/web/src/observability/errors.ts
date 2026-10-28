@@ -25,7 +25,7 @@ function scrubText(text: string): string {
   return redactLinkToken(text).replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]');
 }
 
-// The same rules as the server's: no query, header, e-mail, document, or breadcrumb leaves the browser.
+// The server's Sentry mode (apps/server/src/observability/redact.ts): no query, header, e-mail, document, or breadcrumb leaves.
 export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
   const clean: ScrubbableEvent = { ...event };
   if (clean.message) clean.message = scrubText(clean.message);

@@ -31,15 +31,33 @@ export const REDACT_PATHS = [
   ]),
 ];
 
-const URL_WITH_QUERY = /((?:https?:\/\/[^\s/?#"'<>]+)?\/[^\s?#"'<>]*)\?[^\s"'<>#]+/g;
+// Every regex below runs on at most this many characters, so a long attacker path costs linear time.
+export const MAX_TEXT = 2048;
+export const MAX_STACK = 8192;
+const TRUNCATED = '…[truncado]';
+
+// A run without spaces or quotes; its first "/" or "http" before a "?" starts a URL.
+const WORD = /[^\s"'<>]+/g;
 const SECRET_PAIR =
   /\b(token|secret|password|senha|key|signature|sig|apikey|api_key|access_token|refresh_token)=[^&\s"'<>]+/gi;
 const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g;
-// The local part stops at separators, so "to=a@b.com" keeps "to=".
-const EMAIL = /[^\s@<>(),;:"'=&?/]+@([^\s@<>(),;:"'&?/]+\.[A-Za-z]{2,})/g;
+// Bounded like RFC 5321 (local part 64, label 63), so a failed match never scans to the end of the text.
+const EMAIL = /[^\s@<>(),;:"'=&?/]{1,64}@((?:[^\s@<>(),;:"'&?/.]{1,63}\.){1,8}[A-Za-z]{2,24})\b/g;
 // A CPF (11 digits) or a CNPJ (14 characters [0-9A-Z] that end in two digits), with or without punctuation.
 const DOCUMENT =
   /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
+
+// Logs keep the e-mail domain; Sentry keeps no part of an e-mail or a document (the privacy policy).
+export type PersonalMode = 'log' | 'sentry';
+
+export interface RedactOptions {
+  personal?: PersonalMode;
+  max?: number;
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) + TRUNCATED : text;
+}
 
 function redactPaths(text: string): string {
   return SECRET_PATHS.reduce(
@@ -48,8 +66,10 @@ function redactPaths(text: string): string {
   );
 }
 
-function redactPersonal(text: string): string {
-  return text.replace(EMAIL, `${REDACTED}@$1`).replace(DOCUMENT, REDACTED);
+function redactPersonal(text: string, mode: PersonalMode): string {
+  return mode === 'sentry'
+    ? text.replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]')
+    : text.replace(EMAIL, `${REDACTED}@$1`).replace(DOCUMENT, REDACTED);
 }
 
 function paramName(pair: string): string {
@@ -61,8 +81,7 @@ function paramName(pair: string): string {
   }
 }
 
-// A URL or a path: secret segments get a placeholder, and only allowed query parameters stay.
-export function redactUrl(url: string, allow: ReadonlySet<string> = QUERY_ALLOW): string {
+function cleanUrl(url: string, allow: ReadonlySet<string>, mode: PersonalMode): string {
   const noHash = url.split('#')[0] ?? '';
   const mark = noHash.indexOf('?');
   const path = mark === -1 ? noHash : noHash.slice(0, mark);
@@ -73,16 +92,37 @@ export function redactUrl(url: string, allow: ReadonlySet<string> = QUERY_ALLOW)
           .slice(mark + 1)
           .split('&')
           .filter((pair) => allow.has(paramName(pair)));
-  const query = kept.length > 0 ? `?${redactPersonal(kept.join('&'))}` : '';
-  return redactPersonal(redactPaths(path)) + query;
+  const query = kept.length > 0 ? `?${redactPersonal(kept.join('&'), mode)}` : '';
+  return redactPersonal(redactPaths(path), mode) + query;
+}
+
+// A URL or a path: secret segments get a placeholder, and only allowed query parameters stay.
+export function redactUrl(
+  url: string,
+  allow: ReadonlySet<string> = QUERY_ALLOW,
+  options: RedactOptions = {},
+): string {
+  return cleanUrl(truncate(url, options.max ?? MAX_TEXT), allow, options.personal ?? 'log');
+}
+
+function dropQueries(text: string): string {
+  return text.replace(WORD, (word) => {
+    const mark = word.indexOf('?');
+    if (mark === -1) return word;
+    const scheme = word.indexOf('http');
+    const start = scheme !== -1 && scheme < mark ? scheme : word.indexOf('/');
+    if (start === -1 || start > mark) return word;
+    return word.slice(0, start) + cleanUrl(word.slice(start), QUERY_ALLOW, 'log');
+  });
 }
 
 // Free text: a log message, an error message or stack, an audit detail.
-export function redactText(text: string): string {
+export function redactText(text: string, options: RedactOptions = {}): string {
   return redactPersonal(
-    redactPaths(text.replace(URL_WITH_QUERY, (match) => redactUrl(match)))
+    redactPaths(dropQueries(truncate(text, options.max ?? MAX_TEXT)))
       .replace(SECRET_PAIR, `$1=${REDACTED}`)
       .replace(BEARER, `$1 ${REDACTED}`),
+    options.personal ?? 'log',
   );
 }
 
@@ -92,15 +132,16 @@ function isPlainObject(value: object): boolean {
 }
 
 // Strings anywhere in plain objects and arrays; an Error or a class instance (a request) goes to its serializer.
-export function redactValue(value: unknown, depth = 0): unknown {
-  if (typeof value === 'string') return redactText(value);
-  if (value === null || typeof value !== 'object' || depth > 6) return value;
-  if (Array.isArray(value)) return value.map((item) => redactValue(item, depth + 1));
+export function redactValue(value: unknown, options: RedactOptions = {}, depth = 0): unknown {
+  if (typeof value === 'string') return redactText(value, options);
+  if (value === null || typeof value !== 'object') return value;
+  if (depth > 6) return REDACTED;
+  if (Array.isArray(value)) return value.map((item) => redactValue(item, options, depth + 1));
   if (!isPlainObject(value)) return value;
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [
       key,
-      SECRET_KEY.test(key) ? REDACTED : redactValue(item, depth + 1),
+      SECRET_KEY.test(key) ? REDACTED : redactValue(item, options, depth + 1),
     ]),
   );
 }
@@ -113,14 +154,14 @@ export interface RedactedError {
 }
 
 function redactItem(item: unknown, depth: number): unknown {
-  return item instanceof Error ? redactError(item, depth + 1) : redactValue(item, 1);
+  return item instanceof Error ? redactError(item, depth + 1) : redactValue(item, {}, 1);
 }
 
 export function redactError(error: Error, depth = 0): RedactedError {
   const out: RedactedError = {
     type: error.name,
     message: redactText(error.message),
-    stack: redactText(error.stack ?? ''),
+    stack: redactText(error.stack ?? '', { max: MAX_STACK }),
   };
   for (const [key, item] of Object.entries(error)) {
     out[key] = SECRET_KEY.test(key) ? REDACTED : redactItem(item, depth);

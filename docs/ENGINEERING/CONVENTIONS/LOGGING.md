@@ -12,12 +12,14 @@ The server writes pino JSON to stdout. Alloy sends it to Loki (14 days), and Doc
 | The CNPJ of the public regime lookup (`/api/public/cnpj-regime/<cnpj>`) | `/cnpj-regime/:cnpj` |
 | A Discord webhook token in a URL | `/api/webhooks/<id>/:token` |
 | A query string | Only the parameters in `QUERY_ALLOW` (`limit`, `offset`, `status`, `environment`, `archived`). Sentry keeps none. |
-| An e-mail address | `***@domain` |
-| A CPF (11 digits) or a CNPJ (14 characters `[0-9A-Z]`), with or without punctuation | `***` |
+| An e-mail address | Logs and audit details: `***@domain`. Sentry: `[e-mail]`, as the privacy policy promises. |
+| A CPF (11 digits) or a CNPJ (14 characters `[0-9A-Z]`), with or without punctuation | Logs and audit details: `***`. Sentry: `[documento]`. |
 | `token=`, `secret=`, `password=`, `key=`, `signature=` and similar pairs in text | `token=***` |
 | `Bearer <value>` or `Basic <value>` | `Bearer ***` |
 | An object key such as `password`, `token`, `secret`, `pfx`, `certificate`, `masterKey`, `apiKey`, `authorization`, `cookie`, at any depth | `***` |
 | A request header | Never logged. pino's `redact` also covers `authorization`, `cookie`, `set-cookie`, and `x-hub-signature-256`. |
+| A string longer than 2 KB (a stack: 8 KB) | Cut, with `…[truncado]` at the end, before any rule runs. This keeps the cost linear on a long attacker path. |
+| An object deeper than 6 levels | `***` |
 
 The log keeps the operational fields: method, route path, status, duration, request id, module, account id, invoice id, and error codes.
 
@@ -27,7 +29,7 @@ The log keeps the operational fields: method, route path, status, duration, requ
 | --- | --- |
 | Every pino line (`app.log`, `request.log`, `reply.log`) | `apps/server/src/observability/logger.ts`: the `req` and `err` serializers, pino `redact`, and a `logMethod` hook that redacts every message, format argument, and plain object |
 | Better Auth's own messages | `libraryLog` in `createAuth`, so they go through pino and not straight to the console |
-| Sentry | `scrubEvent` in `apps/server/src/observability/errors.ts` |
+| Sentry | `scrubEvent` in `apps/server/src/observability/errors.ts`, with `{ personal: 'sentry' }`. The browser does the same in `apps/web/src/observability/errors.ts`. |
 | The audit log | `AuditLog.record` redacts `detail`. The actor e-mail, IP, and user agent stay: the audit log needs them. |
 
 ## Add a route with a secret

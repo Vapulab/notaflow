@@ -19,13 +19,14 @@ interface ScrubbableEvent {
 }
 
 const NO_QUERY: ReadonlySet<string> = new Set();
+const SENTRY = { personal: 'sentry' } as const;
 
 // No personal data leaves for Sentry: no body, cookie, header, query, IP, e-mail, or document.
 export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
   const clean: ScrubbableEvent = { ...event };
-  if (clean.message) clean.message = redactText(clean.message);
+  if (clean.message) clean.message = redactText(clean.message, SENTRY);
   if (clean.request) {
-    const url = clean.request.url ? redactUrl(clean.request.url, NO_QUERY) : undefined;
+    const url = clean.request.url ? redactUrl(clean.request.url, NO_QUERY, SENTRY) : undefined;
     clean.request = url ? { url } : {};
   }
   if (clean.user) clean.user = clean.user.id === undefined ? {} : { id: clean.user.id };
@@ -34,11 +35,11 @@ export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
       ...clean.exception,
       values: clean.exception.values.map((value) => ({
         ...value,
-        ...(value.value ? { value: redactText(value.value) } : {}),
+        ...(value.value ? { value: redactText(value.value, SENTRY) } : {}),
       })),
     };
   }
-  if (clean.extra) clean.extra = redactValue(clean.extra) as Record<string, unknown>;
+  if (clean.extra) clean.extra = redactValue(clean.extra, SENTRY) as Record<string, unknown>;
   delete clean.breadcrumbs;
   return clean as T;
 }
