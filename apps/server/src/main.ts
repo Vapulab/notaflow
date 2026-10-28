@@ -8,6 +8,7 @@ import { openDatabase } from './db/openDatabase';
 import { startMetricsServer } from './metrics/server';
 import { SyncTargetRepository } from './repos/SyncTargetRepository';
 import { runAllOnce, startScheduler } from './sync/scheduler';
+import { trustedPeer } from './trustedPeer';
 
 const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
@@ -29,7 +30,11 @@ try {
   });
   await app.listen({ host: config.host, port: config.port });
   if (config.metricsPort) {
-    await startMetricsServer(app.metrics, { host: config.host, port: config.metricsPort });
+    await startMetricsServer(app.metrics, {
+      host: config.host,
+      port: config.metricsPort,
+      ...(config.metricsAllowHost ? { allow: trustedPeer(config.metricsAllowHost) } : {}),
+    });
   }
   const targets = new SyncTargetRepository(db);
   startScheduler(

@@ -60,6 +60,18 @@ test('with TRUST_CLOUDFLARE_IP, behind the tunnel the IP is the one Cloudflare s
   expect(lastRow().ip).toBe('203.0.113.7');
 });
 
+test('with TRUSTED_PROXY_HOST, only that peer may send the header, not a neighbour on the private network', async () => {
+  await t.close();
+  const env = { TRUST_CLOUDFLARE_IP: 'true', TRUSTED_PROXY_HOST: 'localhost' };
+  t = await createTestApp({ env });
+  await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '127.0.0.1');
+  expect(lastRow().ip).toBe('198.51.100.9');
+  await t.close();
+  t = await createTestApp({ env });
+  await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '172.18.0.5');
+  expect(lastRow().ip).toBe('172.18.0.5');
+});
+
 test('without TRUST_CLOUDFLARE_IP the header is never trusted, so no one can pick an IP to dodge the limits', async () => {
   await editCustomer({ 'cf-connecting-ip': '198.51.100.9' }, '172.18.0.5');
   expect(lastRow().ip).toBe('172.18.0.5');

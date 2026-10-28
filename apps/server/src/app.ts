@@ -32,7 +32,7 @@ import { adminRoutes } from './routes/admin';
 import { auditRoutes } from './routes/audit';
 import { bugReportRoutes } from './routes/bugReports';
 import { customerRoutes } from './routes/customers';
-import { clientIp, requestContext } from './requestContext';
+import { clientIp, isPrivate, requestContext } from './requestContext';
 import { cepRoutes } from './routes/cep';
 import { fiscalRoutes } from './routes/fiscal';
 import { serviceRoutes } from './routes/services';
@@ -69,6 +69,7 @@ import {
 import { DanfseRepository } from './repos/DanfseRepository';
 import { MetricsRepository } from './repos/MetricsRepository';
 import { registerSecurityHeaders } from './securityHeaders';
+import { trustedPeer } from './trustedPeer';
 import { isApiPath, registerWeb } from './web';
 
 declare module 'fastify' {
@@ -127,19 +128,27 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       if (method !== 'HEAD') routeList.push({ method, url: route.url });
     }
   });
+  const tunnel = config.trustedProxyHost ? trustedPeer(config.trustedProxyHost) : null;
+  app.addHook('onClose', () => tunnel?.close());
+  const fromTunnel = (remote: string) =>
+    config.trustCloudflareIp && (tunnel ? tunnel.has(remote) : isPrivate(remote));
   app.addHook('onRequest', (request, _reply, done) => {
     const cf = request.headers['cf-connecting-ip'];
-    const info = {
-      ip: clientIp(
-        request.socket.remoteAddress ?? request.ip,
-        typeof cf === 'string' ? cf : undefined,
-        config.trustCloudflareIp,
-      ),
-      userAgent: request.headers['user-agent'] ?? null,
-      requestId: request.id,
+    const start = () => {
+      const info = {
+        ip: clientIp(
+          request.socket.remoteAddress ?? request.ip,
+          typeof cf === 'string' ? cf : undefined,
+          fromTunnel,
+        ),
+        userAgent: request.headers['user-agent'] ?? null,
+        requestId: request.id,
+      };
+      // run, not enterWith: the data must not outlive the request in the caller's context.
+      requestContext.run(info, done);
     };
-    // run, not enterWith: the data must not outlive the request in the caller's context.
-    requestContext.run(info, done);
+    if (tunnel) void tunnel.ready.then(start);
+    else start();
   });
   app.setErrorHandler(handleError);
   const reporter =
