@@ -24,12 +24,13 @@ The Fastify API: authentication, accounts and roles, the certificate vault, emit
 - [New Invoice RFC](../../docs/ENGINEERING/RFCS/2026/10/RFC_NEW_INVOICE.md) - fiscal configuration, services, customers by hand, `POST invoices/new`, and the tax reform
 - [Certificate Vault](../../docs/ENGINEERING/ARCHITECTURE/CERTIFICATE_VAULT.md) - envelope encryption and key rotation
 - [RFC](../../docs/ENGINEERING/RFCS/2026/10/RFC_NFSE_EMITTER.md) - flows and the security model
+- [Logging](../../docs/ENGINEERING/CONVENTIONS/LOGGING.md) - the redaction rules for logs, audit details, and Sentry
 
 ## Key Rules
 
 1. Every account query goes through a repository method that takes an `AccountContext`, built only by `accountContext()` in `src/auth/guards.ts`.
 2. A new route with a new path parameter must be added to the route sweep (`src/routes/routeSweep.test.ts`).
-3. Never log or return a certificate, a password, or the master key.
+3. Never log or return a certificate, a password, or the master key. Every log, audit detail, and Sentry report goes through `src/observability/redact.ts`; a route with a secret in its path adds a rule there. See [Logging](../../docs/ENGINEERING/CONVENTIONS/LOGGING.md).
 4. A schema change needs a new migration in the same commit.
 5. Never resend a DPS without a lookup by DPS id first, and never with a new number (`IssueService.reconcile`).
 6. A new invoice without a template resends its stored `issue_template`; never rebuild it from the current customer or service records.

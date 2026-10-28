@@ -39,7 +39,7 @@ import { serviceRoutes } from './routes/services';
 import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
-import { redactLinkToken } from './observability/linkToken';
+import { loggerOptions } from './observability/logger';
 import { invoiceLinkRoutes } from './routes/invoiceLinks';
 import { issueRoutes } from './routes/issue';
 import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
@@ -111,46 +111,14 @@ export interface AppDeps {
   danfseR2?: Pick<R2Client, 'get'>;
 }
 
-// Fastify's request fields, but an auth callback's query (a one-time Google code) stays out of the log.
-function requestForLog(request: {
-  method: string;
-  url: string;
-  host: string;
-  ip: string;
-  socket: { remotePort?: number | undefined };
-}) {
-  const url = redactLinkToken(
-    request.url.startsWith('/api/auth/callback/') || request.url.startsWith('/nota/descadastrar')
-      ? (request.url.split('?')[0] ?? '')
-      : request.url,
-  );
-  return {
-    method: request.method,
-    url,
-    host: request.host,
-    remoteAddress: request.ip,
-    remotePort: request.socket.remotePort ?? 0,
-  };
-}
-
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { config, db } = deps;
-  const serializers = { req: requestForLog };
-  // Fastify's own "Route GET:/n/<token> not found" line holds the URL in a message, not in `req`.
-  const hooks = {
-    logMethod(this: unknown, args: unknown[], method: (...args: unknown[]) => void) {
-      method.apply(
-        this,
-        args.map((arg) => (typeof arg === 'string' ? redactLinkToken(arg) : arg)),
-      );
-    },
-  };
   const app = Fastify({
     logger: deps.logStream
-      ? { stream: deps.logStream, serializers, hooks }
+      ? { stream: deps.logStream, ...loggerOptions }
       : config.nodeEnv === 'test'
         ? false
-        : { serializers, hooks },
+        : loggerOptions,
   });
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);
@@ -254,7 +222,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     audit: new AuditLog(db),
   });
   const mailer = outbox.mailer();
-  const auth = deps.auth ?? createAuth({ config, db, mailer, log: (line) => app.log.warn(line) });
+  const auth =
+    deps.auth ??
+    createAuth({
+      config,
+      db,
+      mailer,
+      log: (line) => app.log.warn(line),
+      libraryLog: (level, line) => app.log[level](line),
+    });
   app.decorate('auth', auth);
   registerAuth(app, { config, identities: new IdentityRepository(db), auth });
   registerAuthRoutes(app, auth, config.appOrigin);
@@ -337,7 +313,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   const issue = new IssueService({
     db,
-    customerMail: new InvoiceMailer({ db, outbox, appOrigin: config.appOrigin, secret: config.authSecret }),
+    customerMail: new InvoiceMailer({
+      db,
+      outbox,
+      appOrigin: config.appOrigin,
+      secret: config.authSecret,
+    }),
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),
     exchangeRate: deps.exchangeRate ?? ptaxSource(deps.ptaxDispatcher),

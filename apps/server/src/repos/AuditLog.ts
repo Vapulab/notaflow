@@ -1,6 +1,7 @@
 import { asc, desc } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { auditLog } from '../db/schema';
+import { redactText } from '../observability/redact';
 import { requestContext } from '../requestContext';
 
 export interface AuditEntry {
@@ -22,7 +23,8 @@ export class AuditLog {
       .insert(auditLog)
       .values({
         ...entry,
-        detail: entry.detail ?? null,
+        // A detail can hold a provider message: no e-mail, document, or token stays.
+        detail: entry.detail === undefined ? null : redactText(entry.detail),
         ip: request?.ip ?? null,
         userAgent: request?.userAgent ?? null,
         requestId: request?.requestId ?? null,

@@ -21,8 +21,8 @@ test('an event leaves without bodies, cookies, headers, query strings, IPs, e-ma
   });
   expect(event.request).toEqual({ url: 'https://notaflow.vapulab.com/api/accounts/a1/customers' });
   expect(event.user).toEqual({ id: 'u1' });
-  expect(event.message).toBe('falhou para [e-mail] com CNPJ [documento] e CPF [documento]');
-  expect(event.exception?.values?.[0]?.value).toBe('cliente [documento] sem endereço');
+  expect(event.message).toBe('falhou para ***@example.com com CNPJ *** e CPF ***');
+  expect(event.exception?.values?.[0]?.value).toBe('cliente *** sem endereço');
   expect(event.breadcrumbs).toBeUndefined();
 });
 
@@ -59,6 +59,6 @@ test('a server error is reported with its module; a client error is not', async 
 
 test('an e-mail is replaced without the punctuation after it', () => {
   expect(scrubEvent({ message: 'para pessoa@example.com, CNPJ e fulano@ex.com.br.' }).message).toBe(
-    'para [e-mail], CNPJ e [e-mail].',
+    'para ***@example.com, CNPJ e ***@ex.com.br.',
   );
 });
