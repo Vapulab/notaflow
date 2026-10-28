@@ -4,7 +4,7 @@ The national NFS-e system (Sefin Nacional and ADN): builds the DPS and the event
 
 ## Quick Reference
 
-- Browser entry: `@notaflow/provider-nacional/simples` (`src/simples.ts`): the Simples month calculation and `annexRule`, with no HTTP or signer code
+- Browser entry: `@notaflow/provider-nacional/simples` (`src/simples.ts`): the Simples month calculation, `annexRule`, and `ibsCbsDefaults`, with no HTTP or signer code
 - Entry points: `NacionalProvider` (the `InvoiceProvider`), `parseNfseXml`, `parseEventXml`, `buildDpsXml`, `buildCancelEventXml`, `NacionalClient`, `createMtlsDispatcher` (`src/index.ts`)
 - Local fake for development and tests: `packages/fake-nacional` (pass its `urls` to `NacionalClient`)
 - Schemas: `schemas/` (official XSD, see `schemas/SOURCE.md`)

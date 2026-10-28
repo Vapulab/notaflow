@@ -61,6 +61,7 @@ import {
   completeBody,
   completeFrom,
   EXPORT_FIELDS,
+  ibsCbsShown,
   serviceFields,
 } from './completeMode';
 import { revenueIsStale } from '../components/simplesRates';
@@ -704,20 +705,33 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   ['municipalTaxCode', 'Código municipal'],
                   ['nbsCode', 'NBS'],
                   ['pisCofinsCst', 'CST do PIS/COFINS'],
-                  // 2026: a Brazil invoice of a Simples optant carries no IBS/CBS group.
-                  ...(abroad
-                    ? ([
-                        ['operationCode', 'Indicador de operação (IBS/CBS)'],
-                        ['cst', 'CST do IBS/CBS'],
-                        ['classCode', 'Classificação tributária (IBS/CBS)'],
-                      ] as const)
-                    : []),
                 ] as const
               ).map(([field, label]) => (
                 <Field key={field} label={label}>
                   <Input
                     value={more[field]}
                     onChange={(e) => setMore({ [field]: e.target.value })}
+                  />
+                </Field>
+              ))}
+              {(
+                [
+                  ['operationCode', 'Indicador de operação (IBS/CBS)'],
+                  ['cst', 'CST do IBS/CBS'],
+                  ['classCode', 'Classificação tributária (IBS/CBS)'],
+                ] as const
+              ).map(([field, label]) => (
+                <Field key={field} label={label}>
+                  <Input
+                    value={ibsCbsShown(more, service, abroad)[field]}
+                    onChange={(e) =>
+                      // The first edit freezes the shown codes, so the other two stay as they were.
+                      setMore({
+                        ...ibsCbsShown(more, service, abroad),
+                        ibsCbsEdited: true,
+                        [field]: e.target.value,
+                      })
+                    }
                   />
                 </Field>
               ))}

@@ -26,3 +26,4 @@ export {
   type SimplesTax,
   type TaxSplit,
 } from './rules/simplesRates';
+export { type IbsCbsDefaults, ibsCbsDefaults } from './rules/ibsCbsDefaults';

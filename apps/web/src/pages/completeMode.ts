@@ -1,3 +1,4 @@
+import { type IbsCbsDefaults, ibsCbsDefaults } from '@notaflow/provider-nacional/simples';
 import type { FiscalConfig, Service, ServiceCode, ServiceExport } from '../api';
 import { centsInput, formatServiceCode, parseCents, parsePercent, percentInput } from '../format';
 
@@ -25,7 +26,33 @@ export interface Complete {
   operationCode: string;
   cst: string;
   classCode: string;
+  // False: a Brazil invoice shows the codes of the service or the Anexo VIII, which follow the code.
+  ibsCbsEdited: boolean;
   export: Record<ExportField, string>;
+}
+
+const IBS_CBS_PATTERN = [
+  ['operationCode', /^\d{6}$/],
+  ['cst', /^\d{3}$/],
+  ['classCode', /^\d{6}$/],
+] as const;
+
+// What a Brazil invoice carries when nobody types: the service's own codes, else the Anexo VIII.
+// A service with export details keeps its codes for the export only.
+export function domesticIbsCbs(service: Service, nationalTaxCode: string): IbsCbsDefaults {
+  return (service.export ? undefined : service.ibsCbs) ?? ibsCbsDefaults(nationalTaxCode);
+}
+
+// The three IBS/CBS fields as the form shows them.
+export function ibsCbsShown(
+  more: Complete,
+  service: Service | null,
+  abroad: boolean,
+): IbsCbsDefaults {
+  if (abroad || more.ibsCbsEdited || !service) {
+    return { operationCode: more.operationCode, cst: more.cst, classCode: more.classCode };
+  }
+  return domesticIbsCbs(service, more.code?.code ?? service.nationalTaxCode);
 }
 
 export function completeFrom(service: Service | null, config: FiscalConfig): Complete {
@@ -50,6 +77,7 @@ export function serviceFields(service: Service | null) {
     operationCode: service?.ibsCbs?.operationCode ?? '',
     cst: service?.ibsCbs?.cst ?? '',
     classCode: service?.ibsCbs?.classCode ?? '',
+    ibsCbsEdited: false,
     export: Object.fromEntries(EXPORT_FIELDS.map((f) => [f, service?.export?.[f] ?? ''])) as Record<
       ExportField,
       string
@@ -117,20 +145,22 @@ export function completeBody(
   changed('municipalTaxCode', 'Código municipal');
   changed('nbsCode', 'NBS');
   changed('pisCofinsCst', 'CST do PIS/COFINS');
+  const shown = ibsCbsShown(more, service, options.abroad);
   const ibsCbs = {
-    operationCode: more.operationCode.trim(),
-    cst: more.cst.trim(),
-    classCode: more.classCode.trim(),
+    operationCode: shown.operationCode.trim(),
+    cst: shown.cst.trim(),
+    classCode: shown.classCode.trim(),
   };
   const ibsCbsValues = [ibsCbs.operationCode, ibsCbs.cst, ibsCbs.classCode];
   const ibsCbsDone = ibsCbsValues.every(Boolean);
-  // 2026: only an export carries the group; a half-filled group is refused, not dropped.
-  if (options.abroad && !ibsCbsDone && ibsCbsValues.some(Boolean)) return null;
-  if (
-    options.abroad &&
-    ibsCbsDone &&
-    JSON.stringify(ibsCbs) !== JSON.stringify(service.ibsCbs ?? null)
-  ) {
+  // A half-filled group is refused, not dropped.
+  if (!ibsCbsDone && ibsCbsValues.some(Boolean)) return null;
+  // An export compares with the codes of the service; a Brazil invoice with the defaults.
+  const ibsCbsBase = options.abroad
+    ? (service.ibsCbs ?? null)
+    : domesticIbsCbs(service, more.code?.code ?? service.nationalTaxCode);
+  if (ibsCbsDone && JSON.stringify(ibsCbs) !== JSON.stringify(ibsCbsBase)) {
+    if (!IBS_CBS_PATTERN.every(([field, pattern]) => pattern.test(ibsCbs[field]))) return null;
     overrides.ibsCbs = ibsCbs;
     changes.push(`IBS/CBS: ${ibsCbs.operationCode}, CST ${ibsCbs.cst}, ${ibsCbs.classCode}`);
   }

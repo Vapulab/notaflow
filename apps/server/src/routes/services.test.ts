@@ -110,3 +110,31 @@ test('the service code search answers members with at most 20 codes', async () =
     expect.objectContaining({ code: '010701' }),
   ]);
 });
+
+test.each([
+  ['cIndOp', { operationCode: '10030', cst: '000', classCode: '000001' }],
+  ['CST', { operationCode: '100301', cst: '00', classCode: '000001' }],
+  ['cClassTrib', { operationCode: '100301', cst: '000', classCode: '00001A' }],
+])('a service with a malformed %s is refused', async (_name, ibsCbs) => {
+  const { list } = withEmitter();
+  const response = await t.app.inject({
+    method: 'POST',
+    url: list,
+    headers: await t.as('a@example.com'),
+    payload: { ...service, ibsCbs },
+  });
+  expect(response.statusCode).toBe(400);
+});
+
+test('a service stores the IBS/CBS codes of a Brazil service', async () => {
+  const { list } = withEmitter();
+  const ibsCbs = { operationCode: '100301', cst: '000', classCode: '000001' };
+  const response = await t.app.inject({
+    method: 'POST',
+    url: list,
+    headers: await t.as('a@example.com'),
+    payload: { ...service, ibsCbs },
+  });
+  expect(response.statusCode).toBe(201);
+  expect(response.json()).toMatchObject({ ibsCbs });
+});

@@ -149,6 +149,38 @@ test('an imported service takes the fiscal groups of the invoice XML', () => {
   });
 });
 
+// The export fixture without its export block is a Brazil invoice of the 01.07 item.
+const domesticXml = (codes: string) =>
+  exportXml
+    .replace(/<comExt>.*<\/comExt>/, '')
+    .replace('<cIndOp>100302</cIndOp>', `<cIndOp>${codes.slice(0, 6)}</cIndOp>`)
+    .replace(
+      '<CST>410</CST><cClassTrib>410027</cClassTrib>',
+      `<CST>${codes.slice(6, 9)}</CST><cClassTrib>${codes.slice(9)}</cClassTrib>`,
+    );
+const domesticService = (codes: string) => {
+  const { ctx, emitterId, repos, counts } = setup();
+  const invoice = providerInvoice({
+    xml: domesticXml(codes),
+    service: { nationalTaxCode: '010701', description: 'Suporte técnico' },
+  });
+  applyDocument(repos, ctx, emitterId, { kind: 'invoice', nsu: 1, invoice }, counts);
+  return repos.services.list(ctx, emitterId)[0];
+};
+
+test('an imported Brazil service does not save the codes that equal the Anexo VIII defaults', () => {
+  const service = domesticService('050101000000001');
+  expect(service).toMatchObject({ nationalTaxCode: '010701' });
+  expect(service).not.toHaveProperty('ibsCbs');
+  expect(service).not.toHaveProperty('export');
+});
+
+test('an imported Brazil service keeps codes that differ from the defaults', () => {
+  expect(domesticService('100301000000001')).toMatchObject({
+    ibsCbs: { operationCode: '100301', cst: '000', classCode: '000001' },
+  });
+});
+
 test('a hand edit of an imported service is kept on the next sync', () => {
   const { ctx, emitterId, repos, counts } = setup();
   const document = { kind: 'invoice' as const, nsu: 1, invoice: providerInvoice() };

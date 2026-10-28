@@ -434,13 +434,83 @@ test('a rate under the minimum of the service shows the minimum', async () => {
   expect(await screen.findByText(/A alíquota mínima deste serviço é 2,00%\./)).toBeTruthy();
 });
 
-test('Mais opções shows the IBS/CBS fields only for a customer abroad', async () => {
+test('Mais opções shows the IBS/CBS codes of the item, prefilled, for a Brazil customer', async () => {
+  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
+  expect(value('Indicador de operação (IBS/CBS)')).toBe('100301');
+  expect(value('CST do IBS/CBS')).toBe('000');
+  expect(value('Classificação tributária (IBS/CBS)')).toBe('000001');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  // The defaults stay dynamic: nothing goes in the body.
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body).not.toHaveProperty('overrides');
+});
+
+test('Mais opções: a typed IBS/CBS code goes as an override', async () => {
+  const calls = stubApi(routes({ [`${base}/invoices/new`]: { id: 'new1', status: 'issued' } }));
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  const classCode = screen.getByLabelText('Classificação tributária (IBS/CBS)');
+  await user.clear(classCode);
+  await user.type(classCode, '200003');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  expect(
+    within(screen.getByRole('table')).getByText('IBS/CBS: 100301, CST 000, 200003'),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.overrides).toEqual({
+    ibsCbs: { operationCode: '100301', cst: '000', classCode: '200003' },
+  });
+});
+
+test('Mais opções: the IBS/CBS defaults follow another national code', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+      [`${base}/service-codes`]: [
+        { code: '010701', description: 'Suporte técnico em informática.' },
+      ],
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await openMore(user);
+  await user.type(screen.getByRole('combobox', { name: 'Código nacional' }), 'suporte');
+  await user.click(
+    await screen.findByRole('option', { name: '01.07.01 – Suporte técnico em informática.' }),
+  );
+  expect((screen.getByLabelText('Indicador de operação (IBS/CBS)') as HTMLInputElement).value).toBe(
+    '050101',
+  );
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body.overrides).toEqual({ nationalTaxCode: '010701' });
+});
+
+test('Mais opções: a Brazil invoice with a half-cleared IBS/CBS group blocks the review', async () => {
   stubApi(routes());
   renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
   const user = userEvent.setup();
   await fillBrazil(user);
   await openMore(user);
-  expect(screen.queryByLabelText('CST do IBS/CBS')).toBeNull();
+  await user.clear(screen.getByLabelText('CST do IBS/CBS'));
+  expect(screen.getByText(/Revise Mais opções/)).toBeTruthy();
+  expect((screen.getByRole('button', { name: 'Revisar' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
 });
 
 test('the result screen has one page header', async () => {
