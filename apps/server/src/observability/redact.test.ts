@@ -1,6 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { argForLog, redactLogArgs, requestForLog } from './logger';
-import { MAX_TEXT, REDACTED, redactError, redactText, redactUrl, redactValue } from './redact';
+import {
+  MAX_TEXT,
+  redactPersonal,
+  REDACTED,
+  redactError,
+  redactText,
+  redactUrl,
+  redactValue,
+} from './redact';
 
 const TOKEN = 'Zx9_-'.repeat(8) + 'abc';
 
@@ -319,5 +327,30 @@ describe('fix round 3', () => {
     const started = performance.now();
     redactText(`a@${'!'.repeat(2000)}a ${'b@'.repeat(1000)}`);
     expect(performance.now() - started).toBeLessThan(20);
+  });
+});
+
+describe('fix round 4', () => {
+  test('only an npm name with a whole semver host stays', () => {
+    expect(redactText('at /m/fastify@5.12.5/x.js and /m/@fastify/static@10.1.6/y.js')).toBe(
+      'at /m/fastify@5.12.5/x.js and /m/@fastify/static@10.1.6/y.js',
+    );
+    expect(redactText('ana@1.2.3.example.com a@1.2.3.4 Ana@5.12.5')).toBe(
+      '***@1.2.3.example.com ***@1.2.3.4 ***@5.12.5',
+    );
+  });
+
+  test('the e-mail and document rules are linear on 16 KB without the cut', () => {
+    for (const input of [
+      `${'a.'.repeat(8192)}@`,
+      `a@${'!'.repeat(16_384)}a`,
+      'b@'.repeat(8192),
+      'a'.repeat(16_384),
+      `${'a'.repeat(16_384)}@${'b.'.repeat(4096)}`,
+    ]) {
+      const started = performance.now();
+      redactPersonal(input, 'log');
+      expect(performance.now() - started).toBeLessThan(20);
+    }
   });
 });

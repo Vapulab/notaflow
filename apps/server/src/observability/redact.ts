@@ -44,8 +44,9 @@ const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g;
 // Any <token>@<token> run; it starts only at a token boundary, so each run is read once.
 const EMAIL = /(?<![^\s@<>(),;:"'=&?/])[^\s@<>(),;:"'=&?/]+@([^\s@<>(),;:"'=&?/]+)/g;
 const HOST = /^(?:[A-Za-z0-9-]{1,63}\.){0,8}[A-Za-z0-9-]{1,63}$/;
-// A package path in a stack (".pnpm/fastify@5.12.5_x/") is not an address.
-const VERSION = /^\d+\.\d+\.\d+/;
+// A package path in a stack ("node_modules/fastify@5.12.5/") is not an address: npm name and whole semver.
+const PACKAGE = /^[a-z0-9][a-z0-9._-]*$/;
+const SEMVER = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const JSON_SECRET =
   /"(token|secret|password|passwd|apiKey|api_key|key|signature|authorization|cookie|access_token|refresh_token|id_token|pfx|masterKey|master_key|certificate|privateKey|private_key)"\s*:\s*("[^"]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)/gi;
 // A CPF (11 digits) or a CNPJ (14 characters [0-9A-Z] that end in two digits), with or without punctuation.
@@ -81,17 +82,18 @@ function redactPaths(text: string): string {
 }
 
 function maskEmail(match: string, domain: string, mode: PersonalMode): string {
-  if (VERSION.test(domain)) return match;
   // The run takes the punctuation after the address ("a@b.com!"); it stays in the text.
   let end = domain.length;
   while (end > 0 && !/[A-Za-z0-9]/.test(domain.charAt(end - 1))) end -= 1;
   const host = domain.slice(0, end);
   const suffix = domain.slice(end);
+  const local = match.slice(0, match.length - domain.length - 1);
+  if (host.length <= 253 && SEMVER.test(host) && PACKAGE.test(local)) return match;
   if (mode === 'sentry') return `[e-mail]${suffix}`;
   return `${REDACTED}@${host.length <= 253 && HOST.test(host) ? host : REDACTED}${suffix}`;
 }
 
-function redactPersonal(text: string, mode: PersonalMode): string {
+export function redactPersonal(text: string, mode: PersonalMode): string {
   const masked = text.replace(EMAIL, (match, domain: string) => maskEmail(match, domain, mode));
   return masked.replace(DOCUMENT, mode === 'sentry' ? '[documento]' : REDACTED);
 }
