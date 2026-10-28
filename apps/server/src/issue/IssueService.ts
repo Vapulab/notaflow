@@ -149,7 +149,9 @@ export class IssueService {
             input.serviceCents,
           )
         : null;
-    const customer = input.customerId ? this.customerParty(ctx, input.customerId) : undefined;
+    const customer = input.customerId
+      ? this.customerParty(ctx, input.customerId, state.emitterId)
+      : undefined;
     if (customer && !customer.document) throw new HttpError(400, 'customer_without_document');
     const emitter = this.emitters.get(ctx, state.emitterId);
     if (!emitter) throw new HttpError(404, 'not_found');
@@ -573,7 +575,7 @@ export class IssueService {
     // The template's own customer is copied from its XML; only a chosen customer replaces it.
     const customer =
       state.customerId && state.customerId !== template.state.customerId
-        ? this.customerParty(ctx, state.customerId)
+        ? this.customerParty(ctx, state.customerId, template.state.emitterId)
         : undefined;
     return { source: { kind: 'stored', xml: template.xml }, ...(customer ? { customer } : {}) };
   }
@@ -724,9 +726,10 @@ export class IssueService {
     return { state, xml, template };
   }
 
-  private customerParty(ctx: AccountContext, customerId: string): InvoiceParty {
+  // The customer must be the issuing emitter's: another emitter of the account has its own list.
+  private customerParty(ctx: AccountContext, customerId: string, emitterId: string): InvoiceParty {
     const row = this.customers.get(ctx, customerId);
-    if (!row) throw new HttpError(404, 'customer_not_found');
+    if (!row || row.emitterId !== emitterId) throw new HttpError(404, 'customer_not_found');
     return partyOf(row);
   }
 

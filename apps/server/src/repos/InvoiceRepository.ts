@@ -95,6 +95,10 @@ export class InvoiceRepository {
       .from(invoices)
       .where(eq(invoices.accessKey, invoice.accessKey))
       .get();
+    // The access key is unique across tenants: another emitter's row is never overwritten.
+    if (existing && existing.emitterId !== emitterId) {
+      throw new Error('The access key belongs to another emitter.');
+    }
     if (existing) {
       const status = existing.status === 'cancelled' || cancelled ? 'cancelled' : existing.status;
       const stale =

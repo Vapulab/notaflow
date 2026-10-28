@@ -177,3 +177,20 @@ test('update-user refuses an image and a name over 200 characters', async () => 
   expect((long.json() as { code: string }).code).toBe('name_too_long');
   expect((await post('/api/auth/update-user', { name: 'Nome Bom' }, { cookie })).statusCode).toBe(200);
 });
+
+test('signup refuses a name over 200 characters and keeps no image', async () => {
+  await start();
+  const long = await post('/api/auth/sign-up/email', {
+    email: 'longo@example.com',
+    password: PASSWORD,
+    name: 'x'.repeat(201),
+  });
+  expect((long.json() as { code: string }).code).toBe('name_too_long');
+  await post('/api/auth/sign-up/email', {
+    email: 'foto@example.com',
+    password: PASSWORD,
+    name: 'Foto',
+    image: 'https://evil.example/x.png',
+  });
+  expect(t.db.$client.prepare('SELECT image FROM users').all()).toEqual([{ image: null }]);
+});

@@ -49,6 +49,11 @@ function refuse(status: 'BAD_REQUEST' | 'FORBIDDEN' | 'TOO_MANY_REQUESTS', code:
   return new APIError(status, { code, message: code });
 }
 
+// Better Auth stores a name of any length, at signup and on update-user.
+function checkName(name: unknown): void {
+  if (typeof name === 'string' && name.length > 200) throw refuse('BAD_REQUEST', 'name_too_long');
+}
+
 // One IPv6 host usually holds a whole /64, so the signup cap counts the /64, as Better Auth's limiter does.
 export function sameSignupSource(ip: string): (other: string | null) => boolean {
   if (!isIPv6(ip)) return (other) => other === ip;
@@ -226,8 +231,11 @@ export function createAuth(deps: AuthDeps) {
     databaseHooks: {
       user: {
         create: {
-          before: async () => {
+          before: async (user) => {
+            checkName(user.name);
             await beforeUserCreate();
+            // Google sends a picture URL; nothing shows it, so no user keeps one.
+            return { data: { ...user, image: null } };
           },
           after: async (user, context) => {
             const ip = requestContext.getStore()?.ip;
@@ -248,12 +256,10 @@ export function createAuth(deps: AuthDeps) {
         },
         update: {
           before: async (data, context) => {
-            // The web sends only the name; Better Auth would store any length and any image URL.
-            if (context?.path === '/update-user') {
-              if (typeof data.image === 'string') throw refuse('BAD_REQUEST', 'image_not_supported');
-              if (typeof data.name === 'string' && data.name.length > 200) {
-                throw refuse('BAD_REQUEST', 'name_too_long');
-              }
+            checkName(data.name);
+            // The web sends only the name; Better Auth would store any image URL.
+            if (context?.path === '/update-user' && typeof data.image === 'string') {
+              throw refuse('BAD_REQUEST', 'image_not_supported');
             }
             const store = requestContext.getStore();
             if (store && data.emailVerified === true) verifying.add(store);
