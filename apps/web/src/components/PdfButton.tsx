@@ -17,7 +17,7 @@ export function PdfButton(props: {
   if (props.variant === 'icon') {
     return (
       <IconButton
-        variant="primary"
+        variant="secondary"
         label={pending ? 'Gerando PDF' : props.label}
         onClick={props.onDownload}
       >

@@ -137,7 +137,7 @@ export function InvoicesPage({ accountId }: { accountId: string }) {
         )}
         <a
           href={routeHref({ name: 'issue', accountId, invoiceId: invoice.id })}
-          className={`${buttonClasses({ variant: 'secondary', size: 'action' })} ml-auto`}
+          className={`${buttonClasses({ variant: 'primary', size: 'action' })} ml-auto`}
         >
           Emitir parecida
         </a>
