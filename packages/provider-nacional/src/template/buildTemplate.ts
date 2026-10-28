@@ -56,8 +56,10 @@ export function buildTemplate(input: NewInvoiceInput): DpsTemplate {
       ? percentText(input.issRate)
       : undefined;
 
-  const ibsCbsCodes =
-    service.ibsCbs ?? (abroad ? undefined : ibsCbsDefaults(service.nationalTaxCode));
+  // Codes saved with export details describe an export, so a domestic invoice of that service uses the defaults.
+  const ibsCbsCodes = abroad
+    ? service.ibsCbs
+    : ((service.export ? undefined : service.ibsCbs) ?? ibsCbsDefaults(service.nationalTaxCode));
 
   return {
     emitterMunicipality: emitter.municipality,

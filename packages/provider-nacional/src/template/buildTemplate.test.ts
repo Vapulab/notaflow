@@ -193,6 +193,25 @@ describe('buildTemplate', () => {
     });
   });
 
+  test('export codes saved with export details do not apply to a domestic invoice', () => {
+    const service = { ...abroad.service, nationalTaxCode: '010101' };
+    expect(buildTemplate({ ...domestic, service }).ibsCbs).toMatchObject({
+      operationCode: '100301',
+      cst: '000',
+      classCode: '000001',
+    });
+  });
+
+  test('a CPF customer gets indFinal 1 in a valid NT 009 DPS', () => {
+    const customer = {
+      ...domestic.customer,
+      document: { type: 'CPF' as const, value: '11144477735' },
+    };
+    const xml = dpsXml(buildTemplate({ ...domestic, customer }), 'nt009');
+    expect(xml).toContain('<IBSCBS><indFinal>1</indFinal>');
+    expect(validateAgainstXsd(xml, 'DPS_v1.01.xsd', 'nt009').errors).toEqual([]);
+  });
+
   test('a domestic DPS in production before NT 009 is byte-identical to the one before the IBSCBS group', () => {
     expect(dpsXml(buildTemplate(domestic), 'nt004')).toBe(readFixture('DPS_DOMESTIC_NT004.xml'));
   });
