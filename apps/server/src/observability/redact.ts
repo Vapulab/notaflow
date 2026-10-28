@@ -34,15 +34,18 @@ export const REDACT_PATHS = [
 // Every regex below runs on at most this many characters, so a long attacker path costs linear time.
 export const MAX_TEXT = 2048;
 export const MAX_STACK = 8192;
-const TRUNCATED = '…[truncado]';
+const TRUNCATED = ' …[truncado]';
 
 // A run without spaces or quotes; its first "/" or "http" before a "?" starts a URL.
 const WORD = /[^\s"'<>]+/g;
 const SECRET_PAIR =
   /\b(token|secret|password|senha|key|signature|sig|apikey|api_key|access_token|refresh_token)=[^&\s"'<>]+/gi;
 const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g;
-// Bounded like RFC 5321 (local part 64, label 63), so a failed match never scans to the end of the text.
-const EMAIL = /[^\s@<>(),;:"'=&?/]{1,64}@((?:[^\s@<>(),;:"'&?/.]{1,63}\.){1,8}[A-Za-z]{2,24})\b/g;
+// Starts only at a token boundary, so each run is read once; the domain is bounded like RFC 5321.
+const EMAIL =
+  /(?<![^\s@<>(),;:"'=&?/])[^\s@<>(),;:"'=&?/]+@((?:[^\s@<>(),;:"'&?/.]{1,63}\.){1,8}[A-Za-z]{2,24})(?![A-Za-z0-9-])/g;
+const JSON_SECRET =
+  /"(token|secret|password|passwd|apiKey|api_key|key|signature|authorization|cookie)"\s*:\s*"[^"]*"/gi;
 // A CPF (11 digits) or a CNPJ (14 characters [0-9A-Z] that end in two digits), with or without punctuation.
 const DOCUMENT =
   /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
@@ -55,8 +58,17 @@ export interface RedactOptions {
   max?: number;
 }
 
+const DELIMITER = /[\s"'<>(),;/?&=#:]/;
+
+const DOCUMENT_CHAR = /[0-9A-Z./-]/;
+
+// The cut goes back past any partial word and document: a half e-mail or CPF would no longer match its rule.
 function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max) + TRUNCATED : text;
+  if (text.length <= max) return text;
+  let end = max;
+  while (end > 0 && !DELIMITER.test(text.charAt(end - 1))) end -= 1;
+  while (end > 0 && DOCUMENT_CHAR.test(text.charAt(end - 1))) end -= 1;
+  return text.slice(0, end) + TRUNCATED;
 }
 
 function redactPaths(text: string): string {
@@ -121,7 +133,8 @@ export function redactText(text: string, options: RedactOptions = {}): string {
   return redactPersonal(
     redactPaths(dropQueries(truncate(text, options.max ?? MAX_TEXT)))
       .replace(SECRET_PAIR, `$1=${REDACTED}`)
-      .replace(BEARER, `$1 ${REDACTED}`),
+      .replace(BEARER, `$1 ${REDACTED}`)
+      .replace(JSON_SECRET, `"$1":"${REDACTED}"`),
     options.personal ?? 'log',
   );
 }

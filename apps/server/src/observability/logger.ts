@@ -44,10 +44,16 @@ export const loggerOptions = {
 // A library's extra log argument as one line: an Error keeps its message and stack, an object its JSON.
 export function argForLog(arg: unknown): string {
   if (typeof arg === 'string') return arg;
+  if (arg instanceof Error) return JSON.stringify(redactError(arg));
+  // A class instance can hold fields the rules never read: only its type goes out.
+  if (typeof arg === 'object' && arg !== null && !Array.isArray(arg)) {
+    const proto: unknown = Object.getPrototypeOf(arg);
+    if (proto !== Object.prototype && proto !== null) {
+      return `[Object ${(arg as { constructor?: { name?: string } }).constructor?.name ?? 'Object'}]`;
+    }
+  }
   try {
-    return (
-      JSON.stringify(arg instanceof Error ? redactError(arg) : redactValue(arg)) ?? String(arg)
-    );
+    return JSON.stringify(redactValue(arg)) ?? String(arg);
   } catch {
     return '[unserializable]';
   }

@@ -18,7 +18,7 @@ The server writes pino JSON to stdout. Alloy sends it to Loki (14 days), and Doc
 | `Bearer <value>` or `Basic <value>` | `Bearer ***` |
 | An object key such as `password`, `token`, `secret`, `pfx`, `certificate`, `masterKey`, `apiKey`, `authorization`, `cookie`, at any depth | `***` |
 | A request header | Never logged. pino's `redact` also covers `authorization`, `cookie`, `set-cookie`, and `x-hub-signature-256`. |
-| A string longer than 2 KB (a stack: 8 KB) | Cut, with `…[truncado]` at the end, before any rule runs. This keeps the cost linear on a long attacker path. |
+| A string longer than 2 KB (a stack: 8 KB) | Cut back to the last delimiter, past any partial word or document, with `…[truncado]` at the end, before any rule runs. This keeps the cost linear on a long attacker path. |
 | An object deeper than 6 levels | `***` |
 
 The log keeps the operational fields: method, route path, status, duration, request id, module, account id, invoice id, and error codes.

@@ -217,3 +217,61 @@ describe('argForLog', () => {
     expect(parsed.stack).toContain('send to ***@example.com failed');
   });
 });
+
+describe('fix round 2', () => {
+  const pad = (n: number) => 'a'.repeat(n);
+
+  test('the cut never leaves part of an e-mail, a secret pair, or a document', () => {
+    for (const tail of [
+      ' ana@example.com',
+      ' token=SEGREDO-LONGO',
+      ' CPF 111.444.777-35',
+      ' 12.345.678/0001-95',
+    ]) {
+      for (let shift = 1; shift < tail.length; shift += 1) {
+        const out = redactText(pad(MAX_TEXT - shift) + tail);
+        expect(out.endsWith('…[truncado]')).toBe(true);
+        for (const piece of ['ana@', '@exa', 'SEGREDO', '111.4', '444.7', '12.345', '0001']) {
+          expect(out, `${tail} ${shift}`).not.toContain(piece);
+        }
+      }
+    }
+  });
+
+  test('the stack cut also drops a partial word', () => {
+    const error = new Error('x');
+    error.stack = pad(8192 - 6) + ' ana@example.com';
+    expect(redactError(error).stack).not.toContain('ana@');
+  });
+
+  test('an over-long local part is masked whole', () => {
+    expect(redactText(`para ${'b'.repeat(70)}@example.com.`)).toBe('para ***@example.com.');
+  });
+
+  test('an address before a dot or punctuation is masked, and a longer domain is not cut', () => {
+    expect(redactText('(ana@example.com). ana@ex.com.br; ana@example.com!')).toBe(
+      '(***@example.com). ***@ex.com.br; ***@example.com!',
+    );
+  });
+
+  test('an address in a URL query is dropped or masked', () => {
+    expect(redactText('GET https://x.example/p?e=ana@example.com&limit=1 ok')).toBe(
+      'GET https://x.example/p?limit=1 ok',
+    );
+    expect(redactUrl('/api/x?status=ana@example.com')).toBe('/api/x?status=***@example.com');
+  });
+
+  test('a secret key in JSON text is masked', () => {
+    expect(redactText('{"apiKey": "re_abc", "Authorization":"Bearer x", "id":"i1"}')).toBe(
+      '{"apiKey":"***", "Authorization":"***", "id":"i1"}',
+    );
+  });
+
+  test('argForLog gives only the type of a class instance', () => {
+    class Client {
+      secretish = 'hunter2';
+    }
+    expect(argForLog(new Client())).toBe('[Object Client]');
+    expect(argForLog([{ to: 'ana@example.com' }])).toBe('[{"to":"***@example.com"}]');
+  });
+});
