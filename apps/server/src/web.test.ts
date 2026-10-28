@@ -125,6 +125,7 @@ test('serves the DANFSe link page for any token, noindex and outside the sitemap
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('link-page');
     expect(response.headers['x-robots-tag']).toBe('noindex');
+    expect(response.headers['cache-control']).toBe('private, no-store');
   }
   expect((await app.inject({ url: '/sitemap.xml' })).body).not.toContain('/n/');
 });

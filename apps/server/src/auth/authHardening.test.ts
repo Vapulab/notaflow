@@ -145,3 +145,14 @@ test('the request log never holds the query of an auth callback', async () => {
   expect(log).toContain('/api/auth/callback/google');
   expect(log).not.toContain('SEGREDO-UNICO');
 });
+
+test('the request log never holds a DANFSe link token', async () => {
+  await start();
+  const token = 'Zx9_-'.repeat(8) + 'abc';
+  for (const url of [`/n/${token}`, `/api/public/n/${token}`, `/api/public/n/${token}/pdf`]) {
+    await t.app.inject({ method: 'GET', url, remoteAddress: ip });
+  }
+  const log = lines.join('\n');
+  expect(log).toContain('/n/:token');
+  expect(log).not.toContain(token);
+});

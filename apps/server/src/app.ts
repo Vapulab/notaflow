@@ -37,6 +37,7 @@ import { serviceRoutes } from './routes/services';
 import { serviceSuggestionRoutes } from './routes/serviceSuggestions';
 import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
+import { redactLinkToken } from './observability/linkToken';
 import { invoiceLinkRoutes } from './routes/invoiceLinks';
 import { issueRoutes } from './routes/issue';
 import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
@@ -116,9 +117,11 @@ function requestForLog(request: {
   ip: string;
   socket: { remotePort?: number | undefined };
 }) {
-  const url = request.url.startsWith('/api/auth/callback/')
-    ? (request.url.split('?')[0] ?? '')
-    : request.url;
+  const url = redactLinkToken(
+    request.url.startsWith('/api/auth/callback/')
+      ? (request.url.split('?')[0] ?? '')
+      : request.url,
+  );
   return {
     method: request.method,
     url,
@@ -131,12 +134,21 @@ function requestForLog(request: {
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { config, db } = deps;
   const serializers = { req: requestForLog };
+  // Fastify's own "Route GET:/n/<token> not found" line holds the URL in a message, not in `req`.
+  const hooks = {
+    logMethod(this: unknown, args: unknown[], method: (...args: unknown[]) => void) {
+      method.apply(
+        this,
+        args.map((arg) => (typeof arg === 'string' ? redactLinkToken(arg) : arg)),
+      );
+    },
+  };
   const app = Fastify({
     logger: deps.logStream
-      ? { stream: deps.logStream, serializers }
+      ? { stream: deps.logStream, serializers, hooks }
       : config.nodeEnv === 'test'
         ? false
-        : { serializers },
+        : { serializers, hooks },
   });
   const routeList: { method: string; url: string }[] = [];
   app.decorate('routeList', routeList);

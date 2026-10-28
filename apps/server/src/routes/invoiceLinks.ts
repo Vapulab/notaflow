@@ -12,6 +12,7 @@ import { createRateLimiter } from '../rateLimit';
 import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 import { visitorIp } from '../requestContext';
+import { NO_STORE } from '../web';
 
 const TOKEN = { type: 'string', maxLength: 100 } as const;
 const tokenParams = {
@@ -19,6 +20,11 @@ const tokenParams = {
   required: ['token'],
   properties: { token: TOKEN },
 } as const;
+
+// Set before validation and the limiter run, so a 400, 404, and 429 carry it too.
+const noStore = async (_request: unknown, reply: { header(name: string, value: string): unknown }) => {
+  reply.header('cache-control', NO_STORE);
+};
 
 const emailSchema = {
   body: {
@@ -89,7 +95,7 @@ export function invoiceLinkRoutes(
   // A wrong, revoked, or removed token all answer the same 404.
   app.get<{ Params: { token: string } }>(
     '/api/public/n/:token',
-    { schema: { params: tokenParams } },
+    { schema: { params: tokenParams }, onRequest: noStore },
     async (request, reply) => {
       if (!limit(visitorIp(request))) throw new HttpError(429, 'too_many_requests');
       const view = links.publicView(request.params.token);
@@ -109,7 +115,7 @@ export function invoiceLinkRoutes(
 
   app.get<{ Params: { token: string } }>(
     '/api/public/n/:token/pdf',
-    { schema: { params: tokenParams } },
+    { schema: { params: tokenParams }, onRequest: noStore },
     async (request, reply) => {
       if (!limit(visitorIp(request))) throw new HttpError(429, 'too_many_requests');
       const view = links.publicView(request.params.token);

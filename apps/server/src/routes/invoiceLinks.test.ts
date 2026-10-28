@@ -211,3 +211,20 @@ test('the public PDF comes from R2 when ready', async () => {
   expect(pdf.rawPayload.equals(stored)).toBe(true);
   expect(keys).toEqual([`danfse/${invoice.accessKey}-none.pdf`]);
 });
+
+test('every public answer, also 404 and 429, is private and no-store', async () => {
+  const { a, invoice } = await setup();
+  const token = await tokenOf(a.accountId, invoice.id);
+  const answers = [
+    await pub(token),
+    await pub(token, '/pdf'),
+    await pub('x'.repeat(43)),
+    await pub('x'.repeat(43), '/pdf'),
+    await pub('x'.repeat(100)),
+  ];
+  expect(answers.map((r) => r.statusCode)).toEqual([200, 200, 404, 404, 404]);
+  for (let i = 0; i < 60; i += 1) await pub('nope');
+  answers.push(await pub('nope'));
+  expect(answers[5]?.statusCode).toBe(429);
+  for (const response of answers) expect(response.headers['cache-control']).toBe('private, no-store');
+});
