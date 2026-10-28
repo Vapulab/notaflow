@@ -31,6 +31,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 function link(className: string, href: string, text: string): HTMLAnchorElement {
   const anchor = el('a', className, text);
+  anchor.rel = 'noreferrer';
   anchor.href = href;
   return anchor;
 }
@@ -43,6 +44,13 @@ function renderInvalid(root: HTMLElement): void {
       '/',
       'Ir para o NotaFlow',
     ),
+  );
+}
+
+function renderUnavailable(root: HTMLElement): void {
+  root.replaceChildren(
+    el('h1', 'font-display text-2xl font-semibold', 'Não foi possível carregar a nota agora.'),
+    el('p', 'mt-3 text-muted', 'Tente de novo em alguns minutos.'),
   );
 }
 
@@ -119,11 +127,12 @@ export async function mountLinkPage(
   let data: LinkSummary | null = null;
   try {
     const response = await fetch(`/api/public/n/${token}`);
+    if (response.status === 404) return renderInvalid(root);
     if (response.ok) data = (await response.json()) as LinkSummary;
   } catch {
-    // A network failure reads like a dead link: nothing else to show.
+    // Falls through to the retry message.
   }
-  if (!data) return renderInvalid(root);
+  if (!data) return renderUnavailable(root);
   renderSummary(root, token, origin, data);
   track('danfse_link_viewed');
 }

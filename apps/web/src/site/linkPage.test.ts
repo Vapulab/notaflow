@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { track } from '../analytics/analytics';
 import { mountLinkPage } from './linkPage';
@@ -91,4 +93,40 @@ test('captures danfse_link_viewed once, without the token', async () => {
   await mount(200, SUMMARY);
   expect(track).toHaveBeenCalledTimes(1);
   expect(track).toHaveBeenCalledWith('danfse_link_viewed');
+});
+
+test.each([429, 500])(
+  'a %s answer asks to try again, not that the link is invalid',
+  async (status) => {
+    const { root } = await mount(status);
+    expect(text(root)).toContain('Não foi possível carregar a nota agora.');
+    expect(text(root)).toContain('Tente de novo em alguns minutos.');
+    expect(text(root)).not.toContain('Link inválido');
+    expect(track).not.toHaveBeenCalled();
+  },
+);
+
+test('a network failure asks to try again', async () => {
+  document.body.innerHTML = '<main data-link-page></main>';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => Promise.reject(new Error('offline'))),
+  );
+  const root = document.querySelector<HTMLElement>('[data-link-page]');
+  if (!root) throw new Error('no root');
+  await mountLinkPage(root, TOKEN, 'https://app.test');
+  expect(text(root)).toContain('Tente de novo em alguns minutos.');
+});
+
+test('every link the page builds opts out of the referrer', async () => {
+  const { root } = await mount(200, SUMMARY);
+  const links = [...root.querySelectorAll('a')];
+  expect(links.length).toBeGreaterThan(0);
+  for (const a of links) expect(a.rel).toBe('noreferrer');
+});
+
+test('n.html sends no referrer and every link in it is noreferrer', () => {
+  const html = readFileSync(resolve(__dirname, '../../n.html'), 'utf8');
+  expect(html).toContain('<meta name="referrer" content="no-referrer" />');
+  for (const tag of html.match(/<a\s[^>]*>/g) ?? []) expect(tag).toContain('rel="noreferrer"');
 });

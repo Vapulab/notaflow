@@ -6,7 +6,14 @@ import { GUIDE_PAGES } from './guide/pages';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const GUIDE_FILES = GUIDE_PAGES.map((page) => page.file);
 const PARTIALS = ['partials/guide-header.html', 'partials/guide-footer.html'];
-const PAGES = ['landing.html', 'termos.html', 'privacidade.html', '404.html', 'n.html', ...GUIDE_FILES];
+const PAGES = [
+  'landing.html',
+  'termos.html',
+  'privacidade.html',
+  '404.html',
+  'n.html',
+  ...GUIDE_FILES,
+];
 // The paths the server answers outside the app (see apps/server/src/web.ts) and the public app pages.
 const ROUTES = new Set([
   '/',
@@ -151,7 +158,10 @@ test('the privacy policy explains the reminder e-mails, their basis, and how to 
 });
 
 test('the privacy policy says it keeps the campaign link of the signup, why, and on what basis', () => {
-  const data = section(read('privacidade.html'), 'Que dados tratamos, para quê e com que base legal');
+  const data = section(
+    read('privacidade.html'),
+    'Que dados tratamos, para quê e com que base legal',
+  );
   expect(data).toMatch(/link de campanha[^<]*cadastro/);
   expect(data).toContain('canais de divulgação');
 });
@@ -187,25 +197,29 @@ test('the guide footer carries the fixed Aviso', () => {
   expect(read('partials/guide-footer.html')).toContain(AVISO);
 });
 
-test.each(GUIDE_PAGES)('guide page $path has its title, canonical, markers, and structured data', (page) => {
-  const html = read(page.file);
-  expect(html).toContain(`<title>${page.title} | NotaFlow</title>`);
-  expect(html).toContain(`<link rel="canonical" href="https://notaflow.vapulab.com${page.path}" />`);
-  expect(html).toContain('<!--partial:guide-header-->');
-  expect(html).toContain('<!--partial:guide-footer-->');
-  expect(html).toContain('<section id="fontes"');
-  expect(html).toContain('<time datetime="2026-10-21">21 de outubro de 2026</time>');
-  expect(html).toContain('src="/src/site/guide/guide.ts"');
-  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-  expect(blocks).toHaveLength(1);
-  const graph = JSON.parse(blocks[0]?.[1] ?? '')['@graph'] as Record<string, unknown>[];
-  const article = graph.find((node) => node['@type'] === 'Article');
-  const crumbs = graph.find((node) => node['@type'] === 'BreadcrumbList') as
-    | { itemListElement: unknown[] }
-    | undefined;
-  expect(article).toMatchObject({ inLanguage: 'pt-BR', dateModified: '2026-10-21' });
-  expect(crumbs?.itemListElement).toHaveLength(page.path === '/guia' ? 2 : 3);
-});
+test.each(GUIDE_PAGES)(
+  'guide page $path has its title, canonical, markers, and structured data',
+  (page) => {
+    const html = read(page.file);
+    expect(html).toContain(`<title>${page.title} | NotaFlow</title>`);
+    expect(html).toContain(
+      `<link rel="canonical" href="https://notaflow.vapulab.com${page.path}" />`,
+    );
+    expect(html).toContain('<!--partial:guide-header-->');
+    expect(html).toContain('<!--partial:guide-footer-->');
+    expect(html).toContain('<section id="fontes"');
+    expect(html).toContain('<time datetime="2026-10-21">21 de outubro de 2026</time>');
+    expect(html).toContain('src="/src/site/guide/guide.ts"');
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+    expect(blocks).toHaveLength(1);
+    const graph = JSON.parse(blocks[0]?.[1] ?? '')['@graph'] as Record<string, unknown>[];
+    const article = graph.find((node) => node['@type'] === 'Article');
+    const crumbs = graph.find((node) => node['@type'] === 'BreadcrumbList') as
+      { itemListElement: unknown[] } | undefined;
+    expect(article).toMatchObject({ inLanguage: 'pt-BR', dateModified: '2026-10-21' });
+    expect(crumbs?.itemListElement).toHaveLength(page.path === '/guia' ? 2 : 3);
+  },
+);
 
 test('the landing links the guide in the header and the footer', () => {
   const html = read('landing.html');
@@ -218,7 +232,14 @@ test('the landing links the guide in the header and the footer', () => {
 test('the privacy policy has one section on the notify-me list', () => {
   const html = clean(read('privacidade.html'));
   expect(html).toContain('Lista de aviso sobre novidades');
-  for (const part of ['e-mail', 'interesses', 'página', 'campanha', 'privacidade@vapulab.com', 'até que'])
+  for (const part of [
+    'e-mail',
+    'interesses',
+    'página',
+    'campanha',
+    'privacidade@vapulab.com',
+    'até que',
+  ])
     expect(html, part).toContain(part);
 });
 

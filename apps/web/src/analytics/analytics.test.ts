@@ -9,7 +9,14 @@ const posthog = vi.hoisted(() => ({
 }));
 vi.mock('posthog-js', () => ({ default: posthog }));
 
-import { identifyUser, startAnalytics, stopAnalytics, track } from './analytics';
+import {
+  identifyUser,
+  optionsFor,
+  redactEventUrls,
+  startAnalytics,
+  stopAnalytics,
+  track,
+} from './analytics';
 
 afterEach(() => {
   stopAnalytics();
@@ -70,4 +77,35 @@ test('a user is known by the internal id alone, set as the id, so page loads do 
   posthog.get_distinct_id = vi.fn(() => 'u1');
   identifyUser('u1');
   expect(posthog.reset).toHaveBeenCalledTimes(1);
+});
+
+const TOKEN = 'a'.repeat(43);
+
+test('the link page gets no pageview and no recording; other pages keep both', () => {
+  expect(optionsFor(`/n/${TOKEN}`)).toMatchObject({
+    capture_pageview: false,
+    disable_session_recording: true,
+  });
+  expect(optionsFor('/guia')).toMatchObject({
+    capture_pageview: 'history_change',
+    disable_session_recording: false,
+  });
+});
+
+test('before_send rewrites a link token in every URL property', () => {
+  const keys = [
+    '$current_url',
+    '$pathname',
+    '$referrer',
+    '$initial_referrer',
+    '$initial_current_url',
+    '$session_entry_url',
+  ];
+  const properties = Object.fromEntries(keys.map((k) => [k, `https://x.test/n/${TOKEN}?a=1`]));
+  const out = redactEventUrls({ event: 'e', properties });
+  for (const key of keys) expect(out.properties[key]).toBe('https://x.test/n/:token?a=1');
+  expect(redactEventUrls({ properties: { $pathname: '/guia' } }).properties.$pathname).toBe(
+    '/guia',
+  );
+  expect(optionsFor('/').before_send).toBe(redactEventUrls);
 });

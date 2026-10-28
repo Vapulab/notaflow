@@ -63,3 +63,15 @@ test('an e-mail is replaced without the punctuation after it', () => {
     'para [e-mail], CNPJ e [e-mail].',
   );
 });
+
+test('a link token never leaves in the request URL, the message, or an exception', () => {
+  const token = 'b'.repeat(43);
+  const event = scrubEvent({
+    message: `falhou em /n/${token}`,
+    request: { url: `https://notaflow.vapulab.com/n/${token}?x=1` },
+    exception: { values: [{ value: `GET /n/${token} 500` }] },
+  });
+  expect(event.request?.url).toBe('https://notaflow.vapulab.com/n/:token');
+  expect(event.message).toBe('falhou em /n/:token');
+  expect(event.exception?.values?.[0]?.value).toBe('GET /n/:token 500');
+});

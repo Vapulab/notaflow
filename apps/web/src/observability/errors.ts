@@ -1,3 +1,5 @@
+import { redactLinkToken } from './linkToken';
+
 export interface ErrorTrackingConfig {
   dsn: string;
   release: string | null;
@@ -20,7 +22,7 @@ const DOCUMENT =
   /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2})\b/g;
 
 function scrubText(text: string): string {
-  return text.replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]');
+  return redactLinkToken(text).replace(EMAIL, '[e-mail]').replace(DOCUMENT, '[documento]');
 }
 
 // The same rules as the server's: no query, header, e-mail, document, or breadcrumb leaves the browser.
@@ -28,7 +30,9 @@ export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
   const clean: ScrubbableEvent = { ...event };
   if (clean.message) clean.message = scrubText(clean.message);
   if (clean.request) {
-    const url = clean.request.url?.split('?')[0];
+    const url = clean.request.url
+      ? redactLinkToken(clean.request.url.split('?')[0] ?? '')
+      : undefined;
     clean.request = url ? { url } : {};
   }
   if (clean.user) clean.user = clean.user.id === undefined ? {} : { id: clean.user.id };
