@@ -91,7 +91,7 @@ export function invoiceLinkRoutes(
         action: 'invoice.email',
         entity: request.params.invoiceId,
         result: 'ok',
-        detail: `manual @${to.split('@')[1] ?? ''}`,
+        detail: `manual ${sent === 'suppressed' ? 'suppressed ' : ''}@${to.split('@')[1] ?? ''}`,
       });
       return { sent: true };
     },

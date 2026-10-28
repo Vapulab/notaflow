@@ -363,18 +363,23 @@ test('a bad signature, or a signature of another address, answers 400 and record
   expect(t.db.select().from(mailSuppressions).all()).toHaveLength(0);
 });
 
-test('a suppressed address gets no manual e-mail (409) and no automatic one', async () => {
+test('a suppressed address gets no e-mail, and a manual send answers as a success', async () => {
   const s = await withNewInvoiceSetup(t);
   await production();
   await t.app.inject({ method: 'POST', url: unsub('cliente@example.com') });
   const manual = await issue(s, s.brazilId);
   const blocked = await send(s, manual.id, 'CLIENTE@example.com');
-  expect(blocked.statusCode).toBe(409);
-  expect(blocked.json()).toMatchObject({ error: 'address_suppressed' });
+  const fresh = await send(s, manual.id, 'novo@example.com');
+  expect(blocked.statusCode).toBe(fresh.statusCode);
+  expect(blocked.json()).toEqual(fresh.json());
+  // Only the real send is queued, so only it counts against the caps.
+  expect(outbox().map((r) => r.to)).toEqual(['novo@example.com']);
+  const audited = t.db.select().from(auditLog).all().map((r) => r.detail);
+  expect(audited).toContain('manual suppressed @example.com');
   expect(t.mail.filter((m) => m.to.toLowerCase() === 'cliente@example.com')).toHaveLength(0);
   const customerId = await customerWithEmail(s, 'cliente@example.com');
   await issue(s, customerId);
-  expect(outbox()).toHaveLength(0);
+  expect(outbox()).toHaveLength(1);
 });
 
 test('a manual e-mail writes an audit row with the domain and never the address', async () => {

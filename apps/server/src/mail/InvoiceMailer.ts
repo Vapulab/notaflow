@@ -79,12 +79,9 @@ export class InvoiceMailer {
     invoiceId: string,
     to: string,
     replyTo: string,
-  ): Promise<boolean> {
+  ): Promise<'sent' | 'suppressed' | false> {
     const mail = this.render(ctx, invoiceId, to);
     if (!mail) return false;
-    if (this.suppressions.isSuppressed(to, 'invoice')) {
-      throw new HttpError(409, 'address_suppressed');
-    }
     // Counted in the database, so a restart resets nothing; the count and the insert share one tick.
     const now = Date.now();
     const { outbox } = this.deps;
@@ -95,12 +92,14 @@ export class InvoiceMailer {
     ) {
       throw new HttpError(429, 'too_many_requests');
     }
+    // Answered like a send, so the reply never tells a caller whether an address unsubscribed.
+    if (this.suppressions.isSuppressed(to, 'invoice')) return 'suppressed';
     await outbox.send(
       { ...mail, to, replyTo, ref: { accountId: ctx.accountId, invoiceId } },
       'invoice',
     );
     this.invoices.markCustomerEmailed(ctx, invoiceId, new Date());
-    return true;
+    return 'sent';
   }
 
   // Once per invoice: the claim and the outbox row share one transaction, so a retry finds the claim and sends nothing.
