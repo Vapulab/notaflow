@@ -1,3 +1,4 @@
+import { ibsCbsDefaults } from '@notaflow/provider-nacional/simples';
 import { type FormEvent, useState } from 'react';
 import { api, type Service, type ServiceCode, type ServiceExport, type ServiceInput } from '../api';
 import { errorText } from '../components/Layout';
@@ -43,28 +44,51 @@ const codeOption = (c: ServiceCode): ComboboxOption => ({
     : formatServiceCode(c.code),
 });
 
-function textOf(service: Service | null): Record<Text, string> {
+// The stored codes of the service, else the Anexo VIII defaults of the code.
+function ibsCbsOf(service: Service | null, code: string | undefined) {
+  if (service?.ibsCbs) return service.ibsCbs;
+  // The codes of a service with export details are export codes: no Brazil defaults there.
+  return code && !service?.export ? ibsCbsDefaults(code) : null;
+}
+
+function textOf(service: Service | null, code?: string): Record<Text, string> {
+  const ibsCbs = ibsCbsOf(service, service?.nationalTaxCode ?? code);
   return {
     name: service?.name ?? '',
     description: service?.description ?? '',
     municipalTaxCode: service?.municipalTaxCode ?? '',
     nbsCode: service?.nbsCode ?? '',
     pisCofinsCst: service?.pisCofinsCst ?? '',
-    operationCode: service?.ibsCbs?.operationCode ?? '',
-    cst: service?.ibsCbs?.cst ?? '',
-    classCode: service?.ibsCbs?.classCode ?? '',
+    operationCode: ibsCbs?.operationCode ?? '',
+    cst: ibsCbs?.cst ?? '',
+    classCode: ibsCbs?.classCode ?? '',
   };
 }
 
 // The body of POST services or PUT services/:id: optional groups go only when every field is filled.
+// Codes equal to the Anexo VIII defaults stay out, so a table update still reaches the service.
+const isKept = (kept: Service['ibsCbs'], text: Record<Text, string>) =>
+  kept?.operationCode === text.operationCode.trim() &&
+  kept.cst === text.cst.trim() &&
+  kept.classCode === text.classCode.trim();
+
 export function serviceBody(
   code: string,
   text: Record<Text, string>,
   exp: Record<ExportField, string>,
+  kept?: Service['ibsCbs'],
 ): ServiceInput {
   const t = (field: Text) => text[field].trim();
-  const ibsCbs = t('operationCode') && t('cst') && t('classCode');
   const exportDone = EXPORT_FIELDS.every((field) => exp[field] !== '');
+  const defaults = ibsCbsDefaults(code);
+  const ibsCbs =
+    t('operationCode') &&
+    t('cst') &&
+    t('classCode') &&
+    (isKept(kept, text) ||
+      t('operationCode') !== defaults.operationCode ||
+      t('cst') !== defaults.cst ||
+      t('classCode') !== defaults.classCode);
   return {
     name: t('name'),
     nationalTaxCode: code,
@@ -97,7 +121,7 @@ export function ServiceDialog(props: {
   const suggested = useSuggestedCodes(base, props.emitterId);
   const typing = query.trim() !== '';
   const [text, setText] = useState(() => ({
-    ...textOf(service),
+    ...textOf(service, props.initialCode?.code),
     ...(!service && props.initialCode ? { description: props.initialCode.description } : {}),
   }));
   const [exp, setExp] = useState<Record<ExportField, string>>(
@@ -126,6 +150,21 @@ export function ServiceDialog(props: {
     if (chosen && (text.description.trim() === '' || text.description === code?.description)) {
       set('description')(chosen.description);
     }
+    // Codes still equal to the defaults of the last code follow the new one.
+    const old = code ? ibsCbsDefaults(code.code) : null;
+    const untouched =
+      text.operationCode === (old?.operationCode ?? '') &&
+      text.cst === (old?.cst ?? '') &&
+      text.classCode === (old?.classCode ?? '');
+    if (untouched && !EXPORT_FIELDS.every((field) => exp[field] !== '')) {
+      const next = chosen ? ibsCbsDefaults(chosen.code) : null;
+      setText((t) => ({
+        ...t,
+        operationCode: next?.operationCode ?? '',
+        cst: next?.cst ?? '',
+        classCode: next?.classCode ?? '',
+      }));
+    }
     setCode(chosen);
   }
 
@@ -138,7 +177,7 @@ export function ServiceDialog(props: {
     setBusy(true);
     setError(null);
     try {
-      const body = serviceBody(code.code, text, exp);
+      const body = serviceBody(code.code, text, exp, service?.ibsCbs);
       if (service) {
         await api.put(`${base}/services/${encodeURIComponent(service.id)}`, body);
         props.onSaved();

@@ -150,6 +150,14 @@ Steps:
    - Validation rejection: `rejected`. The form shows the Sefin messages next to the fields.
    - Uncertain result (timeout or 5xx): `unknown`. The app never resends blindly. It first queries the Sefin by DPS id. It resends only if no invoice exists for that DPS.
 
+### IBS/CBS group on domestic invoices
+
+From the NT 009 layout, a domestic DPS carries the `IBSCBS` group. The group takes its codes from the service. A service without codes gets the defaults for its LC 116 item, from the Anexo VIII v1.02.00 (`packages/provider-nacional/src/rules/ibsCbsDefaults.ts` and `anexo8.json`). An item without a `cClassTrib` keeps its `INDOP` and uses `000001`. The `99.xx` items are out of scope. `indFinal` is 1 for a CPF customer and 0 otherwise. `indDest` and `finNFSe` are 0. A copy ("issue similar", a resend) gets the defaults at issue time, with `indFinal` from the final customer. A domestic override typed in "More options" applies to that invoice. Production keeps the NT 004 output until `NT009_FROM` (2026-12-01, in `src/dps/layout.ts`). Produção restrita accepted the CNPJ case on 2026-10-28. The `indFinal` 1 case still needs a real CPF, because the Sefin refused the synthetic one (E0207).
+
+The layout follows `issuedAt` (the send time minus 60 s). A domestic invoice sent in the first minute of 2026-12-01 still goes out as NT 004. If the Sefin refuses it with E0855, a retry fixes it.
+
+After the switch, a copy of a pre-switch invoice uses the Anexo VIII defaults. It does not use codes the service had only on paper. This holds until the service has its own codes.
+
 ### Flow: cancel
 
 1. On an issued invoice, "Cancel" opens a dialog with the reason (the fixed Sefin list) and a justification (minimum length from the Sefin rules).

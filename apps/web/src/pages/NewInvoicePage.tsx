@@ -61,7 +61,11 @@ import {
   completeBody,
   completeFrom,
   EXPORT_FIELDS,
+  ibsCbsShown,
   serviceFields,
+  withCode,
+  isAbroad,
+  withCustomerMode,
 } from './completeMode';
 import { revenueIsStale } from '../components/simplesRates';
 
@@ -171,8 +175,7 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
   }, [base, linked, send.restored]);
 
   const customer = form.customer;
-  const abroad =
-    customer !== null && customer.documentType !== 'CNPJ' && customer.documentType !== 'CPF';
+  const abroad = isAbroad(customer);
   const service = services.data?.find((s) => s.id === form.serviceId) ?? null;
   const brlCents = parseCents(form.brl);
   const foreignCents = abroad ? parseCents(form.foreign) : null;
@@ -471,12 +474,20 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 onQueryChange={setCustomerQuery}
                 options={found.filter((c) => !c.archived).map(customerOption)}
                 selected={customer ? customerOption(customer) : null}
-                onSelect={(option) =>
-                  set(
-                    'customer',
-                    option ? (found.find((c) => c.id === option.value) ?? null) : null,
-                  )
-                }
+                onSelect={(option) => {
+                  const next = option ? (found.find((c) => c.id === option.value) ?? null) : null;
+                  setForm((f) => ({
+                    ...f,
+                    customer: next,
+                    more:
+                      f.more && isAbroad(next) !== isAbroad(f.customer)
+                        ? withCustomerMode(
+                            f.more,
+                            services.data?.find((s) => s.id === f.serviceId) ?? null,
+                          )
+                        : f.more,
+                  }));
+                }}
                 placeholder="Nome ou documento"
               />
             </Field>
@@ -687,13 +698,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                     : null
                 }
                 onSelect={(option) =>
-                  setMore({
-                    code: option
-                      ? ([...foundCodes, ...suggestedCodes.codes].find(
-                          (c) => c.code === option.value,
-                        ) ?? null)
-                      : null,
-                  })
+                  setMore(
+                    withCode(
+                      more,
+                      service,
+                      abroad,
+                      option
+                        ? ([...foundCodes, ...suggestedCodes.codes].find(
+                            (c) => c.code === option.value,
+                          ) ?? null)
+                        : null,
+                    ),
+                  )
                 }
                 placeholder="Busque pelo nome ou pelo código"
               />
@@ -704,20 +720,33 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                   ['municipalTaxCode', 'Código municipal'],
                   ['nbsCode', 'NBS'],
                   ['pisCofinsCst', 'CST do PIS/COFINS'],
-                  // 2026: a Brazil invoice of a Simples optant carries no IBS/CBS group.
-                  ...(abroad
-                    ? ([
-                        ['operationCode', 'Indicador de operação (IBS/CBS)'],
-                        ['cst', 'CST do IBS/CBS'],
-                        ['classCode', 'Classificação tributária (IBS/CBS)'],
-                      ] as const)
-                    : []),
                 ] as const
               ).map(([field, label]) => (
                 <Field key={field} label={label}>
                   <Input
                     value={more[field]}
                     onChange={(e) => setMore({ [field]: e.target.value })}
+                  />
+                </Field>
+              ))}
+              {(
+                [
+                  ['operationCode', 'Indicador de operação (IBS/CBS)'],
+                  ['cst', 'CST do IBS/CBS'],
+                  ['classCode', 'Classificação tributária (IBS/CBS)'],
+                ] as const
+              ).map(([field, label]) => (
+                <Field key={field} label={label}>
+                  <Input
+                    value={ibsCbsShown(more, service, abroad)[field]}
+                    onChange={(e) =>
+                      // The first edit freezes the shown codes, so the other two stay as they were.
+                      setMore({
+                        ...ibsCbsShown(more, service, abroad),
+                        ibsCbsEdited: true,
+                        [field]: e.target.value,
+                      })
+                    }
                   />
                 </Field>
               ))}

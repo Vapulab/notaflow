@@ -1,5 +1,10 @@
 import { writeFileSync } from 'node:fs';
-import { buildDpsXml, formatBrasiliaDate, type DpsInput } from '@notaflow/provider-nacional';
+import {
+  buildDpsXml,
+  formatBrasiliaDate,
+  ibsCbsDefaults,
+  type DpsInput,
+} from '@notaflow/provider-nacional';
 import {
   appVersion,
   cancelInvoice,
@@ -72,7 +77,41 @@ const domesticIbsCbs: DpsInput['ibsCbs'] = {
   classCode: '000001',
 };
 
+// Issue #84: the group the app now writes, from the Anexo VIII defaults of the service and indFinal by document.
+function defaultsGroup(finalConsumer: '0' | '1'): NonNullable<DpsInput['ibsCbs']> {
+  return {
+    purpose: '0',
+    finalConsumer,
+    destination: '0',
+    ...ibsCbsDefaults(env('NOTAFLOW_SERVICE_NATIONAL_CODE')),
+  };
+}
+
 const variants: Record<string, () => DpsInput> = {
+  'nt009-defaults-cnpj': () => ({
+    ...base(1000),
+    customer: domesticCustomer,
+    service: service('Teste NotaFlow #84: grupo IBSCBS padrao, tomador CNPJ'),
+    ibsCbs: defaultsGroup('0'),
+    tax: {
+      issqnTaxation: '1',
+      issRetention: '1',
+      pisCofins: { cst: '00', retention: '0' },
+      simplesTotalPercent,
+    },
+  }),
+  'nt009-defaults-cpf': () => ({
+    ...base(1000),
+    customer: { ...domesticCustomer, document: { type: 'CPF', value: '52998224725' }, name: 'Pessoa Teste' },
+    service: service('Teste NotaFlow #84: grupo IBSCBS padrao, tomador CPF'),
+    ibsCbs: defaultsGroup('1'),
+    tax: {
+      issqnTaxation: '1',
+      issRetention: '1',
+      pisCofins: { cst: '00', retention: '0' },
+      simplesTotalPercent,
+    },
+  }),
   'domestic-iss': () => ({
     ...base(1000),
     customer: domesticCustomer,

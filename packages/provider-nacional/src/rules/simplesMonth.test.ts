@@ -540,6 +540,7 @@ test('the browser entry exports the calculation, the month helpers, and the CNAE
     'addMonths',
     'annexRule',
     'fatorR',
+    'ibsCbsDefaults',
     'monthIndex',
     'monthName',
     'rbt12Window',

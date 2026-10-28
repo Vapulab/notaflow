@@ -53,3 +53,4 @@ export {
 } from './rules/simplesRates';
 export { minimumIssRate, taxRules } from './rules/taxRules';
 export type { CustomerRules, RuleSet } from './rules/taxRules';
+export { ibsCbsDefaults, type IbsCbsDefaults } from './rules/ibsCbsDefaults';

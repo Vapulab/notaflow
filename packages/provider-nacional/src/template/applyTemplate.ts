@@ -1,3 +1,5 @@
+import { isDomestic } from '../dps/isDomestic';
+import { ibsCbsDefaults } from '../rules/ibsCbsDefaults';
 import { percentText } from '../rules/simplesBands';
 import type { InvoiceParty, IssueRequest, PartyAddress } from '@notaflow/core';
 import type { Address, DpsInput, Environment, ForeignAddress } from '../dps/types';
@@ -25,15 +27,28 @@ export function applyTemplate(
       ? { simplesTotalPercent: percentText(request.simplesPercent) }
       : {}),
   };
+  const customer = request.customer ? toDpsCustomer(request.customer) : copy.customer;
+  // A domestic copy of an NT 004 invoice has no group yet; the final customer decides indFinal.
+  const domesticGroup = !isDomestic({ service: copy.service, customer, tax })
+    ? {}
+    : {
+        ibsCbs: {
+          purpose: '0',
+          destination: '0',
+          ...(copy.ibsCbs ?? ibsCbsDefaults(copy.service.nationalTaxCode)),
+          finalConsumer: customer?.document.type === 'CPF' ? ('1' as const) : ('0' as const),
+        },
+      };
   return {
     ...copy,
+    ...domesticGroup,
     environment: request.environment,
     issuedAt: request.issuedAt,
     appVersion: request.appVersion,
     series: request.series,
     number: request.number,
     competence: request.competence,
-    ...(request.customer ? { customer: toDpsCustomer(request.customer) } : {}),
+    ...(customer ? { customer } : {}),
     service: {
       ...copy.service,
       ...(request.description ? { description: request.description } : {}),

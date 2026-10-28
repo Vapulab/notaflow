@@ -1,0 +1,802 @@
+{
+  "0101": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0102": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0103": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0104": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0105": {
+    "operationCode": "100501",
+    "classCode": "000001"
+  },
+  "0106": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0107": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0108": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0109": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0201": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0302": {
+    "operationCode": "100501",
+    "classCode": "000001"
+  },
+  "0303": {
+    "operationCode": "020101",
+    "classCode": "200027"
+  },
+  "0304": {
+    "operationCode": "020401",
+    "classCode": "200027"
+  },
+  "0305": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0401": {
+    "operationCode": "030101",
+    "classCode": "200029"
+  },
+  "0402": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0403": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0404": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0405": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0406": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0407": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0408": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0409": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0410": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0411": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0412": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0413": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0414": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0415": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0416": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0417": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0418": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0419": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0420": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0421": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0422": {
+    "operationCode": "100301",
+    "classCode": "820001"
+  },
+  "0423": {
+    "operationCode": "100301",
+    "classCode": "820001"
+  },
+  "0501": {
+    "operationCode": "050101",
+    "classCode": "200052"
+  },
+  "0502": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0503": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0504": {
+    "operationCode": "050101",
+    "classCode": "200038"
+  },
+  "0505": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0506": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0507": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0508": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "0509": {
+    "operationCode": "100301",
+    "classCode": "011005"
+  },
+  "0601": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0602": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0603": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0604": {
+    "operationCode": "030101",
+    "classCode": "200041"
+  },
+  "0605": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0606": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0701": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "0702": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0703": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0704": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0705": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0706": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0707": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0708": {
+    "operationCode": "020201",
+    "classCode": "200046"
+  },
+  "0709": {
+    "operationCode": "020202",
+    "classCode": "000001"
+  },
+  "0710": {
+    "operationCode": "020201",
+    "classCode": "000001"
+  },
+  "0711": {
+    "operationCode": "020201",
+    "classCode": "000001"
+  },
+  "0712": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0713": {
+    "operationCode": "020201",
+    "classCode": "000001"
+  },
+  "0716": {
+    "operationCode": "020201",
+    "classCode": "000001"
+  },
+  "0717": {
+    "operationCode": "020202",
+    "classCode": "200046"
+  },
+  "0718": {
+    "operationCode": "020202",
+    "classCode": "000001"
+  },
+  "0719": {
+    "operationCode": "020201",
+    "classCode": "200052"
+  },
+  "0720": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0721": {
+    "operationCode": "020202",
+    "classCode": "000001"
+  },
+  "0722": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "0801": {
+    "operationCode": "030101",
+    "classCode": "200028"
+  },
+  "0802": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "0901": {
+    "operationCode": "030101",
+    "classCode": "200048"
+  },
+  "0902": {
+    "operationCode": "100301",
+    "classCode": "200051"
+  },
+  "0903": {
+    "operationCode": "030101",
+    "classCode": "200051"
+  },
+  "1001": {
+    "operationCode": "100301",
+    "classCode": "010002"
+  },
+  "1002": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1003": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1004": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1005": {
+    "operationCode": "020301",
+    "classCode": "200046"
+  },
+  "1006": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1007": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1008": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1009": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1010": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1101": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1102": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1103": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1104": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1105": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1201": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1202": {
+    "operationCode": "030101",
+    "classCode": "200039"
+  },
+  "1203": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1204": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1205": {
+    "operationCode": "030101",
+    "classCode": "200048"
+  },
+  "1206": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1207": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1208": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1209": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1210": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1211": {
+    "operationCode": "030101",
+    "classCode": "200042"
+  },
+  "1212": {
+    "operationCode": "030101",
+    "classCode": "200039"
+  },
+  "1213": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1214": {
+    "operationCode": "030101",
+    "classCode": "200039"
+  },
+  "1215": {
+    "operationCode": "040101",
+    "classCode": "200039"
+  },
+  "1216": {
+    "operationCode": "100301",
+    "classCode": "200039"
+  },
+  "1217": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1302": {
+    "operationCode": "100301",
+    "classCode": "200039"
+  },
+  "1303": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1304": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1305": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1401": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1402": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1403": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1404": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1405": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1406": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1407": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1408": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1409": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1410": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1411": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1412": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1413": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1414": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1501": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1502": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1503": {
+    "operationCode": "010101",
+    "classCode": "000001"
+  },
+  "1504": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1505": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1506": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1507": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1508": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1509": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1510": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1511": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1512": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1513": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1514": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1515": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1516": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1517": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1518": {
+    "operationCode": "100301",
+    "classCode": "820007"
+  },
+  "1601": {
+    "operationCode": "060101",
+    "classCode": "400001"
+  },
+  "1602": {
+    "operationCode": "060101",
+    "classCode": "000001"
+  },
+  "1701": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1702": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1703": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1704": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1705": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1706": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1708": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1709": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "1710": {
+    "operationCode": "040101",
+    "classCode": "000001"
+  },
+  "1711": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1712": {
+    "operationCode": "020301",
+    "classCode": "200046"
+  },
+  "1713": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1714": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "1715": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1716": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "1717": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1718": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1719": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "1720": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "1721": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "1722": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1723": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1724": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "1725": {
+    "operationCode": "100101",
+    "classCode": "000001"
+  },
+  "1801": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "1901": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2001": {
+    "operationCode": "050201",
+    "classCode": "000001"
+  },
+  "2002": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "2003": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "2101": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2201": {
+    "operationCode": "080101",
+    "classCode": "820006"
+  },
+  "2301": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2401": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "2501": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2502": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2503": {
+    "operationCode": "100301",
+    "classCode": "011001"
+  },
+  "2504": {
+    "operationCode": "020201",
+    "classCode": "000001"
+  },
+  "2505": {
+    "operationCode": "020101",
+    "classCode": "000001"
+  },
+  "2601": {
+    "operationCode": "070101",
+    "classCode": "000001"
+  },
+  "2701": {
+    "operationCode": "030101",
+    "classCode": "200052"
+  },
+  "2801": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "2901": {
+    "operationCode": "030101",
+    "classCode": "000001"
+  },
+  "3001": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "3101": {
+    "operationCode": "100301",
+    "classCode": "200052"
+  },
+  "3201": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3301": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3401": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3501": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3601": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3701": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  },
+  "3801": {
+    "operationCode": "030101",
+    "classCode": "200039"
+  },
+  "3901": {
+    "operationCode": "050101",
+    "classCode": "000001"
+  },
+  "4001": {
+    "operationCode": "100301",
+    "classCode": "000001"
+  }
+}
