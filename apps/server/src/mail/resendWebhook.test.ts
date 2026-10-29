@@ -1,13 +1,15 @@
-import { createHmac } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, expect, test } from 'vitest';
+import {
+  postWebhook as post,
+  signWebhook as sign,
+  WEBHOOK_SECRET as SECRET,
+} from '../../test/resendWebhookRequest';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import { mailOutbox, mailSuppressions } from '../db/schema';
 import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import { RESEND_WEBHOOK_PATH, validSvixSignature } from './resendWebhook';
 
-const KEY = Buffer.alloc(32, 5);
-const SECRET = `whsec_${KEY.toString('base64')}`;
 const CUSTOMER = 'cliente@example.com';
 
 let t: TestApp | null = null;
@@ -16,10 +18,6 @@ afterEach(async () => {
   t = null;
 });
 
-function sign(id: string, timestamp: string, body: string, key = KEY): string {
-  return createHmac('sha256', key).update(`${id}.${timestamp}.${body}`).digest('base64');
-}
-
 async function setup(options: { secret?: string | null; ids?: string[] } = {}) {
   const ids = [...(options.ids ?? [])];
   t = await createTestApp({
@@ -27,26 +25,6 @@ async function setup(options: { secret?: string | null; ids?: string[] } = {}) {
     mailId: () => ids.shift(),
   });
   return t;
-}
-
-function post(
-  app: TestApp,
-  body: string,
-  headers: { id?: string; timestamp?: string; signature?: string } = {},
-) {
-  const id = headers.id ?? 'msg_1';
-  const timestamp = headers.timestamp ?? String(Math.floor(Date.now() / 1000));
-  return app.app.inject({
-    method: 'POST',
-    url: RESEND_WEBHOOK_PATH,
-    headers: {
-      'content-type': 'application/json',
-      'svix-id': id,
-      'svix-timestamp': timestamp,
-      'svix-signature': headers.signature ?? `v1,${sign(id, timestamp, body)}`,
-    },
-    payload: body,
-  });
 }
 
 function event(type: string, emailId: string, extra: Record<string, unknown> = {}): string {

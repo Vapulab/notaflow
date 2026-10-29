@@ -15,6 +15,7 @@ import type { DanfseQueue } from './danfse/queue';
 import { InvoiceMailer } from './mail/InvoiceMailer';
 import { registerInvoiceUnsubscribe } from './mail/invoiceUnsubscribe';
 import { MailOutbox } from './mail/outbox';
+import { resendUnsuppress, type Unsuppress } from './mail/resendSuppressions';
 import { registerResendWebhook } from './mail/resendWebhook';
 import { MailSuppressionRepository } from './repos/MailSuppressionRepository';
 import type { Config } from './config';
@@ -105,6 +106,8 @@ export interface AppDeps {
   onEmitterCreated?: (ctx: AccountContext, emitterId: string) => void;
   webRoot?: string;
   mailer?: Mailer;
+  // Tests inject one; production calls Resend when RESEND_API_KEY is set.
+  unsuppress?: Unsuppress;
   auth?: Auth;
   errorReporter?: ErrorReporter;
   // Set only when the DANFSe queue is configured; tests pass a memory queue.
@@ -188,6 +191,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       : consoleMailer((line) => app.log.info(line)));
   // Every e-mail goes through the outbox: a failed send is retried, and the last failure is kept.
   const outbox = new MailOutbox(db, transport, (line) => app.log.error(line));
+  const unsuppress =
+    deps.unsuppress ??
+    (config.mail.resendApiKey
+      ? resendUnsuppress({ apiKey: config.mail.resendApiKey })
+      : async () => undefined);
   app.decorate('mailOutbox', outbox);
   const lifecycleRepo = new LifecycleRepository(db, LIFECYCLE_LEGAL_VERSION);
   app.decorate(
@@ -317,6 +325,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     db,
     masterKey: config.masterKey,
     providerFactory,
+    outbox,
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
@@ -325,6 +334,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     appOrigin: config.appOrigin,
     secret: config.authSecret,
     outbox,
+    unsuppress,
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
@@ -335,6 +345,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       outbox,
       appOrigin: config.appOrigin,
       secret: config.authSecret,
+      unsuppress,
     }),
     certificates,
     issuerFactory: deps.issuerFactory ?? nacionalIssuerFactory(config.nacionalUrls),

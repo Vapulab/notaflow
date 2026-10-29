@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { issueExportOnFake } from '../../test/fakeInvoices';
+import { postWebhook, WEBHOOK_SECRET } from '../../test/resendWebhookRequest';
 import { COMPETENCE, withNewInvoiceSetup } from '../../test/newInvoiceSetup';
 import { createTestApp, type TestApp } from '../../test/testApp';
 import {
@@ -15,10 +16,19 @@ import { signInvoiceUnsubscribe } from '../mail/invoiceUnsubscribe';
 import type { HttpError } from '../httpError';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
 import { MailOutbox } from '../mail/outbox';
+import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 
 let t: TestApp;
+let unsuppressed: string[] = [];
+let unsuppressFails = false;
+const unsuppress = async (address: string) => {
+  if (unsuppressFails) throw new Error('Resend answered 500');
+  unsuppressed.push(address);
+};
 beforeEach(async () => {
-  t = await createTestApp();
+  unsuppressed = [];
+  unsuppressFails = false;
+  t = await createTestApp({ unsuppress });
 });
 afterEach(() => t.close());
 
@@ -79,15 +89,16 @@ async function detail(s: Setup, id: string) {
     customerEmail: string | null;
     customerEmailedAt: string | null;
     autoEmailCustomer: boolean;
+    customerEmailProblem: { kind: 'invalid_address'; to: string } | null;
   }>();
 }
 
-const send = (s: Setup, id: string, to: string) =>
+const send = (s: Setup, id: string, to: string, options: { confirmAddress?: boolean } = {}) =>
   t.app.inject({
     method: 'POST',
     url: `${s.base}/invoices/${id}/email`,
     headers: s.headers,
-    payload: { to },
+    payload: { to, ...options },
   });
 
 const mailerOf = () =>
@@ -96,6 +107,7 @@ const mailerOf = () =>
     outbox: t.app.mailOutbox,
     appOrigin: 'http://localhost:3000',
     secret: SECRET,
+    unsuppress,
   });
 const ownerCtx = (s: Setup) => ({
   ...s.a,
@@ -274,6 +286,7 @@ test('the 51st e-mail of an account in an hour answers 429, also on a fresh inst
     ),
     appOrigin: 'http://localhost:3000',
     secret: SECRET,
+    unsuppress,
   });
   await expect(
     fresh.sendByHand(ownerCtx(s), view.id, 'p52@example.com', 'owner@example.com'),
@@ -458,4 +471,153 @@ test('an unsubscribe cancels the invoice e-mail already queued to that address',
   expect(outbox()[0]).toMatchObject({ status: 'cancelled', html: '', text: '' });
   await t.app.mailOutbox.deliverDue();
   expect(t.mail.filter((m) => m.to === 'cliente@example.com')).toHaveLength(0);
+});
+
+const blocks = () => new MailSuppressionRepository(t.db);
+const audits = () =>
+  t.db
+    .select()
+    .from(auditLog)
+    .all()
+    .filter((r) => r.action === 'invoice.email');
+
+test('a send to a bounce-blocked address answers 409 email_invalid_address and queues nothing', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const response = await send(s, view.id, 'cliente@example.com');
+  expect(response.statusCode).toBe(409);
+  expect(response.json()).toMatchObject({ error: 'email_invalid_address' });
+  expect(outbox()).toHaveLength(0);
+  expect(audits()).toHaveLength(0);
+  expect(unsuppressed).toEqual([]);
+});
+
+test('the same address in other case or with spaces is blocked too', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add(' Cliente@Example.COM ', 'invoice', 'bounce');
+  expect((await send(s, view.id, 'CLIENTE@example.com')).statusCode).toBe(409);
+  await expect(
+    mailerOf().sendByHand(ownerCtx(s), view.id, ' cliente@example.com ', 'owner@example.com'),
+  ).rejects.toMatchObject({ status: 409, code: 'email_invalid_address' });
+  expect(outbox()).toHaveLength(0);
+});
+
+test('confirmAddress unblocks, calls unsuppress once with the address, sends, and audits manual unblocked @example.com', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const response = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toEqual({ sent: true });
+  expect(unsuppressed).toEqual(['cliente@example.com']);
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBeNull();
+  expect(t.mail.filter((m) => m.to === 'cliente@example.com')).toHaveLength(1);
+  expect(audits()).toMatchObject([{ result: 'ok', detail: 'manual unblocked @example.com' }]);
+  expect((await detail(s, view.id)).customerEmailedAt).toEqual(expect.any(String));
+});
+
+test('a second confirmAddress within 30 days answers 409 email_invalid_address_final', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const first = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(first.statusCode).toBe(200);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const again = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(again.statusCode).toBe(409);
+  expect(again.json()).toMatchObject({ error: 'email_invalid_address_final' });
+  expect(unsuppressed).toEqual(['cliente@example.com']);
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('bounce');
+  expect(outbox()).toHaveLength(1);
+});
+
+test('an unsuppress failure answers 502 email_unblock_failed and keeps the block', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  unsuppressFails = true;
+  const response = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(response.statusCode).toBe(502);
+  expect(response.json()).toMatchObject({ error: 'email_unblock_failed' });
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('bounce');
+  expect(outbox()).toHaveLength(0);
+  expect(audits().filter((r) => r.result === 'ok')).toHaveLength(0);
+});
+
+test('confirmAddress does not lift an unsubscribe or a complaint: the answer is sent and nothing is queued', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('saiu@example.com', 'invoice', 'unsubscribe');
+  blocks().add('reclamou@example.com', 'invoice', 'complaint');
+  for (const to of ['saiu@example.com', 'reclamou@example.com']) {
+    const response = await send(s, view.id, to, { confirmAddress: true });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ sent: true });
+  }
+  expect(outbox()).toHaveLength(0);
+  expect(unsuppressed).toEqual([]);
+  expect(blocks().reasonOf('saiu@example.com', 'invoice')).toBe('unsubscribe');
+  expect(blocks().reasonOf('reclamou@example.com', 'invoice')).toBe('complaint');
+});
+
+test('a corrected address goes out normally while the old one stays blocked', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  expect((await send(s, view.id, 'cliente.certo@example.com')).statusCode).toBe(200);
+  expect(outbox().map((r) => r.to)).toEqual(['cliente.certo@example.com']);
+  expect(audits()).toMatchObject([{ detail: 'manual @example.com' }]);
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('bounce');
+  expect((await send(s, view.id, 'cliente@example.com')).statusCode).toBe(409);
+});
+
+test('the automatic send to a bounce-blocked address records the block, and the detail shows customerEmailProblem with the address', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const view = await issue(s, customerId);
+  expect(outbox()).toMatchObject([
+    { to: 'cliente@example.com', invoiceId: view.id, status: 'cancelled', delivery: 'bounced' },
+  ]);
+  await t.app.mailOutbox.deliverDue();
+  expect(t.mail.filter((m) => m.to === 'cliente@example.com')).toHaveLength(0);
+  const shown = await detail(s, view.id);
+  expect(shown.customerEmailProblem).toEqual({
+    kind: 'invalid_address',
+    to: 'cliente@example.com',
+  });
+  expect(shown.customerEmailedAt).toBeNull();
+});
+
+test('after a bounce webhook the detail shows customerEmailProblem; after a new successful send it is null', async () => {
+  await t.close();
+  const ids = ['re_first', 're_second'];
+  t = await createTestApp({
+    unsuppress,
+    env: { RESEND_WEBHOOK_SECRET: WEBHOOK_SECRET },
+    mailId: (message) => (message.kind === 'invoice' ? ids.shift() : undefined),
+  });
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  expect((await detail(s, view.id)).customerEmailProblem).toBeNull();
+  expect((await send(s, view.id, 'cliente@example.com')).statusCode).toBe(200);
+  const bounce = JSON.stringify({
+    type: 'email.bounced',
+    created_at: '2026-10-29T12:00:00.000Z',
+    data: {
+      email_id: 're_first',
+      to: ['cliente@example.com'],
+      bounce: { type: 'Permanent', subType: 'General' },
+    },
+  });
+  expect((await postWebhook(t, bounce)).statusCode).toBe(200);
+  expect((await detail(s, view.id)).customerEmailProblem).toEqual({
+    kind: 'invalid_address',
+    to: 'cliente@example.com',
+  });
+  expect((await send(s, view.id, 'cliente.certo@example.com')).statusCode).toBe(200);
+  expect((await detail(s, view.id)).customerEmailProblem).toBeNull();
 });

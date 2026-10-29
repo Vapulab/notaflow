@@ -5,6 +5,7 @@ import { danfsePdf } from '../danfse/danfsePdf';
 import type { Database } from '../db/openDatabase';
 import { HttpError } from '../httpError';
 import { customerEmailOf } from '../mail/InvoiceMailer';
+import type { MailOutbox } from '../mail/outbox';
 import type { Metrics } from '../metrics/metrics';
 import type { ProviderFactory } from '../providers/providerFactory';
 import { CertificateRepository } from '../repos/CertificateRepository';
@@ -52,6 +53,7 @@ export function invoiceRoutes(
     db: Database;
     masterKey: Buffer;
     providerFactory: ProviderFactory;
+    outbox: Pick<MailOutbox, 'invoiceBounce'>;
     // The DANFSe bucket; null while the queue is off.
     danfseR2?: Pick<R2Client, 'get'> | null;
     metrics?: Pick<Metrics, 'danfseOnDemand'>;
@@ -87,9 +89,11 @@ export function invoiceRoutes(
       const ctx = accountContext(request, request.params.accountId);
       const invoice = invoices.get(ctx, request.params.invoiceId);
       if (!invoice) throw new HttpError(404, 'not_found');
+      const bounced = deps.outbox.invoiceBounce(ctx.accountId, invoice.id);
       return {
         ...shownPdfState(invoice),
         customerEmail: customerEmailOf(deps.db, ctx, invoice.id),
+        customerEmailProblem: bounced ? { kind: 'invalid_address' as const, to: bounced } : null,
         autoEmailCustomer: emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer ?? false,
         hasLink: links.hasLink(ctx, invoice.id),
       };

@@ -8,6 +8,7 @@ import { isEmailAddress } from '../mail/address';
 import { AuditLog } from '../repos/AuditLog';
 import { InvoiceMailer } from '../mail/InvoiceMailer';
 import type { MailOutbox } from '../mail/outbox';
+import type { Unsuppress } from '../mail/resendSuppressions';
 import type { Metrics } from '../metrics/metrics';
 import { createRateLimiter } from '../rateLimit';
 import { InvoiceLinkRepository } from '../repos/InvoiceLinkRepository';
@@ -23,7 +24,10 @@ const tokenParams = {
 } as const;
 
 // Set before validation and the limiter run, so a 400, 404, and 429 carry it too.
-const noStore = async (_request: unknown, reply: { header(name: string, value: string): unknown }) => {
+const noStore = async (
+  _request: unknown,
+  reply: { header(name: string, value: string): unknown },
+) => {
   reply.header('cache-control', NO_STORE);
 };
 
@@ -34,6 +38,7 @@ const emailSchema = {
     additionalProperties: false,
     properties: {
       to: { type: 'string', format: 'email', maxLength: 254 },
+      confirmAddress: { type: 'boolean' },
     },
   },
 } as const;
@@ -45,6 +50,7 @@ export function invoiceLinkRoutes(
     appOrigin: string;
     secret: string;
     outbox: MailOutbox;
+    unsuppress: Unsuppress;
     danfseR2?: Pick<R2Client, 'get'> | null;
     metrics?: Pick<Metrics, 'danfseOnDemand' | 'danfseLinkView'>;
   },
@@ -53,8 +59,12 @@ export function invoiceLinkRoutes(
   const links = new InvoiceLinkRepository(deps.db);
   const invoices = new InvoiceRepository(deps.db);
   const limit = createRateLimiter({ windowMs: 60_000, max: 60 });
-  const mailer = new InvoiceMailer({ db: deps.db, outbox: deps.outbox, appOrigin: deps.appOrigin,
+  const mailer = new InvoiceMailer({
+    db: deps.db,
+    outbox: deps.outbox,
+    appOrigin: deps.appOrigin,
     secret: deps.secret,
+    unsuppress: deps.unsuppress,
   });
 
   app.post<{ Params: { accountId: string; invoiceId: string } }>(
@@ -69,7 +79,10 @@ export function invoiceLinkRoutes(
     },
   );
 
-  app.post<{ Params: { accountId: string; invoiceId: string }; Body: { to: string } }>(
+  app.post<{
+    Params: { accountId: string; invoiceId: string };
+    Body: { to: string; confirmAddress?: boolean };
+  }>(
     '/api/accounts/:accountId/invoices/:invoiceId/email',
     { schema: emailSchema },
     async (request) => {
@@ -82,8 +95,10 @@ export function invoiceLinkRoutes(
         request.params.invoiceId,
         to,
         identityOf(request).email,
+        { confirmAddress: request.body.confirmAddress === true },
       );
       if (!sent) throw new HttpError(409, 'invoice_not_shareable');
+      const tag = sent === 'sent' ? '' : `${sent} `;
       // Only the domain: the address belongs to the customer.
       audit.record({
         userEmail: identityOf(request).email,
@@ -91,7 +106,7 @@ export function invoiceLinkRoutes(
         action: 'invoice.email',
         entity: request.params.invoiceId,
         result: 'ok',
-        detail: `manual ${sent === 'suppressed' ? 'suppressed ' : ''}@${to.split('@')[1] ?? ''}`,
+        detail: `manual ${tag}@${to.split('@')[1] ?? ''}`,
       });
       return { sent: true };
     },
