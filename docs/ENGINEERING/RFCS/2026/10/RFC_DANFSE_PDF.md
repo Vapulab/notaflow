@@ -269,7 +269,7 @@ Migration 0022 adds the columns and sets `pdf_status = 'pending'` on every invoi
 
 Plan C adds `invoices.customer_emailed_at` (timestamp, null; the once-only claim for the customer e-mail), `emitters.auto_email_customer` (boolean; migration 0024 sets it off for existing emitters, and the default is on for new ones), and `mail_outbox.account_id` and `mail_outbox.invoice_id` with an index on both and `created_at` (migration 0025; the e-mail caps read them).
 
-New table `mail_suppressions` (migration 0026): `address` (lower case), `kind` (`invoice`), and the usual control and removal columns, with one active row per address and kind.
+New table `mail_suppressions` (migration 0026): `address` (lower case), `kind` (`invoice`), and the usual control and removal columns, with one active row per address and kind. The column `reason` (`unsubscribe`, `bounce`, `complaint`) says why the address is blocked.
 
 New table `invoice_links` (migration 0023):
 
@@ -348,7 +348,7 @@ There is no backfill script. Migration 0022 marks every invoice that has XML as 
 
 ## Roadmap
 
-- A Resend webhook for bounces and complaints, to add those addresses to `mail_suppressions` by themselves. Today only the customer's own unsubscribe adds one. [RFC_MAIL_BOUNCES.md](RFC_MAIL_BOUNCES.md) built it.
+- A Resend webhook for bounces and complaints, to add those addresses to `mail_suppressions` by themselves. At first only the customer's own unsubscribe added one. [RFC_MAIL_BOUNCES.md](RFC_MAIL_BOUNCES.md) built this webhook.
 - The DANFSe layout for the IBS/CBS "novos fatos geradores", when the specific NT comes out.
 - Issue a substitution from the app. The "SUBSTITUÍDA" watermark ships now for substitutions that sync imports.
 
