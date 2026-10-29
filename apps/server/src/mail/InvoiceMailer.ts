@@ -12,6 +12,7 @@ import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import { isEmailAddress } from './address';
 import { invoiceUnsubscribeUrl } from './invoiceUnsubscribe';
 import type { MailOutbox } from './outbox';
+import { type Unsuppress, unsuppressFailure } from './resendSuppressions';
 import { invoiceEmail } from './templates';
 
 // The address of the customer: the XML first, since it is what the Sefin recorded, then the customer record.
@@ -40,6 +41,7 @@ const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 const PER_HOUR = 50; // per account
 const PER_INVOICE_DAY = 5;
+const UNBLOCK_WINDOW_MS = 30 * DAY_MS;
 
 export class InvoiceMailer {
   private readonly invoices: InvoiceRepository;
@@ -49,7 +51,14 @@ export class InvoiceMailer {
   private readonly audit: AuditLog;
 
   constructor(
-    private readonly deps: { db: Database; outbox: MailOutbox; appOrigin: string; secret: string },
+    private readonly deps: {
+      db: Database;
+      outbox: MailOutbox;
+      appOrigin: string;
+      secret: string;
+      unsuppress: Unsuppress;
+      log?: (line: string) => void;
+    },
   ) {
     this.invoices = new InvoiceRepository(deps.db);
     this.emitters = new EmitterRepository(deps.db);
@@ -82,7 +91,8 @@ export class InvoiceMailer {
     invoiceId: string,
     to: string,
     replyTo: string,
-  ): Promise<'sent' | 'suppressed' | false> {
+    options: { confirmAddress?: boolean } = {},
+  ): Promise<'sent' | 'suppressed' | 'unblocked' | false> {
     const mail = this.render(ctx, invoiceId, to);
     if (!mail) return false;
     // Counted in the database, so a restart resets nothing; the count and the insert share one tick.
@@ -95,14 +105,32 @@ export class InvoiceMailer {
     ) {
       throw new HttpError(429, 'too_many_requests');
     }
-    // Answered like a send, so the reply never tells a caller whether an address unsubscribed.
-    if (this.suppressions.isSuppressed(to, 'invoice')) return 'suppressed';
+    const reason = this.suppressions.reasonOf(to, 'invoice');
+    let unblocked = false;
+    if (reason === 'bounce') {
+      if (!options.confirmAddress) throw new HttpError(409, 'email_invalid_address');
+      // Across all accounts: the do-not-send list is shared, so one emitter cannot unblock it again and again.
+      if (this.suppressions.unblockedRecently(to, 'invoice', new Date(now - UNBLOCK_WINDOW_MS))) {
+        throw new HttpError(409, 'email_invalid_address_final');
+      }
+      try {
+        await this.deps.unsuppress(to.trim().toLowerCase());
+      } catch (error) {
+        this.deps.log?.(`Resend unsuppress failed: ${unsuppressFailure(error)}`);
+        throw new HttpError(502, 'email_unblock_failed');
+      }
+      this.suppressions.unblock(to, 'invoice', ctx);
+      unblocked = true;
+    } else if (reason) {
+      // Answered like a send, so the reply never tells a caller whether an address unsubscribed.
+      return 'suppressed';
+    }
     await outbox.send(
       { ...mail, to, replyTo, ref: { accountId: ctx.accountId, invoiceId } },
       'invoice',
     );
     this.invoices.markCustomerEmailed(ctx, invoiceId, new Date());
-    return 'sent';
+    return unblocked ? 'unblocked' : 'sent';
   }
 
   // Once per invoice: the claim and the outbox row share one transaction, so a retry finds the claim and sends nothing.
@@ -115,7 +143,26 @@ export class InvoiceMailer {
     if (!this.emitters.get(ctx, invoice.emitterId)?.autoEmailCustomer) return false;
     const to = customerEmailOf(this.deps.db, ctx, invoiceId);
     const replyTo = new MemberRepository(this.deps.db).ownerEmail(ctx);
-    if (!to || !replyTo || this.suppressions.isSuppressed(to, 'invoice')) return false;
+    if (!to || !replyTo) return false;
+    const reason = this.suppressions.reasonOf(to, 'invoice');
+    if (reason === 'bounce') {
+      // A row with no claim, so the invoice detail can warn the emitter that the address is dead.
+      this.deps.outbox.recordBlocked({
+        to,
+        subject: '',
+        ref: { accountId: ctx.accountId, invoiceId },
+      });
+      this.audit.record({
+        userEmail: replyTo,
+        accountId: ctx.accountId,
+        action: 'invoice.email',
+        entity: invoiceId,
+        result: 'refused',
+        detail: `automatic skipped, address bounced @${to.split('@')[1] ?? ''}`,
+      });
+      return false;
+    }
+    if (reason) return false;
     return this.deps.db.transaction(() => {
       // Skipped before the claim, so the invoice can still be sent by hand.
       if (

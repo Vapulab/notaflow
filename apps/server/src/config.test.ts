@@ -255,6 +255,19 @@ test('an impossible LIFECYCLE_START_AT is refused, so a typo never starts the re
   }
 });
 
+test('RESEND_WEBHOOK_SECRET without the whsec_ prefix is a problem', () => {
+  expect(loadConfig(base).mail.resendWebhookSecret).toBeNull();
+  const secret = `whsec_${Buffer.alloc(32, 3).toString('base64')}`;
+  expect(loadConfig({ ...base, RESEND_WEBHOOK_SECRET: secret }).mail.resendWebhookSecret).toBe(
+    secret,
+  );
+  for (const value of [Buffer.alloc(32, 3).toString('base64'), 'whsec_']) {
+    expect(problemsOf({ ...base, RESEND_WEBHOOK_SECRET: value }), value).toEqual([
+      'RESEND_WEBHOOK_SECRET must be whsec_ followed by the base64 key',
+    ]);
+  }
+});
+
 test('every bug report channel is off until its variables are set', () => {
   expect(loadConfig(base).bugs).toEqual({
     github: null,

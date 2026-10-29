@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app';
 import { type AuthDeps, createAuth } from '../src/auth/betterAuth';
 import type { MailMessage } from '../src/mail/mailer';
+import type { Unsuppress } from '../src/mail/resendSuppressions';
 import type { PolicyNotice } from '../src/legal';
 import { users } from '../src/db/schema';
 import { nacionalIssuerFactory } from '../src/providers/providerFactory';
@@ -45,7 +46,10 @@ export async function createTestApp(
     googleUserInfo?: AuthDeps['googleUserInfo'];
     // The app's e-mails fail, as when Resend is down; Better Auth's codes still arrive.
     failMail?: boolean;
+    // The Resend id the fake transport answers for each e-mail, as the real one does.
+    mailId?: (message: MailMessage) => string | undefined;
     policyNotice?: PolicyNotice | null;
+    unsuppress?: Unsuppress;
   } = {},
 ): Promise<TestApp> {
   const fake = await startFakeNacional();
@@ -64,6 +68,7 @@ export async function createTestApp(
   const mail: MailMessage[] = [];
   const mailer = async (message: MailMessage) => {
     mail.push(message);
+    return options.mailId?.(message);
   };
   const auth = createAuth({
     config,
@@ -90,6 +95,7 @@ export async function createTestApp(
     ...(options.danfseQueue ? { danfseQueue: options.danfseQueue } : {}),
     ...(options.errorReporter ? { errorReporter: options.errorReporter } : {}),
     ...(options.cnpjDispatcher ? { cnpjDispatcher: options.cnpjDispatcher } : {}),
+    ...(options.unsuppress ? { unsuppress: options.unsuppress } : {}),
     // A fixed PTAX of 5.0000 unless a test brings its own; the real one is a network call.
     exchangeRate:
       options.exchangeRate ??

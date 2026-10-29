@@ -183,7 +183,7 @@
             <td>Como operadora, conforme as instruções da sua empresa; o envio automático só acontece se a empresa ligar a opção</td>
           </tr>
           <tr>
-            <td>E-mail de quem pediu para não receber mais e a data do pedido (lista de não envio)</td>
+            <td>E-mail de quem pediu para não receber mais, de quem marcou o e-mail como spam, ou cujo endereço recusou o e-mail, com a data e o motivo (lista de não envio)</td>
             <td>Respeitar o pedido e não enviar de novo</td>
             <td>Legítimo interesse (IX) em respeitar o pedido de quem não quer receber; exercício regular de direitos (VI) para provar que o pedido foi respeitado</td>
           </tr>
@@ -318,9 +318,12 @@
         O NotaFlow também pode enviar ao tomador de uma nota um e-mail com o link da nota. A empresa
         pede esse envio à mão ou liga o envio automático, e a Vapulab o executa como operadora. O
         e-mail vai pelo Resend e tem um link para não receber mais: o endereço entra na lista de não
-        envio e nunca mais recebe e-mail de nota. Cada conta envia no máximo 50 e-mails por hora e
-        cada nota recebe no máximo 5 por dia. Os registros do servidor guardam só o domínio do
-        e-mail do tomador, e os relatórios de erro perdem o e-mail por inteiro.
+        envio e nunca mais recebe e-mail de nota. O Resend nos avisa quando um e-mail de nota volta
+        porque o endereço não existe, ou quando o tomador o marca como spam; nos dois casos o
+        endereço entra na lista de não envio. Se o endereço voltou, a empresa vê "endereço inválido"
+        na nota e pode corrigi-lo ou confirmar que está certo. Cada conta envia no máximo 50 e-mails
+        por hora e cada nota recebe no máximo 5 por dia. Os registros do servidor guardam só o
+        domínio do e-mail do tomador, e os relatórios de erro perdem o e-mail por inteiro.
       </p>
 
       <h2>11. Lista de aviso sobre novidades</h2>

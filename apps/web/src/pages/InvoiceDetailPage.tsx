@@ -32,6 +32,9 @@ const EVENT_TEXT: Record<string, string> = {
 };
 
 function emailStatus(data: InvoiceDetail): string | null {
+  if (data.customerEmailProblem) {
+    return `E-mail não entregue: endereço inválido (${data.customerEmailProblem.to})`;
+  }
   if (data.customerEmailedAt) {
     return `E-mail enviado em ${formatDateTime(data.customerEmailedAt)}`;
   }
@@ -157,7 +160,9 @@ export function InvoiceDetailPage(props: { accountId: string; invoiceId: string 
           {(data.status === 'issued' || data.status === 'cancelled') && emailStatus(data) && (
             <>
               <dt>E-mail ao tomador</dt>
-              <dd>{emailStatus(data)}</dd>
+              <dd className={data.customerEmailProblem ? 'text-danger' : undefined}>
+                {emailStatus(data)}
+              </dd>
             </>
           )}
           <dt>Serviço</dt>

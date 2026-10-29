@@ -14,7 +14,12 @@ export interface Config {
   masterKey: Buffer;
   auth: AuthConfig;
   authSecret: string;
-  mail: { from: string; invoiceFrom: string | null; resendApiKey: string | null };
+  mail: {
+    from: string;
+    invoiceFrom: string | null;
+    resendApiKey: string | null;
+    resendWebhookSecret: string | null;
+  };
   google: { clientId: string; clientSecret: string } | null;
   turnstile: { siteKey: string; secretKey: string } | null;
   signup: { open: boolean; limitPerIpPerDay: number };
@@ -108,6 +113,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   const resendApiKey = env.RESEND_API_KEY || null;
   if (!resendApiKey && nodeEnv === 'production') {
     problems.push('RESEND_API_KEY is required in production');
+  }
+  const resendWebhookSecret = env.RESEND_WEBHOOK_SECRET || null;
+  // An empty key would let anyone sign a webhook.
+  if (resendWebhookSecret && !/^whsec_[A-Za-z0-9+/]+={0,2}$/.test(resendWebhookSecret)) {
+    problems.push('RESEND_WEBHOOK_SECRET must be whsec_ followed by the base64 key');
   }
   const google = pair(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
   if (google === 'half') problems.push('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET go together');
@@ -242,6 +252,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       from: env.MAIL_FROM || 'NotaFlow <nao-responda@notaflow.vapulab.com>',
       invoiceFrom: env.MAIL_FROM_INVOICE || null,
       resendApiKey,
+      resendWebhookSecret,
     },
     google:
       google === null || google === 'half'

@@ -130,6 +130,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   // The address the NotaFlow e-mail would go to, and when one last went out.
   customerEmail: string | null;
   customerEmailedAt: string | null;
+  // The last e-mail bounced: the address is invalid.
+  customerEmailProblem: { kind: 'invalid_address'; to: string } | null;
   autoEmailCustomer: boolean;
   // A public link exists, so it can be revoked.
   hasLink: boolean;

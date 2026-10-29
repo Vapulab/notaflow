@@ -91,6 +91,62 @@ export class MailOutbox {
     );
   }
 
+  // The Resend webhook calls this; null when no row has that id.
+  markDelivery(
+    providerId: string,
+    delivery: 'bounced' | 'complained',
+  ): { kind: MailKind; to: string } | null {
+    return (
+      this.db
+        .update(mailOutbox)
+        .set({ delivery })
+        .where(eq(mailOutbox.providerId, providerId))
+        .returning({ kind: mailOutbox.kind, to: mailOutbox.to })
+        .get() ?? null
+    );
+  }
+
+  // Remembers that an invoice e-mail to a bounced address never went out; cancelled rows are not counted in the caps.
+  recordBlocked(
+    message: { to: string; subject: string; ref: { accountId: string; invoiceId: string } },
+    now = new Date(),
+  ): void {
+    this.db
+      .insert(mailOutbox)
+      .values({
+        to: message.to,
+        subject: message.subject,
+        html: '',
+        text: '',
+        kind: 'invoice',
+        accountId: message.ref.accountId,
+        invoiceId: message.ref.invoiceId,
+        status: 'cancelled',
+        delivery: 'bounced',
+        nextAttemptAt: now,
+        createdAt: now,
+      })
+      .run();
+  }
+
+  // The address of the latest invoice e-mail when it bounced, so the UI can warn; a newer good send clears it.
+  invoiceBounce(accountId: string, invoiceId: string): string | null {
+    const latest = this.db
+      .select({ to: mailOutbox.to, delivery: mailOutbox.delivery })
+      .from(mailOutbox)
+      .where(
+        and(
+          eq(mailOutbox.kind, 'invoice'),
+          eq(mailOutbox.accountId, accountId),
+          eq(mailOutbox.invoiceId, invoiceId),
+        ),
+      )
+      .orderBy(desc(mailOutbox.id))
+      .limit(1)
+      .get();
+    return latest?.delivery === 'bounced' ? latest.to : null;
+  }
+
   // An opt-out stops the reminders waiting or dead-lettered, so no retry sends them; they stay as cancelled rows.
   cancelPendingLifecycle(to: string): number {
     return this.db
@@ -204,16 +260,18 @@ export class MailOutbox {
       return false;
     }
     const attempts = row.attempts + 1;
+    let providerId: string | undefined;
     try {
-      await this.transport({
-        to: row.to,
-        subject: row.subject,
-        html: row.html,
-        text: row.text,
-        kind: row.kind,
-        ...(row.replyTo ? { replyTo: row.replyTo } : {}),
-        ...(row.headers ? { headers: row.headers } : {}),
-      });
+      providerId =
+        (await this.transport({
+          to: row.to,
+          subject: row.subject,
+          html: row.html,
+          text: row.text,
+          kind: row.kind,
+          ...(row.replyTo ? { replyTo: row.replyTo } : {}),
+          ...(row.headers ? { headers: row.headers } : {}),
+        })) ?? undefined;
     } catch (error) {
       const lastError = String(error).slice(0, 500);
       if (attempts >= MAX_ATTEMPTS) {
@@ -235,7 +293,14 @@ export class MailOutbox {
     }
     this.db
       .update(mailOutbox)
-      .set({ status: 'sent', attempts, sentAt: now, html: '', text: '' })
+      .set({
+        status: 'sent',
+        attempts,
+        sentAt: now,
+        html: '',
+        text: '',
+        ...(providerId ? { providerId } : {}),
+      })
       .where(eq(mailOutbox.id, id))
       .run();
     return true;
