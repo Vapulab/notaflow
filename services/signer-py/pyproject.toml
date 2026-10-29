@@ -2,13 +2,13 @@
 name = "notaflow-signer"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = ["signxml>=5.1.0,<6", "lxml>=6.1.3,<7", "cryptography>=50.0.2"]
+dependencies = ["signxml>=5.2.0,<6", "lxml>=6.1.3,<7", "cryptography>=50.0.2"]
 
 [project.optional-dependencies]
 test = ["pytest>=9.1.1"]
 
 [build-system]
-requires = ["setuptools>=84.0.0"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
