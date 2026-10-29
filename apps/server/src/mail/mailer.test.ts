@@ -127,3 +127,25 @@ test('an invoice e-mail leaves from the invoice address, any other kind from the
     'NotaFlow <n@example.com>',
   ]);
 });
+
+test('resendMailer returns the id from the Resend answer', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  agent
+    .get('https://api.resend.com')
+    .intercept({ path: '/emails', method: 'POST' })
+    .reply(200, { id: 're_123' });
+  const mailer = resendMailer({ apiKey: 'k', from: 'n@example.com', dispatcher: agent });
+  await expect(mailer(message)).resolves.toBe('re_123');
+});
+
+test('a 2xx answer without JSON resolves with nothing', async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  agent
+    .get('https://api.resend.com')
+    .intercept({ path: '/emails', method: 'POST' })
+    .reply(200, 'accepted');
+  const mailer = resendMailer({ apiKey: 'k', from: 'n@example.com', dispatcher: agent });
+  await expect(mailer(message)).resolves.toBeUndefined();
+});

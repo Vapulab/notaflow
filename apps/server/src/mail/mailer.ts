@@ -13,7 +13,7 @@ export interface MailMessage {
   headers?: Record<string, string>;
 }
 
-export type Mailer = (message: MailMessage) => Promise<void>;
+export type Mailer = (message: MailMessage) => Promise<string | void>; // the Resend id when there is one
 
 export function resendMailer(options: {
   apiKey: string;
@@ -27,7 +27,8 @@ export function resendMailer(options: {
       method: 'POST',
       headers: { authorization: `Bearer ${options.apiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        from: message.kind === 'invoice' && options.invoiceFrom ? options.invoiceFrom : options.from,
+        from:
+          message.kind === 'invoice' && options.invoiceFrom ? options.invoiceFrom : options.from,
         to: [message.to],
         subject: message.subject,
         html: message.html,
@@ -37,9 +38,15 @@ export function resendMailer(options: {
       }),
       ...(options.dispatcher ? { dispatcher: options.dispatcher } : {}),
     });
-    await response.body.dump();
+    const body = await response.body.text();
     if (response.statusCode >= 300) {
       throw new Error(`Resend answered ${response.statusCode}`);
+    }
+    try {
+      const id = (JSON.parse(body) as { id?: unknown } | null)?.id;
+      return typeof id === 'string' ? id : undefined;
+    } catch {
+      return undefined;
     }
   };
 }

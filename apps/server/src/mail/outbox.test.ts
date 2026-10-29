@@ -8,6 +8,7 @@ import { MailOutbox } from './outbox';
 let opened: ReturnType<typeof openDatabase>;
 let sent: MailMessage[];
 let failing: boolean;
+let providerId: string | undefined;
 let errors: string[];
 let outbox: MailOutbox;
 const T0 = new Date('2026-10-11T12:00:00Z');
@@ -18,12 +19,14 @@ beforeEach(() => {
   opened = openDatabase(':memory:');
   sent = [];
   failing = false;
+  providerId = undefined;
   errors = [];
   outbox = new MailOutbox(
     opened.db,
     async (m) => {
       if (failing) throw new Error('Resend answered 503');
       sent.push(m);
+      return providerId;
     },
     (line) => errors.push(line),
   );
@@ -181,4 +184,56 @@ test('delivery skips an invoice row whose address is suppressed', async () => {
   await outbox.deliverDue(T0);
   expect(sent).toHaveLength(0);
   expect(rows().find((r) => r.id === id)).toMatchObject({ status: 'cancelled', html: '' });
+});
+
+const invoiceMessage = {
+  ...message,
+  ref: { accountId: 'acc1', invoiceId: 'inv1' },
+};
+
+test('a sent row keeps the provider id', async () => {
+  providerId = 're_1';
+  await outbox.send(message, 'invite', T0);
+  expect(rows()[0]?.providerId).toBe('re_1');
+});
+
+test('markDelivery marks the row and returns kind and to', async () => {
+  providerId = 're_2';
+  await outbox.send(message, 'invoice', T0);
+  expect(outbox.markDelivery('re_2', 'bounced')).toEqual({
+    kind: 'invoice',
+    to: 'pessoa@example.com',
+  });
+  expect(rows()[0]?.delivery).toBe('bounced');
+});
+
+test('markDelivery returns null for an unknown id', () => {
+  expect(outbox.markDelivery('re_none', 'complained')).toBeNull();
+});
+
+test('invoiceBounce reads only the latest invoice row', async () => {
+  providerId = 're_3';
+  await outbox.send(invoiceMessage, 'invoice', T0);
+  outbox.markDelivery('re_3', 'bounced');
+  expect(outbox.invoiceBounce('acc1', 'inv1')).toBe('pessoa@example.com');
+  providerId = 're_4';
+  await outbox.send(invoiceMessage, 'invoice', minutes(1));
+  expect(outbox.invoiceBounce('acc1', 'inv1')).toBeNull();
+  outbox.recordBlocked({ ...invoiceMessage, to: 'outra@example.com' }, minutes(2));
+  expect(outbox.invoiceBounce('acc1', 'inv1')).toBe('outra@example.com');
+  expect(outbox.invoiceBounce('acc1', 'other')).toBeNull();
+});
+
+test('a recordBlocked row does not count in the caps', () => {
+  const where = { accountId: 'acc1', invoiceId: 'inv1' };
+  const before = outbox.countInvoiceMail(where, T0);
+  outbox.recordBlocked(invoiceMessage, T0);
+  expect(outbox.countInvoiceMail(where, T0)).toBe(before);
+  expect(rows()[0]).toMatchObject({
+    kind: 'invoice',
+    status: 'cancelled',
+    delivery: 'bounced',
+    html: '',
+    text: '',
+  });
 });
