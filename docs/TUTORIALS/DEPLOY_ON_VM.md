@@ -10,6 +10,7 @@ Deploys run one at a time, and only the commit at the tip of `production` goes l
 | --- | --- |
 | `/opt/notaflow/compose.yaml` | `deploy/compose.yaml` of the deployed commit, which `notaflow-deploy` downloads from GitHub |
 | `/opt/notaflow/.env` | Secrets and settings, mode 600 (see `deploy/.env.example`). `IMAGE=` is written by the workflow |
+| `/opt/notaflow/deploys.log` | The last 5 deployed versions, `<sha> <digest>`, newest last. The **Rollback** workflow reads it |
 | Docker volume `notaflow_data` | `/data` in the container: `notaflow.db` and `backups/` |
 | `/opt/northub/cloudflared/config.yml` | The tunnel ingress, shared with northub and Vapulab. NotaFlow is `notaflow.vapulab.com → http://notaflow:3000` |
 | `/etc/systemd/system/notaflow-backup.{service,timer}` | Daily backup at 03:00 (America/Sao_Paulo) |
@@ -41,12 +42,15 @@ To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_K
 
 ## Deploy user
 
-The workflow logs in as `notaflow-deploy`, not root. The key of that user runs one program, `/usr/local/bin/notaflow-deploy` ([deploy/notaflow-deploy.sh](../../deploy/notaflow-deploy.sh)), with two actions:
+The workflows log in as `notaflow-deploy`, not root. The key of that user runs one program, `/usr/local/bin/notaflow-deploy` ([deploy/notaflow-deploy.sh](../../deploy/notaflow-deploy.sh)), with three actions:
 
-- `up <commit sha>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>` with the token from stdin, writes `IMAGE=` into `.env`, and starts the stack.
+- `up <commit sha> <image digest>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>@<digest>` with the token from stdin, writes that `IMAGE=` into `.env`, starts the stack, and adds the version to `/opt/notaflow/deploys.log` (the newest 5).
+- `rollback`: it starts the version before the running one in `deploys.log`, and drops the running one from the list. See [Roll back](#roll-back).
 - `health`: it polls `/api/health` for 90 seconds and prints the app log on a failure.
 
-The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the commit that is already the tip of `production`, never roll back to an older one. A rollback is done as root (see [Roll back](#roll-back)).
+The digest is the one the `Deploy` run got when it pushed the image. Docker refuses any other bytes, so an image pushed again under the same tag never runs.
+
+The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the tip of `production`, or go back to one of the last versions that ran here.
 
 To set it up, or to rotate the key:
 
@@ -75,16 +79,21 @@ docker compose exec app node --import tsx apps/server/src/seed.ts <email> "<name
 
 ## Roll back
 
-A red health check in the `Deploy` run means production is down: compose already replaced the container, and `.env` holds the new `IMAGE`. Roll back right away, as below, with the tag of the last good run.
+A red health check in the `Deploy` run means production is down: compose already replaced the container, and `.env` holds the new `IMAGE`. Roll back right away:
 
-Every image is tagged with its commit. Images built before the repo moved to the Vapulab org are in `ghcr.io/darkanum/notaflow`. Put the older tag in `.env` and start it:
+1. In GitHub, open Actions, then **Rollback**, then **Run workflow** on `production`. It starts the previous version and checks its health. Each run goes one more version back.
+2. Fix the bug in a PR, or revert the bad PR. The merge deploys the new tip as usual.
+
+Do not run **Deploy** by hand after a rollback: it deploys the tip again, which is the broken version.
+
+The history starts with the first deploy that has a digest. Without an earlier entry, or for an older version, roll back as root. Every image is tagged with its commit. Images built before the repo moved to the Vapulab org are in `ghcr.io/darkanum/notaflow`. Put the older tag in `.env` and start it:
 
 ```bash
 sed -i '/^IMAGE=/d' .env && echo IMAGE=ghcr.io/vapulab/notaflow:<older sha> >> .env
 docker compose up -d
 ```
 
-A migration that already ran stays in the database; an older image works only if the schema change was additive (every migration so far is).
+A migration that already ran stays in the database; an older image works only if the schema change was additive (every migration so far is). Never go back before PR #108 (migration 0027): older code cannot open the resealed certificates.
 
 ## Backups and restore
 

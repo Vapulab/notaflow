@@ -23,6 +23,7 @@ jobs:
     outputs:
       sha: ${{ steps.sha.outputs.sha }}
       image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,7 +39,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: true
@@ -59,6 +61,7 @@ jobs:
       packages: read
     env:
       TAG: ${{ needs.build.outputs.sha }}
+      DIGEST: ${{ needs.build.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -98,12 +101,13 @@ jobs:
           EOF
 
       # The key runs only notaflow-deploy (deploy/notaflow-deploy.sh): it takes this commit's compose
-      # file and image from GitHub, after it checks that the commit is the tip of production.
+      # file and image from GitHub, after it checks that the commit is the tip of production. The digest
+      # pins the image this job built, so a tag pushed again later is not what runs.
       - name: Start the new version
         if: steps.newest.outputs.deploy == 'true'
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$TOKEN" | ssh vm notaflow-deploy up "$TAG"
+        run: echo "$TOKEN" | ssh vm notaflow-deploy up "$TAG" "$DIGEST"
 
       - name: Health check
         if: steps.newest.outputs.deploy == 'true'

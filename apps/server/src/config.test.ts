@@ -232,6 +232,8 @@ test('Sentry is on only with a DSN; the release is the tag of the running image'
     webDsn: 'https://b@o1.ingest.us.sentry.io/2',
     release: 'e3944dc',
   });
+  const pinned = `ghcr.io/vapulab/notaflow:e3944dc@sha256:${'a'.repeat(64)}`;
+  expect(loadConfig({ ...base, IMAGE: pinned }).sentry.release).toBe('e3944dc');
   expect(() => loadConfig({ ...base, SENTRY_DSN_WEB: 'not a url' })).toThrow(/SENTRY_DSN_WEB/);
 });
 

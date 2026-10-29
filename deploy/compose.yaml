@@ -1,5 +1,5 @@
 # Production stack on the Vapulab VPS, in /opt/notaflow. The deploy workflow copies this file there
-# and writes IMAGE (the tag it just pulled) into /opt/notaflow/.env; the rest of .env is set by hand.
+# and writes IMAGE (the tag and digest it just pulled) into /opt/notaflow/.env; the rest of .env is set by hand.
 #
 # No host port: only the northub Cloudflare tunnel reaches the app, on the network northub_default,
 # with the alias "notaflow" (ingress notaflow.vapulab.com -> http://notaflow:3000).
