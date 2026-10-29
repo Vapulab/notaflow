@@ -20,15 +20,17 @@ import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 
 let t: TestApp;
 let unsuppressed: string[] = [];
-let unsuppressFails = false;
+let unsuppressError: Error | null = null;
+let logLines: string[] = [];
 const unsuppress = async (address: string) => {
-  if (unsuppressFails) throw new Error('Resend answered 500');
+  if (unsuppressError) throw unsuppressError;
   unsuppressed.push(address);
 };
 beforeEach(async () => {
   unsuppressed = [];
-  unsuppressFails = false;
-  t = await createTestApp({ unsuppress });
+  unsuppressError = null;
+  logLines = [];
+  t = await createTestApp({ unsuppress, logStream: { write: (line) => logLines.push(line) } });
 });
 afterEach(() => t.close());
 
@@ -537,13 +539,34 @@ test('an unsuppress failure answers 502 email_unblock_failed and keeps the block
   const s = await withNewInvoiceSetup(t);
   const view = await issue(s, s.brazilId);
   blocks().add('cliente@example.com', 'invoice', 'bounce');
-  unsuppressFails = true;
+  unsuppressError = new Error('Resend answered 500');
   const response = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
   expect(response.statusCode).toBe(502);
   expect(response.json()).toMatchObject({ error: 'email_unblock_failed' });
   expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('bounce');
   expect(outbox()).toHaveLength(0);
   expect(audits().filter((r) => r.result === 'ok')).toHaveLength(0);
+});
+
+test('a failing unsuppress logs the status or the error class, never the address', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  unsuppressError = new Error('Resend answered 401');
+  expect((await send(s, view.id, 'cliente@example.com', { confirmAddress: true })).statusCode).toBe(
+    502,
+  );
+  unsuppressError = new TypeError(
+    'fetch failed: https://api.resend.com/suppressions/cliente%40example.com',
+  );
+  expect((await send(s, view.id, 'cliente@example.com', { confirmAddress: true })).statusCode).toBe(
+    502,
+  );
+  const failures = logLines.filter((line) => line.includes('Resend unsuppress failed'));
+  expect(failures).toHaveLength(2);
+  expect(failures[0]).toContain('Resend unsuppress failed: Resend answered 401');
+  expect(failures[1]).toContain('Resend unsuppress failed: TypeError');
+  expect(logLines.join('\n')).not.toMatch(/cliente(@|%40)example\.com/);
 });
 
 test('confirmAddress does not lift an unsubscribe or a complaint: the answer is sent and nothing is queued', async () => {

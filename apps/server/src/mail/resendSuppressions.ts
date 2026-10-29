@@ -21,3 +21,9 @@ export function resendUnsuppress(options: { apiKey: string; dispatcher?: Dispatc
     }
   };
 }
+
+// Safe to log: only our own status-only message, else the error class, since an undici error can carry the URL with the address.
+export function unsuppressFailure(error: unknown): string {
+  if (error instanceof Error && /^Resend answered \d{3}$/.test(error.message)) return error.message;
+  return error instanceof Error ? error.name : typeof error;
+}

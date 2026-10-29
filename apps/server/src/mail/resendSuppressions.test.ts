@@ -1,6 +1,6 @@
 import { MockAgent } from 'undici';
 import { expect, test } from 'vitest';
-import { resendUnsuppress } from './resendSuppressions';
+import { resendUnsuppress, unsuppressFailure } from './resendSuppressions';
 
 function agentAnswering(status: number) {
   const agent = new MockAgent();
@@ -37,4 +37,12 @@ test('500 rejects', async () => {
   await expect(
     resendUnsuppress({ apiKey: 'k', dispatcher: agent })('cliente@example.com'),
   ).rejects.toThrow('Resend answered 500');
+});
+
+test('unsuppressFailure keeps only the status message or the error class', () => {
+  expect(unsuppressFailure(new Error('Resend answered 403'))).toBe('Resend answered 403');
+  expect(unsuppressFailure(new TypeError('fetch failed /suppressions/a%40b.com'))).toBe(
+    'TypeError',
+  );
+  expect(unsuppressFailure('a@b.com')).toBe('string');
 });

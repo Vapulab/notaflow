@@ -65,6 +65,7 @@ export function invoiceLinkRoutes(
     appOrigin: deps.appOrigin,
     secret: deps.secret,
     unsuppress: deps.unsuppress,
+    log: (line) => app.log.error(line),
   });
 
   app.post<{ Params: { accountId: string; invoiceId: string } }>(

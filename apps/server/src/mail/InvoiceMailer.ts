@@ -12,7 +12,7 @@ import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 import { isEmailAddress } from './address';
 import { invoiceUnsubscribeUrl } from './invoiceUnsubscribe';
 import type { MailOutbox } from './outbox';
-import type { Unsuppress } from './resendSuppressions';
+import { type Unsuppress, unsuppressFailure } from './resendSuppressions';
 import { invoiceEmail } from './templates';
 
 // The address of the customer: the XML first, since it is what the Sefin recorded, then the customer record.
@@ -57,6 +57,7 @@ export class InvoiceMailer {
       appOrigin: string;
       secret: string;
       unsuppress: Unsuppress;
+      log?: (line: string) => void;
     },
   ) {
     this.invoices = new InvoiceRepository(deps.db);
@@ -114,7 +115,8 @@ export class InvoiceMailer {
       }
       try {
         await this.deps.unsuppress(to.trim().toLowerCase());
-      } catch {
+      } catch (error) {
+        this.deps.log?.(`Resend unsuppress failed: ${unsuppressFailure(error)}`);
         throw new HttpError(502, 'email_unblock_failed');
       }
       this.suppressions.unblock(to, 'invoice', ctx);
