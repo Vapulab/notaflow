@@ -1,0 +1,48 @@
+name: Rollback
+
+# Run by hand when production is broken: the VPS goes back to the version it ran before this one,
+# from its own deploy history. Each run goes one version further back. A fix still ships through a PR.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://notaflow.vapulab.com
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Configure SSH
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host vm
+            HostName $VM_HOST
+            User notaflow-deploy
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+          EOF
+
+      # The token pulls the older image again: the deploy prunes images that no container uses.
+      - name: Start the previous version
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | ssh vm notaflow-deploy rollback
+
+      - name: Health check
+        run: ssh vm notaflow-deploy health

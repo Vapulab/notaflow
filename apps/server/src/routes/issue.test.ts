@@ -6,6 +6,7 @@ import { withTemplate } from '../../test/issueSetup';
 import { xmlOf } from '../../test/newInvoiceSetup';
 import { providerInvoice } from '../../test/providerData';
 import { createTestApp, type TestApp } from '../../test/testApp';
+import { CustomerRepository } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
 import { InvoiceRepository } from '../repos/InvoiceRepository';
 
@@ -104,6 +105,53 @@ test('a zero amount and a future competence are refused before anything is reser
     },
   });
   expect(future.json()).toEqual({ error: 'competence_after_issue' });
+  const list = await t.app.inject({
+    method: 'GET',
+    url: `/api/accounts/${a.accountId}/invoices`,
+    headers,
+  });
+  expect(list.json()).toMatchObject({ total: 1 });
+});
+
+test('issue similar refuses a customer of another emitter of the same account', async () => {
+  const { a, headers, templateInvoiceId } = await withTemplate(t);
+  const other = new EmitterRepository(t.db).create(a, {
+    cnpj: '11222333000181',
+    companyName: 'OUTRA LTDA',
+    municipality: '4113700',
+    simplesNacional: '3',
+    specialRegime: '0',
+    dpsSeries: '900',
+  });
+  const customer = new CustomerRepository(t.db).createManual(a, other.id, {
+    documentType: 'NIF',
+    document: '00-1',
+    name: 'Cliente da Outra',
+    address: {
+      kind: 'foreign',
+      country: 'US',
+      postalCode: '1',
+      city: 'X',
+      region: 'Y',
+      street: 'S',
+      number: '1',
+      district: 'D',
+    },
+  });
+  const response = await t.app.inject({
+    method: 'POST',
+    url: `/api/accounts/${a.accountId}/invoices/issue`,
+    headers,
+    payload: {
+      templateInvoiceId,
+      customerId: customer?.id,
+      competence: '2026-09-30',
+      serviceCents: 617000,
+      foreignAmountCents: 123400,
+    },
+  });
+  expect(response.statusCode).toBe(404);
+  expect(response.json()).toEqual({ error: 'customer_not_found' });
   const list = await t.app.inject({
     method: 'GET',
     url: `/api/accounts/${a.accountId}/invoices`,
