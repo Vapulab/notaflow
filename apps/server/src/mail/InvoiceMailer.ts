@@ -113,11 +113,17 @@ export class InvoiceMailer {
       if (this.suppressions.unblockedRecently(to, 'invoice', new Date(now - UNBLOCK_WINDOW_MS))) {
         throw new HttpError(409, 'email_invalid_address_final');
       }
+      let resend: 'removed' | 'complaint';
       try {
-        await this.deps.unsuppress(to.trim().toLowerCase());
+        resend = await this.deps.unsuppress(to.trim().toLowerCase());
       } catch (error) {
         this.deps.log?.(`Resend unsuppress failed: ${unsuppressFailure(error)}`);
         throw new HttpError(502, 'email_unblock_failed');
+      }
+      if (resend === 'complaint') {
+        this.suppressions.add(to, 'invoice', 'complaint');
+        outbox.cancelPendingInvoice(to);
+        return 'suppressed';
       }
       this.suppressions.unblock(to, 'invoice', ctx);
       unblocked = true;
