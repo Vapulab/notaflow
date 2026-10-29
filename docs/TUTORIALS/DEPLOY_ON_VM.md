@@ -9,7 +9,7 @@ Deploys run one at a time, and only the commit at the tip of `production` goes l
 | Path | What |
 | --- | --- |
 | `/opt/notaflow/compose.yaml` | `deploy/compose.yaml` of the deployed commit, which `notaflow-deploy` downloads from GitHub |
-| `/opt/notaflow/.env` | Secrets and settings, mode 600 (see `deploy/.env.example`). `IMAGE=` is written by the workflow |
+| `/opt/notaflow/.env` | Secrets and settings, mode 600 (see `deploy/.env.example`). `IMAGE=` and `RELEASE=` are written by the deploy |
 | `/opt/notaflow/deploys.log` | The last 5 deployed versions, `<sha> <digest>`, newest last. The **Rollback** workflow reads it |
 | Docker volume `notaflow_data` | `/data` in the container: `notaflow.db` and `backups/` |
 | `/opt/northub/cloudflared/config.yml` | The tunnel ingress, shared with northub and Vapulab. NotaFlow is `notaflow.vapulab.com → http://notaflow:3000` |
@@ -30,7 +30,7 @@ The app publishes no host port. The northub tunnel reaches it on the Docker netw
 | `TRUSTED_PROXY_HOST` | `/opt/notaflow/.env` | `northub-tunnel-1` in production: only the tunnel may send `cf-connecting-ip`. Unset, any private address may, so a neighbour container on `northub_default` can pick an IP |
 | `METRICS_ALLOW_HOST` | `/opt/notaflow/.env` | `monitoring-prometheus-1` in production: `/metrics` answers only the Prometheus container. Use the container name, not the service name `prometheus`: another project on a shared network could have that alias. Unset, any container on a shared network can read it |
 | `POSTHOG_TOKEN`, `POSTHOG_HOST` | `/opt/notaflow/.env` | The PostHog project key (public by design) and host; the host defaults to `https://us.i.posthog.com`. Without the key, the app sends no analytics |
-| `SENTRY_DSN_SERVER`, `SENTRY_DSN_WEB` | `/opt/notaflow/.env` | The DSNs of the Sentry projects `notaflow-server` and `notaflow-web`. The release is the image tag. Without a DSN, that side reports no errors. In each project, turn on "Prevent Storing of IP Addresses" |
+| `SENTRY_DSN_SERVER`, `SENTRY_DSN_WEB` | `/opt/notaflow/.env` | The DSNs of the Sentry projects `notaflow-server` and `notaflow-web`. The release is `RELEASE`, the deployed commit, or else the tag in `IMAGE`. Without a DSN, that side reports no errors. In each project, turn on "Prevent Storing of IP Addresses" |
 | `GITHUB_BUG_TOKEN`, `GITHUB_BUG_REPO` | `/opt/notaflow/.env` | A fine-grained token with Issues read and write on `Vapulab/notaflow` only. It opens one issue of type Bug per report. Without it, reports skip GitHub |
 | `GITHUB_WEBHOOK_SECRET` | `/opt/notaflow/.env` | The secret of the `Issues` webhook of `Vapulab/notaflow` to `https://notaflow.vapulab.com/webhooks/github` (content type `application/json`). Without it, the route answers 404 |
 | `DISCORD_BUG_WEBHOOK_URL` | `/opt/notaflow/.env` | The webhook of the private Discord bugs channel. The URL is the credential: anyone with it can post |
@@ -44,11 +44,11 @@ To see the master key for the password manager: `ssh vapulab "grep NFSE_MASTER_K
 
 The workflows log in as `notaflow-deploy`, not root. The key of that user runs one program, `/usr/local/bin/notaflow-deploy` ([deploy/notaflow-deploy.sh](../../deploy/notaflow-deploy.sh)), with three actions:
 
-- `up <commit sha> <image digest>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, pulls `ghcr.io/vapulab/notaflow:<sha>@<digest>` with the token from stdin, writes that `IMAGE=` into `.env`, starts the stack, and adds the version to `/opt/notaflow/deploys.log` (the newest 5).
+- `up <commit sha> <image digest>`: it checks on GitHub that the commit is the tip of `production`. Then it downloads that commit's `deploy/compose.yaml`, checks that the tag `<sha>` points to the digest, pulls `ghcr.io/vapulab/notaflow@<digest>` with the token from stdin, writes `IMAGE=` and `RELEASE=<sha>` into `.env`, starts the stack, and adds the version to `/opt/notaflow/deploys.log` (the newest 5).
 - `rollback`: it starts the version before the running one in `deploys.log`, and drops the running one from the list. See [Roll back](#roll-back).
 - `health`: it polls `/api/health` for 90 seconds and prints the app log on a failure.
 
-The digest is the one the `Deploy` run got when it pushed the image. `up` checks that the tag `<sha>` points to it, so the caller cannot pick another image. Docker then refuses any other bytes, so an image pushed again under the same tag never runs. `rollback` uses only digests that `up` wrote to `deploys.log`.
+The digest is the one the `Deploy` run got when it pushed the image. The tag check means the caller cannot pick another image. Docker then refuses any other bytes, so an image pushed again under the same tag never runs. `rollback` uses only digests that `up` wrote to `deploys.log`.
 
 The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the tip of `production`, or go back to one of the last versions that ran here.
 
@@ -89,7 +89,7 @@ Do not run **Deploy** by hand after a rollback: it deploys the tip again, which 
 The history starts with the first deploy that has a digest. Without an earlier entry, or for an older version, roll back as root. Every image is tagged with its commit. Images built before the repo moved to the Vapulab org are in `ghcr.io/darkanum/notaflow`. Put the older tag in `.env` and start it:
 
 ```bash
-sed -i '/^IMAGE=/d' .env && echo IMAGE=ghcr.io/vapulab/notaflow:<older sha> >> .env
+sed -i '/^IMAGE=/d; /^RELEASE=/d' .env && echo IMAGE=ghcr.io/vapulab/notaflow:<older sha> >> .env
 docker compose up -d
 ```
 
