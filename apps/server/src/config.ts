@@ -30,7 +30,7 @@ export interface Config {
   metricsAllowHost: string | null;
   // The first day the lifecycle reminders may go out; null keeps them off.
   lifecycleStartAt: Date | null;
-  // The release is the tag of the running image (before its @digest), so an error points at its commit.
+  // The release is the deployed commit (RELEASE, or the tag of IMAGE), so an error points at it.
   sentry: { serverDsn: string | null; webDsn: string | null; release: string | null };
   nacionalUrls?: { sefin: string; adn: string };
   // Where a bug report goes; each channel is off while its variables are unset.
@@ -260,7 +260,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     sentry: {
       serverDsn: env.SENTRY_DSN_SERVER || null,
       webDsn: env.SENTRY_DSN_WEB || null,
-      release: /:([^:/@]+)(?:@sha256:[0-9a-f]{64})?$/.exec(env.IMAGE ?? '')?.[1] ?? null,
+      release: env.RELEASE || (/:([^:/@]+)$/.exec(env.IMAGE ?? '')?.[1] ?? null),
     },
     posthog: env.POSTHOG_TOKEN
       ? { token: env.POSTHOG_TOKEN, host: env.POSTHOG_HOST || 'https://us.i.posthog.com' }

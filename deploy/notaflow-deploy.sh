@@ -48,16 +48,18 @@ start() {
     docker image inspect "$IMAGE_NAME:$sha" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
       grep -qx "$IMAGE_NAME@$digest" || fail "the tag $sha does not point to $digest"
   fi
-  # The tag before the digest is only a label: the app reads it as its Sentry release.
-  export IMAGE="$IMAGE_NAME:$sha@$digest"
-  DOCKER_CONFIG=$config docker compose -f "$compose" pull app
+  # docker pull, not compose pull: compose loses the login on a digest reference (registry: unauthorized).
+  image="$IMAGE_NAME@$digest"
+  DOCKER_CONFIG=$config docker pull -q "$image" >/dev/null
   # Untagged, the image is pruned once no container uses it; the digest reference keeps it until then.
   if [ "$3" = tag ]; then docker image rm "$IMAGE_NAME:$sha" >/dev/null; fi
   mv "$compose" compose.yaml
   # IMAGE goes into .env only after a good pull, so a manual compose run uses the running version.
-  sed -i '/^IMAGE=/d' .env
-  echo "IMAGE=$IMAGE" >> .env
-  unset IMAGE
+  # RELEASE is the commit, which the app reports as its Sentry release.
+  sed -i '/^IMAGE=/d; /^RELEASE=/d' .env
+  printf 'IMAGE=%s
+RELEASE=%s
+' "$image" "$sha" >> .env
   docker compose up -d --remove-orphans
   docker image prune -f >/dev/null
 }
