@@ -144,6 +144,14 @@ test('a stage 2b database migrates with every row kept and the control columns f
   client.close();
 });
 
+test('an existing do-not-send row gets the unsubscribe reason', () => {
+  const client = migratedFromPre3a();
+  expect(client.prepare('SELECT reason FROM mail_suppressions').get()).toEqual({
+    reason: 'unsubscribe',
+  });
+  client.close();
+});
+
 test('the unique indexes count only active rows', () => {
   const client = migratedFromPre3a();
   for (const name of [

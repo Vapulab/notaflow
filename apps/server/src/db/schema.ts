@@ -233,6 +233,9 @@ export const mailOutbox = sqliteTable(
     // Set on invoice e-mail only: what the sending caps count.
     accountId: text('account_id'),
     invoiceId: text('invoice_id'),
+    // The Resend e-mail id, kept to match a bounce webhook to the row.
+    providerId: text('provider_id'),
+    delivery: text('delivery', { enum: ['bounced', 'complained'] }),
     headers: text('headers', { mode: 'json' }).$type<Record<string, string>>(),
     attempts: integer('attempts').notNull().default(0),
     nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
@@ -242,6 +245,7 @@ export const mailOutbox = sqliteTable(
   },
   (table) => [
     index('mail_outbox_account_invoice').on(table.accountId, table.invoiceId, table.createdAt),
+    index('mail_outbox_provider_id').on(table.providerId),
   ],
 );
 
@@ -668,6 +672,9 @@ export const mailSuppressions = sqliteTable(
     id: id(),
     address: text('address').notNull(),
     kind: text('kind', { enum: ['invoice'] }).notNull(),
+    reason: text('reason', { enum: ['unsubscribe', 'bounce', 'complaint'] })
+      .notNull()
+      .default('unsubscribe'),
     createdAt: createdAt(),
     updatedAt: changedAt(),
     ...authors(),
