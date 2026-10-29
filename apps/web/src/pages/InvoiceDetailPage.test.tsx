@@ -35,6 +35,7 @@ const issuedInvoice = {
   templateOf: null,
   customerEmail: null,
   customerEmailedAt: null,
+  customerEmailProblem: null,
   autoEmailCustomer: false,
   hasLink: false,
 };
@@ -188,6 +189,23 @@ test('the detail shows when the customer was e-mailed', async () => {
   });
   renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
   expect(await screen.findByText('E-mail enviado em 02/10/2026 12:30')).toBeTruthy();
+});
+
+test('a bounced e-mail shows endereço inválido with the address', async () => {
+  stubApi({
+    '/api/accounts/acc/invoices/inv1': {
+      ...issuedInvoice,
+      customerEmail: 'erro@exemplo.com',
+      customerEmailedAt: '2026-10-02T15:30:00.000Z',
+      customerEmailProblem: { kind: 'invalid_address', to: 'erro@exemplo.com' },
+      autoEmailCustomer: true,
+    },
+  });
+  renderWithMe(<InvoiceDetailPage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  expect(
+    await screen.findByText('E-mail não entregue: endereço inválido (erro@exemplo.com)'),
+  ).toBeTruthy();
+  expect(screen.queryByText(/E-mail enviado/)).toBeNull();
 });
 
 test('the detail says the customer has no e-mail on the note for an app invoice in production', async () => {

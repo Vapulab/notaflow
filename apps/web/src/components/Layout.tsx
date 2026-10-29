@@ -18,6 +18,10 @@ export const ERROR_TEXT: Record<string, string> = {
   rate_limited: 'Muitas tentativas. Espere um minuto e tente de novo.',
   band6_iss_required: 'Na faixa 6, informe se o ISS ainda é pago no DAS.',
   iss_rate_required: 'Informe a alíquota de ISS do município, até 5,00%.',
+  email_invalid_address: 'Este endereço já recusou um e-mail do NotaFlow. Confira se está certo.',
+  email_invalid_address_final: 'Este endereço recusou o e-mail de novo. Use outro endereço.',
+  email_unblock_failed:
+    'Não foi possível desbloquear o endereço agora. Tente de novo em alguns minutos.',
   INVALID_OTP: 'Código incorreto. Confira e tente de novo.',
   OTP_EXPIRED: 'Este código expirou. Peça um novo.',
   TOO_MANY_ATTEMPTS: 'Tentativas demais com este código. Peça um novo.',

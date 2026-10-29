@@ -87,3 +87,48 @@ test('Cancelar closes the dialog', async () => {
   await userEvent.setup().click(await screen.findByRole('button', { name: 'Cancelar' }));
   expect(onClose).toHaveBeenCalledTimes(1);
 });
+
+const CONFIRM = 'O endereço está certo, enviar mesmo assim';
+
+async function bounceFirst(finalAnswer = false) {
+  let posts = 0;
+  const calls = stubApi({
+    [DETAIL]: detail('cliente@example.com'),
+    [`${DETAIL}/email`]: () => {
+      posts += 1;
+      if (finalAnswer) return { error: 'email_invalid_address_final' };
+      return posts === 1 ? { error: 'email_invalid_address' } : { sent: true };
+    },
+  });
+  renderDialog();
+  const user = userEvent.setup();
+  const field = await screen.findByLabelText('E-mail do tomador');
+  await waitFor(() => expect((field as HTMLInputElement).value).toBe('cliente@example.com'));
+  await user.click(screen.getByRole('button', { name: 'Enviar' }));
+  return { calls, user, field };
+}
+
+test('a 409 email_invalid_address offers the confirm button, which posts confirmAddress true', async () => {
+  const { calls, user } = await bounceFirst();
+  expect(await screen.findByText(ERROR_TEXT.email_invalid_address ?? '')).toBeTruthy();
+  await user.click(await screen.findByRole('button', { name: CONFIRM }));
+  expect(await screen.findByText('E-mail enviado para cliente@example.com.')).toBeTruthy();
+  const posts = calls.filter((c) => c.url === `${DETAIL}/email`);
+  expect(JSON.parse(String(posts[1]?.init?.body))).toEqual({
+    to: 'cliente@example.com',
+    confirmAddress: true,
+  });
+});
+
+test('editing the address hides the confirm button', async () => {
+  const { user, field } = await bounceFirst();
+  await screen.findByRole('button', { name: CONFIRM });
+  await user.type(field, 'x');
+  expect(screen.queryByRole('button', { name: CONFIRM })).toBeNull();
+});
+
+test('a 409 email_invalid_address_final shows its text and no confirm button', async () => {
+  await bounceFirst(true);
+  expect(await screen.findByText(ERROR_TEXT.email_invalid_address_final ?? '')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: CONFIRM })).toBeNull();
+});
