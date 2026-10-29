@@ -15,6 +15,7 @@ import type { DanfseQueue } from './danfse/queue';
 import { InvoiceMailer } from './mail/InvoiceMailer';
 import { registerInvoiceUnsubscribe } from './mail/invoiceUnsubscribe';
 import { MailOutbox } from './mail/outbox';
+import { registerResendWebhook } from './mail/resendWebhook';
 import { MailSuppressionRepository } from './repos/MailSuppressionRepository';
 import type { Config } from './config';
 import type { Database } from './db/openDatabase';
@@ -247,6 +248,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   const metrics = new Metrics(new MetricsRepository(db, config.databasePath));
   app.decorate('metrics', metrics);
+  registerResendWebhook(app, {
+    secret: config.mail.resendWebhookSecret,
+    outbox,
+    suppressions: new MailSuppressionRepository(db),
+    metrics,
+  });
   app.addHook('onRequest', async (request, reply) => {
     // Fastify writes "request completed" through reply.log, a separate reference.
     request.log = request.log.child({ module: routeModule(request) });

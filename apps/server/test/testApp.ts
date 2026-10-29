@@ -45,6 +45,8 @@ export async function createTestApp(
     googleUserInfo?: AuthDeps['googleUserInfo'];
     // The app's e-mails fail, as when Resend is down; Better Auth's codes still arrive.
     failMail?: boolean;
+    // The Resend id the fake transport answers for each e-mail, as the real one does.
+    mailId?: (message: MailMessage) => string | undefined;
     policyNotice?: PolicyNotice | null;
   } = {},
 ): Promise<TestApp> {
@@ -64,6 +66,7 @@ export async function createTestApp(
   const mail: MailMessage[] = [];
   const mailer = async (message: MailMessage) => {
     mail.push(message);
+    return options.mailId?.(message);
   };
   const auth = createAuth({
     config,

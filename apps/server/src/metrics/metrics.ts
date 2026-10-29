@@ -43,6 +43,7 @@ export class Metrics {
   private readonly danfseLinkViewsTotal: Counter;
   private readonly danfseJobs: Counter<'result'>;
   private readonly danfseRenderSeconds: Histogram;
+  private readonly mailWebhookEvents: Counter<'type' | 'outcome'>;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
   private readonly sources: MetricSources;
@@ -106,6 +107,12 @@ export class Metrics {
         const since = sources.danfsePendingOldest();
         this.set(since ? Math.max(0, Math.floor((Date.now() - since.getTime()) / 1000)) : 0);
       },
+    });
+    this.mailWebhookEvents = new Counter({
+      name: 'mail_webhook_events_total',
+      help: 'Resend webhook events by type (email.bounced, email.complained, other) and outcome (applied, ignored)',
+      labelNames: ['type', 'outcome'],
+      registers,
     });
     this.syncRuns = new Counter({
       name: 'sync_runs_total',
@@ -320,6 +327,11 @@ export class Metrics {
       },
     });
     refresh();
+  }
+
+  mailWebhookEvent(type: string, outcome: 'applied' | 'ignored'): void {
+    const known = type === 'email.bounced' || type === 'email.complained';
+    this.mailWebhookEvents.inc({ type: known ? type : 'other', outcome });
   }
 
   syncRun(emitterId: string, error: string | null | undefined, at: Date): void {
