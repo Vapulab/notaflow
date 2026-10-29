@@ -51,16 +51,15 @@ start() {
   # docker pull, not compose pull: compose loses the login on a digest reference (registry: unauthorized).
   image="$IMAGE_NAME@$digest"
   DOCKER_CONFIG=$config docker pull -q "$image" >/dev/null
-  # Untagged, the image is pruned once no container uses it; the digest reference keeps it until then.
-  if [ "$3" = tag ]; then docker image rm "$IMAGE_NAME:$sha" >/dev/null; fi
   mv "$compose" compose.yaml
   # IMAGE goes into .env only after a good pull, so a manual compose run uses the running version.
   # RELEASE is the commit, which the app reports as its Sentry release.
   sed -i '/^IMAGE=/d; /^RELEASE=/d' .env
-  printf 'IMAGE=%s
-RELEASE=%s
-' "$image" "$sha" >> .env
+  printf 'IMAGE=%s\nRELEASE=%s\n' "$image" "$sha" >> .env
   docker compose up -d --remove-orphans
+  # Removing a tag deletes an image that no container uses yet, so old tags go only after the start.
+  docker images "$IMAGE_NAME" --format '{{.Repository}}:{{.Tag}}' | grep -v -e ':<none>$' -e ":$sha$" |
+    xargs -r docker image rm >/dev/null 2>&1 || true
   docker image prune -f >/dev/null
 }
 
