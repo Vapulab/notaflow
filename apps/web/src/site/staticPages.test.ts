@@ -157,6 +157,12 @@ test('the privacy policy explains the reminder e-mails, their basis, and how to 
   expect(reminders).not.toContain('dia útil');
 });
 
+test('the privacy policy covers bounces and complaints', () => {
+  const policy = read('privacidade.html');
+  expect(policy).toContain('marcou o e-mail como spam');
+  expect(policy).toContain('endereço inválido');
+});
+
 test('the privacy policy says it keeps the campaign link of the signup, why, and on what basis', () => {
   const data = section(
     read('privacidade.html'),

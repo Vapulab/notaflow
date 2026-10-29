@@ -1,6 +1,6 @@
 # RFC: Invoice E-mail Bounces and Complaints
 
-Status: draft, 2026-10-29. Owner decisions: a bounce shows as "endereço inválido"; a corrected address goes out normally; the emitter can unblock an address; one Full access Resend key.
+Status: implemented, 2026-10-29. Owner decisions: a bounce shows as "endereço inválido"; a corrected address goes out normally; the emitter can unblock an address; one Full access Resend key.
 
 When an invoice e-mail to a customer bounces permanently, NotaFlow blocks the address and tells the emitter "endereço inválido". When the customer marks it as spam, NotaFlow blocks the address in silence, the same as an unsubscribe. Resend reports both events to a signed webhook. The emitter can correct the address and send again, or say that the address is correct and unblock it.
 
@@ -61,7 +61,7 @@ Resend keeps its own suppression list for the team: a hard bounce or a complaint
 
 ### What the emitter sees
 
-The invoice API gets `customerEmailProblem: 'invalid_address' | null`. It is `invalid_address` when the latest invoice outbox row of the invoice has `delivery = 'bounced'`. A complaint never shows.
+The invoice API gets `customerEmailProblem: { kind: 'invalid_address'; to: string } | null`. It is set when the latest invoice outbox row of the invoice has `delivery = 'bounced'`. A complaint never shows.
 
 When the automatic send skips an invoice because a bounce blocked its address, it writes an outbox row of kind `invoice` with `status = 'cancelled'`, `delivery = 'bounced'`, and an empty body. So the invoice keeps the reason, and a later unblock does not change old invoices (builder call). A cancelled row does not count in the caps.
 
@@ -75,7 +75,7 @@ When the automatic send skips an invoice because a bounce blocked its address, i
 
 One unblock per address in 30 days, across all accounts, because the list is shared (builder call). The server checks it when `confirmAddress` arrives: a `bounce` suppression of the address soft-deleted in the last 30 days refuses it with 409 `email_invalid_address_final`, and the dialog says "Este endereço recusou o e-mail de novo. Use outro endereço." After 30 days the address can be unblocked again. A `complaint` row is never unblocked: the send answers as a success and sends nothing, as today. The audit log records the unblock with the domain only.
 
-The unblock also removes the address from Resend's list with `DELETE https://api.resend.com/suppressions/{email}`, before the send. The call uses `RESEND_API_KEY`, which has Full access since 2026-10-29 (owner decision: one key, not a second one). A 404 from Resend counts as done. Any other failure answers 502 and keeps our row, so the emitter can try again.
+The unblock also removes the address from Resend's list with `DELETE https://api.resend.com/suppressions/{email}`, before the send. The call uses `RESEND_API_KEY`, which has Full access since 2026-10-29 (owner decision: one key, not a second one). A 404 from Resend counts as done. Any other failure answers 502 `email_unblock_failed` and keeps our row, so the emitter can try again. The log keeps only the Resend status or the error type, never the address.
 
 ### Privacy policy
 

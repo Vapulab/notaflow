@@ -38,6 +38,7 @@ flowchart TB
   backup -- "gzip + age copy [HTTPS]" --> r2
   server -- "DPS, events, ADN reads [HTTPS, mTLS]" --> nacional
   server -- "E-mail through the outbox [HTTPS]" --> resend
+  resend -- "Reports bounces [HTTPS webhook]" --> server
   server -- "Login, captcha, lookups [HTTPS]" --> others
   web -. "Events [HTTPS]" .-> posthog
   pages -. "Page views [HTTPS]" .-> posthog

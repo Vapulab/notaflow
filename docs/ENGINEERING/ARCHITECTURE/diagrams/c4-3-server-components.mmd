@@ -20,6 +20,7 @@ flowchart TB
     lifecycle["<b>Lifecycle service</b><br/><i>[Component: lifecycle/*]</i><br/>Every 15 minutes in business hours: onboarding, first-invoice, and reactivation reminders to owners; signed opt-out."]
     errors["<b>Error reporter</b><br/><i>[Component: observability/errors, @sentry/node]</i><br/>Reports each 5xx with its module; removes e-mails, documents, cookies, headers, and queries first."]
     bugs["<b>Bug reports</b><br/><i>[Component: bugs/*]</i><br/>Stores each report, masks personal data for the public issue, retries GitHub, Notion, and Discord after 1, 5, 30, 120 minutes; the issues webhook resolves a report. Screenshots go to R2 and are deleted 30 days after the fix."]
+    resendhook["<b>Resend webhook</b><br/><i>[Component: mail/resendWebhook]</i><br/>Marks bounces and complaints"]
     audit["<b>Audit log</b><br/><i>[Component: repos/AuditLog]</i><br/>Append-only: who, what, when, IP, browser, request id."]
   end
 
@@ -59,6 +60,8 @@ flowchart TB
   routes -- "Invites" --> outbox
   outbox -- "[HTTPS API]" --> resend
   outbox --> db
+  resend --> resendhook
+  resendhook --> db
   routes -- "Records actions" --> audit
   issue -- "Records actions" --> audit
   audit --> db
@@ -80,6 +83,6 @@ flowchart TB
   classDef component fill:#85bbf0,stroke:#5d82a8,color:#0b2540
   classDef external fill:#8a8a8a,stroke:#6b6b6b,color:#fff
   class web,db container
-  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,danfse,publiclink,repos,outbox,audit,metrics,errors,lifecycle,bugs component
+  class authhook,betterauth,routes,onboarding,issue,sync,vault,provider,danfse,publiclink,repos,outbox,resendhook,audit,metrics,errors,lifecycle,bugs component
   class nacional,resend,lookups,sentry,bugtools,r2 external
   style boundary fill:#f5f8fc,stroke:#438dd5,stroke-dasharray:6 4,color:#0b4884

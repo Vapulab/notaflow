@@ -29,6 +29,7 @@ flowchart TB
   owner -. "Page views and product events [HTTPS]" .-> posthog
   notaflow -. "Error reports [HTTPS]" .-> sentry
   resend -. "Delivers e-mail" .-> owner
+  resend -- "Reports bounces [HTTPS webhook]" --> notaflow
   notaflow -- "Opens bug issues [HTTPS API]" --> github
   github -- "Issue closed or reopened [HTTPS webhook]" --> notaflow
   notaflow -- "Bug messages [HTTPS webhook]" --> discord

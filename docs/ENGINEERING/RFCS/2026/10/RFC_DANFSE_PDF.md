@@ -348,7 +348,7 @@ There is no backfill script. Migration 0022 marks every invoice that has XML as 
 
 ## Roadmap
 
-- A Resend webhook for bounces and complaints, to add those addresses to `mail_suppressions` by themselves. Today only the customer's own unsubscribe adds one. This is a known follow-up.
+- A Resend webhook for bounces and complaints, to add those addresses to `mail_suppressions` by themselves. Today only the customer's own unsubscribe adds one. [RFC_MAIL_BOUNCES.md](RFC_MAIL_BOUNCES.md) built it.
 - The DANFSe layout for the IBS/CBS "novos fatos geradores", when the specific NT comes out.
 - Issue a substitution from the app. The "SUBSTITUÍDA" watermark ships now for substitutions that sync imports.
 
