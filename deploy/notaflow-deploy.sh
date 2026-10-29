@@ -30,6 +30,8 @@ fetch() {
 }
 
 # The digest pins the bytes the CI built: a tag pushed again later cannot change what runs.
+#   start <sha> <digest> tag   the tag <sha> must point to <digest>, so the caller cannot pick an image
+#   start <sha> <digest> log   the digest comes from deploys.log, which only this script writes
 start() {
   sha=$1
   digest=$2
@@ -40,10 +42,17 @@ start() {
   chmod 644 "$compose"
 
   # The token logs in for this pull only, in a Docker config of its own: the VPS also deploys Vapulab.
+  DOCKER_CONFIG=$config docker login ghcr.io -u notaflow-deploy --password-stdin >/dev/null
+  if [ "$3" = tag ]; then
+    DOCKER_CONFIG=$config docker pull -q "$IMAGE_NAME:$sha" >/dev/null
+    docker image inspect "$IMAGE_NAME:$sha" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+      grep -qx "$IMAGE_NAME@$digest" || fail "the tag $sha does not point to $digest"
+  fi
   # The tag before the digest is only a label: the app reads it as its Sentry release.
   export IMAGE="$IMAGE_NAME:$sha@$digest"
-  DOCKER_CONFIG=$config docker login ghcr.io -u notaflow-deploy --password-stdin >/dev/null
   DOCKER_CONFIG=$config docker compose -f "$compose" pull app
+  # Untagged, the image is pruned once no container uses it; the digest reference keeps it until then.
+  if [ "$3" = tag ]; then docker image rm "$IMAGE_NAME:$sha" >/dev/null; fi
   mv "$compose" compose.yaml
   # IMAGE goes into .env only after a good pull, so a manual compose run uses the running version.
   sed -i '/^IMAGE=/d' .env
@@ -72,7 +81,7 @@ case "${1:-}" in
     tip=$(fetch "https://api.github.com/repos/$REPO/commits/production" |
       grep -o '"sha": *"[0-9a-f]\{40\}"' | head -n 1 | sed 's/.*"\([0-9a-f]*\)"$/\1/')
     [ "$tip" = "$sha" ] || fail "commit $sha is not the tip of production (${tip:-unknown})"
-    start "$sha" "$digest"
+    start "$sha" "$digest" tag
     echo "$sha $digest" >> "$HISTORY"
     tail -n "$KEEP" "$HISTORY" > "$HISTORY.tmp" && mv "$HISTORY.tmp" "$HISTORY"
     ;;
@@ -81,7 +90,7 @@ case "${1:-}" in
     # Each rollback drops the running version and starts the one before it, at most KEEP-1 steps back.
     [ -f "$HISTORY" ] && [ "$(wc -l < "$HISTORY")" -ge 2 ] || fail "no earlier version in $HISTORY"
     previous=$(tail -n 2 "$HISTORY" | head -n 1)
-    start "${previous% *}" "${previous#* }"
+    start "${previous% *}" "${previous#* }" log
     sed -i '$d' "$HISTORY"
     echo "rolled back to ${previous% *}"
     ;;

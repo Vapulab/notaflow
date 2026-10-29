@@ -48,7 +48,7 @@ The workflows log in as `notaflow-deploy`, not root. The key of that user runs o
 - `rollback`: it starts the version before the running one in `deploys.log`, and drops the running one from the list. See [Roll back](#roll-back).
 - `health`: it polls `/api/health` for 90 seconds and prints the app log on a failure.
 
-The digest is the one the `Deploy` run got when it pushed the image. Docker refuses any other bytes, so an image pushed again under the same tag never runs.
+The digest is the one the `Deploy` run got when it pushed the image. `up` checks that the tag `<sha>` points to it, so the caller cannot pick another image. Docker then refuses any other bytes, so an image pushed again under the same tag never runs. `rollback` uses only digests that `up` wrote to `deploys.log`.
 
 The user is in the `docker` group, so a shell for it would be root. The forced command is the guard: a stolen key can only deploy the tip of `production`, or go back to one of the last versions that ran here.
 
