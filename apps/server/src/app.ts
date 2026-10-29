@@ -195,7 +195,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     deps.unsuppress ??
     (config.mail.resendApiKey
       ? resendUnsuppress({ apiKey: config.mail.resendApiKey })
-      : async () => undefined);
+      : async () => 'removed' as const);
   app.decorate('mailOutbox', outbox);
   const lifecycleRepo = new LifecycleRepository(db, LIFECYCLE_LEGAL_VERSION);
   app.decorate(

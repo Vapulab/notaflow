@@ -21,14 +21,17 @@ import { MailSuppressionRepository } from '../repos/MailSuppressionRepository';
 let t: TestApp;
 let unsuppressed: string[] = [];
 let unsuppressError: Error | null = null;
+let resendOrigin: 'removed' | 'complaint' = 'removed';
 let logLines: string[] = [];
 const unsuppress = async (address: string) => {
   if (unsuppressError) throw unsuppressError;
   unsuppressed.push(address);
+  return resendOrigin;
 };
 beforeEach(async () => {
   unsuppressed = [];
   unsuppressError = null;
+  resendOrigin = 'removed';
   logLines = [];
   t = await createTestApp({ unsuppress, logStream: { write: (line) => logLines.push(line) } });
 });
@@ -533,6 +536,27 @@ test('a second confirmAddress within 30 days answers 409 email_invalid_address_f
   expect(unsuppressed).toEqual(['cliente@example.com']);
   expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('bounce');
   expect(outbox()).toHaveLength(1);
+});
+
+test('confirmAddress on an address Resend holds for a complaint sends nothing, answers like a send, and marks it a complaint', async () => {
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  resendOrigin = 'complaint';
+  const response = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toEqual({ sent: true });
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('complaint');
+  expect(outbox()).toHaveLength(0);
+  expect(audits()).toMatchObject([{ result: 'ok', detail: 'manual suppressed @example.com' }]);
+  // The guard was not spent: nothing was unblocked.
+  expect(
+    blocks().unblockedRecently('cliente@example.com', 'invoice', new Date(Date.now() - 86_400_000)),
+  ).toBe(false);
+  const again = await send(s, view.id, 'cliente@example.com', { confirmAddress: true });
+  expect(again.json()).toEqual({ sent: true });
+  expect(unsuppressed).toEqual(['cliente@example.com']);
+  expect(outbox()).toHaveLength(0);
 });
 
 test('an unsuppress failure answers 502 email_unblock_failed and keeps the block', async () => {
