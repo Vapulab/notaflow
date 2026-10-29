@@ -55,7 +55,12 @@ export function SendInvoiceEmail(props: {
       track('danfse_shared', { channel: 'notaflow_email' });
       onSent?.();
     } catch (failure) {
-      if (failure instanceof ApiError && failure.code === 'email_invalid_address') {
+      const code = failure instanceof ApiError ? failure.code : null;
+      // Only the final answer ends the offer; a failed unblock may work on a second try.
+      if (
+        code === 'email_invalid_address' ||
+        (confirmAddress && code !== 'email_invalid_address_final')
+      ) {
         setConfirmable(address);
       }
       setError(errorText(failure));

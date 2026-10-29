@@ -615,6 +615,52 @@ test('the automatic send to a bounce-blocked address records the block, and the 
   expect(shown.customerEmailedAt).toBeNull();
 });
 
+test('the automatic skip for a bounce-blocked address writes a refused audit row with the domain', async () => {
+  const s = await withNewInvoiceSetup(t);
+  await production();
+  const customerId = await customerWithEmail(s, 'cliente@example.com');
+  blocks().add('cliente@example.com', 'invoice', 'bounce');
+  const view = await issue(s, customerId);
+  expect(audits()).toMatchObject([
+    {
+      userEmail: 'owner@example.com',
+      accountId: s.a.accountId,
+      entity: view.id,
+      result: 'refused',
+      detail: 'automatic skipped, address bounced @example.com',
+    },
+  ]);
+  expect(JSON.stringify(audits())).not.toContain('cliente@');
+});
+
+test('a complaint on a login-code e-mail blocks invoice e-mail: a manual send answers as a success and queues nothing', async () => {
+  await t.close();
+  t = await createTestApp({
+    unsuppress,
+    env: { RESEND_WEBHOOK_SECRET: WEBHOOK_SECRET },
+    mailId: (message) =>
+      message.kind === 'code' && message.to === 'cliente@example.com' ? 're_code' : undefined,
+  });
+  const s = await withNewInvoiceSetup(t);
+  const view = await issue(s, s.brazilId);
+  await t.app.mailOutbox.send(
+    { to: 'cliente@example.com', subject: 'Código', html: '1', text: '1', kind: 'code' },
+    'code',
+  );
+  const complaint = JSON.stringify({
+    type: 'email.complained',
+    created_at: '2026-10-29T12:00:00.000Z',
+    data: { email_id: 're_code', to: ['cliente@example.com'] },
+  });
+  expect((await postWebhook(t, complaint)).statusCode).toBe(200);
+  expect(blocks().reasonOf('cliente@example.com', 'invoice')).toBe('complaint');
+  const blocked = await send(s, view.id, 'cliente@example.com');
+  const fresh = await send(s, view.id, 'novo@example.com');
+  expect(blocked.statusCode).toBe(fresh.statusCode);
+  expect(blocked.json()).toEqual(fresh.json());
+  expect(outbox().map((r) => r.to)).toEqual(['novo@example.com']);
+});
+
 test('after a bounce webhook the detail shows customerEmailProblem; after a new successful send it is null', async () => {
   await t.close();
   const ids = ['re_first', 're_second'];

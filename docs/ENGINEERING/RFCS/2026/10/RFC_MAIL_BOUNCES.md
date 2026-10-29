@@ -18,7 +18,7 @@ Each invoice e-mail goes to a third party that NotaFlow does not know. A typo in
 
 ## Non-goals
 
-- Bounces of login codes, invites, welcome, notices, and lifecycle e-mail. The webhook counts them in a metric and does nothing else.
+- Bounces of login codes, invites, welcome, notices, and lifecycle e-mail. The webhook counts them in a metric and does nothing else. A complaint on these e-mails is different: it also blocks invoice e-mail to the address (see Webhook).
 - Temporary bounces and `email.delivery_delayed`. Resend retries them.
 - Open and click tracking.
 - An admin screen for the do-not-send list.
@@ -40,14 +40,15 @@ Each invoice e-mail goes to a third party that NotaFlow does not know. A typo in
 `POST /webhooks/resend`, outside `/api`, like `/webhooks/github`: no login, no Origin check, raw body.
 
 - Secret: `RESEND_WEBHOOK_SECRET` (`whsec_...`). While it is unset, the route answers 404.
-- Verification (Svix scheme): the signed content is `${svix-id}.${svix-timestamp}.${rawBody}`. The key is the base64 part of the secret after `whsec_`. The algorithm is HMAC-SHA256, encoded in base64. `svix-signature` holds one or more space-separated `v1,<sig>` values. Any match passes, with a constant-time compare. A timestamp more than 5 minutes from the server clock fails. A failure answers 401.
+- Verification (Svix scheme): the signed content is `${svix-id}.${svix-timestamp}.${rawBody}`. The key is the base64 part of the secret after `whsec_`. The algorithm is HMAC-SHA256, encoded in base64. `svix-signature` holds one or more space-separated `v1,<sig>` values. Any match passes, with a constant-time compare. A timestamp more than 5 minutes from the server clock fails. A failure answers 401 and counts in the metric with type `other` and outcome `rejected`.
+- Body: a body that is not JSON, or has no `type` string, answers 400. An `email.bounced` or `email.complained` event without a `data.email_id` string also answers 400.
 - Events:
-  - `email.bounced` with `data.bounce.type` `Permanent`: the row gets `delivery = 'bounced'`, and the address gets a suppression with reason `bounce`.
-  - `email.complained`: the row gets `delivery = 'complained'`, and the address gets a suppression with reason `complaint`. Pending invoice rows to it are cancelled, as an unsubscribe does.
-  - Any other event or bounce type: ignored.
-- Only an outbox row of kind `invoice` changes. A row of another kind, or an unknown id, only counts in the metric.
+  - `email.bounced` with `data.bounce.type` `Permanent`: the row gets `delivery = 'bounced'`. If the row is of kind `invoice`, the address gets a suppression with reason `bounce`.
+  - `email.complained`: the row gets `delivery = 'complained'`, and the address gets an invoice suppression with reason `complaint`, for an outbox row of any kind. A person who marks a login code as spam does not want invoice e-mail either. Pending invoice rows to the address are cancelled, as an unsubscribe does.
+  - Any other event type answers 200 and counts as `other` and `ignored`, also without `data.email_id`. A bounce that is not permanent is ignored too.
+- A bounce on a row of another kind, or an event with an unknown id, only counts in the metric.
 - Every accepted request answers 200, also for an ignored event, so Resend does not retry it. The handler is idempotent: a second copy of the same event changes nothing.
-- Metric: `mail_webhook_events_total{type, outcome}`.
+- Metric: `mail_webhook_events_total{type, outcome}`, with outcome `applied`, `ignored`, or `rejected`.
 
 ### Schema
 
@@ -58,6 +59,10 @@ Each invoice e-mail goes to a third party that NotaFlow does not know. A typo in
 `mail_suppressions` stays one active row per address and kind. A complaint replaces a `bounce` reason on the active row, because a complaint must never be unblocked. An unsubscribe or a bounce does not replace an existing reason (builder call).
 
 Resend keeps its own suppression list for the team: a hard bounce or a complaint adds the address there, and a later send to it comes back as `email.bounced` with `subType` `Suppressed`. The webhook treats that as a permanent bounce.
+
+### Known risk
+
+Resend's suppression list is per team, not per product. Resend can know of a complaint that NotaFlow does not know: the complaint came from another product on the same team, or it came while the webhook was down or had a wrong secret. A later invoice e-mail to that address comes back as a bounce with `subType` `Suppressed`. The emitter then sees "endereço inválido", and an unblock removes the address from Resend's list. Follow-up: before the `DELETE`, read the origin of the suppression from Resend, and refuse the unblock if the origin is a complaint.
 
 ### What the emitter sees
 

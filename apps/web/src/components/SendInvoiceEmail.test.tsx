@@ -90,14 +90,14 @@ test('Cancelar closes the dialog', async () => {
 
 const CONFIRM = 'O endereço está certo, enviar mesmo assim';
 
-async function bounceFirst(finalAnswer = false) {
+async function bounceFirst(finalAnswer = false, confirmAnswer: unknown = { sent: true }) {
   let posts = 0;
   const calls = stubApi({
     [DETAIL]: detail('cliente@example.com'),
     [`${DETAIL}/email`]: () => {
       posts += 1;
       if (finalAnswer) return { error: 'email_invalid_address_final' };
-      return posts === 1 ? { error: 'email_invalid_address' } : { sent: true };
+      return posts === 1 ? { error: 'email_invalid_address' } : confirmAnswer;
     },
   });
   renderDialog();
@@ -125,6 +125,14 @@ test('editing the address hides the confirm button', async () => {
   await screen.findByRole('button', { name: CONFIRM });
   await user.type(field, 'x');
   expect(screen.queryByRole('button', { name: CONFIRM })).toBeNull();
+});
+
+test('a 502 email_unblock_failed after the confirm shows its text and keeps the confirm button', async () => {
+  const { calls, user } = await bounceFirst(false, { error: 'email_unblock_failed' });
+  await user.click(await screen.findByRole('button', { name: CONFIRM }));
+  expect(await screen.findByText(ERROR_TEXT.email_unblock_failed ?? '')).toBeTruthy();
+  expect(screen.getByRole('button', { name: CONFIRM })).toBeTruthy();
+  expect(calls.filter((c) => c.url === `${DETAIL}/email`)).toHaveLength(2);
 });
 
 test('a 409 email_invalid_address_final shows its text and no confirm button', async () => {

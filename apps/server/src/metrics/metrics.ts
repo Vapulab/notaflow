@@ -329,7 +329,7 @@ export class Metrics {
     refresh();
   }
 
-  mailWebhookEvent(type: string, outcome: 'applied' | 'ignored'): void {
+  mailWebhookEvent(type: string, outcome: 'applied' | 'ignored' | 'rejected'): void {
     const known = type === 'email.bounced' || type === 'email.complained';
     this.mailWebhookEvents.inc({ type: known ? type : 'other', outcome });
   }

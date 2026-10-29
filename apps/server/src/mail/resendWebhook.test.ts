@@ -183,23 +183,53 @@ test('the same event twice answers 200 both times and leaves one active suppress
   expect(rows[0]?.reason).toBe('bounce');
 });
 
-test('an unknown id and a login-code row answer 200 and add no suppression', async () => {
+test('an unknown id and a bounce of a login-code row answer 200 and add no suppression', async () => {
   const app = await setup({ ids: ['re_code'] });
   await app.app.mailOutbox.send(
     { to: CUSTOMER, subject: 'Código', html: '1', text: '1', kind: 'code' },
     'code',
   );
   expect((await post(app, permanentBounce('re_unknown'))).statusCode).toBe(200);
-  expect((await post(app, event('email.complained', 're_code'))).statusCode).toBe(200);
+  expect((await post(app, event('email.complained', 're_unknown'))).statusCode).toBe(200);
+  expect((await post(app, permanentBounce('re_code'))).statusCode).toBe(200);
   expect(suppressions(app).isSuppressed(CUSTOMER, 'invoice')).toBe(false);
 });
 
-test('a signed body that is not JSON, or lacks data.email_id, answers 400', async () => {
+test('a complaint on a login-code row blocks invoice e-mail with reason complaint', async () => {
+  const app = await setup({ ids: ['re_code'] });
+  await app.app.mailOutbox.send(
+    { to: CUSTOMER, subject: 'Código', html: '1', text: '1', kind: 'code' },
+    'code',
+  );
+  expect((await post(app, event('email.complained', 're_code'))).statusCode).toBe(200);
+  expect(suppressions(app).reasonOf(CUSTOMER, 'invoice')).toBe('complaint');
+  expect(rowOf(app, 're_code')?.delivery).toBe('complained');
+});
+
+test('another event type answers 200 even without data.email_id, and counts other/ignored', async () => {
+  const app = await setup();
+  const response = await post(app, JSON.stringify({ type: 'contact.created', data: {} }));
+  expect(response.statusCode).toBe(200);
+  expect((await post(app, JSON.stringify({ type: 'contact.deleted' }))).statusCode).toBe(200);
+  const text = await app.app.metrics.render();
+  expect(text).toContain('mail_webhook_events_total{type="other",outcome="ignored"} 2');
+});
+
+test('a rejected signature counts other/rejected', async () => {
+  const app = await setup();
+  const body = permanentBounce('re_x');
+  expect((await post(app, body, { signature: 'v1,wrong' })).statusCode).toBe(401);
+  const text = await app.app.metrics.render();
+  expect(text).toContain('mail_webhook_events_total{type="other",outcome="rejected"} 1');
+});
+
+test('a signed body that is not JSON, lacks a type, or is a bounce or complaint without data.email_id answers 400', async () => {
   const app = await setup();
   expect((await post(app, 'not json')).statusCode).toBe(400);
   expect((await post(app, JSON.stringify({ type: 'email.bounced', data: {} }))).statusCode).toBe(
     400,
   );
+  expect((await post(app, JSON.stringify({ type: 'email.complained' }))).statusCode).toBe(400);
   expect((await post(app, JSON.stringify({ data: { email_id: 're_1' } }))).statusCode).toBe(400);
   expect((await post(app, 'null')).statusCode).toBe(400);
 });

@@ -37,14 +37,46 @@ export function validSvixSignature(p: {
   return valid;
 }
 
-function eventOf(payload: unknown): { type: string; emailId: string; permanent: boolean } | null {
+const HANDLED = new Set(['email.bounced', 'email.complained']);
+
+function eventOf(
+  payload: unknown,
+): { type: string; emailId: string | null; permanent: boolean } | null {
   if (typeof payload !== 'object' || payload === null) return null;
   const { type, data } = payload as { type?: unknown; data?: unknown };
-  if (typeof data !== 'object' || data === null) return null;
-  const { email_id: emailId, bounce } = data as { email_id?: unknown; bounce?: unknown };
-  if (typeof type !== 'string' || typeof emailId !== 'string') return null;
+  if (typeof type !== 'string') return null;
+  const { email_id: emailId, bounce } = (typeof data === 'object' && data !== null ? data : {}) as {
+    email_id?: unknown;
+    bounce?: unknown;
+  };
+  if (typeof emailId !== 'string') {
+    return HANDLED.has(type) ? null : { type, emailId: null, permanent: false };
+  }
   const permanent = (bounce as { type?: unknown } | null | undefined)?.type === 'Permanent';
   return { type, emailId, permanent };
+}
+
+function applyEvent(
+  deps: { outbox: MailOutbox; suppressions: MailSuppressionRepository },
+  type: string,
+  emailId: string,
+  permanent: boolean,
+): boolean {
+  if (type === 'email.bounced' && permanent) {
+    const row = deps.outbox.markDelivery(emailId, 'bounced');
+    if (row?.kind !== 'invoice') return false;
+    deps.suppressions.add(row.to, 'invoice', 'bounce');
+    return true;
+  }
+  if (type === 'email.complained') {
+    const row = deps.outbox.markDelivery(emailId, 'complained');
+    // Any kind: a person who marks a login code as spam does not want invoice e-mail either.
+    if (!row) return false;
+    deps.suppressions.add(row.to, 'invoice', 'complaint');
+    deps.outbox.cancelPendingInvoice(row.to);
+    return true;
+  }
+  return false;
 }
 
 // Outside /api: Resend has no session, so the Svix signature of the raw body is the only check.
@@ -77,7 +109,10 @@ export function registerResendWebhook(
         secret,
         now: now(),
       });
-      if (!signed) return reply.status(401).send({ error: 'bad_signature' });
+      if (!signed) {
+        deps.metrics.mailWebhookEvent('other', 'rejected');
+        return reply.status(401).send({ error: 'bad_signature' });
+      }
       let payload: unknown;
       try {
         payload = JSON.parse(body.toString('utf8'));
@@ -87,21 +122,8 @@ export function registerResendWebhook(
       const event = eventOf(payload);
       if (!event) return reply.status(400).send({ error: 'bad_request' });
 
-      let applied = false;
-      if (event.type === 'email.bounced' && event.permanent) {
-        const row = deps.outbox.markDelivery(event.emailId, 'bounced');
-        if (row?.kind === 'invoice') {
-          deps.suppressions.add(row.to, 'invoice', 'bounce');
-          applied = true;
-        }
-      } else if (event.type === 'email.complained') {
-        const row = deps.outbox.markDelivery(event.emailId, 'complained');
-        if (row?.kind === 'invoice') {
-          deps.suppressions.add(row.to, 'invoice', 'complaint');
-          deps.outbox.cancelPendingInvoice(row.to);
-          applied = true;
-        }
-      }
+      const applied =
+        event.emailId !== null && applyEvent(deps, event.type, event.emailId, event.permanent);
       deps.metrics.mailWebhookEvent(event.type, applied ? 'applied' : 'ignored');
       return reply.status(200).send({ ok: true });
     });

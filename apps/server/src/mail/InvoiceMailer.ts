@@ -152,6 +152,14 @@ export class InvoiceMailer {
         subject: '',
         ref: { accountId: ctx.accountId, invoiceId },
       });
+      this.audit.record({
+        userEmail: replyTo,
+        accountId: ctx.accountId,
+        action: 'invoice.email',
+        entity: invoiceId,
+        result: 'refused',
+        detail: `automatic skipped, address bounced @${to.split('@')[1] ?? ''}`,
+      });
       return false;
     }
     if (reason) return false;
