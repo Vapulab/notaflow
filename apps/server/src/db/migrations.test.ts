@@ -116,6 +116,12 @@ function migratedFromPre3a(): BetterSqlite3.Database {
        VALUES ('m1', 'c@example.com', 'invoice', ${T0})`,
     )
     .run();
+  client
+    .prepare(
+      `INSERT INTO invoice_reports (id, account_id, emitter_id, period_type, period_from, period_to, updated_at)
+       VALUES ('r1', 'a1', 'e1', 'month', '2026-10-01', '2026-10-31', ${T0})`,
+    )
+    .run();
   return client;
 }
 

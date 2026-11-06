@@ -77,7 +77,7 @@ The alerts go to Discord. The rules are in `deploy/monitoring/prometheus/rules.y
 
 Do not only remove the lines from `.env`. The next `docker compose up -d` (each deploy runs it) starts the worker again. Without its values, the worker exits at start and restarts in a loop.
 
-1. Remove `REDIS_URL` and the three `R2_DANFSE_*` lines from `/opt/notaflow/.env`, so the app turns the queue off, draws every PDF on demand, and the screens stop showing "Gerando PDF…".
+1. Remove `REDIS_URL` and the three `R2_DANFSE_*` lines from `/opt/notaflow/.env`, so the app turns the queue off, draws every PDF on demand, and the screens stop showing "Gerando PDF…". This also turns off invoice reports, which answer `503 reports_unavailable`.
 2. Stop the worker and Redis: `docker compose stop danfse-worker redis`.
 3. To keep them off, open a PR that removes the `danfse-worker` and `redis` services from `deploy/compose.yaml`. Do not edit `/opt/notaflow/compose.yaml`: the next deploy overwrites it.
 

@@ -99,6 +99,20 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'report_oldest_pending_seconds'
+        values: '0 700 700 700 700 700 700 700 700 700'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ReportPendingTooLong
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ReportPendingTooLong
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: reports }
+            exp_annotations: { summary: 'NotaFlow: the oldest invoice report has waited 11m 40s' }
+
+  - interval: 1m
+    input_series:
       - series: 'notaflow_bug_report_deliveries{channel="github", state="failed"}'
         values: '0 0 1'
       - series: 'notaflow_bug_report_deliveries{channel="discord", state="pending"}'

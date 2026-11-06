@@ -17,6 +17,7 @@ const sources = {
   bugImageCounts: () => [],
   danfsePendingOldest: () => null,
   danfseFailedCount: () => 0,
+  reportOldestPendingSeconds: () => 0,
 };
 let stop: (() => Promise<void>) | undefined;
 afterEach(async () => {

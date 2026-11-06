@@ -1,0 +1,21 @@
+{
+  "name": "@notaflow/invoice-report",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./period": "./src/period.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@notaflow/provider-nacional": "workspace:*",
+    "@pdf-lib/fontkit": "1.1.1",
+    "pdf-lib": "1.17.1"
+  },
+  "devDependencies": {
+    "unpdf": "1.8.1"
+  }
+}

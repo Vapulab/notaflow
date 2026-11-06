@@ -15,6 +15,7 @@ const sources: MetricSources = {
   bugImageCounts: () => [],
   danfsePendingOldest: () => null,
   danfseFailedCount: () => 0,
+  reportOldestPendingSeconds: () => 0,
 };
 
 beforeEach(() => {
