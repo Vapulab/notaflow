@@ -34,6 +34,7 @@ The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them wit
 | DanfseDeadLetters | Retry the failed DANFSe PDFs in `/admin`. The failed job and its reason stay in Redis for 30 days. |
 | DanfseWorkerDown | Check the logs of the DANFSe worker and of Redis on the VPS. Redis down also fires this alert. Customers still get the PDF, drawn on demand. |
 | DanfsePendingStale | Check the worker logs and panel 2 (row **DANFSe**). The sweep adds the waiting invoices again every run. |
+| ReportPendingTooLong | The oldest invoice report has waited over 10 minutes. Look for a render error or a timeout in panel 4 (module `reports`). |
 | BugDeliveriesFailed | Read `last_error` in `bug_report_deliveries` (see the [Bug Reports RFC](../ENGINEERING/RFCS/2026/10/RFC_BUG_REPORTS.md)). Fix the token or the URL, then set the row back to `pending` with `attempts` 0. |
 | CertificateExpiring | Ask the company for a new A1 certificate. |
 | BackupStale, BackupMissing | Run `systemctl status notaflow-backup.service notaflow-offsite-backup.service` on the VPS. |

@@ -3,6 +3,7 @@ import { type FakeNacional, startFakeNacional } from '@notaflow/fake-nacional';
 import type { R2Client } from '@notaflow/r2';
 import type { FastifyInstance } from 'fastify';
 import type { Dispatcher } from 'undici';
+import type { ReportRunner } from '../src/reports/ReportRunner';
 import type { DanfseQueue } from '../src/danfse/queue';
 import type { ErrorReporter } from '../src/observability/errors';
 import type { ExchangeRateSource } from '../src/exchange/ptax';
@@ -25,6 +26,8 @@ export interface TestApp {
   fake: FakeNacional;
   // Every e-mail the app sent, in order.
   mail: MailMessage[];
+  // The report runner, so a test can await runner.tick(); null without a reports bucket.
+  reports: { runner: ReportRunner } | null;
   cookieFor(email: string): Promise<string>;
   as(email: string): Promise<Record<string, string>>;
   close(): Promise<void>;
@@ -40,6 +43,8 @@ export async function createTestApp(
     bugDispatcher?: Dispatcher;
     danfseR2?: Pick<R2Client, 'get'>;
     danfseQueue?: DanfseQueue;
+    reportsR2?: Pick<R2Client, 'put' | 'get' | 'delete'>;
+    reportsMaxInvoices?: number;
     errorReporter?: ErrorReporter;
     cnpjDispatcher?: Dispatcher;
     env?: Record<string, string>;
@@ -93,6 +98,10 @@ export async function createTestApp(
     ...(options.bugDispatcher ? { bugDispatcher: options.bugDispatcher } : {}),
     ...(options.danfseR2 ? { danfseR2: options.danfseR2 } : {}),
     ...(options.danfseQueue ? { danfseQueue: options.danfseQueue } : {}),
+    ...(options.reportsR2 ? { reportsR2: options.reportsR2 } : {}),
+    ...(options.reportsMaxInvoices !== undefined
+      ? { reportsMaxInvoices: options.reportsMaxInvoices }
+      : {}),
     ...(options.errorReporter ? { errorReporter: options.errorReporter } : {}),
     ...(options.cnpjDispatcher ? { cnpjDispatcher: options.cnpjDispatcher } : {}),
     ...(options.unsuppress ? { unsuppress: options.unsuppress } : {}),
@@ -135,6 +144,7 @@ export async function createTestApp(
     db,
     fake,
     mail,
+    reports: app.reportRunner ? { runner: app.reportRunner } : null,
     cookieFor,
     as: async (email) => ({
       cookie: await cookieFor(email),

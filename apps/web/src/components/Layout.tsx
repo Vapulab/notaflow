@@ -161,6 +161,7 @@ export function errorText(error: unknown): string {
 
 const SECTIONS = [
   { name: 'invoices', label: 'Notas', current: ['invoices', 'invoice', 'issue'] },
+  { name: 'reports', label: 'Relatórios', current: ['reports'] },
   { name: 'emitters', label: 'Emitentes', current: ['emitters'] },
   { name: 'customers', label: 'Clientes', current: ['customers', 'customer'] },
   { name: 'members', label: 'Membros', current: ['members'] },

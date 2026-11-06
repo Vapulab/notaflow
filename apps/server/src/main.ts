@@ -15,6 +15,8 @@ const SYNC_INTERVAL_MS = 30 * 60_000;
 const MAIL_INTERVAL_MS = 30_000;
 const BUG_INTERVAL_MS = 30_000;
 const DANFSE_INTERVAL_MS = 10_000;
+const REPORT_INTERVAL_MS = 5_000;
+const REPORT_EXPIRE_INTERVAL_MS = 60 * 60_000;
 const LIFECYCLE_INTERVAL_MS = 15 * 60_000;
 // A daily job, checked every hour: a deploy restarts the process, so a 24-hour timer could never fire.
 const BUG_IMAGE_PURGE_INTERVAL_MS = 60 * 60_000;
@@ -90,6 +92,24 @@ try {
       },
       DANFSE_INTERVAL_MS,
       (error) => app.log.error({ err: error }, 'DANFSe sweep failed'),
+    );
+  }
+  const reportRunner = app.reportRunner;
+  if (reportRunner) {
+    const recovered = reportRunner.recoverOnStart();
+    if (recovered > 0) app.log.info({ module: 'reports', recovered }, 'report renders recovered');
+    startScheduler(
+      () => reportRunner.tick(),
+      REPORT_INTERVAL_MS,
+      (error) => app.log.error({ err: error }, 'report tick failed'),
+    );
+    startScheduler(
+      async () => {
+        const expired = await reportRunner.expire();
+        if (expired > 0) app.log.info({ module: 'reports', expired }, 'reports expired');
+      },
+      REPORT_EXPIRE_INTERVAL_MS,
+      (error) => app.log.error({ err: error }, 'report expiry failed'),
     );
   }
 } catch (error) {

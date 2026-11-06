@@ -41,6 +41,7 @@ beforeAll(async () => {
     userId: a.userId,
     invoiceId: invoice.id,
     customerId: customerId ?? '',
+    reportId: '1',
     id: '1', // a mail outbox row, a bug report, or a waitlist signup that does not exist
     position: '1',
     token: 'unknown-token',

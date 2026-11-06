@@ -11,6 +11,13 @@ export {
 export { parseEventXml } from './parse/parseEventXml';
 export { parseNfseXml } from './parse/parseNfseXml';
 export {
+  issRetained,
+  pisCofinsRetained,
+  readReportFields,
+  type ReportCents,
+  type ReportFields,
+} from './parse/readReportFields';
+export {
   child,
   childElements,
   NfseParseError,

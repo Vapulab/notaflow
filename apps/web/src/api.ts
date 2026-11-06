@@ -1,3 +1,5 @@
+import type { ReportPeriod } from '@notaflow/invoice-report/period';
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -141,6 +143,22 @@ export interface InvoiceDetail extends InvoiceSummary {
     justification: string | null;
     registeredAt: string;
   }[];
+}
+
+export type ReportStatus = 'pending' | 'running' | 'ready' | 'failed' | 'expired';
+
+export interface ReportView {
+  id: string;
+  emitterId: string;
+  emitterName: string;
+  period: ReportPeriod;
+  status: ReportStatus;
+  invoiceCount: number | null;
+  errorCode: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  readyAt: string | null;
+  expiresAt: string | null;
 }
 
 export interface InvoicePage {

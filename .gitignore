@@ -20,3 +20,5 @@ __pycache__/
 .playwright-mcp/
 
 packages/danfse-pdf/golden/
+
+packages/invoice-report/sample/

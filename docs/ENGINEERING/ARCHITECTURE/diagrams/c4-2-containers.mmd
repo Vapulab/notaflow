@@ -7,7 +7,7 @@ flowchart TB
     web["<b>Web app</b><br/><i>[Container: React, Vite]</i><br/>The app under /app and the platform admin under /admin. Runs in the browser."]
     pages["<b>Public pages</b><br/><i>[Container: static HTML, Tailwind]</i><br/>Landing at /, /termos, /privacidade."]
     tunnel["<b>cloudflared</b><br/><i>[Container: Docker]</i><br/>Cloudflare Tunnel; no port of the VPS is open to the internet."]
-    server["<b>API server</b><br/><i>[Container: Node 22, Fastify, Better Auth]</i><br/>REST API under /api, login, issue and cancel, sync, onboarding, certificate vault, mail outbox, bug reports. Serves the web build."]
+    server["<b>API server</b><br/><i>[Container: Node 22, Fastify, Better Auth]</i><br/>REST API under /api, login, issue and cancel, sync, onboarding, certificate vault, mail outbox, bug reports, invoice reports. Serves the web build."]
     db[("<b>Database</b><br/><i>[Container: SQLite on a Docker volume]</i><br/>Accounts, emitters, sealed certificates, invoices, audit log, mail outbox, bug reports. Rows are never deleted.")]
     backup["<b>Backup timer</b><br/><i>[Container: systemd timer]</i><br/>Online SQLite backup every day, 14 kept; an encrypted copy goes to R2."]
     cardworker["<b>CNPJ card parser</b><br/><i>[Container: Node child process]</i><br/>Reads the uploaded PDF text, 128 MB of memory, at most 2 at a time."]
@@ -21,7 +21,7 @@ flowchart TB
   others["<b>Google, Turnstile, BrasilAPI, CNPJá, ViaCEP, Banco Central, HIBP</b><br/><i>[External systems]</i>"]
   posthog["<b>PostHog</b><br/><i>[External system]</i>"]
   sentry["<b>Sentry</b><br/><i>[External system]</i><br/>Scrubbed error reports."]
-  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days; private bucket of bug report screenshots; private bucket of DANFSe PDFs."]
+  r2["<b>Cloudflare R2</b><br/><i>[External system]</i><br/>Encrypted off-site backups, 30 days; private bucket of bug report screenshots; private bucket of DANFSe PDFs; report PDFs, 1 year."]
   github["<b>GitHub</b><br/><i>[External system]</i><br/>Masked bug issues in the public repository; issues webhook."]
   discord["<b>Discord</b><br/><i>[External system]</i><br/>Private bugs channel."]
   notion["<b>Notion</b><br/><i>[External system]</i><br/>Bugs database."]
@@ -55,6 +55,7 @@ flowchart TB
   danfseworker -- "Takes jobs [Redis]" --> redis
   danfseworker -- "Puts the PDF [HTTPS, S3 API]" --> r2
   server -- "Gets the PDF [HTTPS, S3 API]" --> r2
+  server -- "Report PDFs: put, get [HTTPS, S3 API]" --> r2
   ci -- "Pulls the new image, docker compose up [SSH]" --> server
 
   classDef person fill:#08427b,stroke:#052e56,color:#fff

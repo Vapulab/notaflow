@@ -1,6 +1,6 @@
 # RFC: Invoice Report PDF
 
-**Status:** Draft, in review with the owner (2026-11-06).
+**Status:** Implemented on feat/invoice-report (2026-11-06).
 **Date:** 2026-11-06
 **Owner:** Lincoln Santos (Vapulab)
 
@@ -109,7 +109,7 @@ Index on `(account_id, created_at)` for the history and on `status` for the runn
 
 ### Storage
 
-The `reports/` prefix of the private DANFSe R2 bucket, with the existing `R2_DANFSE_*` keys. No new env var. Without the DANFSe R2 config, the report routes answer `503 reports_unavailable`.
+The `reports/` prefix of the private DANFSe R2 bucket, with the existing `R2_DANFSE_*` keys. No new env var. Without the DANFSe R2 config, the report routes answer `503 reports_unavailable`. The DANFSe R2 settings today also require `REDIS_URL`, so removing the DANFSe env vars turns reports off.
 
 ### Columns per invoice
 
@@ -172,7 +172,7 @@ A4 landscape. Page 1: full header (logo, title, emitter name and CNPJ, count chi
 
 ## Metrics, Limits, and Security
 
-- Metrics: `report_render_seconds` (histogram), `report_invoices` (histogram), `report_pending` (gauge), `report_failures_total` (by reason). A Grafana alert when a report stays pending for more than 10 minutes.
+- Metrics: `report_render_seconds` (histogram), `report_invoices` (histogram), `report_jobs_total{result}` (counter), and `report_oldest_pending_seconds` (gauge). The alert `ReportPendingTooLong` fires when the gauge stays above 600 s for 5 minutes.
 - Rate limit: 10 new reports per hour per account.
 - No row data in logs. The audit log records create and download, with the report id, emitter id, and period.
 

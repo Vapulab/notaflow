@@ -43,6 +43,9 @@ import { emitterRoutes } from './routes/emitters';
 import { invoiceRoutes } from './routes/invoices';
 import { loggerOptions } from './observability/logger';
 import { invoiceLinkRoutes } from './routes/invoiceLinks';
+import { reportRoutes } from './routes/reports';
+import { ReportRunner } from './reports/ReportRunner';
+import { ReportJobRepository } from './repos/ReportJobRepository';
 import { issueRoutes } from './routes/issue';
 import { LIFECYCLE_LEGAL_VERSION, POLICY_NOTICE, type PolicyNotice } from './legal';
 import { LifecycleService } from './lifecycle/LifecycleService';
@@ -84,6 +87,7 @@ declare module 'fastify' {
     bugReports: BugReports;
     auth: Auth;
     danfse: { dispatcher: DanfseDispatcher; queue: DanfseQueue } | null;
+    reportRunner: ReportRunner | null;
   }
 }
 
@@ -114,6 +118,10 @@ export interface AppDeps {
   danfseQueue?: DanfseQueue;
   // Tests inject a fake DANFSe bucket; production builds it from config.danfse.
   danfseR2?: Pick<R2Client, 'get'>;
+  // Tests inject a fake report bucket; production reuses the DANFSe bucket settings.
+  reportsR2?: Pick<R2Client, 'put' | 'get' | 'delete'>;
+  // Tests lower the cap; the default is 20,000.
+  reportsMaxInvoices?: number;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -338,6 +346,18 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     danfseR2: deps.danfseR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null),
     metrics,
   });
+  const reportsR2 = deps.reportsR2 ?? (config.danfse ? r2Client(config.danfse.r2) : null);
+  reportRoutes(app, {
+    db,
+    r2: reportsR2,
+    ...(deps.reportsMaxInvoices !== undefined ? { maxInvoices: deps.reportsMaxInvoices } : {}),
+  });
+  app.decorate(
+    'reportRunner',
+    reportsR2
+      ? new ReportRunner({ jobs: new ReportJobRepository(db), r2: reportsR2, metrics })
+      : null,
+  );
   const issue = new IssueService({
     db,
     customerMail: new InvoiceMailer({

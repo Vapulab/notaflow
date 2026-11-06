@@ -29,6 +29,7 @@ export interface MetricSources {
   bugImageCounts(): { state: string; count: number }[];
   danfsePendingOldest(): Date | null;
   danfseFailedCount(): number;
+  reportOldestPendingSeconds(): number;
 }
 
 const QUEUE_CACHE_MS = 30_000;
@@ -43,6 +44,9 @@ export class Metrics {
   private readonly danfseLinkViewsTotal: Counter;
   private readonly danfseJobs: Counter<'result'>;
   private readonly danfseRenderSeconds: Histogram;
+  private readonly reportRenderSeconds: Histogram;
+  private readonly reportInvoices: Histogram;
+  private readonly reportJobs: Counter<'result'>;
   private readonly mailWebhookEvents: Counter<'type' | 'outcome'>;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
@@ -106,6 +110,32 @@ export class Metrics {
       collect() {
         const since = sources.danfsePendingOldest();
         this.set(since ? Math.max(0, Math.floor((Date.now() - since.getTime()) / 1000)) : 0);
+      },
+    });
+    this.reportRenderSeconds = new Histogram({
+      name: 'report_render_seconds',
+      help: 'Time the render thread took to draw one invoice report PDF',
+      buckets: [0.5, 1, 2, 5, 10, 30, 60, 120],
+      registers,
+    });
+    this.reportInvoices = new Histogram({
+      name: 'report_invoices',
+      help: 'Invoices in each rendered report',
+      buckets: [10, 50, 100, 500, 1000, 5000, 10000, 20000],
+      registers,
+    });
+    this.reportJobs = new Counter({
+      name: 'report_jobs_total',
+      help: 'Invoice report jobs by result: ready, failed',
+      labelNames: ['result'],
+      registers,
+    });
+    new Gauge({
+      name: 'report_oldest_pending_seconds',
+      help: 'Age of the oldest invoice report still waiting to render, 0 when none waits',
+      registers,
+      collect() {
+        this.set(sources.reportOldestPendingSeconds());
       },
     });
     this.mailWebhookEvents = new Counter({
@@ -286,6 +316,15 @@ export class Metrics {
 
   danfseRender(seconds: number): void {
     this.danfseRenderSeconds.observe(seconds);
+  }
+
+  reportRendered(seconds: number, invoices: number): void {
+    this.reportRenderSeconds.observe(seconds);
+    this.reportInvoices.observe(invoices);
+  }
+
+  reportJob(result: 'ready' | 'failed'): void {
+    this.reportJobs.inc({ result });
   }
 
   // Exports the queue gauges from a cache that a scrape never waits for; call it only when a queue exists.

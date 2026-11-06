@@ -11,6 +11,7 @@
     "@fastify/static": "^10.1.6",
     "@notaflow/core": "workspace:*",
     "@notaflow/danfse-pdf": "workspace:*",
+    "@notaflow/invoice-report": "workspace:*",
     "@notaflow/provider-nacional": "workspace:*",
     "@notaflow/r2": "workspace:*",
     "@notaflow/signer-node": "workspace:*",

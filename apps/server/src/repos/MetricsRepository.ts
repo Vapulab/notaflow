@@ -16,6 +16,7 @@ import {
 } from '../db/schema';
 import { notDeleted } from '../db/stamps';
 import { DanfseRepository } from './DanfseRepository';
+import { ReportJobRepository } from './ReportJobRepository';
 import type { MetricSources } from '../metrics/metrics';
 
 // Platform scope: the metrics describe the whole service, so they read across accounts, never a name or document.
@@ -48,6 +49,11 @@ export class MetricsRepository implements MetricSources {
 
   danfseFailedCount(): number {
     return new DanfseRepository(this.db).failedCount();
+  }
+
+  reportOldestPendingSeconds(): number {
+    const ms = new ReportJobRepository(this.db).oldestPendingAgeMs(new Date());
+    return ms === null ? 0 : Math.max(0, Math.floor(ms / 1000));
   }
 
   accountCounts() {

@@ -84,6 +84,13 @@ groups:
         annotations:
           summary: 'NotaFlow: the oldest DANFSe PDF has waited {{ $value | humanizeDuration }}'
 
+      - alert: ReportPendingTooLong
+        expr: report_oldest_pending_seconds > 600
+        for: 5m
+        labels: { severity: warning, service: notaflow, module: reports }
+        annotations:
+          summary: 'NotaFlow: the oldest invoice report has waited {{ $value | humanizeDuration }}'
+
       - alert: BugDeliveriesFailed
         expr: notaflow_bug_report_deliveries{state="failed"} > 0
         labels: { severity: warning, service: notaflow, module: bugs }

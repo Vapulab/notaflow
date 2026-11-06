@@ -33,6 +33,7 @@ const ROUTES: [string, Route][] = [
   ['/app/acc/emitentes', { name: 'emitters', accountId: 'acc' }],
   ['/app/acc/emitentes/em1', { name: 'emitter', accountId: 'acc', emitterId: 'em1' }],
   ['/app/acc/membros', { name: 'members', accountId: 'acc' }],
+  ['/app/acc/relatorios', { name: 'reports', accountId: 'acc' }],
 ];
 
 test.each(ROUTES)('%s parses, and the route writes it back', (path, route) => {

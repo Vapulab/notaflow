@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage';
 import { NewInvoicePage } from './pages/NewInvoicePage';
 import { OnboardingPage } from './pages/onboarding/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ReportsPage } from './pages/ReportsPage';
 import { ResetPage } from './pages/ResetPage';
 import { SignupPage } from './pages/SignupPage';
 import { type Route, useRoute } from './router';
@@ -65,6 +66,8 @@ function Screen({ route }: { route: Route }) {
       return <CustomerPage accountId={route.accountId} customerId={route.customerId} />;
     case 'members':
       return <MembersPage accountId={route.accountId} />;
+    case 'reports':
+      return <ReportsPage accountId={route.accountId} />;
     case 'admin':
       return <AdminPage />;
     case 'adminBug':

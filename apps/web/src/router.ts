@@ -16,6 +16,7 @@ export type Route =
   | { name: 'newInvoice'; accountId: string; customerId?: string }
   | { name: 'issue'; accountId: string; invoiceId: string }
   | { name: 'members'; accountId: string }
+  | { name: 'reports'; accountId: string }
   | { name: 'customers'; accountId: string }
   | { name: 'customer'; accountId: string; customerId: string };
 
@@ -75,6 +76,9 @@ export function parseRoute(location: { pathname: string; search: string }): Rout
     case 'membros':
       if (length === 3) return { name: 'members', accountId };
       break;
+    case 'relatorios':
+      if (length === 3) return { name: 'reports', accountId };
+      break;
   }
   return { name: 'home' };
 }
@@ -116,6 +120,8 @@ export function routeHref(route: Route): string {
       return `/app/${e(route.accountId)}/emitentes/${e(route.emitterId)}`;
     case 'members':
       return `/app/${e(route.accountId)}/membros`;
+    case 'reports':
+      return `/app/${e(route.accountId)}/relatorios`;
   }
 }
 

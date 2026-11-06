@@ -665,6 +665,43 @@ export const invoiceLinks = sqliteTable(
   (t) => [uniqueIndex('invoice_links_invoice').on(t.invoiceId).where(active)],
 );
 
+// A branded PDF report of one emitter's invoices for a period; the file lives in R2 until it expires.
+export const invoiceReports = sqliteTable(
+  'invoice_reports',
+  {
+    id: id(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    emitterId: text('emitter_id')
+      .notNull()
+      .references(() => emitters.id),
+    periodType: text('period_type', { enum: ['month', 'year', 'range'] }).notNull(),
+    periodFrom: text('period_from').notNull(),
+    periodTo: text('period_to').notNull(),
+    status: text('status', { enum: ['pending', 'running', 'ready', 'failed', 'expired'] })
+      .notNull()
+      .default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    invoiceCount: integer('invoice_count'),
+    pages: integer('pages'),
+    bytes: integer('bytes'),
+    errorCode: text('error_code'),
+    r2Key: text('r2_key'),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }),
+    readyAt: integer('ready_at', { mode: 'timestamp_ms' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+    updatedAt: changedAt(),
+    ...authors(),
+    ...removal(),
+  },
+  (t) => [
+    index('invoice_reports_account_created').on(t.accountId, t.createdAt),
+    index('invoice_reports_status').on(t.status),
+  ],
+);
+
 // An address that asked to stop one kind of e-mail from NotaFlow; unsubscribing again adds nothing.
 export const mailSuppressions = sqliteTable(
   'mail_suppressions',
