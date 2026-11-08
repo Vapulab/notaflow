@@ -3,7 +3,10 @@ import { HttpError } from '../httpError';
 import { redactText, redactUrl, redactValue } from './redact';
 
 export interface ErrorReporter {
-  capture(error: unknown, context: { module: string; requestId?: string }): void;
+  capture(
+    error: unknown,
+    context: { module: string; requestId?: string; tags?: Record<string, string> },
+  ): void;
 }
 
 export const noErrorReporter: ErrorReporter = { capture() {} };
@@ -89,6 +92,7 @@ export function sentryReporter(options: {
       Sentry.withScope((scope) => {
         scope.setTag('module', context.module);
         if (context.requestId) scope.setTag('request_id', context.requestId);
+        for (const [key, value] of Object.entries(context.tags ?? {})) scope.setTag(key, value);
         Sentry.captureException(error);
       });
     },

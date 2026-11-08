@@ -132,10 +132,10 @@ describe('ReportJobRepository queue', () => {
   test('recoverRunning retries a first attempt and fails a second one with timeout', () => {
     const r = reports.create(a, emitterId, OCTOBER);
     jobs.claimNext(NOW);
-    expect(jobs.recoverRunning()).toBe(1);
+    expect(jobs.recoverRunning()).toEqual({ retried: 1, failed: 0 });
     expect(row(r.id)).toMatchObject({ status: 'pending', attempts: 1 });
     jobs.claimNext(NOW);
-    expect(jobs.recoverRunning()).toBe(1);
+    expect(jobs.recoverRunning()).toEqual({ retried: 0, failed: 1 });
     expect(row(r.id)).toMatchObject({ status: 'failed', errorCode: 'timeout', attempts: 2 });
   });
 
@@ -143,12 +143,12 @@ describe('ReportJobRepository queue', () => {
     const r = reports.create(a, emitterId, OCTOBER);
     const started = new Date(NOW.getTime() - 200_000);
     jobs.claimNext(started);
-    expect(jobs.failStale(NOW, 300_000)).toBe(0);
-    expect(jobs.failStale(NOW, 120_000)).toBe(1);
+    expect(jobs.failStale(NOW, 300_000)).toEqual({ retried: 0, failed: 0 });
+    expect(jobs.failStale(NOW, 120_000)).toEqual({ retried: 1, failed: 0 });
     expect(row(r.id)?.status).toBe('pending');
     jobs.claimNext(started);
     expect(row(r.id)?.attempts).toBe(2);
-    expect(jobs.failStale(NOW, 120_000)).toBe(1);
+    expect(jobs.failStale(NOW, 120_000)).toEqual({ retried: 0, failed: 1 });
     expect(row(r.id)).toMatchObject({ status: 'failed', errorCode: 'timeout' });
   });
 

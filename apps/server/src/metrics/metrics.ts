@@ -30,6 +30,7 @@ export interface MetricSources {
   danfsePendingOldest(): Date | null;
   danfseFailedCount(): number;
   reportOldestPendingSeconds(): number;
+  reportCounts(): { status: string; period: string; count: number }[];
 }
 
 const QUEUE_CACHE_MS = 30_000;
@@ -47,6 +48,7 @@ export class Metrics {
   private readonly reportRenderSeconds: Histogram;
   private readonly reportInvoices: Histogram;
   private readonly reportJobs: Counter<'result'>;
+  private readonly reportExpiryFailures: Counter;
   private readonly mailWebhookEvents: Counter<'type' | 'outcome'>;
   private readonly syncRuns: Counter<'result'>;
   private readonly syncLastSuccess: Gauge<'emitter'>;
@@ -130,12 +132,31 @@ export class Metrics {
       labelNames: ['result'],
       registers,
     });
+    // Series at 0 from the start, so increase() sees the first failure after a restart.
+    for (const result of ['ready', 'failed']) this.reportJobs.inc({ result }, 0);
+    this.reportExpiryFailures = new Counter({
+      name: 'report_expiry_failures_total',
+      help: 'Expired invoice reports whose PDF delete from R2 failed; the next hourly run tries again',
+      registers,
+    });
     new Gauge({
       name: 'report_oldest_pending_seconds',
       help: 'Age of the oldest invoice report still waiting to render, 0 when none waits',
       registers,
       collect() {
         this.set(sources.reportOldestPendingSeconds());
+      },
+    });
+    new Gauge({
+      name: 'notaflow_reports',
+      help: 'Invoice reports by status (pending, running, ready, failed, expired) and period (month, year, range)',
+      labelNames: ['status', 'period'],
+      registers,
+      collect() {
+        this.reset();
+        for (const row of sources.reportCounts()) {
+          this.set({ status: row.status, period: row.period }, row.count);
+        }
       },
     });
     this.mailWebhookEvents = new Counter({
@@ -325,6 +346,10 @@ export class Metrics {
 
   reportJob(result: 'ready' | 'failed'): void {
     this.reportJobs.inc({ result });
+  }
+
+  reportExpiryFailed(): void {
+    this.reportExpiryFailures.inc();
   }
 
   // Exports the queue gauges from a cache that a scrape never waits for; call it only when a queue exists.

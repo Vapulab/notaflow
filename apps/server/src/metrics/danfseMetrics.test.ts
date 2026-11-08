@@ -16,6 +16,7 @@ const sources: MetricSources = {
   danfsePendingOldest: () => null,
   danfseFailedCount: () => 0,
   reportOldestPendingSeconds: () => 0,
+  reportCounts: () => [],
 };
 
 beforeEach(() => {

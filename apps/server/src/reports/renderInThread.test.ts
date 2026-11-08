@@ -3,7 +3,13 @@ import { extractText } from 'unpdf';
 import { describe, expect, test } from 'vitest';
 import { readFixture } from '../../../../packages/provider-nacional/test/fixtures';
 import type { ReportInvoiceRow } from '../repos/ReportJobRepository';
-import { RenderTimeoutError, renderInThread, type ThreadInput } from './renderInThread';
+import {
+  RenderFailedError,
+  RenderTimeoutError,
+  renderInThread,
+  stackFrames,
+  type ThreadInput,
+} from './renderInThread';
 
 const base = {
   emitter: { legalName: 'EMPRESA TESTE LTDA', cnpj: '12345678000195', shortName: 'EMPRESA TESTE' },
@@ -36,6 +42,26 @@ describe('renderInThread', () => {
     const result = await renderInThread(input([row(1, '<x/>')]));
     expect(await textOf(result.pdf)).toContain('1 nota sem XML ficou fora dos totais');
   }, 30_000);
+
+  test('a thread error comes back with its type and code lines, never its message', async () => {
+    const xml = readFixture('NFSE_DOMESTIC.xml');
+    const broken = { ...input([row(1, xml)]), emitter: null as never };
+    const error: unknown = await renderInThread(broken).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(RenderFailedError);
+    const failed = error as RenderFailedError;
+    expect(failed.reason).toBe('exception');
+    expect(failed.message).toBe('report render failed: exception (TypeError)');
+    expect(failed.stack).toMatch(/\n\s+at /);
+    expect(failed.stack).not.toContain('legalName');
+  }, 30_000);
+
+  test('stackFrames keeps only the code lines', () => {
+    const error = new Error('Cliente Secreto 12345678909');
+    const frames = stackFrames(error);
+    expect(frames.length).toBeGreaterThan(0);
+    expect(frames.join('\n')).not.toContain('Cliente Secreto');
+    expect(stackFrames('text')).toEqual([]);
+  });
 
   test('times out', async () => {
     const xml = readFixture('NFSE_DOMESTIC.xml');

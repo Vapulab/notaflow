@@ -6,9 +6,10 @@ import { seedTenant } from '../../test/fixtures';
 import { type Database, openDatabase } from '../db/openDatabase';
 import { invoiceReports } from '../db/schema';
 import { EmitterRepository } from '../repos/EmitterRepository';
+import type { ErrorReporter } from '../observability/errors';
 import { ReportJobRepository } from '../repos/ReportJobRepository';
 import { ReportRepository } from '../repos/ReportRepository';
-import { RenderTimeoutError, type renderInThread } from './renderInThread';
+import { RenderFailedError, RenderTimeoutError, type renderInThread } from './renderInThread';
 import { ReportRunner } from './ReportRunner';
 
 const NOW = new Date('2026-11-06T12:00:00Z');
@@ -23,7 +24,13 @@ let jobs: ReportJobRepository;
 let puts: { key: string; type: string }[];
 let deletes: string[];
 let r2Fail: { put: boolean };
-let metrics: { reportRendered: Mock<(s: number, n: number) => void>; reportJob: Mock<(r: 'ready' | 'failed') => void> };
+let metrics: {
+  reportRendered: Mock<(s: number, n: number) => void>;
+  reportJob: Mock<(r: 'ready' | 'failed') => void>;
+  reportExpiryFailed: Mock<() => void>;
+};
+let log: { info: Mock; warn: Mock; error: Mock };
+let errors: { capture: Mock<ErrorReporter['capture']> };
 
 const r2 = {
   put: async (key: string, _body: Buffer, type: string) => {
@@ -42,7 +49,7 @@ const okRender: typeof renderInThread = async () => ({
 });
 
 const runner = (render: typeof renderInThread = okRender) =>
-  new ReportRunner({ jobs, r2, render, metrics, now: () => NOW });
+  new ReportRunner({ jobs, r2, render, metrics, log, errors, now: () => NOW });
 
 const period = (month: number): ReportPeriod => ({
   type: 'month',
@@ -67,8 +74,9 @@ beforeEach(() => {
   puts = [];
   deletes = [];
   r2Fail = { put: false };
-  metrics = { reportRendered: vi.fn(), reportJob: vi.fn() };
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  metrics = { reportRendered: vi.fn(), reportJob: vi.fn(), reportExpiryFailed: vi.fn() };
+  log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+  errors = { capture: vi.fn() };
 });
 afterEach(() => {
   close();
@@ -81,7 +89,13 @@ describe('ReportRunner', () => {
     await runner().tick();
     const done = row(report.id);
     const key = `reports/${a.accountId}/${report.id}.pdf`;
-    expect(done).toMatchObject({ status: 'ready', r2Key: key, pages: 4, bytes: 9, invoiceCount: 7 });
+    expect(done).toMatchObject({
+      status: 'ready',
+      r2Key: key,
+      pages: 4,
+      bytes: 9,
+      invoiceCount: 7,
+    });
     expect(done?.readyAt?.getTime()).toBe(NOW.getTime());
     expect(done?.expiresAt?.getTime()).toBe(NOW.getTime() + 365 * DAY);
     expect(puts).toEqual([{ key, type: 'application/pdf' }]);
@@ -112,7 +126,19 @@ describe('ReportRunner', () => {
     }).tick();
     expect(row(report.id)).toMatchObject({ status: 'failed', errorCode: 'render_failed' });
     expect(metrics.reportJob).toHaveBeenCalledWith('failed');
-    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain('row data');
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ module: 'reports', stage: 'render', reportId: report.id }),
+      'report failed: render_failed',
+    );
+    const [captured, context] = errors.capture.mock.calls[0] ?? [];
+    expect(context).toEqual({
+      module: 'reports',
+      tags: { stage: 'render', report_id: report.id, reason: 'exception' },
+    });
+    expect(captured).toBeInstanceOf(RenderFailedError);
+    const sent = [JSON.stringify(log.error.mock.calls), String((captured as Error).message)];
+    sent.push(String((captured as Error).stack));
+    expect(sent.join('\n')).not.toContain('row data');
   });
 
   test('fails with timeout on a render timeout', async () => {
@@ -121,6 +147,7 @@ describe('ReportRunner', () => {
       throw new RenderTimeoutError();
     }).tick();
     expect(row(report.id)).toMatchObject({ status: 'failed', errorCode: 'timeout' });
+    expect(errors.capture.mock.calls[0]?.[1].tags).toMatchObject({ stage: 'timeout' });
   });
 
   test('fails on a storage error', async () => {
@@ -129,6 +156,50 @@ describe('ReportRunner', () => {
     await runner().tick();
     expect(row(report.id)).toMatchObject({ status: 'failed', errorCode: 'storage_failed' });
     expect(metrics.reportJob).toHaveBeenCalledWith('failed');
+    const [captured, context] = errors.capture.mock.calls[0] ?? [];
+    expect((captured as Error).message).toBe('boom');
+    expect(context?.tags).toEqual({ stage: 'storage', report_id: report.id });
+  });
+
+  test('logs a ready report with its size and time', async () => {
+    const report = reports.create(a, emitterId, period(10));
+    await runner().tick();
+    expect(log.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'reports',
+        reportId: report.id,
+        period: 'month',
+        invoices: 7,
+        pages: 4,
+        seconds: expect.any(Number),
+      }),
+      'report ready',
+    );
+    expect(errors.capture).not.toHaveBeenCalled();
+  });
+
+  test('reports a tick failure', async () => {
+    vi.spyOn(jobs, 'claimNext').mockImplementation(() => {
+      throw new Error('database is locked');
+    });
+    await runner().tick();
+    expect(errors.capture).toHaveBeenCalledWith(expect.any(Error), {
+      module: 'reports',
+      tags: { stage: 'tick' },
+    });
+  });
+
+  test('counts and reports a render that a restart interrupted twice', () => {
+    reports.create(a, emitterId, period(10));
+    jobs.claimNext(NOW);
+    jobs.recoverRunning();
+    jobs.claimNext(NOW);
+    expect(runner().recoverOnStart()).toEqual({ retried: 0, failed: 1 });
+    expect(metrics.reportJob).toHaveBeenCalledWith('failed');
+    expect(errors.capture).toHaveBeenCalledWith(expect.any(RenderTimeoutError), {
+      module: 'reports',
+      tags: { stage: 'timeout' },
+    });
   });
 
   test('recovers running rows on start', async () => {
@@ -136,7 +207,7 @@ describe('ReportRunner', () => {
     jobs.claimNext(NOW);
     expect(row(report.id)?.status).toBe('running');
     const r = runner();
-    expect(r.recoverOnStart()).toBe(1);
+    expect(r.recoverOnStart()).toEqual({ retried: 1, failed: 0 });
     await r.tick();
     expect(row(report.id)?.status).toBe('ready');
   });
@@ -157,10 +228,23 @@ describe('ReportRunner', () => {
         deletes.push(key);
       },
     };
-    const expiring = new ReportRunner({ jobs, r2: flaky, render: okRender, now: () => NOW });
+    const expiring = new ReportRunner({
+      jobs,
+      r2: flaky,
+      render: okRender,
+      metrics,
+      log,
+      errors,
+      now: () => NOW,
+    });
     expect(await expiring.expire()).toBe(1);
     expect(deletes).toEqual([`reports/${a.accountId}/${due.id}.pdf`]);
     expect(row(due.id)?.status).toBe('expired');
     expect(row(stuck.id)?.status).toBe('ready');
+    expect(metrics.reportExpiryFailed).toHaveBeenCalledTimes(1);
+    expect(errors.capture).toHaveBeenCalledWith(expect.any(Error), {
+      module: 'reports',
+      tags: { stage: 'expiry', report_id: stuck.id },
+    });
   });
 });

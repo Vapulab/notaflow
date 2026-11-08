@@ -12,10 +12,10 @@ The monitoring stack runs on the VPS in `/opt/monitoring`. Its files are in [dep
 | Panel | Use it to |
 | --- | --- |
 | 1. Overview | See if each site and the host are up, the uptime, and the alerts that are firing now. |
-| 2. NotaFlow by module | See the requests, the 5xx rate, the p95 latency, and the warnings of each module. The **Business** row has the invoices, sync, mail outbox, certificates, and backups. The **DANFSe** row has the PDF jobs, render time, dead letters, oldest pending PDF, and downloads drawn on demand. |
+| 2. NotaFlow by module | See the requests, the 5xx rate, the p95 latency, and the warnings of each module. The **Business** row has the invoices, sync, mail outbox, certificates, and backups. The **DANFSe** row has the PDF jobs, render time, dead letters, oldest pending PDF, and downloads drawn on demand. The **Reports** row has the invoice report jobs, render time, oldest pending report, R2 expiry failures, invoices per report, and the report warnings and errors. |
 | 3. VPS and containers | See the CPU, memory, disk, and network of the host and of each container. |
 | 4. Logs | Search the logs. Filter by container and by NotaFlow module, and type a text in **Search**. |
-| 5. Negócio | See the accounts, users, companies in production, invoices issued by NotaFlow, cancellations, and imported invoices, and each of them per day. Test data (produção restrita) is in a closed row at the bottom. |
+| 5. Negócio | See the accounts, users, companies in production, invoices issued by NotaFlow, cancellations, and imported invoices, and each of them per day. The **Relatórios** row has the invoice reports made (in total and per day, by period type), the failures, the mean invoices per report, and the report errors. Test data (produção restrita) is in a closed row at the bottom. |
 | 6. Bugs | See the bugs reported in the app: all, active (issue open), and resolved (issue closed), and the deliveries to GitHub, Discord, and Notion that wait or failed. |
 
 The panels come from the files in `deploy/monitoring/grafana/dashboards`. A change made in the Grafana UI is not saved. To change a panel, edit its JSON file and install it again (see below).
@@ -35,6 +35,8 @@ The rules are in `deploy/monitoring/prometheus/rules.yml`, and CI tests them wit
 | DanfseWorkerDown | Check the logs of the DANFSe worker and of Redis on the VPS. Redis down also fires this alert. Customers still get the PDF, drawn on demand. |
 | DanfsePendingStale | Check the worker logs and panel 2 (row **DANFSe**). The sweep adds the waiting invoices again every run. |
 | ReportPendingTooLong | The oldest invoice report has waited over 10 minutes. Look for a render error or a timeout in panel 4 (module `reports`). |
+| ReportFailed | An invoice report failed. Open the issue in Sentry (tag `module:reports`): the `stage` tag tells the step (`render`, `storage`, `timeout`) and `report_id` the row; a render error has the code lines of the thread, never the message. The same line is in panel 4 (module `reports`). The customer can retry the report in the app. |
+| ReportExpiryFailing | The hourly run could not delete an expired report PDF from R2. Check the R2 credentials and the Sentry issue (`stage:expiry`). The next run tries again. |
 | BugDeliveriesFailed | Read `last_error` in `bug_report_deliveries` (see the [Bug Reports RFC](../ENGINEERING/RFCS/2026/10/RFC_BUG_REPORTS.md)). Fix the token or the URL, then set the row back to `pending` with `attempts` 0. |
 | CertificateExpiring | Ask the company for a new A1 certificate. |
 | BackupStale, BackupMissing | Run `systemctl status notaflow-backup.service notaflow-offsite-backup.service` on the VPS. |

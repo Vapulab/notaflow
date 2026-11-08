@@ -2,7 +2,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { gunzipSync } from 'node:zlib';
 import { type ReportRow, renderReport } from '@notaflow/invoice-report';
 import { readReportFields } from '@notaflow/provider-nacional';
-import type { ThreadWireInput } from './renderInThread';
+import { stackFrames, type ThreadAnswer, type ThreadWireInput } from './renderInThread';
 
 function fieldsOf(xmlGzip: Uint8Array | null): ReportRow['fields'] {
   if (!xmlGzip) return null;
@@ -31,7 +31,9 @@ async function main(input: ThreadWireInput) {
   parentPort?.postMessage({ ok: true, pdf: copy, pages, invoiceCount: rows.length }, [copy.buffer]);
 }
 
-// The message never carries the error text: it may hold row data.
-main(workerData as ThreadWireInput).catch(() => {
-  parentPort?.postMessage({ ok: false });
+// The answer never carries the error text: it may hold row data.
+main(workerData as ThreadWireInput).catch((error: unknown) => {
+  const errorType = error instanceof Error ? error.name : typeof error;
+  const answer: ThreadAnswer = { ok: false, errorType, frames: stackFrames(error) };
+  parentPort?.postMessage(answer);
 });

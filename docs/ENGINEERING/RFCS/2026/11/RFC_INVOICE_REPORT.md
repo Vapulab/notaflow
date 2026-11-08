@@ -173,6 +173,7 @@ A4 landscape. Page 1: full header (logo, title, emitter name and CNPJ, count chi
 ## Metrics, Limits, and Security
 
 - Metrics: `report_render_seconds` (histogram), `report_invoices` (histogram), `report_jobs_total{result}` (counter), and `report_oldest_pending_seconds` (gauge). The alert `ReportPendingTooLong` fires when the gauge stays above 600 s for 5 minutes.
+- Errors: each failure goes to Sentry and to the log with `module: reports`, the `stage` (`render`, `storage`, `timeout`, `expiry`, `tick`), and the report id. The render thread sends back the error type and the code lines of its stack, never the message, because the message may hold row data. `ReportFailed` alerts on each failed job, `ReportExpiryFailing` on a failed R2 delete (`report_expiry_failures_total`). The gauge `notaflow_reports{status, period}` feeds the **Relatórios** row of panel 5.
 - Rate limit: 10 new reports per hour per account.
 - No row data in logs. The audit log records create and download, with the report id, emitter id, and period.
 
