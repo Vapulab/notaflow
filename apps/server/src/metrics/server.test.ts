@@ -18,6 +18,7 @@ const sources = {
   danfsePendingOldest: () => null,
   danfseFailedCount: () => 0,
   reportOldestPendingSeconds: () => 0,
+  reportCounts: () => [],
 };
 let stop: (() => Promise<void>) | undefined;
 afterEach(async () => {

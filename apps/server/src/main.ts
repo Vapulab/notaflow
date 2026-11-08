@@ -96,8 +96,7 @@ try {
   }
   const reportRunner = app.reportRunner;
   if (reportRunner) {
-    const recovered = reportRunner.recoverOnStart();
-    if (recovered > 0) app.log.info({ module: 'reports', recovered }, 'report renders recovered');
+    reportRunner.recoverOnStart();
     startScheduler(
       () => reportRunner.tick(),
       REPORT_INTERVAL_MS,

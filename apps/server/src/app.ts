@@ -355,7 +355,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.decorate(
     'reportRunner',
     reportsR2
-      ? new ReportRunner({ jobs: new ReportJobRepository(db), r2: reportsR2, metrics })
+      ? new ReportRunner({
+          jobs: new ReportJobRepository(db),
+          r2: reportsR2,
+          log: app.log,
+          errors: reporter,
+          metrics,
+        })
       : null,
   );
   const issue = new IssueService({

@@ -14,9 +14,32 @@ export type ThreadWireInput = Omit<ThreadInput, 'rows'> & {
   rows: (Omit<ReportInvoiceRow, 'xmlGzip'> & { xmlGzip: Uint8Array | null })[];
 };
 
-type ThreadAnswer =
+export type ThreadAnswer =
   | { ok: true; pdf: Uint8Array; pages: number; invoiceCount: number }
-  | { ok: false };
+  | { ok: false; errorType: string; frames: string[] };
+
+export type RenderFailure = 'exception' | 'out_of_memory' | 'exited';
+
+// The code lines of a stack, without its first line: the message may hold row data.
+export function stackFrames(error: unknown): string[] {
+  if (!(error instanceof Error) || typeof error.stack !== 'string') return [];
+  return error.stack
+    .split('\n')
+    .filter((line) => /^\s+at /.test(line))
+    .slice(0, 30);
+}
+
+export class RenderFailedError extends Error {
+  constructor(
+    readonly reason: RenderFailure,
+    errorType: string,
+    frames: string[],
+  ) {
+    super(`report render failed: ${reason} (${errorType})`);
+    this.name = 'RenderFailedError';
+    this.stack = [`${this.name}: ${this.message}`, ...frames].join('\n');
+  }
+}
 
 export class RenderTimeoutError extends Error {
   constructor() {
@@ -65,10 +88,15 @@ export function renderInThread(
               pages: answer.pages,
               invoiceCount: answer.invoiceCount,
             })
-          : reject(new Error('render_failed')),
+          : reject(new RenderFailedError('exception', answer.errorType, answer.frames)),
       ),
     );
-    worker.once('error', () => finish(() => reject(new Error('render_failed'))));
-    worker.once('exit', () => finish(() => reject(new Error('render_failed'))));
+    worker.once('error', (error: Error & { code?: string }) => {
+      const reason = error.code === 'ERR_WORKER_OUT_OF_MEMORY' ? 'out_of_memory' : 'exception';
+      finish(() => reject(new RenderFailedError(reason, error.name, stackFrames(error))));
+    });
+    worker.once('exit', (code) =>
+      finish(() => reject(new RenderFailedError('exited', `exit ${code}`, []))),
+    );
   });
 }

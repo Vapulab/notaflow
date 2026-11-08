@@ -91,6 +91,18 @@ groups:
         annotations:
           summary: 'NotaFlow: the oldest invoice report has waited {{ $value | humanizeDuration }}'
 
+      - alert: ReportFailed
+        expr: ceil(sum(increase(report_jobs_total{result="failed"}[10m]))) > 0
+        labels: { severity: warning, service: notaflow, module: reports }
+        annotations:
+          summary: 'NotaFlow: {{ $value }} invoice reports failed in 10 minutes; the stage and the stack are in Sentry (module reports) and panel 4'
+
+      - alert: ReportExpiryFailing
+        expr: ceil(sum(increase(report_expiry_failures_total[2h]))) > 0
+        labels: { severity: warning, service: notaflow, module: reports }
+        annotations:
+          summary: 'NotaFlow: {{ $value }} expired invoice reports could not be deleted from R2 in 2 hours'
+
       - alert: BugDeliveriesFailed
         expr: notaflow_bug_report_deliveries{state="failed"} > 0
         labels: { severity: warning, service: notaflow, module: bugs }

@@ -113,6 +113,40 @@ tests:
 
   - interval: 1m
     input_series:
+      # One failure at minute 2; ready jobs never fire it.
+      - series: 'report_jobs_total{job="notaflow", result="failed"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'report_jobs_total{job="notaflow", result="ready"}'
+        values: '0+3x15'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ReportFailed
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ReportFailed
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: reports }
+            exp_annotations: { summary: 'NotaFlow: 1 invoice reports failed in 10 minutes; the stage and the stack are in Sentry (module reports) and panel 4' }
+      - eval_time: 15m
+        alertname: ReportFailed
+        exp_alerts: []
+
+  - interval: 10m
+    input_series:
+      - series: 'report_expiry_failures_total{job="notaflow"}'
+        values: '0 0 0 2 2'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ReportExpiryFailing
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: ReportExpiryFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, service: notaflow, module: reports }
+            exp_annotations: { summary: 'NotaFlow: 2 expired invoice reports could not be deleted from R2 in 2 hours' }
+
+  - interval: 1m
+    input_series:
       - series: 'notaflow_bug_report_deliveries{channel="github", state="failed"}'
         values: '0 0 1'
       - series: 'notaflow_bug_report_deliveries{channel="discord", state="pending"}'

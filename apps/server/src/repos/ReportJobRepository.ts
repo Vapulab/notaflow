@@ -138,7 +138,7 @@ export class ReportJobRepository {
   }
 
   // A restart interrupted these; a row that already used every attempt fails, so a report that kills the process cannot loop.
-  recoverRunning(): number {
+  recoverRunning(): { retried: number; failed: number } {
     const running = and(eq(invoiceReports.status, 'running'), notDeleted(invoiceReports));
     return this.db.transaction((tx) => {
       const retried = tx
@@ -151,11 +151,11 @@ export class ReportJobRepository {
         .set({ status: 'failed', errorCode: 'timeout', ...touched(null) })
         .where(running)
         .run().changes;
-      return retried + failed;
+      return { retried, failed };
     });
   }
 
-  failStale(now: Date, maxRunMs: number): number {
+  failStale(now: Date, maxRunMs: number): { retried: number; failed: number } {
     const stale = and(
       eq(invoiceReports.status, 'running'),
       lt(invoiceReports.startedAt, new Date(now.getTime() - maxRunMs)),
@@ -172,7 +172,7 @@ export class ReportJobRepository {
         .set({ status: 'failed', errorCode: 'timeout', ...touched(null) })
         .where(stale)
         .run().changes;
-      return retried + failed;
+      return { retried, failed };
     });
   }
 

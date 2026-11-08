@@ -9,6 +9,7 @@ import {
   bugReports,
   certificates,
   emitters,
+  invoiceReports,
   invoices,
   lifecycleEmails,
   mailOutbox,
@@ -54,6 +55,15 @@ export class MetricsRepository implements MetricSources {
   reportOldestPendingSeconds(): number {
     const ms = new ReportJobRepository(this.db).oldestPendingAgeMs(new Date());
     return ms === null ? 0 : Math.max(0, Math.floor(ms / 1000));
+  }
+
+  reportCounts() {
+    return this.db
+      .select({ status: invoiceReports.status, period: invoiceReports.periodType, count: count() })
+      .from(invoiceReports)
+      .where(notDeleted(invoiceReports))
+      .groupBy(invoiceReports.status, invoiceReports.periodType)
+      .all();
   }
 
   accountCounts() {
