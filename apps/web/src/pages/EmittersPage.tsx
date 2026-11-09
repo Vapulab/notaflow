@@ -176,10 +176,14 @@ function AddEmitter(props: { prefix: string; onCreated: () => void }) {
   const [state, setState] = useState<OnboardingState | 'closed' | 'card'>('closed');
   if (state === 'closed') {
     return (
-      <div>
+      <div className="flex flex-col items-start gap-2">
         <Button variant="primary" onClick={() => setState('card')}>
           Adicionar emitente
         </Button>
+        <p className="text-sm text-muted">
+          Cuida de várias empresas? Adicione cada uma aqui, como emitente desta conta. Não precisa
+          criar outro cadastro.
+        </p>
       </div>
     );
   }

@@ -25,7 +25,8 @@ export const ERROR_TEXT: Record<string, string> = {
   INVALID_OTP: 'Código incorreto. Confira e tente de novo.',
   OTP_EXPIRED: 'Este código expirou. Peça um novo.',
   TOO_MANY_ATTEMPTS: 'Tentativas demais com este código. Peça um novo.',
-  INVALID_EMAIL_OR_PASSWORD: 'E-mail ou senha incorretos.',
+  INVALID_EMAIL_OR_PASSWORD:
+    'E-mail ou senha incorretos. Se você entrou antes só com código ou por convite, talvez ainda não tenha senha: entre com código ou crie uma em "Esqueci minha senha".',
   EMAIL_NOT_VERIFIED:
     'Seu e-mail ainda não foi confirmado. Entre com um código por e-mail; ele confirma o e-mail.',
   PASSWORD_TOO_SHORT: 'A senha precisa de pelo menos 10 caracteres.',

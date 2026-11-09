@@ -77,6 +77,7 @@ test('an owner adds an emitter through the card, then the certificate', async ()
   });
   const user = userEvent.setup();
   render(<EmittersPage accountId="acc" />);
+  expect(await screen.findByText(/Cuida de várias empresas\?/)).toBeTruthy();
   await user.click(await screen.findByRole('button', { name: 'Adicionar emitente' }));
   await user.upload(
     screen.getByLabelText('Cartão CNPJ (PDF)'),
