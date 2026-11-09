@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `password_removed_at` integer;

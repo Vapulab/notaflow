@@ -211,6 +211,13 @@
       "when": 1793984730987,
       "tag": "0029_invoice_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1794255156951,
+      "tag": "0030_password_removed",
+      "breakpoints": true
     }
   ]
 }

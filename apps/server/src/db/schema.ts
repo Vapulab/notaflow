@@ -74,6 +74,8 @@ export const users = sqliteTable(
     emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     image: text('image'),
     tourSeenAt: integer('tour_seen_at', { mode: 'timestamp_ms' }),
+    // A code login on an unconfirmed e-mail erased the password; the app warns until a new one or a dismissal.
+    passwordRemovedAt: integer('password_removed_at', { mode: 'timestamp_ms' }),
     // The utm_* of the link that brought the person to signup; written once, at creation.
     signupSource: text('signup_source'),
     signupMedium: text('signup_medium'),
