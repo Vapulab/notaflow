@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ERROR_TEXT } from '../components/Layout';
+import { brasiliaToday } from '../format';
 import { stubApi } from '../test/stubApi';
 import { meFor, renderWithMe } from '../test/renderWithMe';
 import { IssuePage } from './IssuePage';
@@ -63,6 +64,13 @@ const base = {
   '/api/accounts/acc/emitters': [emitter],
   '/api/accounts/acc/customers': [],
 };
+
+test('the competence starts at today in Brasília, not at the template date', async () => {
+  stubApi(base);
+  renderWithMe(<IssuePage accountId="acc" invoiceId="inv1" />, meFor('admin'));
+  const input = (await screen.findByLabelText('Competência')) as HTMLInputElement;
+  expect(input.value).toBe(brasiliaToday());
+});
 
 test('the PTAX rate is fetched when the form opens and fills the BRL amount', async () => {
   const calls = stubApi({ ...base, '/api/accounts/acc/exchange-rate': rate('2026-08-31', 54321) });
