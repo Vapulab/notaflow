@@ -5,6 +5,7 @@ import { resetAnalytics } from '../analytics/analytics';
 import { signOut } from '../auth/authApi';
 import { navigate, routeHref, useRoute } from '../router';
 import { BugReportDialog } from './BugReportDialog';
+import { PasswordNotice } from './PasswordNotice';
 import { PolicyNotice } from './PolicyNotice';
 import { roleIn, useMe } from './MeContext';
 import { Avatar, initialsOf, linkClasses, Logo, ThemeToggle } from '../ui';
@@ -247,7 +248,8 @@ export function Layout(props: { title: string; accountId?: string; children: Rea
         />
       )}
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6 empty:hidden">
+        <div className="mb-6 flex flex-col gap-3 empty:hidden">
+          <PasswordNotice />
           <PolicyNotice />
         </div>
         <h1 className="mb-6 font-display text-2xl font-semibold text-fg">{props.title}</h1>

@@ -138,3 +138,73 @@ test('removing a passkey is recorded', async () => {
     entity: userId,
   });
 });
+
+const cookieOf = (response: { headers: Record<string, unknown> }) =>
+  [response.headers['set-cookie']]
+    .flat()
+    .map((c) => String(c).split(';')[0])
+    .join('; ');
+const codeLogin = async (email: string) => {
+  await post('/api/auth/email-otp/send-verification-otp', { email, type: 'sign-in' });
+  return post('/api/auth/sign-in/email-otp', { email, otp: lastCode() });
+};
+const me = async (cookie: string) =>
+  (await t.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } })).json() as {
+    passwordRemoved: boolean;
+  };
+
+test('a code login that erases the password of an unconfirmed signup is recorded and warned once', async () => {
+  await post('/api/auth/sign-up/email', {
+    email: 'nova@example.com',
+    password: PASSWORD,
+    name: 'Nova Pessoa',
+  });
+  const cookie = cookieOf(await codeLogin('nova@example.com'));
+  const removed = t.db.$client
+    .prepare('SELECT password_removed_at FROM users WHERE email = ?')
+    .get('nova@example.com') as { password_removed_at: number | null };
+  expect(removed.password_removed_at).toEqual(expect.any(Number));
+  expect(audit().map((r) => r.action)).toContain('auth.password_removed');
+  expect((await me(cookie)).passwordRemoved).toBe(true);
+
+  const dismissed = await t.app.inject({
+    method: 'POST',
+    url: '/api/me/password-notice',
+    headers: { cookie, origin: ORIGIN },
+    payload: {},
+  });
+  expect(dismissed.statusCode).toBe(204);
+  expect((await me(cookie)).passwordRemoved).toBe(false);
+  expect(audit().map((r) => r.action)).toContain('auth.password_notice_seen');
+});
+
+test('a new password clears the warning', async () => {
+  await post('/api/auth/sign-up/email', {
+    email: 'nova@example.com',
+    password: PASSWORD,
+    name: 'Nova Pessoa',
+  });
+  await codeLogin('nova@example.com');
+  await post('/api/auth/email-otp/request-password-reset', { email: 'nova@example.com' });
+  await post('/api/auth/email-otp/reset-password', {
+    email: 'nova@example.com',
+    otp: lastCode(),
+    password: 'outra-senha-boa-2026', // gitleaks:allow
+  });
+  const row = t.db.$client
+    .prepare('SELECT password_removed_at FROM users WHERE email = ?')
+    .get('nova@example.com') as { password_removed_at: number | null };
+  expect(row.password_removed_at).toBeNull();
+});
+
+test('a code login of a confirmed user with a password erases nothing', async () => {
+  await post('/api/auth/email-otp/request-password-reset', { email: 'pessoa@example.com' });
+  await post('/api/auth/email-otp/reset-password', {
+    email: 'pessoa@example.com',
+    otp: lastCode(),
+    password: PASSWORD,
+  });
+  const cookie = cookieOf(await codeLogin('pessoa@example.com'));
+  expect(audit().map((r) => r.action)).not.toContain('auth.password_removed');
+  expect((await me(cookie)).passwordRemoved).toBe(false);
+});

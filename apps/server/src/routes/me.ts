@@ -39,6 +39,7 @@ export function meRoutes(
         !legal.hasAcceptedSince(identity.userId, notice.date)
           ? notice
           : null,
+      passwordRemoved: identity.passwordRemovedAt !== null,
       lifecycleEmails: !lifecycle.isOptedOut(identity.userId),
       accounts: identity.memberships.map((m) => ({
         id: m.accountId,
@@ -79,6 +80,20 @@ export function meRoutes(
       return reply.status(204).send();
     },
   );
+
+  app.post('/api/me/password-notice', async (request, reply) => {
+    const identity = identityOf(request);
+    if (identities.clearPasswordRemoved(identity.userId)) {
+      audit.record({
+        userEmail: identity.email,
+        accountId: null,
+        action: 'auth.password_notice_seen',
+        entity: identity.userId,
+        result: 'ok',
+      });
+    }
+    return reply.status(204).send();
+  });
 
   app.post<{ Body: { id: string } }>(
     '/api/me/policy-notice',

@@ -1,8 +1,9 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { authAccounts, users } from '../db/schema';
 import type { AuditLog } from '../repos/AuditLog';
+import { IdentityRepository } from '../repos/IdentityRepository';
 import { type RequestInfo, requestContext } from '../requestContext';
 
 interface Actor {
@@ -36,9 +37,18 @@ const NEEDS_ACTOR_BEFORE = new Set([
 ]);
 const actors = new WeakMap<RequestInfo, Actor>();
 const unlinkedProviders = new WeakMap<RequestInfo, string>();
+// Better Auth erases every login method of an unconfirmed user who logs in by code (revokeUnprovenAccountAccess).
+const unprovenWithPassword = new WeakMap<RequestInfo, string>();
 
 // Every login, code, and credential change goes to the audit log; a code is never written.
 export function authAuditHooks(db: Database, audit: AuditLog, options: { signupOpen: boolean }) {
+  const identities = new IdentityRepository(db);
+  const credentialOf = (userId: string) =>
+    db
+      .select({ id: authAccounts.id })
+      .from(authAccounts)
+      .where(and(eq(authAccounts.userId, userId), eq(authAccounts.providerId, 'credential')))
+      .get();
   const userByEmail = (email: string): Actor | null => {
     const row = db
       .select({ id: users.id, email: users.email })
@@ -78,6 +88,22 @@ export function authAuditHooks(db: Database, audit: AuditLog, options: { signupO
       );
       throw new APIError('FORBIDDEN', { code: 'signup_closed', message: 'signup_closed' });
     }
+    if (ctx.path === '/sign-in/email-otp') {
+      const email = (ctx.body as { email?: unknown } | undefined)?.email;
+      const store = requestContext.getStore();
+      const user =
+        typeof email === 'string'
+          ? db
+              .select({ id: users.id, emailVerified: users.emailVerified })
+              .from(users)
+              .where(eq(users.email, email.toLowerCase()))
+              .get()
+          : undefined;
+      if (store && user && !user.emailVerified && credentialOf(user.id)) {
+        unprovenWithPassword.set(store, user.id);
+      }
+      return;
+    }
     if (!NEEDS_ACTOR_BEFORE.has(ctx.path)) return;
     const store = requestContext.getStore();
     const session = await getSessionFromCtx(ctx);
@@ -113,6 +139,16 @@ export function authAuditHooks(db: Database, audit: AuditLog, options: { signupO
           'ok',
           method,
         );
+        const unproven = store ? unprovenWithPassword.get(store) : undefined;
+        if (unproven === session.user.id && !credentialOf(unproven)) {
+          record(
+            'auth.password_removed',
+            { userId: unproven, email: session.user.email },
+            '',
+            'ok',
+          );
+          identities.markPasswordRemoved(unproven);
+        }
       } else if (failed && method !== 'google') {
         record('auth.login_failed', userByEmail(typedEmail), typedEmail, 'refused', method);
       }
@@ -135,9 +171,12 @@ export function authAuditHooks(db: Database, audit: AuditLog, options: { signupO
       return;
     }
     switch (ctx.path) {
-      case '/email-otp/reset-password':
-        record('auth.password_reset', userByEmail(typedEmail), typedEmail, 'ok');
+      case '/email-otp/reset-password': {
+        const resetBy = userByEmail(typedEmail);
+        record('auth.password_reset', resetBy, typedEmail, 'ok');
+        if (resetBy) identities.clearPasswordRemoved(resetBy.userId);
         return;
+      }
       case '/sign-out':
         if (actor) record('auth.logout', actor, '', 'ok');
         return;

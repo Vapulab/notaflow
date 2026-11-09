@@ -23,6 +23,7 @@ Every account query goes through a repository method that takes an `AccountConte
 - **Users keep their ids.** The Better Auth user model is the `users` table, so a first login by code lands in the same user, with the same accounts.
 - **Signup** creates a user only while `SIGNUP_OPEN=true`, and at most `SIGNUP_LIMIT_PER_IP_DAY` new users per IP per day (counted from the `auth.signup` audit entries).
 - **Google** links to an existing user only when Google says the e-mail is verified.
+- **Unconfirmed signup, then a code login:** Better Auth erases the password and every other login method of a user whose e-mail is not confirmed (`revokeUnprovenAccountAccess`), so a stranger who registered the e-mail first keeps no access. `authAudit.ts` records `auth.password_removed` and sets `users.password_removed_at`. The app then shows a banner until the person creates a password or clicks "Entendi" (`POST /api/me/password-notice`).
 - **Abuse limits:** the Better Auth rate limit on every auth route, and Turnstile on signup, code sending, and password reset.
 - **Audit:** every login (with its method), failed login, code sent, logout, password reset or change, passkey added or removed, and Google linked or unlinked (`src/auth/authAudit.ts`). A code is never written.
 - **Tests** log in with `t.as(email)`: a real signed session cookie from the Better Auth test-utils plugin.

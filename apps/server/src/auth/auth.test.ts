@@ -53,6 +53,7 @@ test('GET /api/me returns the user and accounts of the session', async () => {
     legalVersion: LEGAL_VERSION,
     legalAccepted: false,
     policyNotice: POLICY_NOTICE,
+    passwordRemoved: false,
     lifecycleEmails: true,
     accounts: [
       {

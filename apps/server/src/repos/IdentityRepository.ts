@@ -1,5 +1,5 @@
 import type { AccountRole } from '@notaflow/core';
-import { and, eq, isNull, lt, or, type SQL, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, lt, or, type SQL, sql } from 'drizzle-orm';
 import type { Database } from '../db/openDatabase';
 import { notDeleted } from '../db/stamps';
 import type { SignupSource } from '../auth/signupSource';
@@ -12,6 +12,7 @@ export interface Identity {
   name: string;
   platformRole: 'admin' | 'user';
   tourSeenAt: Date | null;
+  passwordRemovedAt: Date | null;
   memberships: {
     accountId: string;
     accountName: string;
@@ -61,6 +62,7 @@ export class IdentityRepository {
       name: user.name,
       platformRole: user.platformRole,
       tourSeenAt: user.tourSeenAt,
+      passwordRemovedAt: user.passwordRemovedAt,
       memberships: rows.map((row) => ({
         ...row,
         needsFiscalConfig: Boolean(row.needsFiscalConfig),
@@ -74,6 +76,25 @@ export class IdentityRepository {
       .set({ tourSeenAt: now, updatedAt: now, updatedBy: userId })
       .where(eq(users.id, userId))
       .run();
+  }
+
+  markPasswordRemoved(userId: string, now = new Date()): void {
+    this.db
+      .update(users)
+      .set({ passwordRemovedAt: now, updatedAt: now, updatedBy: userId })
+      .where(eq(users.id, userId))
+      .run();
+  }
+
+  // True when this call cleared it: a new password, or the person dismissed the warning.
+  clearPasswordRemoved(userId: string, now = new Date()): boolean {
+    return (
+      this.db
+        .update(users)
+        .set({ passwordRemovedAt: null, updatedAt: now, updatedBy: userId })
+        .where(and(eq(users.id, userId), isNotNull(users.passwordRemovedAt)))
+        .run().changes > 0
+    );
   }
 
   // Only the first source counts: a later login with another link never changes it.
