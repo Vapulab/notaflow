@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useState } from 'react';
 import { signUpWithPassword, verifyEmail } from '../auth/authApi';
 import { CodeField } from '../auth/CodeField';
+import { rememberLoginEmail } from '../auth/loginEmail';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
 import { track } from '../analytics/analytics';
@@ -118,9 +119,12 @@ export function SignupPage() {
             <p className="text-sm text-muted">
               Enviamos um código para {email}. Digite-o para confirmar o e-mail.
             </p>
-            <p className="text-xs text-muted">
-              Se este e-mail já tinha conta, enviamos instruções para entrar em vez do código.
-            </p>
+            <Alert variant="info">
+              Se este e-mail já tinha conta, enviamos instruções para entrar em vez do código.{' '}
+              <Link href="/entrar" onClick={() => rememberLoginEmail(email)}>
+                Entrar com este e-mail
+              </Link>
+            </Alert>
             <CodeField value={code} onChange={setCode} />
             <Button type="submit" variant="primary" disabled={busy}>
               Confirmar e-mail
@@ -144,6 +148,12 @@ export function SignupPage() {
           </>
         )}
       </form>
+      {step === 'form' && (
+        <p className="text-sm text-muted">
+          Já usa o NotaFlow e quer emitir por outra empresa? Não crie outro cadastro:{' '}
+          <Link href="/entrar">entre na sua conta</Link> e adicione a empresa em Emitentes.
+        </p>
+      )}
       <p className="text-sm">
         Prefere entrar sem senha, só com um código por e-mail?{' '}
         <Link href={withCampaign('/entrar', campaign)}>Entrar</Link>

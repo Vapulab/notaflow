@@ -15,7 +15,6 @@ import {
   formatCompetence,
   formatDate,
   parseCents,
-  previousMonthEnd,
 } from '../format';
 import {
   Alert,
@@ -97,7 +96,7 @@ function IssueFlow(props: {
   const send = useIssueSend<Form>({ accountId, storageKey });
   const [form, setForm] = useState<Form>(
     send.restored ?? {
-      competence: previousMonthEnd(brasiliaToday()),
+      competence: brasiliaToday(),
       brl: centsInput(draft.serviceCents),
       foreign: draft.foreign ? centsInput(draft.foreign.amountCents) : '',
       description: draft.description,

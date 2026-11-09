@@ -8,6 +8,7 @@ import {
 } from '../auth/authApi';
 import { campaignOf, withCampaign } from '../analytics/source';
 import { CodeField } from '../auth/CodeField';
+import { takeLoginEmail } from '../auth/loginEmail';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
 import { errorText } from '../components/Layout';
@@ -40,7 +41,7 @@ export function LoginPage() {
   const campaign = campaignOf(window.location.search);
   const [mode, setMode] = useState<'code' | 'password'>('code');
   const [step, setStep] = useState<'email' | 'code'>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(takeLoginEmail);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState<string | null>(null);
