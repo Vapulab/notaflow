@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useState } from 'react';
 import { signUpWithPassword, verifyEmail } from '../auth/authApi';
 import { CodeField } from '../auth/CodeField';
+import { rememberLoginEmail } from '../auth/loginEmail';
 import { PublicLayout, PublicLoading, usePublicConfig } from '../auth/PublicLayout';
 import { Turnstile } from '../auth/Turnstile';
 import { track } from '../analytics/analytics';
@@ -120,7 +121,9 @@ export function SignupPage() {
             </p>
             <Alert variant="info">
               Se este e-mail já tinha conta, enviamos instruções para entrar em vez do código.{' '}
-              <Link href="/entrar">Entrar com este e-mail</Link>
+              <Link href="/entrar" onClick={() => rememberLoginEmail(email)}>
+                Entrar com este e-mail
+              </Link>
             </Alert>
             <CodeField value={code} onChange={setCode} />
             <Button type="submit" variant="primary" disabled={busy}>

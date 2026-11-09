@@ -190,6 +190,26 @@ test('signup with a password, then the code from the e-mail', async () => {
   expect(JSON.parse(String(accepted?.init?.body))).toEqual({ version: '2026-10-11' });
 });
 
+test('"Entrar com este e-mail" opens the login with the e-mail filled, kept out of the URL', async () => {
+  stubApi(config());
+  vi.mocked(authApi.signUpWithPassword).mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(<SignupPage />);
+  await user.type(await screen.findByLabelText('Nome'), 'Pessoa');
+  await user.type(screen.getByLabelText('E-mail'), 'pessoa@example.com');
+  await user.type(screen.getByLabelText('Senha'), 'uma-senha-boa');
+  await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+  await user.click(screen.getByRole('button', { name: 'Criar conta' }));
+  const link = await screen.findByRole('link', { name: 'Entrar com este e-mail' });
+  expect(link.getAttribute('href')).toBe('/entrar');
+  await user.click(link);
+  cleanup();
+  render(<LoginPage />);
+  await user.click(await screen.findByRole('button', { name: 'Entrar com senha' }));
+  expect((screen.getByLabelText('E-mail') as HTMLInputElement).value).toBe('pessoa@example.com');
+  expect(sessionStorage.getItem('notaflow-login-email')).toBeNull();
+});
+
 test('the code step asks to check the e-mail, and "Corrigir e-mail" goes back to the form with it', async () => {
   stubApi(config());
   vi.mocked(authApi.signUpWithPassword).mockResolvedValue(undefined);
