@@ -122,9 +122,22 @@ test('a company that is not active is refused with its status', async () => {
   expect((error as LookupError).status).toBe('BAIXADA');
 });
 
-test.each([400, 404])('a CNPJ BrasilAPI does not know (%s) is not found', async (status) => {
+test.each([400, 404])('a CNPJ neither source knows (%s) is not found', async (status) => {
   brasil(status, { message: 'CNPJ inválido' });
+  cnpja(status, { message: 'Not Found' });
   expect(await errorOf(lookup())).toBe('cnpj_not_found');
+});
+
+test('a CNPJ missing from the BrasilAPI dataset is found at CNPJá', async () => {
+  brasil(404, { message: 'CNPJ não encontrado.', type: 'not_found' });
+  cnpja(200, cnpjaBody());
+  expect((await lookup()).source).toBe('cnpja');
+});
+
+test('BrasilAPI does not know the CNPJ and CNPJá is down: the lookup is unavailable', async () => {
+  brasil(404);
+  cnpja(503);
+  expect(await errorOf(lookup())).toBe('cnpj_lookup_unavailable');
 });
 
 test('a BrasilAPI answer without an IBGE code falls back to CNPJá', async () => {

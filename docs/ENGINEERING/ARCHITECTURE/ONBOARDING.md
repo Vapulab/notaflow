@@ -34,9 +34,10 @@ A company signs up alone, at `/app/comecar`. It names its account, sends its CNP
 
 ## The public lookup
 
-`src/onboarding/cnpjLookup.ts` asks BrasilAPI (`/api/cnpj/v1/{cnpj}`) first. On a 5xx, a 429, or a timeout of 8 seconds, it asks CNPJá open (`/office/{cnpj}`).
+`src/onboarding/cnpjLookup.ts` asks BrasilAPI (`/api/cnpj/v1/{cnpj}`) first. On a 400, a 404, a 5xx, a 429, a timeout of 8 seconds, or an answer without the municipality, it asks CNPJá open (`/office/{cnpj}`).
 
-- **Both down:** 502 `cnpj_lookup_unavailable`. Nothing is guessed.
+- **Not found:** 422 `cnpj_not_found` only when CNPJá does not know the CNPJ either. BrasilAPI answers 404 for some companies that are active for years.
+- **Both down:** 502 `cnpj_lookup_unavailable`. Nothing is guessed. BrasilAPI does not know the CNPJ and CNPJá is down gives the same answer.
 - **Not active:** a status other than "ATIVA" answers 422 `cnpj_not_active`, with the status.
 - **The Simples option** (`opSimpNac`): MEI is `2`, a Simples optant that is not MEI is `3`, anything else is `1`.
 

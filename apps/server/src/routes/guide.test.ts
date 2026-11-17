@@ -96,6 +96,10 @@ describe('regime by CNPJ', () => {
       .get('https://brasilapi.com.br')
       .intercept({ path: `/api/cnpj/v1/${CNPJ}`, method: 'GET' })
       .reply(404, {});
+    agent
+      .get('https://open.cnpja.com')
+      .intercept({ path: `/office/${CNPJ}`, method: 'GET' })
+      .reply(404, {});
     expect((await regime(CNPJ)).statusCode).toBe(404);
     await t.close();
     await boot();
