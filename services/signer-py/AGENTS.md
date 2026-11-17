@@ -15,4 +15,4 @@ The Python `Signer` (signxml and lxml). It is plan B: the Stage 0 spike compares
 
 1. Promote this to a FastAPI sidecar only if the Stage 0 decision picks Python.
 2. `_NfseSigner` allows SHA1 on purpose: the national NFS-e accepts RSA-SHA1.
-3. signxml cannot verify an inclusive-C14N signature whose `Signature` redefines the default namespace (libxml2 bug). Do not use it as the referee for Node SHA1 signatures.
+3. Keep signxml at 5.3.0 or later. Older versions cannot verify an inclusive-C14N signature whose `Signature` redefines the default namespace, so they reject valid Node SHA1 signatures.
