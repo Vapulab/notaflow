@@ -36,13 +36,10 @@ async function pythonVerifiesNodeSignature(profile: SignatureProfile): Promise<v
   });
 }
 
-test('Python verifies a Node signature (rsa-sha256-exc-c14n)', () =>
-  pythonVerifiesNodeSignature('rsa-sha256-exc-c14n'));
-
-// libxml2 inclusive C14N adds a false xmlns="" under a Signature that redefines the default
-// namespace, so signxml rejects a valid signature. If this starts to pass, lxml fixed it.
-test.fails('Python verifies a Node signature (rsa-sha1-c14n), known libxml2 bug', () =>
-  pythonVerifiesNodeSignature('rsa-sha1-c14n'),
+// signxml before 5.3.0 rejected the inclusive-C14N one: a false xmlns="" under the Signature.
+test.each<SignatureProfile>(['rsa-sha256-exc-c14n', 'rsa-sha1-c14n'])(
+  'Python verifies a Node signature (%s)',
+  (profile) => pythonVerifiesNodeSignature(profile),
 );
 
 describe.each<SignatureProfile>(['rsa-sha1-c14n', 'rsa-sha256-exc-c14n'])(
