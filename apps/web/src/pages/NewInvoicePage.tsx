@@ -516,9 +516,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 onSelect={(option) => {
                   const next = option ? (found.find((c) => c.id === option.value) ?? null) : null;
                   setForm((f) => {
-                    const moved = f.more && isAbroad(next) !== isAbroad(f.customer);
                     const more =
-                      f.more && moved
+                      f.more && isAbroad(next) !== isAbroad(f.customer)
                         ? withCustomerMode(
                             f.more,
                             services.data?.find((s) => s.id === f.serviceId) ?? null,
