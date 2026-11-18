@@ -72,4 +72,6 @@ Decision (2026-10-10, Lincoln): the BRL amount is always the PTAX of the compete
 
 `PUT /api/accounts/:accountId/customers/:customerId` edits name, email, phone, municipal registration, and address. Every field sent becomes a manual field, which the sync never overwrites.
 
+`GET /api/accounts/:accountId/customers/:customerId/iss-retention` reads the last issued invoice of the emitter to a CNPJ customer and answers `{ retained: true, issRate }` (hundredths, from `pAliq`) when that invoice had the ISS retained, else `{ retained: false }`. A cancelled invoice does not count. Nova nota uses it to start with "ISS retido pelo cliente" checked, and warns when the user unchecks it.
+
 Code: `apps/server/src/issue/`, `packages/provider-nacional/src/template/`, `packages/provider-nacional/src/NacionalIssuer.ts`.

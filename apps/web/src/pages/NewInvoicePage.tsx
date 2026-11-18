@@ -5,6 +5,7 @@ import {
   type Emitter,
   type ExchangeRate,
   type FiscalConfig,
+  type IssRetention,
   type Service,
   type ServiceCode,
 } from '../api';
@@ -84,6 +85,8 @@ interface Form {
   currencyCode: CurrencyCode;
   foreign: string;
   more: Complete | null; // "Mais opções", null while closed
+  // The customer whose last invoice set the ISS retention of this form; set once per customer.
+  retentionFrom?: { customerId: string; issRate: number | null };
 }
 
 const customerOption = (c: Customer): ComboboxOption => ({
@@ -224,6 +227,37 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     };
   }, [abroad, base, foreignCents, form.competence, form.currencyCode]);
 
+  // The last issued invoice to this customer had the ISS retained: start this one retained too.
+  const customerId = form.customer?.documentType === 'CNPJ' ? form.customer.id : null;
+  const fiscalConfig = fiscal.data;
+  useEffect(() => {
+    if (!customerId || !fiscalConfig || reviewing.current) return;
+    let live = true;
+    api.get<IssRetention>(`${base}/customers/${encodeURIComponent(customerId)}/iss-retention`).then(
+      (answer) => {
+        if (!live || answer.retained !== true) return;
+        setForm((f) => {
+          if (f.customer?.id !== customerId || f.retentionFrom?.customerId === customerId) return f;
+          const chosen = services.data?.find((s) => s.id === f.serviceId) ?? null;
+          const more = f.more ?? completeFrom(chosen, fiscalConfig);
+          return {
+            ...f,
+            more: {
+              ...more,
+              issRetained: true,
+              ...(answer.issRate !== null ? { issRate: percentInput(answer.issRate) } : {}),
+            },
+            retentionFrom: { customerId, issRate: answer.issRate },
+          };
+        });
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [base, customerId, fiscalConfig, services.data]);
+
   if (send.result) {
     return (
       <IssueResultView
@@ -339,6 +373,8 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
     });
   }
 
+  const fromHistory = canRetain && form.retentionFrom?.customerId === customer?.id;
+  const historyRate = form.retentionFrom?.issRate ?? null;
   const issLine = abroad
     ? 'Exportação: sem ISS'
     : canRetain && more?.issRetained
@@ -479,17 +515,26 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
                 selected={customer ? customerOption(customer) : null}
                 onSelect={(option) => {
                   const next = option ? (found.find((c) => c.id === option.value) ?? null) : null;
-                  setForm((f) => ({
-                    ...f,
-                    customer: next,
-                    more:
-                      f.more && isAbroad(next) !== isAbroad(f.customer)
+                  setForm((f) => {
+                    const moved = f.more && isAbroad(next) !== isAbroad(f.customer);
+                    const more =
+                      f.more && moved
                         ? withCustomerMode(
                             f.more,
                             services.data?.find((s) => s.id === f.serviceId) ?? null,
                           )
-                        : f.more,
-                  }));
+                        : f.more;
+                    // A retention the last customer's history checked does not carry to another customer.
+                    const { retentionFrom, ...rest } = f;
+                    if (!retentionFrom || retentionFrom.customerId === next?.id) {
+                      return { ...f, customer: next, more };
+                    }
+                    return {
+                      ...rest,
+                      customer: next,
+                      more: more ? { ...more, issRetained: false } : null,
+                    };
+                  });
                 }}
                 placeholder="Nome ou documento"
               />
@@ -596,6 +641,18 @@ function NewInvoiceFlow(props: { accountId: string; emitters: Emitter[]; custome
             <p className="text-sm text-muted">{issLine}</p>
           </div>
         </div>
+        {fromHistory && more?.issRetained && (
+          <Alert variant="info">
+            A última nota para este cliente teve ISS retido
+            {historyRate !== null ? ` (${percentInput(historyRate)}%)` : ''}. A retenção já vem
+            marcada em Mais opções; desmarque se esta nota não tiver retenção.
+          </Alert>
+        )}
+        {fromHistory && !more?.issRetained && (
+          <Alert variant="warning">
+            A última nota para este cliente teve ISS retido, e esta vai sem retenção.
+          </Alert>
+        )}
         <div>
           <Button
             type="button"

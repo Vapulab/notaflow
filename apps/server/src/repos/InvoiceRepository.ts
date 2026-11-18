@@ -326,6 +326,27 @@ export class InvoiceRepository {
     return row?.xmlGzip ? gunzipSync(row.xmlGzip).toString('utf8') : null;
   }
 
+  lastIssuedXmlTo(ctx: AccountContext, emitterId: string, customerDocument: string): string | null {
+    const row = this.db
+      .select({ xmlGzip: invoices.xmlGzip })
+      .from(invoices)
+      .innerJoin(emitters, eq(emitters.id, invoices.emitterId))
+      .where(
+        and(
+          eq(invoices.emitterId, emitterId),
+          eq(invoices.customerDocument, customerDocument),
+          eq(invoices.status, 'issued'),
+          eq(emitters.accountId, ctx.accountId),
+          notDeleted(emitters),
+          notDeleted(invoices),
+        ),
+      )
+      .orderBy(desc(invoices.issuedAt), desc(invoices.createdAt))
+      .limit(1)
+      .get();
+    return row?.xmlGzip ? gunzipSync(row.xmlGzip).toString('utf8') : null;
+  }
+
   findByIdempotencyKey(ctx: AccountContext, emitterId: string, key: string): string | null {
     const row = this.db
       .select({ id: invoices.id })
