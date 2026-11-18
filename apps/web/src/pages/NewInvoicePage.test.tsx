@@ -773,3 +773,73 @@ test('Mais opções: Brazil codes typed are dropped when a customer abroad is pi
   expect(value('CST do IBS/CBS')).toBe('');
   expect(value('Classificação tributária (IBS/CBS)')).toBe('');
 });
+
+test('a customer whose last invoice had the ISS retained starts retained at that rate', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/customers/c1/iss-retention`]: { retained: true, issRate: 200 },
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  expect(
+    await screen.findByText(/A última nota para este cliente teve ISS retido \(2,00%\)/),
+  ).toBeTruthy();
+  expect((screen.getByLabelText('ISS retido pelo cliente') as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText('Alíquota de ISS (%)') as HTMLInputElement).value).toBe('2,00');
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  expect(within(screen.getByRole('table')).getByText('Retido pelo cliente')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body).toMatchObject({ issRetained: true, issRate: 200 });
+});
+
+test('unchecking the retention from the history warns, and the invoice goes without it', async () => {
+  const calls = stubApi(
+    routes({
+      [`${base}/customers/c1/iss-retention`]: { retained: true, issRate: 200 },
+      [`${base}/invoices/new`]: { id: 'new1', status: 'issued' },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  await user.click(await screen.findByLabelText('ISS retido pelo cliente'));
+  expect(
+    screen.getByText('A última nota para este cliente teve ISS retido, e esta vai sem retenção.'),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Revisar' }));
+  await user.click(screen.getByRole('button', { name: 'Emitir nota' }));
+  await waitFor(() => expect(sent(calls)).toHaveLength(1));
+  const body = JSON.parse(String(sent(calls)[0]?.init?.body)) as Record<string, unknown>;
+  expect(body).not.toHaveProperty('issRetained');
+});
+
+test('a customer without a retained history starts as before, and another customer drops the retention', async () => {
+  stubApi(
+    routes({
+      [`${base}/customers`]: [
+        brazil,
+        { ...brazil, id: 'c3', document: '44555666000177', name: 'Outro Cliente Ltda' },
+      ],
+      [`${base}/customers/c1/iss-retention`]: { retained: true, issRate: 200 },
+      [`${base}/customers/c3/iss-retention`]: { retained: false },
+    }),
+  );
+  renderWithMe(<NewInvoicePage accountId="acc" />, meFor('user'));
+  const user = userEvent.setup();
+  await fillBrazil(user);
+  expect(await screen.findByLabelText('ISS retido pelo cliente')).toBeTruthy();
+  await user.clear(screen.getByRole('combobox', { name: 'Cliente' }));
+  await pickCustomer(user, 'Outro Cliente Ltda');
+  await waitFor(() =>
+    expect((screen.getByLabelText('ISS retido pelo cliente') as HTMLInputElement).checked).toBe(
+      false,
+    ),
+  );
+  expect(screen.queryByText(/A última nota para este cliente/)).toBeNull();
+  expect(screen.getByText('ISS no DAS (não retido)')).toBeTruthy();
+});

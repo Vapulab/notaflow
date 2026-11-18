@@ -299,6 +299,9 @@ export type SimplesAnnex = 'I' | 'II' | 'III' | 'IV' | 'V';
 // Band 6 only: whether this year's revenue passed R$ 3.6 million and the ISS left the DAS.
 export type Band6Iss = 'under_sublimit' | 'over_sublimit' | 'outside';
 
+// The ISS retention of the last issued invoice to a customer; issRate in hundredths.
+export type IssRetention = { retained: false } | { retained: true; issRate: number | null };
+
 export interface FiscalConfig {
   simplesAnnex: SimplesAnnex | null;
   simplesBand: number | null;

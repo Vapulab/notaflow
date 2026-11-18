@@ -1,4 +1,5 @@
-import type { PartyAddress } from '@notaflow/core';
+import type { AccountContext, PartyAddress } from '@notaflow/core';
+import { decimalToCents, issRetained, readReportFields } from '@notaflow/provider-nacional';
 import type { FastifyInstance } from 'fastify';
 import { accountContext, identityOf } from '../auth/guards';
 import { country, municipality, searchCountries, searchMunicipalities } from '../data/places';
@@ -13,6 +14,7 @@ import {
   type NewCustomer,
 } from '../repos/CustomerRepository';
 import { EmitterRepository } from '../repos/EmitterRepository';
+import { InvoiceRepository } from '../repos/InvoiceRepository';
 
 interface CustomerEdit {
   name?: string;
@@ -160,6 +162,7 @@ function withoutManualFields({ manualFields: _manualFields, ...customer }: Custo
 export function customerRoutes(app: FastifyInstance, db: Database): void {
   const customers = new CustomerRepository(db);
   const emitters = new EmitterRepository(db);
+  const invoices = new InvoiceRepository(db);
   const audit = new AuditLog(db);
 
   const searchSchema = {
@@ -242,6 +245,17 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
     },
   );
 
+  // The ISS retention of the last issued invoice to this customer, so Nova nota starts with it.
+  app.get<{ Params: { accountId: string; customerId: string } }>(
+    '/api/accounts/:accountId/customers/:customerId/iss-retention',
+    async (request) => {
+      const ctx = accountContext(request, request.params.accountId);
+      const customer = customers.get(ctx, request.params.customerId);
+      if (!customer) throw new HttpError(404, 'not_found');
+      return lastIssRetention(invoices, ctx, customer);
+    },
+  );
+
   app.put<{ Params: { accountId: string; customerId: string }; Body: CustomerEdit }>(
     '/api/accounts/:accountId/customers/:customerId',
     { schema: editSchema },
@@ -279,4 +293,27 @@ export function customerRoutes(app: FastifyInstance, db: Database): void {
       return withoutManualFields(customer);
     },
   );
+}
+
+type IssRetention = { retained: false } | { retained: true; issRate: number | null };
+
+function lastIssRetention(
+  invoices: InvoiceRepository,
+  ctx: AccountContext,
+  customer: CustomerRow,
+): IssRetention {
+  if (customer.documentType !== 'CNPJ' || !customer.document) return { retained: false };
+  const xml = invoices.lastIssuedXmlTo(ctx, customer.emitterId, customer.document);
+  const fields = xml ? readableFields(xml) : null;
+  if (!fields || !issRetained(fields.issWithholding)) return { retained: false };
+  return { retained: true, issRate: fields.issRate ? decimalToCents(fields.issRate) : null };
+}
+
+// An XML the parser cannot read gives no hint; the form starts as before.
+function readableFields(xml: string) {
+  try {
+    return readReportFields(xml);
+  } catch {
+    return null;
+  }
 }
