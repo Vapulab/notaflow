@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@better-auth/passkey": "1.7.7",
+    "@better-auth/passkey": "1.7.27",
     "@notaflow/invoice-report": "workspace:*",
     "@notaflow/provider-nacional": "workspace:*",
     "@sentry/react": "^11.6.0",
